@@ -202,17 +202,6 @@ export default function PartnerDashboardView({
                     <span>👁️ VISTA SOCIAS (SOLO LECTURA)</span>
                   </span>
                 )}
-
-                {!adminUnlocked && (
-                  <button
-                    onClick={handleRequestAdminUnlock}
-                    className="text-[10px] bg-slate-900 hover:bg-slate-800 text-amber-400 px-2.5 py-0.5 rounded-full border border-amber-500/30 font-bold transition-all flex items-center gap-1"
-                    title="Desbloquear edición de fichajes con la clave de Raúl"
-                  >
-                    <KeyRound className="w-3 h-3 text-amber-400" />
-                    <span>🔑 Acceso Admin Raúl</span>
-                  </button>
-                )}
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
                 Gula Logística | {activeWeekData?.meta?.week || "Semana 3"} ({activeWeekData?.meta?.dateRange})
@@ -232,19 +221,15 @@ export default function PartnerDashboardView({
               ))}
             </select>
 
-            <button
-              onClick={() => {
-                if (adminUnlocked) {
-                  onOpenAddWeek();
-                } else {
-                  handleRequestAdminUnlock();
-                }
-              }}
-              className="bg-slate-900 hover:bg-slate-800 text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1 border border-slate-800 transition-all"
-            >
-              <Plus className="w-3.5 h-3.5 text-amber-400" />
-              <span>+ Semana</span>
-            </button>
+            {adminUnlocked && (
+              <button
+                onClick={onOpenAddWeek}
+                className="bg-slate-900 hover:bg-slate-800 text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1 border border-slate-800 transition-all"
+              >
+                <Plus className="w-3.5 h-3.5 text-amber-400" />
+                <span>+ Semana</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -266,19 +251,15 @@ export default function PartnerDashboardView({
             <span>Nóminas & Informes</span>
           </button>
 
-          <button
-            onClick={() => {
-              if (adminUnlocked) {
-                onOpenGemini();
-              } else {
-                handleRequestAdminUnlock();
-              }
-            }}
-            className="bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-md active:scale-95 transition-all"
-          >
-            <Wand2 className="w-4 h-4" />
-            <span>Gemini AI</span>
-          </button>
+          {adminUnlocked && (
+            <button
+              onClick={onOpenGemini}
+              className="bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-md active:scale-95 transition-all"
+            >
+              <Wand2 className="w-4 h-4" />
+              <span>Gemini AI</span>
+            </button>
+          )}
 
           {/* Generar Enlaces (WhatsApp) Button */}
           <button
@@ -617,13 +598,10 @@ export default function PartnerDashboardView({
                 <span>+ Añadir Fichaje Manual (Admin)</span>
               </button>
             ) : (
-              <button
-                onClick={handleRequestAdminUnlock}
-                className="py-2.5 px-4 rounded-xl bg-slate-950 border border-slate-800 text-amber-400 font-bold text-xs flex items-center space-x-2 hover:bg-slate-900 transition-all"
-              >
-                <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-                <span>🔒 Fichajes Inmutables (Activar Edición Admin)</span>
-              </button>
+              <span className="text-xs text-slate-400 font-semibold bg-slate-950 px-3.5 py-2 rounded-xl border border-slate-800 flex items-center space-x-1.5">
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <span>Fichajes Inmutables (Protegidos)</span>
+              </span>
             )}
           </div>
 
