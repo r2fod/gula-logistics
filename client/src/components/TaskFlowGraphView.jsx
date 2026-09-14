@@ -176,15 +176,27 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
     return { nodes, links };
   }, [activeWeekData]);
 
-  // Connected node IDs calculation when a node is hovered/clicked
+  // Connected node IDs calculation when a node is hovered/clicked.
+  // Two hops: día→tarea es un salto, tarea→camión/trabajador es otro — con
+  // un solo salto (el original) seleccionar un día nunca llegaba a iluminar
+  // camiones ni personal, porque ninguno de los dos está enlazado directamente
+  // al nodo del día, solo a sus tareas.
   const connectedNodeIds = useMemo(() => {
     if (!selectedNodeId) return new Set();
     const set = new Set([selectedNodeId]);
+    let frontier = [selectedNodeId];
+    const maxHops = 2;
 
-    graphData.links.forEach(l => {
-      if (l.source === selectedNodeId) set.add(l.target);
-      if (l.target === selectedNodeId) set.add(l.source);
-    });
+    for (let hop = 0; hop < maxHops; hop++) {
+      const next = [];
+      frontier.forEach(id => {
+        graphData.links.forEach(l => {
+          if (l.source === id && !set.has(l.target)) { set.add(l.target); next.push(l.target); }
+          if (l.target === id && !set.has(l.source)) { set.add(l.source); next.push(l.source); }
+        });
+      });
+      frontier = next;
+    }
 
     return set;
   }, [selectedNodeId, graphData]);
