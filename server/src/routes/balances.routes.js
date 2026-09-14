@@ -1,0 +1,69 @@
+import express from 'express';
+import mongoose from 'mongoose';
+import { WorkerBalance } from '../models/WorkerBalance.model.js';
+import { initialBalancesData } from '../data/balancesData.js';
+
+const router = express.Router();
+
+let memoryBalancesData = { ...initialBalancesData };
+
+// GET /api/balances - Get all worker balances & financial data
+router.get('/', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const dbWorkers = await WorkerBalance.find().sort({ createdAt: 1 });
+      if (dbWorkers && dbWorkers.length > 0) {
+        return res.json({
+          lastUpdated: new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }),
+          workers: dbWorkers
+        });
+      }
+    }
+    return res.json(memoryBalancesData);
+  } catch (error) {
+    console.error('Error al obtener saldos:', error);
+    return res.json(memoryBalancesData);
+  }
+});
+
+// POST /api/balances/seed - Seed initial financial balances to MongoDB Atlas
+router.post('/seed', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      await WorkerBalance.deleteMany({});
+      const created = await WorkerBalance.insertMany(initialBalancesData.workers);
+      return res.json({ success: true, message: `${created.length} registros financieros migrados a MongoDB Atlas` });
+    }
+    return res.json({ success: true, message: 'Seeding completado en memoria local' });
+  } catch (error) {
+    console.error('Error seeding balances:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/balances/:id - Update specific worker balance or add breakdown item
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatePayload = req.body;
+
+    if (mongoose.connection.readyState === 1) {
+      const updatedDoc = await WorkerBalance.findOneAndUpdate({ id }, updatePayload, { new: true, upsert: true });
+      return res.json(updatedDoc);
+    }
+
+    const idx = memoryBalancesData.workers.findIndex(w => w.id === id);
+    if (idx !== -1) {
+      memoryBalancesData.workers[idx] = { ...memoryBalancesData.workers[idx], ...updatePayload };
+      return res.json(memoryBalancesData.workers[idx]);
+    } else {
+      memoryBalancesData.workers.push({ id, ...updatePayload });
+      return res.json({ id, ...updatePayload });
+    }
+  } catch (error) {
+    console.error('Error al actualizar saldo:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+export default router;
