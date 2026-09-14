@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import logisticsRoutes from './routes/logistics.routes.js';
 import clockRoutes from './routes/clock.routes.js';
 import balancesRoutes from './routes/balances.routes.js';
+import authRoutes from './routes/auth.routes.js';
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ if (process.env.MONGODB_URI) {
 }
 
 // Rutas de API para datos sensibles
+app.use('/api/auth', authRoutes);
 app.use('/api/logistics', logisticsRoutes);
 app.use('/api/clock', clockRoutes);
 app.use('/api/balances', balancesRoutes);

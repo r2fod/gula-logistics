@@ -22,14 +22,22 @@ export const logisticsData = {
       tasks: [
         "09:00 - 11:30: Recogida Camiones de Alquiler Covey & Albacar (Persona1 y Persona2). ¡Flota completa de 3!",
         "12:00 - 14:00: Ruta Carvillo — Recogida 90 sillas extra con Camión Gula.",
-        "15:30 - 18:30: Ruta Empresa5 — Recogida material alquiler."
+        "15:30 - 18:30: Ruta Empresa5 — Recogida material alquiler.",
+        "Preparación Eventos Boda Cliente15 y Boda Cliente3 (Anna).",
+        "Anto — Reunión/prep. Empresa2.",
+        "Marc — Prueba de menú.",
+        "Miriam — Catering Empresa1."
       ]
     },
     miercoles: {
       title: "Miércoles 16", badge: "Descarga Fincas",
       tasks: [
         "10:00 - 14:00: Pre-carga en almacén (Persona3 y Persona5).",
-        "15:00 - 19:00: Descarga adelantada en Mas dels Refranys y Villajoyosa (Persona1, Persona2, Persona3) con Camión Covey."
+        "15:00 - 19:00: Descarga adelantada en Mas dels Refranys y Villajoyosa (Persona1, Persona2, Persona3) con Camión Covey.",
+        "20:00: Cena prueba de menú — Cliente13 y Cliente14.",
+        "Anto — Cliente13 / Empresa2.",
+        "Marc — Boda Cliente13.",
+        "Luis — Bodas."
       ]
     },
     jueves: {
@@ -37,22 +45,25 @@ export const logisticsData = {
       tasks: [
         "08:00 - 14:00: Catering Empresa1 (100 pax) - Anto, Marc, Luis.",
         "15:00 - 19:00: Evento Empresa2 - Control y servicio.",
-        "19:00 - 21:00: Pre-carga de frío y revisión de checklists en Camión Gula."
+        "19:00 - 21:00: Pre-carga de frío y revisión de checklists en Camión Gula.",
+        "Jessi — Bodas."
       ]
     },
     viernes: {
-      title: "Viernes 18", badge: "Cierre Crítico",
+      title: "Viernes 18", badge: "Cierre Crítico — Día Completo",
       tasks: [
         "09:00 - 14:00: 2º viaje adelantado y descarga de menaje en Chera con Camión Gula.",
-        "15:00 - 21:00: Estiba, flejado y carga final en los 3 camiones (Camión Gula, Camión Covey, Camión Albacar). Persona8 e Persona4 validan albaranes."
+        "Descarga en Villajoyosa / Mas dels Refranys (continuación).",
+        "15:00 - 21:00: Estiba, flejado y carga final en los 3 camiones (Camión Gula, Camión Covey, Camión Albacar). Persona8 e Persona4 validan albaranes.",
+        "Anto, Marc, Jessi — Bodas (prep. final)."
       ]
     }
   },
   saturdaySpecial: {
     title: "Sábado 19 — El Gran Día (3 Bodas Simultáneas)",
     weddings: [
-      { location: "Lugar1 de Chera (250 pax)", truck: "Camión Gula (Propio)", details: "Conduce: Persona2 | Apoyo: Persona5. 🌙 Viaje nocturno de vuelta." },
-      { location: "Mas dels Refranys", truck: "Camión Covey (Alquiler)", details: "Conduce: Persona1 | Apoyo: Persona3. ✅ Descarga hecha el miércoles." },
+      { location: "Lugar1 de Chera (250 pax)", truck: "Camión Gula (Propio)", details: "Conduce: Persona2 | Apoyo: Persona5. Sala/evento: Marc. 🌙 Viaje nocturno de vuelta." },
+      { location: "Mas dels Refranys — Boda Cliente3", truck: "Camión Covey (Alquiler)", details: "Conduce: Persona1 | Apoyo: Persona3. Sala/evento: Anto. ✅ Descarga hecha el miércoles/viernes." },
       { location: "Cliente15 y Cliente2", truck: "Camión Albacar (Alquiler)", details: "Conduce: Jaime (Guiado) | Apoyo: Persona3/Jef." }
     ]
   },
