@@ -40,6 +40,7 @@ export default function PartnerDashboardView({
   clockEntries = [], 
   isAdmin = false,
   onUnlockAdmin,
+  onOpenAdminLogin,
   onOpenClockIn,
   onOpenPayroll,
   onOpenGemini,
@@ -60,13 +61,17 @@ export default function PartnerDashboardView({
   }, [isAdmin]);
 
   const handleRequestAdminUnlock = () => {
-    const pwd = prompt("Introduce la clave de Administrador (Raúl):");
-    if (pwd && ['raul', 'raul2026', 'gula2026', 'admin', '1234'].includes(pwd.toLowerCase().trim())) {
-      setAdminUnlocked(true);
-      if (onUnlockAdmin) onUnlockAdmin();
-      alert("🟢 Modo Administrador (Raúl) desbloqueado.");
-    } else if (pwd !== null) {
-      alert("❌ Clave incorrecta. El panel se mantiene en Modo Solo Lectura de Socias.");
+    if (onOpenAdminLogin) {
+      onOpenAdminLogin();
+    } else {
+      const pwd = prompt("Introduce la clave de Administrador (Raúl):");
+      if (pwd && ['raul', 'raul2026', 'gula2026', 'admin', '1234'].includes(pwd.toLowerCase().trim())) {
+        setAdminUnlocked(true);
+        if (onUnlockAdmin) onUnlockAdmin();
+        alert("🟢 Modo Administrador (Raúl) desbloqueado.");
+      } else if (pwd !== null) {
+        alert("❌ Clave incorrecta. El panel se mantiene en Modo Solo Lectura de Socias.");
+      }
     }
   };
 

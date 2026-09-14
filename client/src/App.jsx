@@ -35,6 +35,7 @@ import PartnerDashboardModal from './components/PartnerDashboardModal';
 import PartnerDashboardView from './components/PartnerDashboardView';
 import BalancesAgreementsModal from './components/BalancesAgreementsModal';
 import WorkerView from './components/WorkerView';
+import AdminLoginModal from './components/AdminLoginModal';
 import { logisticsData as BASE_DATA } from './data/logisticsData';
 
 const WORKERS_LIST = [
@@ -98,6 +99,7 @@ export default function App() {
   const [isPayrollModalOpen, setIsPayrollModalOpen] = useState(false);
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
   const [isBalancesModalOpen, setIsBalancesModalOpen] = useState(false);
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
 
   const [copiedWorker, setCopiedWorker] = useState(null);
   const [copiedPartnerLink, setCopiedPartnerLink] = useState(false);
@@ -236,8 +238,7 @@ export default function App() {
 
   // Link Generators
   const getWorkerLink = (workerName) => {
-    const isRaul = workerName.toLowerCase() === 'raúl' || workerName.toLowerCase() === 'raul';
-    return `${window.location.origin}${window.location.pathname}?week=${activeWeekId}&worker=${encodeURIComponent(workerName)}${isRaul ? '&admin=true' : ''}`;
+    return `${window.location.origin}${window.location.pathname}?week=${activeWeekId}&worker=${encodeURIComponent(workerName)}`;
   };
 
   const getPartnerSecureLink = () => {
@@ -295,6 +296,7 @@ export default function App() {
           clockEntries={clockEntries}
           isAdmin={isAdmin}
           onUnlockAdmin={() => setIsAdminUnlocked(true)}
+          onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
           onOpenClockIn={(workerName) => {
             if (workerName && typeof workerName === 'string') setActiveWorker(workerName);
             setIsClockInModalOpen(true);
@@ -345,6 +347,15 @@ export default function App() {
         <BalancesAgreementsModal
           isOpen={isBalancesModalOpen}
           onClose={() => setIsBalancesModalOpen(false)}
+        />
+
+        <AdminLoginModal
+          isOpen={isAdminLoginOpen}
+          onClose={() => setIsAdminLoginOpen(false)}
+          onSuccess={() => {
+            setIsAdminUnlocked(true);
+            setIsPartnerMode(true);
+          }}
         />
       </div>
     );
@@ -819,6 +830,15 @@ export default function App() {
         isOpen={isGeminiModalOpen}
         onClose={() => setIsGeminiModalOpen(false)}
         onApplyGeneratedSchedule={handleApplyGeminiSchedule}
+      />
+
+      <AdminLoginModal
+        isOpen={isAdminLoginOpen}
+        onClose={() => setIsAdminLoginOpen(false)}
+        onSuccess={() => {
+          setIsAdminUnlocked(true);
+          setIsPartnerMode(true);
+        }}
       />
     </div>
   );
