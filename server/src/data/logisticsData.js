@@ -37,7 +37,8 @@ export const logisticsData = {
       title: "Miércoles 16", badge: "Recogidas & Descarga Adelantada",
       tasks: [
         { id: "mi1", text: "(Backup) Recogida Empresa5 si no se hizo el martes — mañana temprano (1 persona: Persona2).", location: "Empresa5 Paterna", timeFrame: "08:00 - 10:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Empresa5+Paterna+Valencia", assigned: ["Persona2"], completed: false },
-        { id: "mi2", text: "Viaje, descarga adelantada y montaje de estructura en Villajoyosa (Conduce: Persona1 | Apoyo descarga y montaje: Persona3, Persona5).", location: "Villajoyosa", timeFrame: "15:00 - 20:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Villajoyosa", assigned: ["Persona1", "Persona3", "Persona5"], completed: false }
+        { id: "mi2", text: "Viaje, descarga adelantada y montaje de estructura — Boda Cliente15 y Cliente2 (Conduce: Persona2 | Apoyo descarga y montaje: Persona5, Persona3 | Persona8 supervisa).", location: "", timeFrame: "15:00 - 20:00", mapsUrl: "", assigned: ["Persona2", "Persona5", "Persona3", "Persona8"], completed: false, truck: "Camión Albacar" },
+        { id: "mi3", text: "Preparación y organización de material para los eventos Empresa1 y Empresa2 de mañana jueves (Persona4 dirige checklist).", location: "Almacén Base", timeFrame: "15:00 - 19:00", mapsUrl: "", assigned: ["Persona4"], completed: false }
       ]
     },
     jueves: {
