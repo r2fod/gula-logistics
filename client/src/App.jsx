@@ -37,6 +37,13 @@ import BalancesAgreementsModal from './components/BalancesAgreementsModal';
 import WorkerView from './components/WorkerView';
 import AdminLoginModal from './components/AdminLoginModal';
 import { logisticsData as BASE_DATA } from './data/logisticsData';
+import { 
+  fetchClockEntriesFromAPI, 
+  saveClockEntryToAPI, 
+  updateClockEntryInAPI, 
+  deleteClockEntryInAPI, 
+  clearAllClockEntriesInAPI 
+} from './data/apiService';
 
 const WORKERS_LIST = [
   { name: "Gonzalo", role: "Conductor Flota (Veterano)", truck: "Camión Covey (Alquiler)", avatar: "🚛", isPayroll: false, rate: 10 },
@@ -106,7 +113,7 @@ export default function App() {
 
   const SECURE_PARTNER_TOKEN = 'gula_socias_secure_98f7a2b9d31e40c5';
 
-  // Detect URL params: ?week=week_3&worker=Raúl
+  // Detect URL params & sync sensitive clock entries from MongoDB / API
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const weekParam = params.get('week');
@@ -138,6 +145,13 @@ export default function App() {
     ) {
       setIsPartnerMode(true);
     }
+
+    // Sync sensitive clock entries from backend MongoDB Atlas
+    fetchClockEntriesFromAPI().then(remoteEntries => {
+      if (remoteEntries && Array.isArray(remoteEntries) && remoteEntries.length > 0) {
+        setClockEntries(remoteEntries);
+      }
+    });
   }, []);
 
   const updateWeeks = (newWeeks) => {
@@ -157,6 +171,7 @@ export default function App() {
     } catch (e) {
       console.error(e);
     }
+    saveClockEntryToAPI(newEntry);
   };
 
   const handleUpdateClockEntry = (updatedEntry) => {
@@ -167,6 +182,7 @@ export default function App() {
     } catch (e) {
       console.error(e);
     }
+    updateClockEntryInAPI(updatedEntry);
   };
 
   const handleDeleteClockEntry = (entryId) => {
@@ -177,11 +193,13 @@ export default function App() {
     } catch (e) {
       console.error(e);
     }
+    deleteClockEntryInAPI(entryId);
   };
 
   const handleClearClockEntries = () => {
     setClockEntries([]);
     localStorage.removeItem('gula_clock_entries_v1');
+    clearAllClockEntriesInAPI();
   };
 
   const activeWeek = allWeeks[activeWeekId] || BASE_WEEK_3;

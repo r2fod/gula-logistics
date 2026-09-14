@@ -25,16 +25,28 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { initialBalancesData } from '../data/balancesData';
+import { fetchBalancesFromAPI } from '../data/apiService';
 
 export default function BalancesAgreementsModal({ isOpen, onClose }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all'); // 'all' | 'favor' | 'debt' | 'payroll'
   const [copiedId, setCopiedId] = useState(null);
   const [expandedWorkerId, setExpandedWorkerId] = useState('jefferson'); // Default expand Jefferson to show purse details
+  const [balancesData, setBalancesData] = useState(initialBalancesData);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchBalancesFromAPI().then(apiData => {
+        if (apiData && apiData.workers) {
+          setBalancesData(apiData);
+        }
+      });
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const workers = initialBalancesData.workers;
+  const workers = balancesData.workers || initialBalancesData.workers;
 
   // Filter workers based on search and tab
   const filteredWorkers = workers.filter(w => {
