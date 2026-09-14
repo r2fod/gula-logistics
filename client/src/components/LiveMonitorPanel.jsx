@@ -111,6 +111,7 @@ export default function LiveMonitorPanel({
   });
 
   const activeCount = workerStatuses.filter(w => w.isClockedIn).length;
+  const teamActivePercent = workersList.length > 0 ? Math.round((activeCount / workersList.length) * 100) : 0;
 
   const filteredWorkers = workerStatuses.filter(w => {
     if (filterStatus === 'active') return w.isClockedIn;
@@ -123,7 +124,7 @@ export default function LiveMonitorPanel({
     <div className={`space-y-6 transition-all ${isFullScreen ? 'p-6 bg-slate-950 text-white min-h-screen' : ''}`}>
       
       {/* Live Monitor Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-xl">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           
           <div className="flex items-center space-x-3.5">
@@ -145,7 +146,7 @@ export default function LiveMonitorPanel({
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Seguimiento en directo de estado de jornada, tarea asignada y ubicación por trabajador.
+                Seguimiento en directo de estado de jornada, barra de avance y ubicación por trabajador.
               </p>
             </div>
           </div>
@@ -179,8 +180,31 @@ export default function LiveMonitorPanel({
           </div>
         </div>
 
+        {/* Global Operational Progress Bar */}
+        <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800/80 space-y-2">
+          <div className="flex items-center justify-between text-xs font-bold">
+            <span className="text-slate-300 flex items-center space-x-1.5">
+              <Activity className="w-4 h-4 text-emerald-400" />
+              <span>Cobertura de Jornada del Equipo en Activo</span>
+            </span>
+            <span className="text-emerald-400 font-mono text-sm">{teamActivePercent}% Activo</span>
+          </div>
+
+          <div className="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-slate-800 p-0.5">
+            <div 
+              className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 rounded-full transition-all duration-700"
+              style={{ width: `${Math.max(5, teamActivePercent)}%` }}
+            ></div>
+          </div>
+
+          <div className="flex justify-between items-center text-[10px] text-slate-500 font-semibold">
+            <span>{activeCount} Trabajadores en Turno</span>
+            <span>{workersList.length - activeCount} en Espera / Descanso</span>
+          </div>
+        </div>
+
         {/* Filter Buttons */}
-        <div className="flex items-center space-x-2 mt-5 pt-4 border-t border-slate-800/80 overflow-x-auto">
+        <div className="flex items-center space-x-2 pt-2 border-t border-slate-800/80 overflow-x-auto">
           <button
             onClick={() => setFilterStatus('all')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
@@ -221,90 +245,118 @@ export default function LiveMonitorPanel({
 
       {/* Workers Real-Time Live Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {filteredWorkers.map((worker) => (
-          <div 
-            key={worker.name}
-            className={`relative overflow-hidden rounded-3xl p-5 border transition-all duration-300 shadow-lg flex flex-col justify-between space-y-4 ${
-              worker.isClockedIn 
-                ? 'bg-slate-900/90 border-emerald-500/50 shadow-emerald-500/10 ring-1 ring-emerald-500/30' 
-                : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
-            }`}
-          >
-            {/* Active glowing accent strip */}
-            {worker.isClockedIn && (
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 animate-pulse"></div>
-            )}
+        {filteredWorkers.map((worker) => {
+          // Calculate progress percentage of standard 8h shift
+          const targetShiftHours = 8;
+          let shiftHours = 0;
+          if (worker.isClockedIn && worker.clockEntry) {
+            const startTime = new Date(worker.clockEntry.timestamp);
+            shiftHours = Math.max(0, (currentTime - startTime) / (1000 * 60 * 60));
+          }
+          const shiftProgressPercent = Math.min(100, Math.round((shiftHours / targetShiftHours) * 100));
 
-            <div>
-              {/* Header Info */}
-              <div className="flex items-start justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl shrink-0 shadow-inner">
-                    {worker.avatar}
+          return (
+            <div 
+              key={worker.name}
+              className={`relative overflow-hidden rounded-3xl p-5 border transition-all duration-300 shadow-lg flex flex-col justify-between space-y-4 ${
+                worker.isClockedIn 
+                  ? 'bg-slate-900/90 border-emerald-500/50 shadow-emerald-500/10 ring-1 ring-emerald-500/30' 
+                  : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
+              }`}
+            >
+              {/* Active glowing accent strip */}
+              {worker.isClockedIn && (
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 animate-pulse"></div>
+              )}
+
+              <div>
+                {/* Header Info */}
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+                      {worker.avatar}
+                    </div>
+                    <div>
+                      <h4 className="font-extrabold text-white text-base font-['Outfit']">{worker.name}</h4>
+                      <p className="text-[11px] text-slate-400">{worker.role}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-extrabold text-white text-base font-['Outfit']">{worker.name}</h4>
-                    <p className="text-[11px] text-slate-400">{worker.role}</p>
+
+                  {/* Status Badge */}
+                  {worker.isClockedIn ? (
+                    <span className="px-2.5 py-1 text-[10px] font-extrabold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                      <span>EN TURNO</span>
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700 shrink-0">
+                      ⚪ DESCANSO
+                    </span>
+                  )}
+                </div>
+
+                {/* Individual Worker Shift Progress Bar */}
+                <div className="mt-4 p-3 rounded-2xl bg-slate-950/90 border border-slate-800/80 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-400 font-semibold flex items-center space-x-1">
+                      <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Avance de Jornada:</span>
+                    </span>
+                    <span className="font-mono font-extrabold text-emerald-400">
+                      {worker.isClockedIn ? `${shiftProgressPercent}%` : '0%'}
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
+                    <div 
+                      className={`h-full transition-all duration-500 ${
+                        worker.isClockedIn 
+                          ? 'bg-gradient-to-r from-emerald-500 to-amber-400' 
+                          : 'bg-slate-800'
+                      }`}
+                      style={{ width: `${worker.isClockedIn ? Math.max(8, shiftProgressPercent) : 0}%` }}
+                    ></div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-[10px] text-slate-400 font-medium">
+                    <span>{worker.isClockedIn ? worker.elapsedTimeFormatted : '0h 00m'}</span>
+                    <span>Objetivo ~8h</span>
                   </div>
                 </div>
 
-                {/* Status Badge */}
-                {worker.isClockedIn ? (
-                  <span className="px-2.5 py-1 text-[10px] font-extrabold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1 shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                    <span>EN TURNO</span>
+                {/* Current Task Box */}
+                <div className="mt-3 space-y-1.5">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                    Actividad / Tarea Asignada
+                  </span>
+                  <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 text-xs text-slate-200 leading-relaxed font-medium">
+                    {worker.currentTask}
+                  </div>
+                </div>
+              </div>
+
+              {/* Location Badge */}
+              <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
+                <span className="flex items-center space-x-1 text-slate-300 font-medium">
+                  <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="truncate">{worker.location}</span>
+                </span>
+
+                {worker.isPayroll ? (
+                  <span className="text-[9px] font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 shrink-0">
+                    Nómina (14€/h)
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700 shrink-0">
-                    ⚪ DESCANSO
+                  <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
+                    Extra (10€/h)
                   </span>
                 )}
               </div>
 
-              {/* Live Ticker if Clocked In */}
-              {worker.isClockedIn && (
-                <div className="mt-4 p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Clock className="w-4 h-4 text-emerald-400 animate-spin-slow" />
-                    <span className="text-xs font-semibold text-emerald-300">Tiempo en turno:</span>
-                  </div>
-                  <span className="text-sm font-extrabold font-mono text-emerald-400">
-                    {worker.elapsedTimeFormatted}
-                  </span>
-                </div>
-              )}
-
-              {/* Current Task Box */}
-              <div className="mt-4 space-y-1.5">
-                <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
-                  Actividad / Tarea Asignada
-                </span>
-                <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 text-xs text-slate-200 leading-relaxed font-medium">
-                  {worker.currentTask}
-                </div>
-              </div>
             </div>
-
-            {/* Location Badge */}
-            <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-              <span className="flex items-center space-x-1 text-slate-300 font-medium">
-                <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span className="truncate">{worker.location}</span>
-              </span>
-
-              {worker.isPayroll ? (
-                <span className="text-[9px] font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 shrink-0">
-                  Nómina (14€/h)
-                </span>
-              ) : (
-                <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
-                  Extra (10€/h)
-                </span>
-              )}
-            </div>
-
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
