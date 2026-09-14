@@ -257,7 +257,7 @@ export default function LiveMonitorPanel({
       </div>
 
       {/* Workers Real-Time Live Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {filteredWorkers.map((worker) => {
           // Calculate progress percentage of standard 8h shift
           const targetShiftHours = 8;
@@ -289,9 +289,9 @@ export default function LiveMonitorPanel({
                     <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl shrink-0 shadow-inner">
                       {worker.avatar}
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h4 className="font-extrabold text-white text-base font-['Outfit']">{worker.name}</h4>
-                      <p className="text-[11px] text-slate-400">{worker.role}</p>
+                      <p className="text-[11px] text-slate-400 leading-snug">{worker.role}</p>
                     </div>
                   </div>
 
@@ -351,7 +351,7 @@ export default function LiveMonitorPanel({
 
               {/* Location Badge */}
               <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-                <span className="flex items-center space-x-1 text-slate-300 font-medium">
+                <span className="flex items-center space-x-1 text-slate-300 font-medium min-w-0 flex-1">
                   <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span className="truncate">{worker.location}</span>
                 </span>
