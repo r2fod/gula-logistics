@@ -85,7 +85,13 @@ export default function App() {
   const [balancesData, setBalancesData] = useState(() => {
     try {
       const saved = localStorage.getItem('gula_balances_v1');
-      return saved ? JSON.parse(saved) : initialBalancesData;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && Array.isArray(parsed.workers) && parsed.workers.some(w => (w.breakdown && w.breakdown.length > 0) || (w.currentBalance && w.currentBalance !== 0))) {
+          return parsed;
+        }
+      }
+      return initialBalancesData;
     } catch {
       return initialBalancesData;
     }
@@ -425,6 +431,8 @@ export default function App() {
           workersList={workersList}
           clockEntries={clockEntries}
           isAdmin={isAdmin}
+          balancesData={balancesData}
+          setBalancesData={setBalancesData}
           onAddWorker={handleAddWorker}
           onOpenWorkerEditor={() => setIsWorkerEditorModalOpen(true)}
           onOpenTaskEditor={() => setIsTaskEditorModalOpen(true)}
