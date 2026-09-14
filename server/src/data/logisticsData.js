@@ -4,5 +4,10 @@ export const logisticsData = {
     { role: "Jefe Logística", members: "Persona8 (Supervisa)" },
     { role: "Base & Preparación", members: "Persona4 + Persona5" },
     { role: "Flota", members: "Persona1, Persona2, Jaime, Persona3" }
+  ],
+  trucks: [
+    { name: "Camión Gula", status: "Activo / En Ruta", tag: "Principal" },
+    { name: "Camión Covey", status: "Activo / En Ruta", tag: "Secundario" },
+    { name: "Camión Albacar", status: "Activo / En Ruta", tag: "Apoyo" }
   ]
 };
