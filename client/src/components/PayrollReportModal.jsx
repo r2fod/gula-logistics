@@ -78,7 +78,7 @@ export default function PayrollReportModal({
   // Summary Metrics
   const totalExtraCost = shifts.reduce((acc, curr) => acc + (curr.isSalaried ? 0 : curr.cost), 0);
   const totalPayrollValuation = shifts.reduce((acc, curr) => acc + (curr.isSalaried ? curr.cost : 0), 0);
-  const totalExtraHours = shifts.reduce((acc, curr) => acc + curr.durationHours, 0);
+  const totalExtraHours = shifts.reduce((acc, curr) => acc + (curr.isSalaried ? 0 : curr.durationHours), 0);
   const activeClockedInCount = Object.keys(activeWorkerShifts).length;
 
   const handleCopySummary = () => {
