@@ -34,15 +34,16 @@ import PayrollReportModal from './components/PayrollReportModal';
 import PartnerDashboardModal from './components/PartnerDashboardModal';
 import PartnerDashboardView from './components/PartnerDashboardView';
 import BalancesAgreementsModal from './components/BalancesAgreementsModal';
+import WorkerView from './components/WorkerView';
 import { logisticsData as BASE_DATA } from './data/logisticsData';
 
 const WORKERS_LIST = [
-  { name: "Gonzalo", role: "Conductor Flota (Veterano)", truck: "Camión 1 / Albacar", avatar: "🚛", isPayroll: false, rate: 10 },
-  { name: "Ricardo", role: "Conductor Flota (Veterano)", truck: "Camión 1 (Gran Vol.)", avatar: "🚚", isPayroll: false, rate: 10 },
-  { name: "Jaime", role: "Conductor Flota (Guiado)", truck: "Camión 3 (Albacar)", avatar: "🚛", isPayroll: false, rate: 10 },
-  { name: "Johan", role: "Conductor & Backup", truck: "Camión 2 / Apoyo", avatar: "🚚", isPayroll: false, rate: 10 },
+  { name: "Gonzalo", role: "Conductor Flota (Veterano)", truck: "Camión Covey (Alquiler)", avatar: "🚛", isPayroll: false, rate: 10 },
+  { name: "Ricardo", role: "Conductor Flota (Veterano)", truck: "Camión Gula (Propio)", avatar: "🚚", isPayroll: false, rate: 10 },
+  { name: "Jaime", role: "Conductor Flota (Guiado)", truck: "Camión Albacar (Alquiler)", avatar: "🚛", isPayroll: false, rate: 10 },
+  { name: "Johan", role: "Conductor & Backup", truck: "Camión Covey / Apoyo", avatar: "🚚", isPayroll: false, rate: 10 },
   { name: "Irene", role: "Base & Checklist", truck: "Almacén Base", avatar: "📦", isPayroll: true, rate: 14 },
-  { name: "Jeferson", role: "Apoyo Logística & Prep", truck: "Base / Camión 1", avatar: "📦", isPayroll: false, rate: 10 },
+  { name: "Jeferson", role: "Apoyo Logística & Prep", truck: "Base / Camión Gula", avatar: "📦", isPayroll: false, rate: 10 },
   { name: "Kerly", role: "Gula Limpieza Eventos", truck: "Limpieza Almacén", avatar: "🧹", isPayroll: false, rate: 10 },
   { name: "Jose", role: "Gula Limpieza & Apoyo", truck: "Limpieza Almacén", avatar: "🧹", isPayroll: false, rate: 10 },
   { name: "Raúl", role: "Jefe de Logística", truck: "Supervisión Flota", avatar: "📋", isPayroll: true, rate: 14 }
@@ -75,6 +76,7 @@ export default function App() {
 
   const [activeWeekId, setActiveWeekId] = useState('week_3');
   const [activeWorker, setActiveWorker] = useState(null);
+  const [showFullTeamView, setShowFullTeamView] = useState(false);
   const [isPartnerMode, setIsPartnerMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const hasSociasFlag = params.has('socias') || params.get('socias') !== null;
@@ -329,6 +331,22 @@ export default function App() {
         <BalancesAgreementsModal
           isOpen={isBalancesModalOpen}
           onClose={() => setIsBalancesModalOpen(false)}
+        />
+      </div>
+    );
+  }
+
+  if (activeWorker && !showFullTeamView && !isPartnerMode) {
+    return (
+      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-4 sm:p-6 md:p-8 font-sans selection:bg-amber-500 selection:text-slate-950">
+        <WorkerView
+          workerName={activeWorker}
+          workersList={WORKERS_LIST}
+          activeWeekData={activeWeek}
+          clockEntries={clockEntries}
+          onToggleTask={(dayKey, taskIdx) => toggleTask(dayKey, taskIdx)}
+          onClockEntryCreated={handleClockEntryCreated}
+          onToggleGeneralView={() => setShowFullTeamView(true)}
         />
       </div>
     );
