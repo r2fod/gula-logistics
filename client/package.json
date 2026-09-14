@@ -1,5 +1,6 @@
 {
   "name": "gula-logistics-client",
+  "homepage": "https://r2fod.github.io/gula-logistics",
   "private": true,
   "version": "1.0.0",
   "type": "module",
