@@ -29,7 +29,6 @@ export default function PublicView({
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [mobileTab, setMobileTab] = useState('all'); // 'all' | 'live' | 'trucks' | 'team' | 'tasks'
-  const [isFullScreen, setIsFullScreen] = useState(false);
 
   const handleShareLink = () => {
     const publicUrl = `${window.location.origin}${window.location.pathname}?view=public`;
@@ -122,12 +121,10 @@ export default function PublicView({
       </div>
 
       {/* Live Monitor Panel (Tiempo Real) */}
-      <LiveMonitorPanel 
+      <LiveMonitorPanel
         workersList={workersList}
         clockEntries={clockEntries}
         activeSchedule={data.schedule || {}}
-        isFullScreen={isFullScreen}
-        onToggleFullScreen={() => setIsFullScreen(!isFullScreen)}
         onClockEntryCreated={onClockEntryCreated}
         onOpenClockModal={onOpenClockModal}
       />

@@ -151,7 +151,7 @@ export default function WorkerView({
     : daysWithActivities.filter(d => d.key === selectedDayKey);
 
   return (
-    <div className="space-y-6 animate-fadeIn max-w-6xl mx-auto">
+    <div className="space-y-6 animate-fadeIn w-full">
       
       {/* Worker Personal Header Card */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
@@ -411,7 +411,7 @@ export default function WorkerView({
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
             {displayedDays.map((dayGroup) => {
               if (dayGroup.totalCount === 0 && selectedDayKey === 'all') return null;
 
