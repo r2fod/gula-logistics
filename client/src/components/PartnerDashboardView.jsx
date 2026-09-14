@@ -60,13 +60,13 @@ export default function PartnerDashboardView({
   }, [isAdmin]);
 
   const handleRequestAdminUnlock = () => {
-    const pwd = prompt("Introduce la clave de Administrador de Gula Logística:");
-    if (pwd === 'gula2026' || pwd === 'admin' || pwd === '1234') {
+    const pwd = prompt("Introduce la clave de Administrador (Raúl):");
+    if (pwd && ['raul', 'raul2026', 'gula2026', 'admin', '1234'].includes(pwd.toLowerCase().trim())) {
       setAdminUnlocked(true);
       if (onUnlockAdmin) onUnlockAdmin();
-      alert("🟢 Modo Administrador desbloqueado. Ya puedes realizar cambios.");
+      alert("🟢 Modo Administrador (Raúl) desbloqueado.");
     } else if (pwd !== null) {
-      alert("❌ Clave incorrecta. El panel se mantiene en Modo Solo Lectura.");
+      alert("❌ Clave incorrecta. El panel se mantiene en Modo Solo Lectura de Socias.");
     }
   };
 
@@ -194,12 +194,12 @@ export default function PartnerDashboardView({
                 {adminUnlocked ? (
                   <span className="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-500 text-slate-950 flex items-center gap-1">
                     <ShieldCheck className="w-3 h-3" />
-                    <span>ADMIN AUTORIZADO</span>
+                    <span>👑 MODO ADMINISTRADOR (RAÚL)</span>
                   </span>
                 ) : (
                   <span className="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1">
                     <Eye className="w-3 h-3 text-blue-400" />
-                    <span>👁️ MODO VISUAL LECTURA</span>
+                    <span>👁️ VISTA SOCIAS (SOLO LECTURA)</span>
                   </span>
                 )}
 
@@ -207,10 +207,10 @@ export default function PartnerDashboardView({
                   <button
                     onClick={handleRequestAdminUnlock}
                     className="text-[10px] bg-slate-900 hover:bg-slate-800 text-amber-400 px-2.5 py-0.5 rounded-full border border-amber-500/30 font-bold transition-all flex items-center gap-1"
-                    title="Desbloquear edición de fichajes y administración"
+                    title="Desbloquear edición de fichajes con la clave de Raúl"
                   >
                     <KeyRound className="w-3 h-3 text-amber-400" />
-                    <span>🔑 Activar Modo Edición</span>
+                    <span>🔑 Acceso Admin Raúl</span>
                   </button>
                 )}
               </div>
