@@ -150,6 +150,26 @@ export default function App() {
     }
   };
 
+  const handleUpdateClockEntry = (updatedEntry) => {
+    const updated = clockEntries.map(e => e.id === updatedEntry.id ? updatedEntry : e);
+    setClockEntries(updated);
+    try {
+      localStorage.setItem('gula_clock_entries_v1', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteClockEntry = (entryId) => {
+    const updated = clockEntries.filter(e => e.id !== entryId);
+    setClockEntries(updated);
+    try {
+      localStorage.setItem('gula_clock_entries_v1', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleClearClockEntries = () => {
     setClockEntries([]);
     localStorage.removeItem('gula_clock_entries_v1');
@@ -259,6 +279,9 @@ export default function App() {
           onOpenShareModal={() => setIsShareModalOpen(true)}
           onOpenAddWeek={() => setIsWeekModalOpen(true)}
           onTogglePublicView={() => setIsPartnerMode(false)}
+          onUpdateClockEntry={handleUpdateClockEntry}
+          onDeleteClockEntry={handleDeleteClockEntry}
+          onClockEntryCreated={handleClockEntryCreated}
         />
 
         <ClockInModal
@@ -275,6 +298,10 @@ export default function App() {
           entries={clockEntries}
           workersList={WORKERS_LIST}
           onClearEntries={handleClearClockEntries}
+          isAdmin={true}
+          onUpdateEntry={handleUpdateClockEntry}
+          onDeleteEntry={handleDeleteClockEntry}
+          onClockEntryCreated={handleClockEntryCreated}
         />
 
         <WeekManagerModal
@@ -694,6 +721,10 @@ export default function App() {
         entries={clockEntries}
         workersList={WORKERS_LIST}
         onClearEntries={handleClearClockEntries}
+        isAdmin={isPartnerMode}
+        onUpdateEntry={handleUpdateClockEntry}
+        onDeleteEntry={handleDeleteClockEntry}
+        onClockEntryCreated={handleClockEntryCreated}
       />
 
       <PartnerDashboardModal

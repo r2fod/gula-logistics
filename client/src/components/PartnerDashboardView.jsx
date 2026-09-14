@@ -21,10 +21,14 @@ import {
   Activity,
   AlertTriangle,
   ListTodo,
-  Eye
+  Eye,
+  Lock,
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import { initialBalancesData } from '../data/balancesData';
 import LiveMonitorPanel from './LiveMonitorPanel';
+import AdminClockEditModal from './AdminClockEditModal';
 
 export default function PartnerDashboardView({ 
   activeWeekData, 
@@ -38,11 +42,18 @@ export default function PartnerDashboardView({
   onOpenGemini,
   onOpenShareModal,
   onOpenAddWeek,
-  onTogglePublicView
+  onTogglePublicView,
+  onUpdateClockEntry,
+  onDeleteClockEntry,
+  onClockEntryCreated
 }) {
-  const [activeTab, setActiveTab] = useState('balances'); // 'balances' | 'live' | 'financial' | 'logistics' | 'schedule'
+  const [activeTab, setActiveTab] = useState('balances'); // 'balances' | 'fichajes' | 'live' | 'financial' | 'logistics' | 'schedule'
   const [copiedLink, setCopiedLink] = useState(false);
   const [expandedWorkerId, setExpandedWorkerId] = useState('jefferson');
+
+  // Admin Modal State
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [isAdminEditOpen, setIsAdminEditOpen] = useState(false);
 
   const getPartnerSecureLink = () => {
     return `${window.location.origin}${window.location.pathname}?socias`;
@@ -52,12 +63,6 @@ export default function PartnerDashboardView({
     navigator.clipboard.writeText(getPartnerSecureLink());
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 3000);
-  };
-
-  const shareSecureLinkWhatsApp = () => {
-    const link = getPartnerSecureLink();
-    const text = `👑 Hola Socias, aquí tenéis el Panel Ejecutivo de Dirección para Gula Logística (Saldos + Tiempo Real + Planificación): ${link}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
   const handleSendWhatsApp = (worker) => {
@@ -94,6 +99,16 @@ export default function PartnerDashboardView({
 
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
+  };
+
+  const handleOpenEditEntry = (entry) => {
+    setEditingEntry(entry);
+    setIsAdminEditOpen(true);
+  };
+
+  const handleOpenCreateEntry = () => {
+    setEditingEntry(null);
+    setIsAdminEditOpen(true);
   };
 
   // Process shift entries for financial calculations
@@ -162,7 +177,7 @@ export default function PartnerDashboardView({
                   Panel Ejecutivo de Socias & Dirección
                 </h1>
                 <span className="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-500 text-slate-950">
-                  PANTALLA COMPLETA
+                  ADMIN AUTORIZADO
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -255,6 +270,18 @@ export default function PartnerDashboardView({
         </button>
 
         <button
+          onClick={() => setActiveTab('fichajes')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+            activeTab === 'fichajes'
+              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <Lock className="w-4 h-4 text-amber-400" />
+          <span>⚙️ Fichajes & Edición Admin ({clockEntries.length})</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('live')}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
             activeTab === 'live'
@@ -303,7 +330,7 @@ export default function PartnerDashboardView({
         </button>
       </div>
 
-      {/* TAB 1: Saldos & Acuerdos Detallados (Exact View from Gemini Shared Link) */}
+      {/* TAB 1: Saldos & Acuerdos Detallados */}
       {activeTab === 'balances' && (
         <div className="space-y-6 animate-fadeIn">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-800 pb-4">
@@ -487,7 +514,118 @@ export default function PartnerDashboardView({
         </div>
       )}
 
-      {/* TAB 2: Live Monitor Panel (Real-Time Team Activity & Shift Progress Bars) */}
+      {/* TAB 2: Control & Edición de Fichajes Admin */}
+      {activeTab === 'fichajes' && (
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-5 animate-fadeIn">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+            <div>
+              <div className="flex items-center space-x-2">
+                <Lock className="w-5 h-5 text-amber-400" />
+                <h3 className="text-xl font-extrabold text-white font-['Outfit']">
+                  Gestión y Edición de Fichajes (Solo Admin)
+                </h3>
+                <span className="px-2.5 py-0.5 text-[10px] font-extrabold bg-amber-500 text-slate-950 rounded-full">
+                  CONTROL ADMINISTRATIVO
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                Una vez enviado por un trabajador, solo las socias pueden modificar hora, fecha, tipo o eliminar el fichaje.
+              </p>
+            </div>
+
+            <button
+              onClick={handleOpenCreateEntry}
+              className="py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center space-x-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Añadir Fichaje Manual (Admin)</span>
+            </button>
+          </div>
+
+          {clockEntries.length === 0 ? (
+            <div className="text-center py-12 bg-slate-950/60 rounded-2xl border border-slate-800">
+              <Clock className="w-8 h-8 text-slate-500 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-slate-300">No hay fichajes registrados en el sistema.</p>
+              <p className="text-xs text-slate-500 mt-1">Los fichajes realizados por los trabajadores aparecerán aquí automáticamente.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
+                    <th className="py-3.5 px-4">Fecha & Hora</th>
+                    <th className="py-3.5 px-4">Trabajador</th>
+                    <th className="py-3.5 px-4">Tipo</th>
+                    <th className="py-3.5 px-4">Tarea / Concepto</th>
+                    <th className="py-3.5 px-4">Tarifa (€/h)</th>
+                    <th className="py-3.5 px-4">Estado Seguridad</th>
+                    <th className="py-3.5 px-4 text-center">Acciones Admin</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {clockEntries.map((entry) => (
+                    <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
+                      <td className="py-3.5 px-4 font-mono text-slate-200">
+                        <div className="font-bold text-white">{entry.timeFormatted}</div>
+                        <div className="text-[10px] text-slate-500">{entry.dateFormatted}</div>
+                      </td>
+                      <td className="py-3.5 px-4 font-extrabold text-white text-sm">
+                        {entry.workerName}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        {entry.type === 'entrada' ? (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold inline-flex items-center space-x-1">
+                            <span>🟢 ENTRADA</span>
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold inline-flex items-center space-x-1">
+                            <span>🔴 SALIDA</span>
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-300 font-medium">
+                        {entry.taskName || entry.note || '—'}
+                      </td>
+                      <td className="py-3.5 px-4 font-bold text-amber-400 font-mono">
+                        {entry.rate || 10} €/h
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 inline-flex items-center space-x-1">
+                          <Lock className="w-3 h-3 text-amber-400" />
+                          <span>🔒 Bloqueado a Trabajador</span>
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="flex items-center justify-center space-x-2">
+                          <button
+                            onClick={() => handleOpenEditEntry(entry)}
+                            className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold flex items-center space-x-1.5 transition-all"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>Editar</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (onDeleteClockEntry) onDeleteClockEntry(entry.id);
+                            }}
+                            className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all"
+                            title="Eliminar Fichaje (Admin)"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 3: Live Monitor Panel */}
       {activeTab === 'live' && (
         <div className="animate-fadeIn">
           <LiveMonitorPanel 
@@ -501,7 +639,7 @@ export default function PartnerDashboardView({
         </div>
       )}
 
-      {/* TAB 3: Financial Summary */}
+      {/* TAB 4: Financial Summary */}
       {activeTab === 'financial' && (
         <div className="space-y-6 animate-fadeIn">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -579,7 +717,7 @@ export default function PartnerDashboardView({
         </div>
       )}
 
-      {/* TAB 4: Logistics & Weddings */}
+      {/* TAB 5: Logistics & Weddings */}
       {activeTab === 'logistics' && (
         <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4 animate-fadeIn">
           <h4 className="font-bold text-white text-lg flex items-center space-x-2 font-['Outfit']">
@@ -599,7 +737,7 @@ export default function PartnerDashboardView({
         </div>
       )}
 
-      {/* TAB 5: Schedule Days */}
+      {/* TAB 6: Schedule Days */}
       {activeTab === 'schedule' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
           {Object.entries(activeWeekData?.schedule || {}).map(([key, day]) => (
@@ -627,6 +765,17 @@ export default function PartnerDashboardView({
           ))}
         </div>
       )}
+
+      {/* Admin Clock Edit Modal */}
+      <AdminClockEditModal
+        isOpen={isAdminEditOpen}
+        onClose={() => setIsAdminEditOpen(false)}
+        entry={editingEntry}
+        workersList={workersList}
+        onUpdateEntry={onUpdateClockEntry}
+        onDeleteEntry={onDeleteClockEntry}
+        onClockEntryCreated={onClockEntryCreated}
+      />
 
     </div>
   );
