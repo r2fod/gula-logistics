@@ -32,6 +32,7 @@ import GeminiAssistantModal from './components/GeminiAssistantModal';
 import ClockInModal from './components/ClockInModal';
 import PayrollReportModal from './components/PayrollReportModal';
 import PartnerDashboardModal from './components/PartnerDashboardModal';
+import PartnerDashboardView from './components/PartnerDashboardView';
 import BalancesAgreementsModal from './components/BalancesAgreementsModal';
 import { logisticsData as BASE_DATA } from './data/logisticsData';
 
@@ -229,6 +230,63 @@ export default function App() {
     const text = `🔒 Hola Socias, aquí tenéis el Enlace Seguro de Dirección para Gula Logística (Planificación + Saldos de Horas): ${link}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
+
+  if (isPartnerMode) {
+    return (
+      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950">
+        <PartnerDashboardView 
+          activeWeekData={activeWeek}
+          allWeeks={allWeeks}
+          activeWeekId={activeWeekId}
+          onSelectWeek={setActiveWeekId}
+          workersList={WORKERS_LIST}
+          clockEntries={clockEntries}
+          onOpenClockIn={(workerName) => {
+            if (workerName && typeof workerName === 'string') setActiveWorker(workerName);
+            setIsClockInModalOpen(true);
+          }}
+          onOpenPayroll={() => setIsPayrollModalOpen(true)}
+          onOpenGemini={() => setIsGeminiModalOpen(true)}
+          onOpenShareModal={() => setIsShareModalOpen(true)}
+          onOpenAddWeek={() => setIsWeekModalOpen(true)}
+        />
+
+        <ClockInModal
+          isOpen={isClockInModalOpen}
+          onClose={() => setIsClockInModalOpen(false)}
+          workersList={WORKERS_LIST}
+          initialWorkerName={activeWorker}
+          onClockEntryCreated={handleClockEntryCreated}
+        />
+
+        <PayrollReportModal
+          isOpen={isPayrollModalOpen}
+          onClose={() => setIsPayrollModalOpen(false)}
+          entries={clockEntries}
+          workersList={WORKERS_LIST}
+          onClearEntries={handleClearClockEntries}
+        />
+
+        <WeekManagerModal
+          isOpen={isWeekModalOpen}
+          onClose={() => setIsWeekModalOpen(false)}
+          onCreateWeek={handleCreateWeek}
+          currentWeekName={activeWeek.name}
+        />
+
+        <GeminiAssistantModal
+          isOpen={isGeminiModalOpen}
+          onClose={() => setIsGeminiModalOpen(false)}
+          onApplyGeneratedSchedule={handleApplyGeminiSchedule}
+        />
+
+        <BalancesAgreementsModal
+          isOpen={isBalancesModalOpen}
+          onClose={() => setIsBalancesModalOpen(false)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="bg-slate-100 min-h-screen text-slate-800 antialiased p-3 sm:p-6 md:p-8 selection:bg-blue-500 selection:text-white flex flex-col justify-between">
