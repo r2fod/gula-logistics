@@ -105,7 +105,7 @@ export default function PartnerDashboardModal({
       const diffHours = Math.max(0, diffMs / (1000 * 60 * 60));
 
       const isSalaried = isPayroll || workerName === 'Irene' || workerName === 'Raúl';
-      const hourlyRate = isSalaried ? 0 : (rate || 10);
+      const hourlyRate = rate || (isSalaried ? 14 : 10);
       const cost = diffHours * hourlyRate;
 
       workerBalances[workerName].totalHours += diffHours;
@@ -115,8 +115,9 @@ export default function PartnerDashboardModal({
   });
 
   const balancesList = Object.values(workerBalances);
-  const totalExtraExpense = balancesList.reduce((acc, curr) => acc + (curr.isSalaried ? 0 : curr.totalCost), 0);
-  const totalExtraHours = balancesList.reduce((acc, curr) => acc + (curr.isSalaried ? 0 : curr.totalHours), 0);
+  const totalExtraExpense = balancesList.reduce((acc, curr) => acc + (curr.isPayroll ? 0 : curr.totalCost), 0);
+  const totalPayrollValuation = balancesList.reduce((acc, curr) => acc + (curr.isPayroll ? curr.totalCost : 0), 0);
+  const totalExtraHours = balancesList.reduce((acc, curr) => acc + curr.totalHours, 0);
 
   const getSecurePartnerLink = () => {
     return `${window.location.origin}${window.location.pathname}?role=socias&key=socias2026`;

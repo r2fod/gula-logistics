@@ -142,34 +142,36 @@ export const initialBalancesData = {
       name: "Irene Gula",
       role: "Base & Checklist Pedidos",
       avatar: "📦",
-      status: "Nómina Fija",
+      status: "Nómina (14,00 €/h)",
       statusType: "payroll",
+      hourlyRate: 14.00,
       currentBalance: 0.00,
       agreements: [
         "Personal en Nómina Fija",
-        "Sin coste adicional por hora extra"
+        "Control interno de horas valoradas a 14,00 € / hora"
       ],
       breakdown: [
-        { concept: "Jornada cubierta en contrato fijo de dirección de almacén", amount: 0.00, isPositive: true }
+        { concept: "Contrato Fijo — Dirección Almacén (Valoración interna: 14,00 €/h)", amount: 0.00, isPositive: true }
       ],
-      notes: "Gestión de albaranes, stock y checklist de salidas."
+      notes: "Personal en nómina fija. Sus horas se contabilizan y valoran a 14,00 €/h para control presupuestario y de costes internos."
     },
     {
       id: "raul",
       name: "Raúl Gula",
       role: "Jefe de Logística",
       avatar: "📋",
-      status: "Nómina Fija",
+      status: "Nómina (14,00 €/h)",
       statusType: "payroll",
+      hourlyRate: 14.00,
       currentBalance: 0.00,
       agreements: [
         "Personal en Nómina Fija",
-        "Supervisión y soporte en base"
+        "Control interno de horas valoradas a 14,00 € / hora"
       ],
       breakdown: [
-        { concept: "Jornada cubierta en contrato fijo de supervisión", amount: 0.00, isPositive: true }
+        { concept: "Contrato Fijo — Supervisión Logística (Valoración interna: 14,00 €/h)", amount: 0.00, isPositive: true }
       ],
-      notes: "Coordinación general de flota y estiba de camiones."
+      notes: "Jefe de Logística en nómina fija. Horas valoradas internamente a 14,00 €/h para control financiero."
     }
   ]
 };

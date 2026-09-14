@@ -35,7 +35,7 @@ export default function PayrollReportModal({
       const minutes = Math.floor((diffHours - hours) * 60);
 
       const isSalaried = isPayroll || workerName === 'Irene' || workerName === 'Raúl';
-      const hourlyRate = isSalaried ? 0 : (rate || 10);
+      const hourlyRate = rate || (isSalaried ? 14 : 10);
       const totalCost = diffHours * hourlyRate;
 
       shifts.push({
@@ -62,20 +62,22 @@ export default function PayrollReportModal({
 
   // Summary Metrics
   const totalExtraCost = shifts.reduce((acc, curr) => acc + (curr.isSalaried ? 0 : curr.cost), 0);
-  const totalExtraHours = shifts.reduce((acc, curr) => acc + (curr.isSalaried ? 0 : curr.durationHours), 0);
+  const totalPayrollValuation = shifts.reduce((acc, curr) => acc + (curr.isSalaried ? curr.cost : 0), 0);
+  const totalExtraHours = shifts.reduce((acc, curr) => acc + curr.durationHours, 0);
   const activeClockedInCount = Object.keys(activeWorkerShifts).length;
 
   const handleCopySummary = () => {
     let summaryText = `📋 *INFORME DE CONTROL HORARIO Y COSTES - GULA LOGÍSTICA*\n\n`;
-    summaryText += `💶 *Gasto Total Extras:* ${totalExtraCost.toFixed(2)} €\n`;
-    summaryText += `⏱️ *Total Horas Extras:* ${totalExtraHours.toFixed(1)} h\n`;
+    summaryText += `💶 *Gasto Total Extras (10€/h):* ${totalExtraCost.toFixed(2)} €\n`;
+    summaryText += `⭐ *Valoración Interna Nóminas (14€/h):* ${totalPayrollValuation.toFixed(2)} €\n`;
+    summaryText += `⏱️ *Total Horas Trabajadas:* ${totalExtraHours.toFixed(1)} h\n`;
     summaryText += `----------------------------------------\n\n`;
 
     shifts.forEach(s => {
-      summaryText += `👤 *${s.workerName}* (${s.isSalaried ? 'Nómina Fija' : '10€/h'})\n`;
+      summaryText += `👤 *${s.workerName}* (${s.isSalaried ? 'Nómina (Control 14€/h)' : '10€/h'})\n`;
       summaryText += `  • Horario: ${s.startTime} ➔ ${s.endTime} (${s.startDate})\n`;
       summaryText += `  • Duración: ${s.durationFormatted}\n`;
-      summaryText += `  • Coste: ${s.isSalaried ? 'Nómina Fija (0 €)' : s.cost.toFixed(2) + ' €'}\n\n`;
+      summaryText += `  • Coste: ${s.isSalaried ? `${s.cost.toFixed(2)} € (Control Interno)` : `${s.cost.toFixed(2)} €`}\n\n`;
     });
 
     navigator.clipboard.writeText(summaryText);

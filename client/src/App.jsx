@@ -41,10 +41,10 @@ const WORKERS_LIST = [
   { name: "Ricardo", role: "Conductor Flota (Veterano)", truck: "Camión 1 (Gran Vol.)", avatar: "🚚", isPayroll: false, rate: 10 },
   { name: "Jaime", role: "Conductor Flota (Guiado)", truck: "Camión 3 (Albacar)", avatar: "🚛", isPayroll: false, rate: 10 },
   { name: "Johan", role: "Conductor & Backup", truck: "Camión 2 / Apoyo", avatar: "🚚", isPayroll: false, rate: 10 },
-  { name: "Irene", role: "Base & Checklist", truck: "Almacén Base", avatar: "📦", isPayroll: true, rate: 0 },
+  { name: "Irene", role: "Base & Checklist", truck: "Almacén Base", avatar: "📦", isPayroll: true, rate: 14 },
   { name: "Jeferson", role: "Apoyo Logística & Prep", truck: "Base / Camión 1", avatar: "📦", isPayroll: false, rate: 10 },
   { name: "Kerly", role: "Gula Limpieza Eventos", truck: "Limpieza Almacén", avatar: "🧹", isPayroll: false, rate: 10 },
-  { name: "Raúl", role: "Jefe de Logística", truck: "Supervisión Flota", avatar: "📋", isPayroll: true, rate: 0 }
+  { name: "Raúl", role: "Jefe de Logística", truck: "Supervisión Flota", avatar: "📋", isPayroll: true, rate: 14 }
 ];
 
 const BASE_WEEK_3 = {
@@ -418,7 +418,7 @@ export default function App() {
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-slate-800 truncate text-xs">{w.name}</span>
                     {w.isPayroll ? (
-                      <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Nómina</span>
+                      <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Nómina (14€/h)</span>
                     ) : (
                       <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">10€/h</span>
                     )}
