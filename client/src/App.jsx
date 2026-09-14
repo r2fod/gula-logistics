@@ -29,6 +29,11 @@ const FALLBACK_DATA = {
     { role: "Jefe Logística", members: "Raúl (Supervisa)", category: "lead", icon: ShieldCheck, count: 1 },
     { role: "Base & Preparación", members: "Irene + Jeferson", category: "prep", icon: PackageCheck, count: 2 },
     { role: "Flota", members: "Gonzalo, Ricardo, Jaime, Johan", category: "fleet", icon: Truck, count: 4 }
+  ],
+  trucks: [
+    { name: "Camión Gula", status: "Activo / En Ruta", tag: "Principal" },
+    { name: "Camión Covey", status: "Activo / En Ruta", tag: "Secundario" },
+    { name: "Camión Albacar", status: "Activo / En Ruta", tag: "Apoyo" }
   ]
 };
 
@@ -257,6 +262,50 @@ export default function App() {
             })}
           </div>
         )}
+
+        {/* Flota de Camiones */}
+        <div className="space-y-4 pt-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Truck className="w-5 h-5 text-amber-400" />
+              <h3 className="text-xl font-bold text-white tracking-tight">
+                Camiones de la Flota (3 Unidades)
+              </h3>
+            </div>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              Operativos
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {(data.trucks || FALLBACK_DATA.trucks).map((truck, i) => (
+              <div 
+                key={i} 
+                className="bg-slate-900/80 border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-5 backdrop-blur-md transition-all hover:-translate-y-1 shadow-lg shadow-slate-950/50 flex flex-col justify-between"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                      <Truck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-white text-base">{truck.name}</h4>
+                      <p className="text-xs text-slate-400">{truck.tag || "Flota Gula"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                  <span className="inline-flex items-center space-x-1.5 text-emerald-400 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span>{truck.status}</span>
+                  </span>
+                  <span className="text-slate-500">Gula Transport</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Informational Cards Section */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
