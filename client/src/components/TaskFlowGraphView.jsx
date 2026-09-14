@@ -71,92 +71,61 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
       nodes.push({ id: w.id, type: 'worker', label: w.name, sub: w.role, color: 'border-slate-700 bg-slate-800 text-slate-200' });
     });
 
+    // Worker links come from the task's own `assigned` array (set by the
+    // manual editor or Gemini AI) — not from scanning the text for a name,
+    // which silently misses anyone not literally spelled out in the sentence.
+    const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const workerIdByName = {};
+    workers.forEach(w => { workerIdByName[normalize(w.name)] = w.id; });
+
+    const linkAssignedWorkers = (taskId, assigned) => {
+      (Array.isArray(assigned) ? assigned : []).forEach(name => {
+        const workerId = workerIdByName[normalize(name)];
+        if (workerId) links.push({ source: taskId, target: workerId });
+      });
+    };
+
+    const linkTrucksFromText = (taskId, text) => {
+      if (text.includes('Covey')) links.push({ source: taskId, target: 'truck_covey' });
+      if (text.includes('Albacar')) links.push({ source: taskId, target: 'truck_albacar' });
+      if (text.includes('Gula')) links.push({ source: taskId, target: 'truck_gula' });
+      if (text.includes('3 camiones')) {
+        links.push({ source: taskId, target: 'truck_gula' });
+        links.push({ source: taskId, target: 'truck_covey' });
+        links.push({ source: taskId, target: 'truck_albacar' });
+      }
+    };
+
     // 4. Task Nodes & Links
     const rawSchedule = activeWeekData?.schedule || {};
 
-    // Martes tasks
-    const mTasks = rawSchedule.martes?.tasks || [
-      "09:00 - 11:30: Recogida Camiones de Alquiler Covey & Albacar (Persona1 y Persona2)",
-      "12:00 - 14:00: Ruta Carvillo — Recogida 90 sillas extra con Camión Gula",
-      "15:30 - 18:30: Ruta Empresa5 — Recogida material alquiler"
+    const dayConfigs = [
+      { dayId: 'day_martes', dayKey: 'martes' },
+      { dayId: 'day_miercoles', dayKey: 'miercoles' },
+      { dayId: 'day_jueves', dayKey: 'jueves' },
+      { dayId: 'day_viernes', dayKey: 'viernes' }
     ];
-    mTasks.forEach((tText, idx) => {
-      const id = `task_martes_${idx}`;
-      const textStr = typeof tText === 'object' ? tText.text : tText;
-      const completed = typeof tText === 'object' ? !!tText.completed : false;
-      nodes.push({ id, type: 'task', label: textStr, completed, dayId: 'day_martes', dayKey: 'martes', idx });
-      links.push({ source: 'day_martes', target: id });
 
-      if (textStr.includes('Covey')) links.push({ source: id, target: 'truck_covey' });
-      if (textStr.includes('Albacar')) links.push({ source: id, target: 'truck_albacar' });
-      if (textStr.includes('Gula')) links.push({ source: id, target: 'truck_gula' });
-      if (textStr.includes('Persona1')) links.push({ source: id, target: 'worker_gonzalo' });
-      if (textStr.includes('Persona2')) links.push({ source: id, target: 'worker_ricardo' });
-    });
+    dayConfigs.forEach(({ dayId, dayKey }) => {
+      const dayTasks = rawSchedule[dayKey]?.tasks || [];
+      dayTasks.forEach((tItem, idx) => {
+        const id = `task_${dayKey}_${idx}`;
+        const textStr = typeof tItem === 'object' ? tItem.text : tItem;
+        const completed = typeof tItem === 'object' ? !!tItem.completed : false;
+        const assigned = typeof tItem === 'object' ? tItem.assigned : [];
+        nodes.push({ id, type: 'task', label: textStr, completed, dayId, dayKey, idx });
+        links.push({ source: dayId, target: id });
 
-    // Miércoles tasks
-    const miTasks = rawSchedule.miercoles?.tasks || [
-      "10:00 - 14:00: Pre-carga en almacén (Persona3 y Persona5)",
-      "15:00 - 19:00: Descarga adelantada en Mas dels Refranys y Villajoyosa (Persona1, Persona2, Persona3) con Camión Covey"
-    ];
-    miTasks.forEach((tText, idx) => {
-      const id = `task_miercoles_${idx}`;
-      const textStr = typeof tText === 'object' ? tText.text : tText;
-      const completed = typeof tText === 'object' ? !!tText.completed : false;
-      nodes.push({ id, type: 'task', label: textStr, completed, dayId: 'day_miercoles', dayKey: 'miercoles', idx });
-      links.push({ source: 'day_miercoles', target: id });
-
-      if (textStr.includes('Covey')) links.push({ source: id, target: 'truck_covey' });
-      if (textStr.includes('Persona3')) links.push({ source: id, target: 'worker_johan' });
-      if (textStr.includes('Persona5')) links.push({ source: id, target: 'worker_jeferson' });
-      if (textStr.includes('Persona1')) links.push({ source: id, target: 'worker_gonzalo' });
-      if (textStr.includes('Persona2')) links.push({ source: id, target: 'worker_ricardo' });
-    });
-
-    // Jueves tasks
-    const jTasks = rawSchedule.jueves?.tasks || [
-      "08:00 - 14:00: Catering Empresa1 (100 pax)",
-      "15:00 - 19:00: Evento Empresa2 - Control y servicio",
-      "19:00 - 21:00: Pre-carga de frío y revisión de checklists en Camión Gula"
-    ];
-    jTasks.forEach((tText, idx) => {
-      const id = `task_jueves_${idx}`;
-      const textStr = typeof tText === 'object' ? tText.text : tText;
-      const completed = typeof tText === 'object' ? !!tText.completed : false;
-      nodes.push({ id, type: 'task', label: textStr, completed, dayId: 'day_jueves', dayKey: 'jueves', idx });
-      links.push({ source: 'day_jueves', target: id });
-
-      if (textStr.includes('Gula')) links.push({ source: id, target: 'truck_gula' });
-      if (textStr.includes('Persona4') || textStr.includes('checklists')) links.push({ source: id, target: 'worker_irene' });
-    });
-
-    // Viernes tasks
-    const vTasks = rawSchedule.viernes?.tasks || [
-      "09:00 - 14:00: 2º viaje adelantado y descarga de menaje en Chera con Camión Gula",
-      "15:00 - 21:00: Estiba, flejado y carga final en los 3 camiones. Persona8 e Persona4 validan albaranes"
-    ];
-    vTasks.forEach((tText, idx) => {
-      const id = `task_viernes_${idx}`;
-      const textStr = typeof tText === 'object' ? tText.text : tText;
-      const completed = typeof tText === 'object' ? !!tText.completed : false;
-      nodes.push({ id, type: 'task', label: textStr, completed, dayId: 'day_viernes', dayKey: 'viernes', idx });
-      links.push({ source: 'day_viernes', target: id });
-
-      if (textStr.includes('Gula')) links.push({ source: id, target: 'truck_gula' });
-      if (textStr.includes('3 camiones')) {
-        links.push({ source: id, target: 'truck_gula' });
-        links.push({ source: id, target: 'truck_covey' });
-        links.push({ source: id, target: 'truck_albacar' });
-      }
-      if (textStr.includes('Persona8')) links.push({ source: id, target: 'worker_raul' });
-      if (textStr.includes('Persona4')) links.push({ source: id, target: 'worker_irene' });
+        linkTrucksFromText(id, textStr);
+        linkAssignedWorkers(id, assigned);
+      });
     });
 
     // Sábado 3 Bodas
     const weddings = activeWeekData?.saturdaySpecial?.weddings || [
-      { location: "Lugar1 de Chera (250 pax)", truck: "Camión Gula", details: "Persona2 + Persona5" },
-      { location: "Mas dels Refranys", truck: "Camión Covey", details: "Persona1 + Persona3" },
-      { location: "Cliente15 y Cliente2", truck: "Camión Albacar", details: "Jaime + Persona3/Jef" }
+      { location: "Lugar1 de Chera (250 pax)", truck: "Camión Gula", details: "Persona2 + Persona5", assigned: ["Persona2", "Persona5"] },
+      { location: "Mas dels Refranys", truck: "Camión Covey", details: "Persona1 + Persona3", assigned: ["Persona1", "Persona3"] },
+      { location: "Cliente15 y Cliente2", truck: "Camión Albacar", details: "Jaime + Persona3/Jef", assigned: ["Jaime"] }
     ];
 
     weddings.forEach((w, idx) => {
@@ -168,34 +137,24 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
       if (w.truck?.includes('Covey')) links.push({ source: id, target: 'truck_covey' });
       if (w.truck?.includes('Albacar')) links.push({ source: id, target: 'truck_albacar' });
 
-      if (w.details?.includes('Persona2')) links.push({ source: id, target: 'worker_ricardo' });
-      if (w.details?.includes('Persona1')) links.push({ source: id, target: 'worker_gonzalo' });
-      if (w.details?.includes('Jaime')) links.push({ source: id, target: 'worker_jaime' });
-      if (w.details?.includes('Persona3')) links.push({ source: id, target: 'worker_johan' });
-      if (w.details?.includes('Persona5') || w.details?.includes('Jef')) links.push({ source: id, target: 'worker_jeferson' });
+      linkAssignedWorkers(id, w.assigned);
     });
 
-    // Domingo tasks
+    // Domingo & Lunes tasks
     const domTasks = activeWeekData?.sundayMonday?.tasks || [
-      "09:00 - 13:00: Descarga general de los 3 camiones en almacén. Limpieza de vajilla por Persona6 y Persona7",
-      "Devoluciones: Devolución de Camiones de Alquiler Albacar y Covey (Persona1/Persona2). Ruta Empresa5 y 90 sillas a Carvillo"
+      { text: "09:00 - 13:00: Descarga general de los 3 camiones en almacén. Limpieza de vajilla por Persona6 y Persona7", assigned: ["Persona6", "Persona7"] },
+      { text: "Devoluciones: Devolución de Camiones de Alquiler Albacar y Covey (Persona1/Persona2). Ruta Empresa5 y 90 sillas a Carvillo", assigned: ["Persona1", "Persona2"] }
     ];
 
-    domTasks.forEach((tText, idx) => {
+    domTasks.forEach((tItem, idx) => {
       const id = `task_domingo_${idx}`;
-      const textStr = typeof tText === 'object' ? tText.text : tText;
+      const textStr = typeof tItem === 'object' ? tItem.text : tItem;
+      const assigned = typeof tItem === 'object' ? tItem.assigned : [];
       nodes.push({ id, type: 'task', label: textStr, dayId: 'day_domingo', dayKey: 'sundayMonday', idx });
       links.push({ source: 'day_domingo', target: id });
 
-      if (textStr.includes('3 camiones')) {
-        links.push({ source: id, target: 'truck_gula' });
-        links.push({ source: id, target: 'truck_covey' });
-        links.push({ source: id, target: 'truck_albacar' });
-      }
-      if (textStr.includes('Persona6')) links.push({ source: id, target: 'worker_kerly' });
-      if (textStr.includes('Persona7')) links.push({ source: id, target: 'worker_jose' });
-      if (textStr.includes('Persona1')) links.push({ source: id, target: 'worker_gonzalo' });
-      if (textStr.includes('Persona2')) links.push({ source: id, target: 'worker_ricardo' });
+      linkTrucksFromText(id, textStr);
+      linkAssignedWorkers(id, assigned);
     });
 
     return { nodes, links };
