@@ -145,7 +145,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl text-white max-h-[90vh] flex flex-col">
+      <div className="relative w-full max-w-6xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl text-white max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3">
@@ -197,27 +197,27 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
 
                     return (
                       <div key={idx} className="flex gap-2 items-start bg-slate-900 border border-slate-700 rounded-xl p-3">
-                        <div className="flex-1 space-y-2">
+                        <div className="flex-1 min-w-0 space-y-2">
                           <textarea
                             value={textValue}
                             onChange={(e) => handleTaskChange(dayKey, idx, e.target.value)}
                             placeholder="Descripción de la tarea..."
                             className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500 resize-y min-h-[40px]"
                           />
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-2">
                             <input
                               type="text"
                               value={timeValue}
                               onChange={(e) => handleTaskMetadataChange(dayKey, idx, 'timeFrame', e.target.value)}
                               placeholder="Horario (ej: 09:00 - 11:30)"
-                              className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                              className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
                             />
                             <input
                               type="tel"
                               value={phoneValue}
                               onChange={(e) => handleTaskMetadataChange(dayKey, idx, 'phone', e.target.value)}
                               placeholder="Teléfono de contacto"
-                              className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                              className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
                             />
                           </div>
                           <div>
@@ -282,7 +282,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
               <div className="space-y-4">
                 {localWeek.saturdaySpecial.weddings.map((w, idx) => (
                   <div key={idx} className="bg-slate-900 border border-slate-800 p-3 rounded-xl grid grid-cols-1 gap-3">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Ubicación</label>
                         <input 
@@ -311,7 +311,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                         className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-rose-500 outline-none"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Horario</label>
                         <input
@@ -376,27 +376,27 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
 
                     return (
                       <div key={idx} className="flex gap-2 items-start bg-slate-900 border border-slate-700 rounded-xl p-3">
-                        <div className="flex-1 space-y-2">
+                        <div className="flex-1 min-w-0 space-y-2">
                           <textarea
                             value={textValue}
                             onChange={(e) => handleTaskChange('sundayMonday', idx, e.target.value)}
                             placeholder="Descripción de la tarea..."
                             className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 resize-y min-h-[40px]"
                           />
-                          <div className="flex gap-2">
+                          <div className="flex flex-col sm:flex-row gap-2">
                             <input
                               type="text"
                               value={timeValue}
                               onChange={(e) => handleTaskMetadataChange('sundayMonday', idx, 'timeFrame', e.target.value)}
                               placeholder="Horario (ej: 09:00 - 11:30)"
-                              className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
+                              className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
                             />
                             <input
                               type="tel"
                               value={phoneValue}
                               onChange={(e) => handleTaskMetadataChange('sundayMonday', idx, 'phone', e.target.value)}
                               placeholder="Teléfono de contacto"
-                              className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
+                              className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
                             />
                           </div>
                           <div>
