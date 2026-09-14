@@ -78,11 +78,14 @@ export default function App() {
   const [isPartnerMode, setIsPartnerMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const hasSociasFlag = params.has('socias') || params.get('socias') !== null;
+    const hasAdminFlag = params.has('admin') || params.get('admin') === 'true';
     const tokenParam = params.get('token') || params.get('key');
     const roleParam = params.get('role');
     const viewParam = params.get('view');
+    const workerParam = params.get('worker');
+    const isRaul = workerParam && (workerParam.toLowerCase() === 'raúl' || workerParam.toLowerCase() === 'raul');
     if (viewParam === 'public') return false;
-    return (hasSociasFlag || !!tokenParam || roleParam === 'socias' || viewParam === 'socias');
+    return (hasSociasFlag || hasAdminFlag || isRaul || !!tokenParam || roleParam === 'socias' || viewParam === 'socias' || roleParam === 'admin');
   });
 
   // Modals
@@ -99,7 +102,7 @@ export default function App() {
 
   const SECURE_PARTNER_TOKEN = 'gula_socias_secure_98f7a2b9d31e40c5';
 
-  // Detect URL params: ?week=week_3&worker=Gonzalo&token=gula_socias_secure_98f7a2b9d31e40c5
+  // Detect URL params: ?week=week_3&worker=Raúl&admin=true
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const weekParam = params.get('week');
@@ -108,6 +111,8 @@ export default function App() {
     const roleParam = params.get('role');
     const viewParam = params.get('view') || params.get('modal');
     const hasSociasFlag = params.has('socias') || params.get('socias') !== null;
+    const hasAdminFlag = params.has('admin') || params.get('admin') === 'true';
+    const isRaul = workerParam && (workerParam.toLowerCase() === 'raúl' || workerParam.toLowerCase() === 'raul');
 
     if (weekParam && allWeeks[weekParam]) {
       setActiveWeekId(weekParam);
@@ -121,8 +126,11 @@ export default function App() {
     }
     if (
       hasSociasFlag ||
+      hasAdminFlag ||
+      isRaul ||
       tokenParam === SECURE_PARTNER_TOKEN || 
       roleParam === 'socias' || 
+      roleParam === 'admin' ||
       tokenParam === 'socias2026' || 
       tokenParam === 'gula2026'
     ) {
@@ -229,7 +237,8 @@ export default function App() {
 
   // Link Generators
   const getWorkerLink = (workerName) => {
-    return `${window.location.origin}${window.location.pathname}?week=${activeWeekId}&worker=${encodeURIComponent(workerName)}`;
+    const isRaul = workerName.toLowerCase() === 'raúl' || workerName.toLowerCase() === 'raul';
+    return `${window.location.origin}${window.location.pathname}?week=${activeWeekId}&worker=${encodeURIComponent(workerName)}${isRaul ? '&admin=true' : ''}`;
   };
 
   const getPartnerSecureLink = () => {
@@ -444,7 +453,14 @@ export default function App() {
                 {WORKERS_LIST.find(w => w.name === activeWorker)?.avatar || "👤"}
               </div>
               <div>
-                <span className="text-[10px] font-bold text-blue-300 uppercase tracking-wider block">Vista Personalizada</span>
+                <div className="flex items-center space-x-2">
+                  <span className="text-[10px] font-bold text-blue-300 uppercase tracking-wider block">Vista Personalizada</span>
+                  {(activeWorker.toLowerCase() === 'raúl' || activeWorker.toLowerCase() === 'raul') && (
+                    <span className="text-[10px] font-extrabold bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      👑 MODO DESARROLLADOR / ADMIN
+                    </span>
+                  )}
+                </div>
                 <h2 className="text-lg font-extrabold font-['Outfit']">Planificación de {activeWorker} — {activeWeek.name}</h2>
                 <div className="flex items-center space-x-2 text-xs text-slate-300 mt-1">
                   <span>{WORKERS_LIST.find(w => w.name === activeWorker)?.role}</span>
@@ -459,6 +475,16 @@ export default function App() {
             </div>
 
             <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+              {(activeWorker.toLowerCase() === 'raúl' || activeWorker.toLowerCase() === 'raul') && (
+                <button
+                  onClick={() => setIsPartnerMode(true)}
+                  className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2 rounded-xl text-xs font-extrabold transition-colors shadow-md flex items-center gap-1.5"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>👑 Panel Admin Completo</span>
+                </button>
+              )}
+
               <button
                 onClick={() => setIsClockInModalOpen(true)}
                 className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 px-4 py-2 rounded-xl text-xs font-bold transition-colors shadow-md"
