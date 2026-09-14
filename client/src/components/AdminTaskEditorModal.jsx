@@ -179,6 +179,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                     const timeValue = typeof task === 'object' ? (task.timeFrame || '') : '';
                     const mapsValue = typeof task === 'object' ? (task.mapsUrl || '') : '';
                     const assignedValue = (typeof task === 'object' && Array.isArray(task.assigned)) ? task.assigned : [];
+                    const truckValue = typeof task === 'object' ? (task.truck || '') : '';
 
                     return (
                       <div key={idx} className="flex gap-2 items-start bg-slate-900 border border-slate-700 rounded-xl p-3">
@@ -204,6 +205,19 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                               placeholder="URL de Google Maps"
                               className="flex-[2] bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-blue-300 focus:outline-none focus:border-blue-500"
                             />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Camión</label>
+                            <select
+                              value={truckValue}
+                              onChange={(e) => handleTaskMetadataChange(dayKey, idx, 'truck', e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                            >
+                              <option value="">Sin camión / no aplica</option>
+                              <option value="Camión Gula">Camión Gula</option>
+                              <option value="Camión Covey">Camión Covey</option>
+                              <option value="Camión Albacar">Camión Albacar</option>
+                            </select>
                           </div>
                           <div>
                             <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Asignar a</label>
@@ -323,6 +337,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                     const timeValue = typeof task === 'object' ? (task.timeFrame || '') : '';
                     const mapsValue = typeof task === 'object' ? (task.mapsUrl || '') : '';
                     const assignedValue = (typeof task === 'object' && Array.isArray(task.assigned)) ? task.assigned : [];
+                    const truckValue = typeof task === 'object' ? (task.truck || '') : '';
 
                     return (
                       <div key={idx} className="flex gap-2 items-start bg-slate-900 border border-slate-700 rounded-xl p-3">
@@ -348,6 +363,19 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                               placeholder="URL de Google Maps"
                               className="flex-[2] bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-blue-300 focus:outline-none focus:border-blue-500"
                             />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Camión</label>
+                            <select
+                              value={truckValue}
+                              onChange={(e) => handleTaskMetadataChange('sundayMonday', idx, 'truck', e.target.value)}
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
+                            >
+                              <option value="">Sin camión / no aplica</option>
+                              <option value="Camión Gula">Camión Gula</option>
+                              <option value="Camión Covey">Camión Covey</option>
+                              <option value="Camión Albacar">Camión Albacar</option>
+                            </select>
                           </div>
                           <div>
                             <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Asignar a</label>
