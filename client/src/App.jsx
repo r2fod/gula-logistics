@@ -44,6 +44,7 @@ const WORKERS_LIST = [
   { name: "Persona4", role: "Base & Checklist", truck: "Almacén Base", avatar: "📦", isPayroll: true, rate: 14 },
   { name: "Persona5", role: "Apoyo Logística & Prep", truck: "Base / Camión 1", avatar: "📦", isPayroll: false, rate: 10 },
   { name: "Persona6", role: "Gula Limpieza Eventos", truck: "Limpieza Almacén", avatar: "🧹", isPayroll: false, rate: 10 },
+  { name: "Persona7", role: "Gula Limpieza & Apoyo", truck: "Limpieza Almacén", avatar: "🧹", isPayroll: false, rate: 10 },
   { name: "Persona8", role: "Jefe de Logística", truck: "Supervisión Flota", avatar: "📋", isPayroll: true, rate: 14 }
 ];
 
