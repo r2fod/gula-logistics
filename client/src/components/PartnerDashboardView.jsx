@@ -51,7 +51,7 @@ export default function PartnerDashboardView({
   onDeleteClockEntry,
   onClockEntryCreated
 }) {
-  const [activeTab, setActiveTab] = useState('balances'); // 'balances' | 'fichajes' | 'live' | 'financial' | 'logistics' | 'schedule'
+  const [activeTab, setActiveTab] = useState('live'); // 'live' | 'balances' | 'schedule' | 'logistics' | 'financial' | 'fichajes'
   const [copiedLink, setCopiedLink] = useState(false);
   const [expandedWorkerId, setExpandedWorkerId] = useState('jefferson');
   const [adminUnlocked, setAdminUnlocked] = useState(isAdmin);
@@ -299,30 +299,6 @@ export default function PartnerDashboardView({
       {/* Primary View Navigation Tabs Bar */}
       <div className="flex items-center space-x-2 bg-slate-900/80 p-2 rounded-2xl border border-slate-800 overflow-x-auto">
         <button
-          onClick={() => setActiveTab('balances')}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
-            activeTab === 'balances'
-              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <TrendingUp className="w-4 h-4" />
-          <span>📜 Control de Saldos & Acuerdos</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('fichajes')}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
-            activeTab === 'fichajes'
-              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <Lock className="w-4 h-4 text-amber-400" />
-          <span>⚙️ Fichajes & Edición Admin ({clockEntries.length})</span>
-        </button>
-
-        <button
           onClick={() => setActiveTab('live')}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
             activeTab === 'live'
@@ -335,15 +311,27 @@ export default function PartnerDashboardView({
         </button>
 
         <button
-          onClick={() => setActiveTab('financial')}
+          onClick={() => setActiveTab('balances')}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
-            activeTab === 'financial'
+            activeTab === 'balances'
               ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
               : 'text-slate-400 hover:bg-slate-800 hover:text-white'
           }`}
         >
-          <DollarSign className="w-4 h-4" />
-          <span>💶 Resumen Financiero & Extras</span>
+          <TrendingUp className="w-4 h-4" />
+          <span>📜 Control de Saldos & Acuerdos</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('schedule')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+            activeTab === 'schedule'
+              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <Calendar className="w-4 h-4" />
+          <span>📋 Planificación de la Semana</span>
         </button>
 
         <button
@@ -359,15 +347,27 @@ export default function PartnerDashboardView({
         </button>
 
         <button
-          onClick={() => setActiveTab('schedule')}
+          onClick={() => setActiveTab('financial')}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
-            activeTab === 'schedule'
+            activeTab === 'financial'
               ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
               : 'text-slate-400 hover:bg-slate-800 hover:text-white'
           }`}
         >
-          <Calendar className="w-4 h-4" />
-          <span>📋 Planificación de la Semana</span>
+          <DollarSign className="w-4 h-4" />
+          <span>💶 Resumen Financiero & Extras</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('fichajes')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+            activeTab === 'fichajes'
+              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <Lock className="w-4 h-4 text-amber-400" />
+          <span>⚙️ Fichajes Registrados ({clockEntries.length})</span>
         </button>
       </div>
 
