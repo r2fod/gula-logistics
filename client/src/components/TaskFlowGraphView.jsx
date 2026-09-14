@@ -181,8 +181,13 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
   // un solo salto (el original) seleccionar un día nunca llegaba a iluminar
   // camiones ni personal, porque ninguno de los dos está enlazado directamente
   // al nodo del día, solo a sus tareas.
+  // El segundo salto solo puede atravesar nodos de tipo "tarea": si se deja
+  // atravesar también camión/trabajador, seleccionar una tarea de un trabajador
+  // (ej. Ricardo el martes) "se cuela" por ese trabajador y termina iluminando
+  // sus tareas de OTRO día, que no tienen relación real con la tarea marcada.
   const connectedNodeIds = useMemo(() => {
     if (!selectedNodeId) return new Set();
+    const nodeTypeById = new Map(graphData.nodes.map(n => [n.id, n.type]));
     const set = new Set([selectedNodeId]);
     let frontier = [selectedNodeId];
     const maxHops = 2;
@@ -190,6 +195,7 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
     for (let hop = 0; hop < maxHops; hop++) {
       const next = [];
       frontier.forEach(id => {
+        if (hop > 0 && nodeTypeById.get(id) !== 'task') return;
         graphData.links.forEach(l => {
           if (l.source === id && !set.has(l.target)) { set.add(l.target); next.push(l.target); }
           if (l.target === id && !set.has(l.source)) { set.add(l.source); next.push(l.source); }
