@@ -49,7 +49,9 @@ import {
   clearAllClockEntriesInAPI,
   getStoredAdminToken,
   setStoredAdminToken,
-  logoutAdmin
+  logoutAdmin,
+  fetchWeeksFromAPI,
+  saveWeeksToAPI
 } from './data/apiService';
 import { initialBalancesData } from './data/balancesData';
 
@@ -222,6 +224,19 @@ export default function App() {
         setClockEntries(remoteEntries);
       }
     });
+
+    // Sync the shared weekly planning from MongoDB Atlas — this is the
+    // source of truth now, not each browser's own localStorage copy.
+    fetchWeeksFromAPI().then(remoteWeeks => {
+      if (remoteWeeks) {
+        setAllWeeks(remoteWeeks);
+        try {
+          localStorage.setItem('gula_logistics_all_weeks_v10', JSON.stringify(remoteWeeks));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    });
   }, []);
 
   // Poll for fresh clock entries so the Live Monitor reflects fichajes made
@@ -232,6 +247,9 @@ export default function App() {
         if (remoteEntries && Array.isArray(remoteEntries)) {
           setClockEntries(remoteEntries);
         }
+      });
+      fetchWeeksFromAPI().then(remoteWeeks => {
+        if (remoteWeeks) setAllWeeks(remoteWeeks);
       });
     }, 20000);
     return () => clearInterval(interval);
@@ -244,6 +262,7 @@ export default function App() {
     } catch (e) {
       console.error(e);
     }
+    saveWeeksToAPI(newWeeks);
   };
 
   const handleUpdateActiveWeek = (updatedWeekData) => {
