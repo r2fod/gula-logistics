@@ -2,13 +2,14 @@ import express from 'express';
 import mongoose from 'mongoose';
 import { WorkerBalance } from '../models/WorkerBalance.model.js';
 import { initialBalancesData } from '../data/balancesData.js';
+import { requireAdmin } from '../middleware/requireAdmin.js';
 
 const router = express.Router();
 
 let memoryBalancesData = { ...initialBalancesData };
 
-// GET /api/balances - Get all worker balances & financial data
-router.get('/', async (req, res) => {
+// GET /api/balances - Get all worker balances & financial data (Admin/Socias only)
+router.get('/', requireAdmin, async (req, res) => {
   try {
     if (mongoose.connection.readyState === 1) {
       const dbWorkers = await WorkerBalance.find().sort({ createdAt: 1 });
@@ -26,14 +27,21 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST /api/balances/seed - Seed initial financial balances to MongoDB Atlas
-router.post('/seed', async (req, res) => {
+// POST /api/balances/seed - Seed financial balances to MongoDB Atlas (Admin only)
+// Accepts an optional { workers: [...] } body to migrate real data one time
+// without ever committing it to the repo; defaults to the neutral placeholder.
+router.post('/seed', requireAdmin, async (req, res) => {
   try {
+    const workersToSeed = Array.isArray(req.body?.workers) && req.body.workers.length > 0
+      ? req.body.workers
+      : initialBalancesData.workers;
+
     if (mongoose.connection.readyState === 1) {
       await WorkerBalance.deleteMany({});
-      const created = await WorkerBalance.insertMany(initialBalancesData.workers);
+      const created = await WorkerBalance.insertMany(workersToSeed);
       return res.json({ success: true, message: `${created.length} registros financieros migrados a MongoDB Atlas` });
     }
+    memoryBalancesData = { ...memoryBalancesData, workers: workersToSeed };
     return res.json({ success: true, message: 'Seeding completado en memoria local' });
   } catch (error) {
     console.error('Error seeding balances:', error);
@@ -41,8 +49,8 @@ router.post('/seed', async (req, res) => {
   }
 });
 
-// PUT /api/balances/:id - Update specific worker balance or add breakdown item
-router.put('/:id', async (req, res) => {
+// PUT /api/balances/:id - Update specific worker balance or add breakdown item (Admin only)
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const updatePayload = req.body;

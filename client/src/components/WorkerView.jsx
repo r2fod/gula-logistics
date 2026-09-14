@@ -33,6 +33,7 @@ export default function WorkerView({
   onOpenAdminDashboard
 }) {
   const [isClockModalOpen, setIsClockModalOpen] = useState(false);
+  const [prefilledTask, setPrefilledTask] = useState(null); // for task-level clock-in
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDayKey, setSelectedDayKey] = useState('all');
   const [viewModeType, setViewModeType] = useState('calendar'); // 'calendar' | 'graph'
@@ -94,26 +95,32 @@ export default function WorkerView({
     let tasks = [];
     let weddings = [];
 
+    const isAssigned = (t) => {
+      // Prefer explicit assigned array
+      if (typeof t === 'object' && Array.isArray(t.assigned) && t.assigned.length > 0) {
+        return t.assigned.some(a => a.toLowerCase() === nameLower);
+      }
+      // Fallback: scan task text
+      const text = typeof t === 'object' ? t.text : t;
+      return text.toLowerCase().includes(nameLower);
+    };
+
     if (['martes', 'miercoles', 'jueves', 'viernes', 'lunes'].includes(dayKey)) {
       const dayObj = activeWeekData.schedule?.[dayKey];
       if (dayObj && dayObj.tasks) {
-        tasks = dayObj.tasks.filter(t => {
-          const text = typeof t === 'object' ? t.text : t;
-          return text.toLowerCase().includes(nameLower);
-        });
+        tasks = dayObj.tasks.filter(isAssigned);
       }
     } else if (dayKey === 'sabado') {
       const wList = activeWeekData.saturdaySpecial?.weddings || [];
-      weddings = wList.filter(w => 
-        w.details.toLowerCase().includes(nameLower) ||
-        w.truck.toLowerCase().includes(nameLower)
-      );
+      weddings = wList.filter(w => {
+        if (Array.isArray(w.assigned) && w.assigned.length > 0) {
+          return w.assigned.some(a => a.toLowerCase() === nameLower);
+        }
+        return w.details.toLowerCase().includes(nameLower) || w.truck.toLowerCase().includes(nameLower);
+      });
     } else if (dayKey === 'domingo') {
       const sunTasks = activeWeekData.sundayMonday?.tasks || [];
-      tasks = sunTasks.filter(t => {
-        const text = typeof t === 'object' ? t.text : t;
-        return text.toLowerCase().includes(nameLower);
-      });
+      tasks = sunTasks.filter(isAssigned);
     }
 
     return { tasks, weddings, totalCount: tasks.length + weddings.length };
@@ -200,7 +207,7 @@ export default function WorkerView({
             )}
 
             <button
-              onClick={() => setIsClockModalOpen(true)}
+              onClick={() => { setPrefilledTask(null); setIsClockModalOpen(true); }}
               className={`w-full sm:w-auto py-3.5 px-6 rounded-2xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all shadow-xl active:scale-95 ${
                 activeShift
                   ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/20'
@@ -208,7 +215,7 @@ export default function WorkerView({
               }`}
             >
               <Clock className="w-4 h-4" />
-              <span>{activeShift ? '🔴 Salida / Finalizar Tarea' : '🟢 Fichar Entrada'}</span>
+              <span>{activeShift ? '🔴 Salida / Finalizar Tarea' : '🟢 Fichar Entrada General'}</span>
             </button>
           </div>
         </div>
@@ -436,27 +443,79 @@ export default function WorkerView({
                       {dayGroup.tasks.map((task, idx) => {
                         const taskText = typeof task === 'object' ? task.text : task;
                         const isCompleted = typeof task === 'object' ? task.completed : false;
+                        const taskLabel = typeof task === 'object' && task.timeFrame
+                          ? `${taskText} (${task.timeFrame})`
+                          : taskText;
 
                         return (
                           <li 
                             key={idx}
-                            onClick={() => {
-                              if (onToggleTask) {
-                                const dayObj = activeWeekData.schedule?.[dayGroup.key];
-                                if (dayObj && dayObj.tasks) {
-                                  const taskIdx = dayObj.tasks.findIndex(t => (typeof t === 'object' ? t.text : t) === taskText);
-                                  if (taskIdx !== -1) onToggleTask(dayGroup.key, taskIdx);
-                                }
-                              }
-                            }}
-                            className={`p-3 rounded-xl border cursor-pointer transition-all flex items-start space-x-2.5 ${
+                            className={`p-3 rounded-xl border transition-all flex flex-col space-y-2.5 ${
                               isCompleted
-                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 line-through'
-                                : 'bg-slate-900 border-slate-800 hover:border-amber-500/40 text-slate-200'
+                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                                : 'bg-slate-900 border-slate-800 text-slate-200'
                             }`}
                           >
-                            <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`} />
-                            <span className="leading-relaxed font-medium">{taskText}</span>
+                            <div 
+                              className="flex items-start space-x-2.5 cursor-pointer hover:text-white"
+                              onClick={() => {
+                                if (onToggleTask) {
+                                  const dayObj = activeWeekData.schedule?.[dayGroup.key];
+                                  if (dayObj && dayObj.tasks) {
+                                    const taskIdx = dayObj.tasks.findIndex(t => (typeof t === 'object' ? t.text : t) === taskText);
+                                    if (taskIdx !== -1) onToggleTask(dayGroup.key, taskIdx);
+                                  }
+                                }
+                              }}
+                            >
+                              <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`} />
+                              <span className={`leading-relaxed font-medium ${isCompleted ? 'line-through' : ''}`}>
+                                {taskText}
+                              </span>
+                            </div>
+
+                            {/* Rich Metadata (Time & Location) */}
+                            {typeof task === 'object' && (task.timeFrame || task.mapsUrl || task.location) && (
+                              <div className="flex flex-wrap items-center gap-2 pl-6 mt-1">
+                                {task.timeFrame && (
+                                  <span className="text-[10px] font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {task.timeFrame}
+                                  </span>
+                                )}
+                                {task.mapsUrl ? (
+                                  <a 
+                                    href={task.mapsUrl} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] font-bold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 px-2 py-0.5 rounded flex items-center gap-1 transition-colors"
+                                  >
+                                    <MapPin className="w-3 h-3" />
+                                    {task.location || 'Abrir en Maps'}
+                                  </a>
+                                ) : task.location ? (
+                                  <span className="text-[10px] font-bold bg-slate-800 text-slate-400 px-2 py-0.5 rounded flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" />
+                                    {task.location}
+                                  </span>
+                                ) : null}
+                              </div>
+                            )}
+
+                            {/* ⏱️ Per-Task Clock-In Button */}
+                            {!isCompleted && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setPrefilledTask(taskLabel);
+                                  setIsClockModalOpen(true);
+                                }}
+                                className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95"
+                              >
+                                <Play className="w-3 h-3" />
+                                <span>⏱️ Fichar Esta Tarea</span>
+                              </button>
+                            )}
                           </li>
                         );
                       })}
@@ -472,9 +531,30 @@ export default function WorkerView({
                       </span>
                       {dayGroup.weddings.map((w, idx) => (
                         <div key={idx} className="bg-slate-900 p-3.5 rounded-xl border border-amber-500/30 space-y-1">
-                          <span className="font-extrabold text-white block">🏔️ {w.location}</span>
+                          <div className="flex justify-between items-start">
+                            <span className="font-extrabold text-white block">🏔️ {w.location}</span>
+                            {w.timeFrame && (
+                              <span className="text-[10px] font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {w.timeFrame}
+                              </span>
+                            )}
+                          </div>
+                          
                           <span className="text-amber-400 font-semibold text-xs block">{w.truck}</span>
-                          <p className="text-[11px] text-slate-300 leading-relaxed">{w.details}</p>
+                          <p className="text-[11px] text-slate-300 leading-relaxed pb-1">{w.details}</p>
+                          
+                          {w.mapsUrl && (
+                            <a 
+                              href={w.mapsUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex text-[10px] font-bold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 px-2 py-1 rounded items-center gap-1 mt-1 transition-colors"
+                            >
+                              <MapPin className="w-3 h-3" />
+                              Ruta a {w.location}
+                            </a>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -558,9 +638,10 @@ export default function WorkerView({
       {/* Clock In Modal for worker */}
       <ClockInModal
         isOpen={isClockModalOpen}
-        onClose={() => setIsClockModalOpen(false)}
+        onClose={() => { setIsClockModalOpen(false); setPrefilledTask(null); }}
         workersList={workersList}
         initialWorkerName={currentWorkerObj.name}
+        initialTaskName={prefilledTask}
         onClockEntryCreated={onClockEntryCreated}
       />
 

@@ -7,9 +7,10 @@ import {
   Package, 
   Broom, 
   ShieldCheck, 
-  UserCheck, 
-  Play, 
-  Radio, 
+  UserCheck,
+  Play,
+  Square,
+  Radio,
   CheckCircle2, 
   AlertCircle,
   Maximize2,
@@ -102,12 +103,16 @@ export default function LiveMonitorPanel({
       elapsedTimeFormatted = `${hours}h ${minutes}m ${seconds}s`;
     }
 
+    // Prefer the task the worker actually clocked into (fichar por tarea)
+    // over the day-of-week guess, so this reflects real, live control.
+    const realTaskName = clockEntry?.taskName || clockEntry?.note;
+
     return {
       ...w,
       isClockedIn,
       clockEntry,
       elapsedTimeFormatted,
-      currentTask: getAssignedTaskForWorker(w.name),
+      currentTask: realTaskName || getAssignedTaskForWorker(w.name),
       location: getWorkerLocation(w.name)
     };
   });
@@ -118,7 +123,7 @@ export default function LiveMonitorPanel({
   const filteredWorkers = workerStatuses.filter(w => {
     if (filterStatus === 'active') return w.isClockedIn;
     if (filterStatus === 'trucks') return w.role.toLowerCase().includes('conductor') || w.role.toLowerCase().includes('flota');
-    if (filterStatus === 'base') return w.role.toLowerCase().includes('base') || w.role.toLowerCase().includes('preparación');
+    if (filterStatus === 'base') return !w.role.toLowerCase().includes('conductor') && !w.role.toLowerCase().includes('flota');
     return true;
   });
 
@@ -246,7 +251,7 @@ export default function LiveMonitorPanel({
       </div>
 
       {/* Workers Real-Time Live Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
         {filteredWorkers.map((worker) => {
           // Calculate progress percentage of standard 8h shift
           const targetShiftHours = 8;

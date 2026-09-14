@@ -1,6 +1,7 @@
 import express from 'express';
 import mongoose from 'mongoose';
 import { ClockEntry } from '../models/ClockEntry.model.js';
+import { requireAdmin } from '../middleware/requireAdmin.js';
 
 const router = express.Router();
 
@@ -50,8 +51,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /api/clock/:id - Update existing clock entry
-router.put('/:id', async (req, res) => {
+// PUT /api/clock/:id - Update existing clock entry (Admin only)
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
@@ -74,8 +75,8 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/clock/:id - Delete single entry
-router.delete('/:id', async (req, res) => {
+// DELETE /api/clock/:id - Delete single entry (Admin only)
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -93,7 +94,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // DELETE /api/clock - Clear all entries (Admin reset)
-router.delete('/', async (req, res) => {
+router.delete('/', requireAdmin, async (req, res) => {
   try {
     if (mongoose.connection.readyState === 1) {
       await ClockEntry.deleteMany({});
