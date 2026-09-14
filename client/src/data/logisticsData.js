@@ -20,7 +20,7 @@ export const logisticsData = {
     martes: {
       title: "Martes 15", badge: "Preparación & Carga",
       tasks: [
-        { id: "m1", text: "Recogida Camión Albacar — mañana pronto (1 persona: Gonzalo).", location: "Albacar Alquiler", timeFrame: "08:00 - 10:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Albacar+Alquiler+Camiones+Valencia", assigned: ["Gonzalo"], completed: false },
+        { id: "m1", text: "Recogida Camión Albacar + Recoger Sofá Eventos — mañana pronto (1 persona: Gonzalo).", location: "Albacar Alquiler", timeFrame: "08:00 - 10:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Albacar+Alquiler+Camiones+Valencia", assigned: ["Gonzalo"], completed: false },
         { id: "m2", text: "Preparación y organización de material para Eventos Encamina y SUOT (Irene dirige checklist, Jeferson ejecuta).", location: "Almacén Base", timeFrame: "08:00 - 13:00", mapsUrl: "", assigned: ["Irene", "Jeferson"], completed: false },
         { id: "m3", text: "Carga de eventos Encamina y SUOT en camiones — dejarlo todo listo (Jeferson + Johan). Irene valida albaranes.", location: "Almacén Base", timeFrame: "13:00 - 17:00", mapsUrl: "", assigned: ["Jeferson", "Johan"], completed: false },
         { id: "m4", text: "Recogida Dealde si es posible (1 persona: Ricardo). Si no, se pasa al miércoles por la mañana.", location: "Dealde Paterna", timeFrame: "16:00 - 18:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Dealde+Paterna+Valencia", assigned: ["Ricardo"], completed: false }
@@ -30,7 +30,8 @@ export const logisticsData = {
       title: "Miércoles 16", badge: "Recogidas & Descarga Adelantada",
       tasks: [
         { id: "mi1", text: "(Backup) Recogida Dealde si no se hizo el martes — mañana temprano (1 persona: Ricardo).", location: "Dealde Paterna", timeFrame: "08:00 - 10:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Dealde+Paterna+Valencia", assigned: ["Ricardo"], completed: false },
-        { id: "mi2", text: "Viaje, descarga adelantada y montaje de estructura en Mas dels Refranys - Villajoyosa (Conduce: Gonzalo | Apoyo descarga y montaje: Johan, Jeferson).", location: "Mas dels Refranys, Villajoyosa", timeFrame: "15:00 - 20:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Mas+dels+Refranys+Villajoyosa", assigned: ["Gonzalo", "Johan", "Jeferson"], completed: false }
+        { id: "mi2", text: "Viaje, descarga adelantada y montaje de estructura en Villajoyosa (Conduce: Gonzalo | Apoyo descarga y montaje: Johan, Jeferson).", location: "Villajoyosa", timeFrame: "15:00 - 20:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Villajoyosa", assigned: ["Gonzalo", "Johan", "Jeferson"], completed: false },
+        { id: "mi3", text: "Cena prueba de menú — Rita y Lluisen.", location: "", timeFrame: "20:00", mapsUrl: "", assigned: [], completed: false }
       ]
     },
     jueves: {
@@ -44,7 +45,9 @@ export const logisticsData = {
     viernes: {
       title: "Viernes 18", badge: "Estiba Final & Cierre",
       tasks: [
-        { id: "v1", text: "Descarga en Villajoyosa/Refranys y Sot de Chera — recogida de material adelantado (Conduce Gonzalo y Ricardo | Apoyo descarga: Johan).", location: "Mas dels Refranys / Sot de Chera", timeFrame: "08:00 - 13:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Mas+dels+Refranys+Villajoyosa", assigned: ["Gonzalo", "Ricardo", "Johan"], completed: false },
+        { id: "v1", text: "Descarga Refranys — recogida de material adelantado (Conduce Gonzalo | Apoyo descarga: Johan).", location: "Mas dels Refranys", timeFrame: "12:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Mas+dels+Refranys+Villajoyosa", assigned: ["Gonzalo", "Johan"], completed: false },
+        { id: "v1b", text: "Descarga Sot de Chera — recogida de material adelantado (Conduce Ricardo).", location: "Sot de Chera", timeFrame: "15:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Sot+de+Chera+Valencia", assigned: ["Ricardo"], completed: false },
+        { id: "v1c", text: "Recoger Generador 7K + Recoger Fulanita.", location: "", timeFrame: "", mapsUrl: "", assigned: [], completed: false },
         { id: "v2", text: "Estiba, flejado y carga final de los 3 camiones para las bodas del sábado (Conductores: Gonzalo, Ricardo, Jaime | Apoyo carga: Jeferson, Johan).", location: "Almacén Base", timeFrame: "15:00 - 21:00", mapsUrl: "", assigned: ["Gonzalo", "Ricardo", "Jaime", "Jeferson", "Johan"], completed: false },
         { id: "v3", text: "Irene valida albaranes de salida y Raúl supervisa la estiba y rutas.", location: "Almacén Base", timeFrame: "15:00 - 21:00", mapsUrl: "", assigned: ["Irene", "Raúl"], completed: false }
       ]
