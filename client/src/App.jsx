@@ -12,37 +12,25 @@ import {
   Send, 
   X, 
   CheckCircle2, 
-  RefreshCw, 
   UserCheck, 
   Sparkles,
-  ExternalLink,
   MessageCircle,
-  ShieldCheck,
-  Lock,
-  Globe
+  Plus,
+  Wand2,
+  ChevronDown
 } from 'lucide-react';
 
-const INITIAL_DATA = {
+import WeekManagerModal from './components/WeekManagerModal';
+import GeminiAssistantModal from './components/GeminiAssistantModal';
+
+const BASE_WEEK_3 = {
+  id: "week_3",
+  name: "Semana 3",
   meta: {
     week: "Semana 3",
     dateRange: "Del 15 al 20 de Septiembre de 2026",
     status: "Operativa Activa"
   },
-  team: [
-    { role: "Dirección / Cocina / Ventas", members: "Anna y Rocío", id: "anna" },
-    { role: "Jefe Logística", members: "Raúl (Supervisa y ayuda en base)", id: "raul" },
-    { role: "Base & Preparación", members: "Irene (Pedidos/Checklist) + Jeferson (Apoyo Log/Prep)", id: "prep" },
-    { role: "Flota / Conductores", members: "Gonzalo & Ricardo (Veteranos) | Jaime (Guiado) | Johan (Backup)", id: "flota" }
-  ],
-  workers: [
-    { name: "Gonzalo", role: "Conductor Flota (Veterano)", truck: "Camión 1 / Albacar", avatar: "🚛" },
-    { name: "Ricardo", role: "Conductor Flota (Veterano)", truck: "Camión 1 (Gran Vol.)", avatar: "🚚" },
-    { name: "Jaime", role: "Conductor Flota (Guiado)", truck: "Camión 3 (Albacar)", avatar: "🚛" },
-    { name: "Johan", role: "Conductor & Backup", truck: "Camión 2 / Apoyo", avatar: "🚚" },
-    { name: "Irene", role: "Base & Checklist", truck: "Almacén Base", avatar: "📦" },
-    { name: "Jeferson", role: "Apoyo Logística & Prep", truck: "Base / Camión 1", avatar: "📦" },
-    { name: "Raúl", role: "Jefe de Logística", truck: "Supervisión Flota", avatar: "📋" }
-  ],
   schedule: {
     martes: {
       title: "Martes 15", badge: "Arranque Flota",
@@ -92,97 +80,138 @@ const INITIAL_DATA = {
   }
 };
 
+const WORKERS_LIST = [
+  { name: "Gonzalo", role: "Conductor Flota (Veterano)", truck: "Camión 1 / Albacar", avatar: "🚛" },
+  { name: "Ricardo", role: "Conductor Flota (Veterano)", truck: "Camión 1 (Gran Vol.)", avatar: "🚚" },
+  { name: "Jaime", role: "Conductor Flota (Guiado)", truck: "Camión 3 (Albacar)", avatar: "🚛" },
+  { name: "Johan", role: "Conductor & Backup", truck: "Camión 2 / Apoyo", avatar: "🚚" },
+  { name: "Irene", role: "Base & Checklist", truck: "Almacén Base", avatar: "📦" },
+  { name: "Jeferson", role: "Apoyo Logística & Prep", truck: "Base / Camión 1", avatar: "📦" },
+  { name: "Raúl", role: "Jefe de Logística", truck: "Supervisión Flota", avatar: "📋" }
+];
+
 export default function App() {
-  const [data, setData] = useState(() => {
+  const [allWeeks, setAllWeeks] = useState(() => {
     try {
-      const saved = localStorage.getItem('gula_logistics_live_data_v4');
-      return saved ? JSON.parse(saved) : INITIAL_DATA;
+      const saved = localStorage.getItem('gula_logistics_all_weeks_v5');
+      return saved ? JSON.parse(saved) : { week_3: BASE_WEEK_3 };
     } catch {
-      return INITIAL_DATA;
+      return { week_3: BASE_WEEK_3 };
     }
+  });
+
+  const [activeWeekId, setActiveWeekId] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const weekParam = params.get('week');
+    return (weekParam && allWeeks[weekParam]) ? weekParam : 'week_3';
   });
 
   const [activeWorker, setActiveWorker] = useState(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isWeekModalOpen, setIsWeekModalOpen] = useState(false);
+  const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
   const [copiedWorker, setCopiedWorker] = useState(null);
   const [lastSyncTime, setLastSyncTime] = useState(new Date().toLocaleTimeString());
 
-  // Detect URL parameter ?worker=Nombre
+  // Detect worker from URL ?worker=Name
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const workerParam = params.get('worker') || params.get('trabajador');
+    const workerParam = params.get('worker');
     if (workerParam) {
-      const matched = INITIAL_DATA.workers.find(
-        w => w.name.toLowerCase() === workerParam.toLowerCase()
-      );
-      if (matched) {
-        setActiveWorker(matched.name);
-      }
+      const matched = WORKERS_LIST.find(w => w.name.toLowerCase() === workerParam.toLowerCase());
+      if (matched) setActiveWorker(matched.name);
     }
   }, []);
 
-  // Multi-tab real-time sync via Storage Events
-  useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key === 'gula_logistics_live_data_v4' && e.newValue) {
-        try {
-          setData(JSON.parse(e.newValue));
-          setLastSyncTime(new Date().toLocaleTimeString());
-        } catch (err) {
-          console.error(err);
-        }
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  // Save to localStorage & notify other tabs
-  const updateData = (newData) => {
-    setData(newData);
+  // Sync to localStorage
+  const updateWeeks = (newWeeks) => {
+    setAllWeeks(newWeeks);
     try {
-      localStorage.setItem('gula_logistics_live_data_v4', JSON.stringify(newData));
+      localStorage.setItem('gula_logistics_all_weeks_v5', JSON.stringify(newWeeks));
       setLastSyncTime(new Date().toLocaleTimeString());
     } catch (e) {
       console.error(e);
     }
   };
 
-  // Toggle Task Completion in real-time
+  const activeWeek = allWeeks[activeWeekId] || BASE_WEEK_3;
+
+  // Toggle Task Completion
   const toggleTask = (dayKey, taskId) => {
-    const newSchedule = { ...data.schedule };
-    if (newSchedule[dayKey]) {
-      newSchedule[dayKey].tasks = newSchedule[dayKey].tasks.map(t => 
+    const currentSchedule = { ...activeWeek.schedule };
+    if (currentSchedule[dayKey]) {
+      currentSchedule[dayKey].tasks = currentSchedule[dayKey].tasks.map(t => 
         t.id === taskId ? { ...t, completed: !t.completed } : t
       );
-      updateData({ ...data, schedule: newSchedule });
+      const updatedWeek = { ...activeWeek, schedule: currentSchedule };
+      updateWeeks({ ...allWeeks, [activeWeekId]: updatedWeek });
     }
   };
 
   const toggleSundayTask = (taskId) => {
-    const newSundayTasks = data.sundayMonday.tasks.map(t => 
+    const newSundayTasks = activeWeek.sundayMonday.tasks.map(t => 
       t.id === taskId ? { ...t, completed: !t.completed } : t
     );
-    updateData({ ...data, sundayMonday: { ...data.sundayMonday, tasks: newSundayTasks } });
+    const updatedWeek = {
+      ...activeWeek,
+      sundayMonday: { ...activeWeek.sundayMonday, tasks: newSundayTasks }
+    };
+    updateWeeks({ ...allWeeks, [activeWeekId]: updatedWeek });
   };
 
-  // Generate worker link
+  // Create new week
+  const handleCreateWeek = ({ name, dateRange, cloneCurrent }) => {
+    const newId = `week_${Date.now()}`;
+    const template = cloneCurrent ? JSON.parse(JSON.stringify(activeWeek)) : JSON.parse(JSON.stringify(BASE_WEEK_3));
+    
+    const newWeekObj = {
+      ...template,
+      id: newId,
+      name,
+      meta: {
+        ...template.meta,
+        week: name,
+        dateRange,
+        status: "Operativa Activa"
+      }
+    };
+
+    const newWeeksState = { ...allWeeks, [newId]: newWeekObj };
+    updateWeeks(newWeeksState);
+    setActiveWeekId(newId);
+  };
+
+  // Apply Gemini AI Generated Schedule
+  const handleApplyGeminiSchedule = (aiGeneratedJson) => {
+    const updatedWeek = {
+      ...activeWeek,
+      meta: {
+        ...activeWeek.meta,
+        ...aiGeneratedJson.meta
+      },
+      schedule: aiGeneratedJson.schedule || activeWeek.schedule,
+      saturdaySpecial: aiGeneratedJson.saturdaySpecial || activeWeek.saturdaySpecial,
+      sundayMonday: aiGeneratedJson.sundayMonday || activeWeek.sundayMonday
+    };
+
+    updateWeeks({ ...allWeeks, [activeWeekId]: updatedWeek });
+  };
+
+  // Links generator
   const getWorkerLink = (workerName) => {
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
-    return `${baseUrl}?worker=${encodeURIComponent(workerName)}`;
+    return `${baseUrl}?week=${activeWeekId}&worker=${encodeURIComponent(workerName)}`;
   };
 
   const copyWorkerLink = (workerName) => {
-    const link = getWorkerLink(workerName);
-    navigator.clipboard.writeText(link);
+    navigator.clipboard.writeText(getWorkerLink(workerName));
     setCopiedWorker(workerName);
     setTimeout(() => setCopiedWorker(null), 3000);
   };
 
   const shareViaWhatsApp = (workerName) => {
     const link = getWorkerLink(workerName);
-    const text = `🚚 Hola ${workerName}, aquí tienes la planificación y tareas de Gula Logística para esta semana: ${link}`;
+    const text = `🚚 Hola ${workerName}, aquí tienes tu planificación para la ${activeWeek.name} de Gula Logística: ${link}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -198,51 +227,63 @@ export default function App() {
                 <Truck className="text-blue-400 w-6 h-6" /> Panel de Control Gula Logística
               </h1>
             </div>
-            <p className="text-xs text-slate-400 mt-1">{data.meta.week} | {data.meta.dateRange}</p>
+
+            {/* Multi-Week Selector */}
+            <div className="flex items-center space-x-2 mt-2">
+              <select
+                value={activeWeekId}
+                onChange={(e) => setActiveWeekId(e.target.value)}
+                className="bg-slate-800 border border-slate-700 text-amber-400 font-bold px-3 py-1 rounded-xl text-xs focus:outline-none"
+              >
+                {Object.values(allWeeks).map((w) => (
+                  <option key={w.id} value={w.id}>{w.name} ({w.meta?.dateRange})</option>
+                ))}
+              </select>
+
+              <button
+                onClick={() => setIsWeekModalOpen(true)}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-300 p-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors"
+                title="Añadir Nueva Semana"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Semana</span>
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {/* Real-time Indicator */}
-            <div className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> 
-              <span>En Tiempo Real ({lastSyncTime})</span>
-            </div>
+            {/* Gemini AI Assistant Button */}
+            <button
+              onClick={() => setIsGeminiModalOpen(true)}
+              className="bg-gradient-to-r from-amber-500 via-amber-400 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all"
+            >
+              <Wand2 className="w-4 h-4" />
+              <span>✨ Gemini AI Assistant</span>
+            </button>
 
             {/* Share Worker Links Button */}
             <button
               onClick={() => setIsShareModalOpen(true)}
-              className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-blue-600/30 transition-all"
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-blue-600/30 transition-all"
             >
-              <Share2 className="w-3.5 h-3.5" />
-              <span>Enlaces por Trabajador</span>
+              <Share2 className="w-4 h-4" />
+              <span>Enlaces WhatsApp</span>
             </button>
-
-            {activeWorker && (
-              <button
-                onClick={() => {
-                  setActiveWorker(null);
-                  window.history.pushState({}, '', window.location.pathname);
-                }}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors"
-              >
-                Ver Todo el Equipo
-              </button>
-            )}
           </div>
         </header>
 
-        {/* Worker Specific Banner if worker param is active */}
+        {/* Worker Specific Banner if active */}
         {activeWorker && (
           <div className="bg-gradient-to-r from-blue-900 to-slate-900 text-white p-5 rounded-2xl border border-blue-800 shadow-md flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="text-3xl">
-                {INITIAL_DATA.workers.find(w => w.name === activeWorker)?.avatar || "👤"}
+                {WORKERS_LIST.find(w => w.name === activeWorker)?.avatar || "👤"}
               </div>
               <div>
                 <span className="text-xs font-semibold text-blue-300 uppercase tracking-wider block">Vista Personalizada</span>
-                <h2 className="text-lg font-bold">Planificación de {activeWorker}</h2>
+                <h2 className="text-lg font-bold">Planificación de {activeWorker} — {activeWeek.name}</h2>
                 <p className="text-xs text-slate-300">
-                  {INITIAL_DATA.workers.find(w => w.name === activeWorker)?.truck || "Flota Gula"}
+                  {WORKERS_LIST.find(w => w.name === activeWorker)?.truck || "Flota Gula"}
                 </p>
               </div>
             </div>
@@ -254,7 +295,7 @@ export default function App() {
               }}
               className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
             >
-              Mostrar vista general
+              Ver Todo el Equipo
             </button>
           </div>
         )}
@@ -263,13 +304,13 @@ export default function App() {
         <section className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Users className="text-blue-600 w-4 h-4" /> Equipo y Estructura Operativa
+              <Users className="text-blue-600 w-4 h-4" /> Equipo y Estructura Operativa ({activeWeek.name})
             </h2>
             <span className="text-[11px] text-slate-400">Haz clic en un trabajador para filtrar sus tareas</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            {INITIAL_DATA.workers.map((w, idx) => (
+            {WORKERS_LIST.map((w, idx) => (
               <div 
                 key={idx} 
                 onClick={() => setActiveWorker(w.name === activeWorker ? null : w.name)}
@@ -291,7 +332,7 @@ export default function App() {
 
         {/* Schedule Days Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {Object.entries(data.schedule).map(([key, day]) => {
+          {Object.entries(activeWeek.schedule || {}).map(([key, day]) => {
             const dayTasks = activeWorker 
               ? day.tasks.filter(t => t.assigned && t.assigned.includes(activeWorker))
               : day.tasks;
@@ -351,66 +392,70 @@ export default function App() {
           })}
         </div>
 
-        {/* Saturday 19 Special Section */}
-        <section className="bg-gradient-to-br from-slate-900 to-blue-950 text-white rounded-2xl p-6 shadow-lg border border-slate-800">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-extrabold text-base flex items-center gap-2">
-              <Fire className="text-amber-400 w-5 h-5" /> {data.saturdaySpecial.title}
-            </h3>
-            <span className="text-[10px] bg-amber-400/20 text-amber-300 font-bold px-2.5 py-1 rounded-lg border border-amber-400/30">Día Clave</span>
-          </div>
+        {/* Saturday Special Section */}
+        {activeWeek.saturdaySpecial && (
+          <section className="bg-gradient-to-br from-slate-900 to-blue-950 text-white rounded-2xl p-6 shadow-lg border border-slate-800">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-extrabold text-base flex items-center gap-2">
+                <Fire className="text-amber-400 w-5 h-5" /> {activeWeek.saturdaySpecial.title}
+              </h3>
+              <span className="text-[10px] bg-amber-400/20 text-amber-300 font-bold px-2.5 py-1 rounded-lg border border-amber-400/30">Día Clave</span>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            {data.saturdaySpecial.weddings.map((w, idx) => {
-              const isAssignedToActiveWorker = activeWorker && w.assigned && w.assigned.includes(activeWorker);
-              return (
-                <div 
-                  key={idx} 
-                  className={`p-4 rounded-xl border transition-all ${
-                    isAssignedToActiveWorker 
-                      ? 'bg-blue-600/30 border-blue-400 ring-2 ring-blue-400/40' 
-                      : 'bg-white/10 border-white/10'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-amber-300 block">🏔️ {w.location}</span>
-                    {isAssignedToActiveWorker && (
-                      <span className="text-[9px] bg-blue-500 text-white px-1.5 py-0.5 rounded font-bold">Tu Asignación</span>
-                    )}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              {(activeWeek.saturdaySpecial.weddings || []).map((w, idx) => {
+                const isAssignedToActiveWorker = activeWorker && w.assigned && w.assigned.includes(activeWorker);
+                return (
+                  <div 
+                    key={idx} 
+                    className={`p-4 rounded-xl border transition-all ${
+                      isAssignedToActiveWorker 
+                        ? 'bg-blue-600/30 border-blue-400 ring-2 ring-blue-400/40' 
+                        : 'bg-white/10 border-white/10'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-amber-300 block">🏔️ {w.location}</span>
+                      {isAssignedToActiveWorker && (
+                        <span className="text-[9px] bg-blue-500 text-white px-1.5 py-0.5 rounded font-bold">Tu Asignación</span>
+                      )}
+                    </div>
+                    <span className="text-slate-300 block mb-2 font-medium">{w.truck}</span>
+                    <p className="text-[11px] text-slate-300 leading-relaxed">{w.details}</p>
                   </div>
-                  <span className="text-slate-300 block mb-2 font-medium">{w.truck}</span>
-                  <p className="text-[11px] text-slate-300 leading-relaxed">{w.details}</p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Sunday / Monday Section */}
-        <section className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-          <h3 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
-            <Broom className="text-blue-600 w-4 h-4" /> {data.sundayMonday.title}
-          </h3>
+        {activeWeek.sundayMonday && (
+          <section className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+            <h3 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
+              <Broom className="text-blue-600 w-4 h-4" /> {activeWeek.sundayMonday.title}
+            </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-600">
-            {data.sundayMonday.tasks.map((task) => (
-              <div 
-                key={task.id}
-                onClick={() => toggleSundayTask(task.id)}
-                className={`p-3.5 rounded-xl border cursor-pointer flex items-start gap-2.5 transition-all ${
-                  task.completed ? 'bg-emerald-50 border-emerald-200 text-emerald-900 line-through' : 'bg-slate-50 border-slate-100 hover:border-slate-300'
-                }`}
-              >
-                <div className={`w-5 h-5 rounded-md flex items-center justify-center border mt-0.5 shrink-0 transition-colors ${
-                  task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 bg-white'
-                }`}>
-                  {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-600">
+              {(activeWeek.sundayMonday.tasks || []).map((task) => (
+                <div 
+                  key={task.id}
+                  onClick={() => toggleSundayTask(task.id)}
+                  className={`p-3.5 rounded-xl border cursor-pointer flex items-start gap-2.5 transition-all ${
+                    task.completed ? 'bg-emerald-50 border-emerald-200 text-emerald-900 line-through' : 'bg-slate-50 border-slate-100 hover:border-slate-300'
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-md flex items-center justify-center border mt-0.5 shrink-0 transition-colors ${
+                    task.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 bg-white'
+                  }`}>
+                    {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  </div>
+                  <span>{task.text}</span>
                 </div>
-                <span>{task.text}</span>
-              </div>
-            ))}
-          </div>
-        </section>
+              ))}
+            </div>
+          </section>
+        )}
 
       </div>
 
@@ -431,12 +476,12 @@ export default function App() {
               </div>
               <div>
                 <h3 className="text-xl font-bold font-['Outfit']">Enlaces Personales para WhatsApp</h3>
-                <p className="text-xs text-slate-400">Envía a cada trabajador su vista personalizada con sus tareas</p>
+                <p className="text-xs text-slate-400">Envía a cada trabajador su vista de la {activeWeek.name}</p>
               </div>
             </div>
 
             <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-              {INITIAL_DATA.workers.map((w, idx) => (
+              {WORKERS_LIST.map((w, idx) => (
                 <div key={idx} className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-center space-x-3">
                     <span className="text-2xl">{w.avatar}</span>
@@ -478,6 +523,21 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Week Manager Modal */}
+      <WeekManagerModal
+        isOpen={isWeekModalOpen}
+        onClose={() => setIsWeekModalOpen(false)}
+        onCreateWeek={handleCreateWeek}
+        currentWeekName={activeWeek.name}
+      />
+
+      {/* Gemini AI Assistant Modal */}
+      <GeminiAssistantModal
+        isOpen={isGeminiModalOpen}
+        onClose={() => setIsGeminiModalOpen(false)}
+        onApplyGeneratedSchedule={handleApplyGeminiSchedule}
+      />
     </div>
   );
 }
