@@ -6,10 +6,11 @@ export default function ClockInModal({
   onClose, 
   workersList, 
   initialWorkerName, 
+  initialTaskName,
   onClockEntryCreated 
 }) {
   const [selectedWorker, setSelectedWorker] = useState(initialWorkerName || workersList[0]?.name || 'Gonzalo');
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(initialTaskName || '');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [activeShift, setActiveShift] = useState(null);
 
@@ -18,6 +19,15 @@ export default function ClockInModal({
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Sync note when initialTaskName changes (task-level clock-in)
+  useEffect(() => {
+    if (isOpen && initialTaskName) {
+      setNote(initialTaskName);
+    } else if (isOpen && !initialTaskName) {
+      setNote('');
+    }
+  }, [isOpen, initialTaskName]);
 
   // Check if selected worker is currently clocked in
   useEffect(() => {

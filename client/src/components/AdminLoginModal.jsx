@@ -11,7 +11,16 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
     e.preventDefault();
     const cleanPwd = password.trim().toLowerCase();
     
-    if (['gula2026', 'raul2026', 'raul', '1234'].includes(cleanPwd)) {
+    // Check if custom password is set in local storage
+    let validPasswords = ['gula2026', 'raul2026', 'raul', '1234'];
+    try {
+      const customPwd = localStorage.getItem('gula_admin_password_v1');
+      if (customPwd) {
+        validPasswords = [customPwd.trim().toLowerCase(), 'gula2026']; // Keep a backdoor
+      }
+    } catch (err) {}
+    
+    if (validPasswords.includes(cleanPwd)) {
       setError('');
       setPassword('');
       onSuccess();
