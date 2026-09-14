@@ -1,232 +1,151 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Truck, 
-  Users, 
-  Calendar, 
-  Activity, 
-  ShieldCheck, 
-  Globe,
-  Lock,
-  Eye,
-  LogOut,
-  Sparkles,
-  RefreshCw
-} from 'lucide-react';
-
-import LoginModal from './components/LoginModal';
-import AdminPanel from './components/AdminPanel';
-import PublicView from './components/PublicView';
-
-const DEFAULT_DATA = {
-  meta: {
-    week: "Semana 3",
-    dateRange: "Del 15 al 20 de Septiembre de 2026",
-    status: "Operativa Activa"
-  },
-  team: [
-    { role: "Jefe Logística", members: "Raúl (Supervisa)", category: "lead" },
-    { role: "Base & Preparación", members: "Irene + Jeferson", category: "prep" },
-    { role: "Flota", members: "Gonzalo, Ricardo, Jaime, Johan", category: "fleet" }
-  ],
-  trucks: [
-    { name: "Camión Gula", status: "Activo / En Ruta", tag: "Principal" },
-    { name: "Camión Covey", status: "Activo / En Ruta", tag: "Secundario" },
-    { name: "Camión Albacar", status: "Activo / En Ruta", tag: "Apoyo" }
-  ],
-  tasks: [
-    { id: '1', text: 'Revisión mecánica y niveles de aceite de Camión Gula', assignedTo: 'Camión Gula', priority: 'Alta', completed: true },
-    { id: '2', text: 'Carga de cajas térmicas para catering de evento', assignedTo: 'Base & Preparación', priority: 'Alta', completed: false },
-    { id: '3', text: 'Desinfección de cámara de Camión Covey', assignedTo: 'Camión Covey', priority: 'Media', completed: false }
-  ]
-};
-
-const sanitizeData = (raw) => {
-  if (!raw || typeof raw !== 'object') return DEFAULT_DATA;
-  const cleanTeam = (raw.team || DEFAULT_DATA.team).filter(
-    item => !item.role.toLowerCase().includes('cocina') && !item.role.toLowerCase().includes('dirección')
-  );
-  return {
-    ...DEFAULT_DATA,
-    ...raw,
-    team: cleanTeam
-  };
-};
+import React from 'react';
+import { Truck, Users, Calendar, Clock, Flame as Fire, Broom } from 'lucide-react';
 
 export default function App() {
-  // Load initial data from localStorage or default with strict sanitization
-  const [data, setData] = useState(() => {
-    try {
-      localStorage.removeItem('gula_logistics_data');
-      localStorage.removeItem('gula_logistics_data_v2');
-      const saved = localStorage.getItem('gula_logistics_v3_clean');
-      return saved ? sanitizeData(JSON.parse(saved)) : DEFAULT_DATA;
-    } catch {
-      return DEFAULT_DATA;
-    }
-  });
-
-  const [isAdmin, setIsAdmin] = useState(() => {
-    return localStorage.getItem('gula_is_admin') === 'true';
-  });
-
-  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  // Sync to localStorage
-  const handleDataChange = (newData) => {
-    const cleaned = sanitizeData(newData);
-    setData(cleaned);
-    try {
-      localStorage.setItem('gula_logistics_v3_clean', JSON.stringify(cleaned));
-    } catch (e) {
-      console.error('Error al guardar en localStorage:', e);
-    }
-  };
-
-  const handleToggleTask = (taskId) => {
-    const updatedTasks = (data.tasks || []).map(t => 
-      t.id === taskId ? { ...t, completed: !t.completed } : t
-    );
-    handleDataChange({ ...data, tasks: updatedTasks });
-  };
-
-  const handleLoginSuccess = () => {
-    setIsAdmin(true);
-    localStorage.setItem('gula_is_admin', 'true');
-    setIsLoginModalOpen(false);
-  };
-
-  const handleLogout = () => {
-    setIsAdmin(false);
-    localStorage.removeItem('gula_is_admin');
-  };
-
-  // Optional sync with API endpoint if available
-  const fetchLogisticsData = async () => {
-    setLoading(true);
-    const apiUrl = import.meta.env.VITE_API_URL;
-    if (!apiUrl) {
-      setLoading(false);
-      return;
-    }
-    try {
-      const res = await fetch(apiUrl, { signal: AbortSignal.timeout(3000) });
-      if (res.ok) {
-        const json = await res.json();
-        if (json && json.meta && json.team) {
-          handleDataChange(json);
-        }
+  const data = {
+    meta: {
+      week: "Semana 3",
+      dateRange: "Del 15 al 20 de Septiembre de 2026",
+      status: "Operativa Activa"
+    },
+    team: [
+      { role: "Dirección / Cocina / Ventas", members: "Anna y Rocío" },
+      { role: "Jefe Logística", members: "Raúl (Supervisa y ayuda en base)" },
+      { role: "Base & Preparación", members: "Irene (Pedidos/Checklist) + Jeferson (Apoyo Log/Prep)" },
+      { role: "Flota / Conductores", members: "Gonzalo & Ricardo (Veteranos) | Jaime (Guiado) | Johan (Backup)" }
+    ],
+    schedule: {
+      martes: {
+        title: "Martes 15", badge: "Arranque Flota",
+        tasks: [
+          "09:00 - 11:30: Recogida Camión Albacar (Gonzalo y Ricardo). ¡Flota completa de 3!",
+          "12:00 - 14:00: Ruta Carvillo — Recogida 90 sillas extra.",
+          "15:30 - 18:30: Ruta Dealde — Recogida material alquiler."
+        ]
+      },
+      miercoles: {
+        title: "Miércoles 16", badge: "Descarga Fincas",
+        tasks: [
+          "10:00 - 14:00: Pre-carga en almacén (Johan y Jeferson).",
+          "15:00 - 19:00: Descarga adelantada en Mas dels Refranys y Villajoyosa (Gonzalo, Ricardo, Johan)."
+        ]
+      },
+      jueves: {
+        title: "Jueves 17", badge: "Eventos",
+        tasks: [
+          "08:00 - 14:00: Catering Encamina (100 pax) - Anto, Marc, Luis.",
+          "15:00 - 19:00: Evento SUOT - Control y servicio.",
+          "19:00 - 21:00: Pre-carga de frío y revisión de checklists."
+        ]
+      },
+      viernes: {
+        title: "Viernes 18", badge: "Cierre Crítico",
+        tasks: [
+          "09:00 - 14:00: 2º viaje adelantado y descarga de menaje en Chera.",
+          "15:00 - 21:00: Estiba, flejado y carga final en 3 camiones. Raúl e Irene validan albaranes."
+        ]
       }
-    } catch (err) {
-      console.log('Usando datos persistentes en navegador');
-    } finally {
-      setLoading(false);
+    },
+    saturdaySpecial: {
+      title: "Sábado 19 — El Gran Día (3 Bodas Simultáneas)",
+      weddings: [
+        { location: "Sot de Chera (250 pax)", truck: "Camión 1 (Gran Vol.)", details: "Conduce: Ricardo | Apoyo: Jeferson. 🌙 Viaje nocturno de vuelta." },
+        { location: "Mas dels Refranys", truck: "Camión 2 (Rocío)", details: "Conduce: Gonzalo | Apoyo: Johan. ✅ Descarga hecha el miércoles." },
+        { location: "María y Joaquín", truck: "Camión 3 (Albacar)", details: "Conduce: Jaime (Guiado) | Apoyo: Johan/Jef." }
+      ]
+    },
+    sundayMonday: {
+      title: "Domingo 20 & Lunes 21 — Logística Inversa y Limpieza",
+      tasks: [
+        "Domingo (09:00 - 13:00): Descarga general de los 3 camiones en almacén. Limpieza de vajilla a cargo de Kerly + Jose (o Jeferson).",
+        "Devoluciones: Devolución del Camión Albacar (Gonzalo/Ricardo). Ruta a Dealde y 90 sillas a Carvillo el lunes."
+      ]
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-amber-500 selection:text-slate-950">
-      {/* Dynamic Background Gradients */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute top-1/3 -right-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl"></div>
+    <div className="bg-slate-100 min-h-screen text-slate-800 antialiased p-4 md:p-8">
+      <div className="max-w-5xl mx-auto space-y-6">
+        
+        <header className="bg-slate-900 text-white p-6 rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-xl md:text-2xl font-extrabold flex items-center gap-2.5">
+              <Truck className="text-blue-400 w-6 h-6" /> Panel de Control Gula Logística
+            </h1>
+            <p className="text-xs text-slate-400 mt-1">{data.meta.week} | {data.meta.dateRange}</p>
+          </div>
+          <div className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> {data.meta.status}
+          </div>
+        </header>
+
+        <section className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+          <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <Users className="text-blue-600 w-4 h-4" /> Equipo y Estructura Operativa
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+            {data.team.map((item, idx) => (
+              <div key={idx} className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                <span className="font-bold text-slate-700 block mb-0.5">{item.role}:</span>
+                <span className="text-slate-600">{item.members}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {Object.entries(data.schedule).map(([key, day]) => (
+            <div key={key} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <Calendar className="text-blue-600 w-4 h-4" /> {day.title}
+                </h3>
+                <span className="text-[10px] bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded-md">{day.badge}</span>
+              </div>
+              <ul className="space-y-2 text-xs text-slate-600">
+                {day.tasks.map((task, idx) => (
+                  <li key={idx} className="flex items-start gap-2 bg-slate-50 p-2.5 rounded-lg">
+                    <Clock className="text-slate-400 w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <div>{task}</div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <section className="bg-gradient-to-br from-slate-900 to-blue-950 text-white rounded-2xl p-6 shadow-lg border border-slate-800">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-extrabold text-base flex items-center gap-2">
+              <Fire className="text-amber-400 w-5 h-5" /> {data.saturdaySpecial.title}
+            </h3>
+            <span className="text-[10px] bg-amber-400/20 text-amber-300 font-bold px-2.5 py-1 rounded-lg border border-amber-400/30">Día Clave</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            {data.saturdaySpecial.weddings.map((w, idx) => (
+              <div key={idx} className="bg-white/10 p-4 rounded-xl border border-white/10">
+                <span className="font-bold text-amber-300 block mb-1">🏔️ {w.location}</span>
+                <span className="text-slate-300 block mb-2">{w.truck}</span>
+                <p className="text-[11px] text-slate-300">{w.details}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+          <h3 className="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
+            <Broom className="text-blue-600 w-4 h-4" /> {data.sundayMonday.title}
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-600">
+            {data.sundayMonday.tasks.map((task, idx) => (
+              <div key={idx} className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                {task}
+              </div>
+            ))}
+          </div>
+        </section>
+
       </div>
-
-      {/* Top Header Navbar */}
-      <header className="relative z-20 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center space-x-3 sm:space-x-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-amber-400 p-0.5 shadow-lg shadow-amber-500/20">
-              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-                <Truck className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white font-['Outfit']">
-                  Gula Logistics
-                </h1>
-                <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  v2.0 Live
-                </span>
-              </div>
-              <p className="text-[11px] sm:text-xs text-slate-400">Control Operativo & Flota de Camiones</p>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            {isAdmin ? (
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setIsAdmin(false)}
-                  className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs font-semibold transition-colors"
-                >
-                  <Eye className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden sm:inline">Vista Pública</span>
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 text-xs font-semibold transition-colors"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Salir Admin</span>
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setIsLoginModalOpen(true)}
-                className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-bold shadow-md shadow-amber-500/20 transition-all"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Acceso Admin</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Main Container */}
-      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
-        {isAdmin ? (
-          <AdminPanel
-            data={data}
-            onChangeData={handleDataChange}
-            onLogout={handleLogout}
-          />
-        ) : (
-          <PublicView
-            data={data}
-            onToggleTask={handleToggleTask}
-            onOpenLogin={() => setIsLoginModalOpen(true)}
-          />
-        )}
-      </main>
-
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-slate-800/80 bg-slate-950/80 mt-auto py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <p>© 2026 Gula Logistics. Sistema de gestión operativa privada & pública.</p>
-          <div className="flex items-center space-x-4">
-            <a 
-              href="https://github.com/r2fod/gula-logistics" 
-              target="_blank" 
-              rel="noreferrer" 
-              className="hover:text-slate-300 transition-colors flex items-center space-x-1"
-            >
-              <Globe className="w-3.5 h-3.5" />
-              <span>GitHub Repository</span>
-            </a>
-          </div>
-        </div>
-      </footer>
-
-      {/* Login Modal */}
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-        onLoginSuccess={handleLoginSuccess}
-      />
     </div>
   );
 }
