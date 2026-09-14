@@ -335,18 +335,18 @@ export default function App() {
   }
 
   return (
-    <div className="bg-slate-100 min-h-screen text-slate-800 antialiased p-3 sm:p-6 md:p-8 selection:bg-blue-500 selection:text-white flex flex-col justify-between">
-      <div className="max-w-[1440px] mx-auto w-full space-y-5 sm:space-y-6">
+    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans flex flex-col justify-between selection:bg-amber-500 selection:text-slate-950">
+      <div className="w-full space-y-6">
         
-        {/* Header Navigation Banner - Fluid Responsive Widescreen & Mobile */}
-        <header className="bg-slate-900 text-white p-5 sm:p-6 rounded-2xl shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        {/* Header Navigation Banner - Fluid Widescreen */}
+        <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-5 sm:p-6 rounded-3xl shadow-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           
           {/* Title & Brand */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between lg:justify-start gap-4 w-full lg:w-auto">
             <div className="flex items-center space-x-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-blue-500 p-0.5 shadow-lg shadow-amber-500/20 shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-emerald-500 p-0.5 shadow-lg shadow-amber-500/20 shrink-0">
                 <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-                  <Truck className="text-blue-400 w-6 h-6" />
+                  <Truck className="text-amber-400 w-6 h-6" />
                 </div>
               </div>
               <div>
@@ -362,7 +362,7 @@ export default function App() {
               <select
                 value={activeWeekId}
                 onChange={(e) => setActiveWeekId(e.target.value)}
-                className="bg-slate-800 border border-slate-700 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs focus:outline-none shadow-inner"
+                className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3.5 py-2 rounded-xl text-xs focus:outline-none shadow-inner"
               >
                 {Object.values(allWeeks).map((w) => (
                   <option key={w.id} value={w.id}>{w.name} ({w.meta?.dateRange})</option>
@@ -371,7 +371,7 @@ export default function App() {
 
               <button
                 onClick={() => setIsWeekModalOpen(true)}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition-all"
+                className="bg-slate-900 hover:bg-slate-800 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 border border-slate-800 transition-all"
                 title="Añadir Nueva Semana"
               >
                 <Plus className="w-3.5 h-3.5 text-amber-400" />
@@ -390,13 +390,13 @@ export default function App() {
             {/* Clock In Button */}
             <button
               onClick={() => setIsClockInModalOpen(true)}
-              className="flex-1 lg:flex-none bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
+              className="flex-1 lg:flex-none bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
             >
               <Clock className="w-4 h-4" />
               <span>⏱️ Fichar</span>
             </button>
 
-            {/* Partner Dashboard Button (100% Direct Access Without Password) */}
+            {/* Partner Dashboard Button */}
             <button
               onClick={() => {
                 setIsPartnerMode(true);
@@ -411,7 +411,7 @@ export default function App() {
             {/* Saldos & Acuerdos Button */}
             <button
               onClick={() => setIsBalancesModalOpen(true)}
-              className="flex-1 lg:flex-none bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-700 transition-all shadow-sm"
+              className="flex-1 lg:flex-none bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-800 transition-all shadow-sm"
             >
               <span>📜 Saldos & Acuerdos</span>
             </button>
@@ -419,7 +419,7 @@ export default function App() {
             {/* Payroll Report */}
             <button
               onClick={() => setIsPayrollModalOpen(true)}
-              className="flex-1 lg:flex-none bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-700 transition-all"
+              className="flex-1 lg:flex-none bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-800 transition-all"
             >
               <DollarSign className="w-3.5 h-3.5 text-amber-400" />
               <span>Nóminas</span>
@@ -447,16 +447,16 @@ export default function App() {
 
         {/* Worker Specific Banner if active */}
         {activeWorker && (
-          <div className="bg-gradient-to-r from-blue-900 via-slate-900 to-slate-950 text-white p-5 rounded-2xl border border-blue-800 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 text-white p-5 rounded-3xl border border-blue-800/80 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-3.5">
-              <div className="text-3xl p-2 bg-blue-950/80 rounded-2xl border border-blue-800/80">
+              <div className="text-3xl p-2 bg-slate-950 rounded-2xl border border-slate-800">
                 {WORKERS_LIST.find(w => w.name === activeWorker)?.avatar || "👤"}
               </div>
               <div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-[10px] font-bold text-blue-300 uppercase tracking-wider block">Vista Personalizada</span>
+                  <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider block">Vista Personalizada</span>
                   {(activeWorker.toLowerCase() === 'raúl' || activeWorker.toLowerCase() === 'raul') && (
-                    <span className="text-[10px] font-extrabold bg-amber-500 text-slate-950 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="text-[10px] font-extrabold bg-amber-500 text-slate-950 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                       👑 MODO DESARROLLADOR / ADMIN
                     </span>
                   )}
@@ -497,7 +497,7 @@ export default function App() {
                   setActiveWorker(null);
                   window.history.pushState({}, '', window.location.pathname);
                 }}
-                className="text-xs bg-white/10 hover:bg-white/20 text-white px-3.5 py-2 rounded-xl font-medium transition-colors"
+                className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl font-medium transition-colors border border-slate-700"
               >
                 Ver Todo el Equipo
               </button>
@@ -505,93 +505,98 @@ export default function App() {
           </div>
         )}
 
-        {/* Team Members Grid - Responsive Widescreen Layout */}
-        <section className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-          <div className="flex items-center justify-between mb-4">
+        {/* Team Members Grid - Full Widescreen 9-Columns Layout */}
+        <section className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
+          <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-              <Users className="text-blue-600 w-4.5 h-4.5" /> Equipo, Nóminas y Extras ({WORKERS_LIST.length} Miembros)
+              <Users className="text-amber-400 w-4.5 h-4.5" /> Equipo, Nóminas y Extras ({WORKERS_LIST.length} Miembros)
             </h2>
             <span className="text-xs text-slate-400 hidden sm:inline">Haz clic en un trabajador para filtrar sus tareas</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-4 gap-3 text-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-9 gap-3 text-xs">
             {WORKERS_LIST.map((w, idx) => (
               <div 
                 key={idx} 
                 onClick={() => setActiveWorker(w.name === activeWorker ? null : w.name)}
-                className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-center space-x-3 ${
+                className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-2 ${
                   activeWorker === w.name 
-                    ? 'bg-blue-50 border-blue-400 ring-2 ring-blue-500/20 shadow-sm' 
-                    : 'bg-slate-50 border-slate-100 hover:border-slate-300'
+                    ? 'bg-amber-500/10 border-amber-500/50 ring-1 ring-amber-500/30 text-white shadow-md' 
+                    : 'bg-slate-950/80 border-slate-800/80 hover:border-amber-500/40 text-slate-200'
                 }`}
               >
-                <div className="text-2xl shrink-0">{w.avatar}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-800 truncate text-xs">{w.name}</span>
-                    {w.isPayroll ? (
-                      <span className="text-[9px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">Nómina (14€/h)</span>
-                    ) : (
-                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">10€/h</span>
-                    )}
-                  </div>
-                  <span className="text-[11px] text-slate-500 block truncate mt-0.5">{w.role}</span>
+                <div className="flex items-center justify-between">
+                  <div className="text-2xl">{w.avatar}</div>
+                  {w.isPayroll ? (
+                    <span className="text-[9px] font-extrabold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Nómina</span>
+                  ) : (
+                    <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">10€/h</span>
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <span className="font-extrabold text-white truncate text-xs block font-['Outfit']">{w.name}</span>
+                  <span className="text-[10px] text-slate-400 block truncate mt-0.5">{w.role}</span>
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Schedule Days Grid - Fluid Responsive Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Schedule Days Grid - 4 Columns Across Widescreen */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
           {Object.entries(activeWeek.schedule || {}).map(([key, day]) => (
-            <div key={key} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-slate-800 text-sm sm:text-base flex items-center gap-2 font-['Outfit']">
-                  <Calendar className="text-blue-600 w-4.5 h-4.5" /> {day.title}
-                </h3>
-                <span className="text-[10px] bg-slate-100 text-slate-700 font-semibold px-2.5 py-1 rounded-md">{day.badge}</span>
+            <div key={key} className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-5 shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-4">
+              <div>
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800/80">
+                  <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
+                    <Calendar className="text-amber-400 w-4.5 h-4.5" /> {day.title}
+                  </h3>
+                  <span className="text-[10px] bg-slate-950 text-amber-300 font-bold px-2.5 py-1 rounded-xl border border-slate-800">{day.badge}</span>
+                </div>
+
+                <ul className="space-y-2.5 text-xs text-slate-300">
+                  {(day.tasks || []).map((task, idx) => {
+                    const taskText = typeof task === 'object' ? task.text : task;
+                    const isCompleted = typeof task === 'object' ? task.completed : false;
+
+                    return (
+                      <li 
+                        key={idx} 
+                        onClick={() => toggleTask(key, idx)}
+                        className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
+                          isCompleted 
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 line-through' 
+                            : 'bg-slate-950/80 border-slate-800/80 hover:border-slate-700 text-slate-200'
+                        }`}
+                      >
+                        <Clock className="text-amber-400 w-4 h-4 mt-0.5 shrink-0" />
+                        <div className="flex-1 leading-relaxed">{taskText}</div>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
-
-              <ul className="space-y-2.5 text-xs sm:text-sm text-slate-600">
-                {(day.tasks || []).map((task, idx) => {
-                  const taskText = typeof task === 'object' ? task.text : task;
-                  const isCompleted = typeof task === 'object' ? task.completed : false;
-
-                  return (
-                    <li 
-                      key={idx} 
-                      onClick={() => toggleTask(key, idx)}
-                      className={`flex items-start gap-3 p-3 sm:p-3.5 rounded-xl border cursor-pointer transition-all ${
-                        isCompleted ? 'bg-emerald-50 border-emerald-200 text-emerald-900 line-through' : 'bg-slate-50 border-slate-100 hover:border-slate-300'
-                      }`}
-                    >
-                      <Clock className="text-slate-400 w-4 h-4 mt-0.5 shrink-0" />
-                      <div className="flex-1 leading-relaxed text-xs sm:text-sm">{taskText}</div>
-                    </li>
-                  );
-                })}
-              </ul>
             </div>
           ))}
         </div>
 
         {/* Saturday Special Section */}
         {activeWeek.saturdaySpecial && (
-          <section className="bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 text-white rounded-2xl p-6 shadow-lg border border-slate-800">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-extrabold text-base sm:text-lg flex items-center gap-2 font-['Outfit']">
+          <section className="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 border border-amber-500/30 rounded-3xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-extrabold text-base sm:text-lg flex items-center gap-2 font-['Outfit'] text-white">
                 <Fire className="text-amber-400 w-5.5 h-5.5" /> {activeWeek.saturdaySpecial.title}
               </h3>
-              <span className="text-[11px] bg-amber-400/20 text-amber-300 font-bold px-3 py-1 rounded-lg border border-amber-400/30">Día Clave</span>
+              <span className="text-[11px] bg-amber-500/20 text-amber-300 font-bold px-3 py-1 rounded-xl border border-amber-500/30">Día Clave</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
               {(activeWeek.saturdaySpecial.weddings || []).map((w, idx) => (
-                <div key={idx} className="bg-white/10 p-4 rounded-xl border border-white/10 space-y-2">
-                  <span className="font-bold text-amber-300 block text-sm sm:text-base">🏔️ {w.location}</span>
+                <div key={idx} className="bg-slate-950/90 p-4 rounded-2xl border border-slate-800 space-y-2">
+                  <span className="font-extrabold text-amber-300 block text-sm sm:text-base font-['Outfit']">🏔️ {w.location}</span>
                   <span className="text-slate-200 block font-semibold">{w.truck}</span>
-                  <p className="text-xs text-slate-300 leading-relaxed">{w.details}</p>
+                  <p className="text-xs text-slate-400 leading-relaxed">{w.details}</p>
                 </div>
               ))}
             </div>
@@ -600,16 +605,16 @@ export default function App() {
 
         {/* Sunday / Monday Section */}
         {activeWeek.sundayMonday && (
-          <section className="bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-200">
-            <h3 className="font-bold text-slate-800 text-sm sm:text-base mb-3.5 flex items-center gap-2 font-['Outfit']">
-              <Broom className="text-blue-600 w-4.5 h-4.5" /> {activeWeek.sundayMonday.title}
+          <section className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 shadow-xl space-y-3.5">
+            <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
+              <Broom className="text-amber-400 w-4.5 h-4.5" /> {activeWeek.sundayMonday.title}
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs sm:text-sm text-slate-600">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs sm:text-sm text-slate-300">
               {(activeWeek.sundayMonday.tasks || []).map((task, idx) => {
                 const taskText = typeof task === 'object' ? task.text : task;
                 return (
-                  <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-100 leading-relaxed">
+                  <div key={idx} className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 leading-relaxed">
                     {taskText}
                   </div>
                 );
