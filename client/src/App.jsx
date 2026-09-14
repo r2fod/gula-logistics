@@ -32,7 +32,6 @@ import GeminiAssistantModal from './components/GeminiAssistantModal';
 import ClockInModal from './components/ClockInModal';
 import PayrollReportModal from './components/PayrollReportModal';
 import PartnerDashboardModal from './components/PartnerDashboardModal';
-import SecureAccessModal from './components/SecureAccessModal';
 import BalancesAgreementsModal from './components/BalancesAgreementsModal';
 import { logisticsData as BASE_DATA } from './data/logisticsData';
 
@@ -74,7 +73,7 @@ export default function App() {
 
   const [activeWeekId, setActiveWeekId] = useState('week_3');
   const [activeWorker, setActiveWorker] = useState(null);
-  const [isPartnerMode, setIsPartnerMode] = useState(false);
+  const [isPartnerMode, setIsPartnerMode] = useState(true);
 
   // Modals
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -83,7 +82,6 @@ export default function App() {
   const [isClockInModalOpen, setIsClockInModalOpen] = useState(false);
   const [isPayrollModalOpen, setIsPayrollModalOpen] = useState(false);
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
-  const [isSecureAccessModalOpen, setIsSecureAccessModalOpen] = useState(false);
   const [isBalancesModalOpen, setIsBalancesModalOpen] = useState(false);
 
   const [copiedWorker, setCopiedWorker] = useState(null);
@@ -294,24 +292,17 @@ export default function App() {
               <span>⏱️ Fichar</span>
             </button>
 
-            {/* Partner Dashboard Button */}
-            {isPartnerMode ? (
-              <button
-                onClick={() => setIsPartnerModalOpen(true)}
-                className="flex-1 lg:flex-none bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>🔒 Panel Socias & Saldos</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => setIsSecureAccessModalOpen(true)}
-                className="flex-1 lg:flex-none bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 border border-amber-500/30 transition-all"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>🔒 Acceso Socias</span>
-              </button>
-            )}
+            {/* Partner Dashboard Button (100% Direct Access Without Password) */}
+            <button
+              onClick={() => {
+                setIsPartnerMode(true);
+                setIsPartnerModalOpen(true);
+              }}
+              className="flex-1 lg:flex-none bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>👑 Panel Socias & Saldos</span>
+            </button>
 
             {/* Saldos & Acuerdos Button */}
             <button
@@ -648,16 +639,6 @@ export default function App() {
       <BalancesAgreementsModal
         isOpen={isBalancesModalOpen}
         onClose={() => setIsBalancesModalOpen(false)}
-      />
-
-      <SecureAccessModal
-        isOpen={isSecureAccessModalOpen}
-        onClose={() => setIsSecureAccessModalOpen(false)}
-        onAccessGranted={() => {
-          setIsPartnerMode(true);
-          setIsSecureAccessModalOpen(false);
-          setIsPartnerModalOpen(true);
-        }}
       />
 
       <WeekManagerModal

@@ -15,10 +15,19 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-export default function PublicView({ data, onToggleTask, onOpenLogin }) {
+import LiveMonitorPanel from './LiveMonitorPanel';
+
+export default function PublicView({ 
+  data = {}, 
+  workersList = [], 
+  clockEntries = [], 
+  onToggleTask, 
+  onOpenLogin 
+}) {
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
-  const [mobileTab, setMobileTab] = useState('all'); // 'all' | 'trucks' | 'team' | 'tasks'
+  const [mobileTab, setMobileTab] = useState('all'); // 'all' | 'live' | 'trucks' | 'team' | 'tasks'
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   const handleShareLink = () => {
     const publicUrl = `${window.location.origin}${window.location.pathname}?view=public`;
@@ -106,6 +115,15 @@ export default function PublicView({ data, onToggleTask, onOpenLogin }) {
         </div>
       </div>
 
+      {/* Live Monitor Panel (Tiempo Real) */}
+      <LiveMonitorPanel 
+        workersList={workersList}
+        clockEntries={clockEntries}
+        activeSchedule={data.schedule || {}}
+        isFullScreen={isFullScreen}
+        onToggleFullScreen={() => setIsFullScreen(!isFullScreen)}
+      />
+
       {/* Mobile Selector Tabs */}
       <div className="flex md:hidden items-center space-x-1 bg-slate-900/80 p-1 rounded-2xl border border-slate-800 overflow-x-auto">
         <button
@@ -115,6 +133,14 @@ export default function PublicView({ data, onToggleTask, onOpenLogin }) {
           }`}
         >
           Todo
+        </button>
+        <button
+          onClick={() => setMobileTab('live')}
+          className={`flex-1 py-2 px-3 text-xs font-semibold rounded-xl whitespace-nowrap transition-colors ${
+            mobileTab === 'live' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'
+          }`}
+        >
+          🔴 En Vivo
         </button>
         <button
           onClick={() => setMobileTab('trucks')}

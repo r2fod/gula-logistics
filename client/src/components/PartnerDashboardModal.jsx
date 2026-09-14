@@ -18,9 +18,13 @@ import {
   MessageCircle,
   Bus,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Radio,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { initialBalancesData } from '../data/balancesData';
+import LiveMonitorPanel from './LiveMonitorPanel';
 
 export default function PartnerDashboardModal({ 
   isOpen, 
@@ -120,7 +124,7 @@ export default function PartnerDashboardModal({
   const totalExtraHours = balancesList.reduce((acc, curr) => acc + curr.totalHours, 0);
 
   const getSecurePartnerLink = () => {
-    return `${window.location.origin}${window.location.pathname}?role=socias&key=socias2026`;
+    return `${window.location.origin}${window.location.pathname}?socias`;
   };
 
   const handleCopySecureLink = () => {
@@ -131,7 +135,7 @@ export default function PartnerDashboardModal({
 
   const shareSecureLinkWhatsApp = () => {
     const link = getSecurePartnerLink();
-    const text = `🔒 Hola Socias, aquí tenéis el Enlace Seguro del Panel Ejecutivo de Gula Logística (Planificación + Saldos de Horas): ${link}`;
+    const text = `👑 Hola Socias, aquí tenéis el Enlace Directo de Dirección para Gula Logística (Planificación + Saldos + Tiempo Real): ${link}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
