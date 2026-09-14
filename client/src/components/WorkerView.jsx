@@ -16,9 +16,11 @@ import {
   ChevronRight,
   BarChart3,
   Award,
-  Filter
+  Filter,
+  Zap
 } from 'lucide-react';
 import ClockInModal from './ClockInModal';
+import TaskFlowGraphView from './TaskFlowGraphView';
 
 export default function WorkerView({
   workerName,
@@ -33,6 +35,7 @@ export default function WorkerView({
   const [isClockModalOpen, setIsClockModalOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDayKey, setSelectedDayKey] = useState('all');
+  const [viewModeType, setViewModeType] = useState('calendar'); // 'calendar' | 'graph'
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -286,83 +289,104 @@ export default function WorkerView({
 
           <div className="flex items-center space-x-2 w-full sm:w-auto">
             <button
-              onClick={() => setSelectedDayKey('all')}
-              className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all border ${
-                selectedDayKey === 'all'
+              onClick={() => {
+                setViewModeType('calendar');
+                setSelectedDayKey('all');
+              }}
+              className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all border ${
+                viewModeType === 'calendar'
                   ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-lg shadow-amber-500/20'
                   : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
               }`}
             >
-              📅 Ver Semana Completa
+              📅 Calendario 7 Días
+            </button>
+
+            <button
+              onClick={() => setViewModeType('graph')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all border ${
+                viewModeType === 'graph'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-lg shadow-amber-500/20'
+                  : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-400 inline mr-1" />
+              <span>🕸️ Grafo de Tareas</span>
             </button>
           </div>
         </div>
 
-        {/* 7-DAY HORIZONTAL CALENDAR GRID / RIBBON */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-          {daysWithActivities.map((day) => {
-            const isSelected = selectedDayKey === day.key;
-            const hasActivity = day.totalCount > 0;
-            const isSaturday = day.key === 'sabado';
+        {viewModeType === 'graph' ? (
+          <TaskFlowGraphView activeWeekData={activeWeekData} onToggleTask={onToggleTask} />
+        ) : (
+          <>
+            {/* 7-DAY HORIZONTAL CALENDAR GRID / RIBBON */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+              {daysWithActivities.map((day) => {
+                const isSelected = selectedDayKey === day.key;
+                const hasActivity = day.totalCount > 0;
+                const isSaturday = day.key === 'sabado';
 
-            return (
-              <div
-                key={day.key}
-                onClick={() => setSelectedDayKey(isSelected ? 'all' : day.key)}
-                className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-3 relative overflow-hidden ${
-                  isSelected
-                    ? 'bg-gradient-to-b from-amber-500/20 to-slate-950 border-amber-500 ring-2 ring-amber-500/40 text-white shadow-xl scale-[1.02]'
-                    : hasActivity
-                    ? isSaturday
-                      ? 'bg-gradient-to-b from-amber-950/40 to-slate-950 border-amber-500/40 hover:border-amber-400 text-slate-200'
-                      : 'bg-slate-950/90 border-slate-800 hover:border-amber-500/40 text-slate-200'
-                    : 'bg-slate-950/40 border-slate-800/60 opacity-60 hover:opacity-100 text-slate-400'
-                }`}
-              >
-                {/* Top Badge */}
-                <div className="flex items-center justify-between">
-                  <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md font-mono ${
-                    isSelected
-                      ? 'bg-amber-500 text-slate-950'
-                      : 'bg-slate-900 text-slate-400 border border-slate-800'
-                  }`}>
-                    {day.label} {day.date}
-                  </span>
+                return (
+                  <div
+                    key={day.key}
+                    onClick={() => setSelectedDayKey(isSelected ? 'all' : day.key)}
+                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-3 relative overflow-hidden ${
+                      isSelected
+                        ? 'bg-gradient-to-b from-amber-500/20 to-slate-950 border-amber-500 ring-2 ring-amber-500/40 text-white shadow-xl scale-[1.02]'
+                        : hasActivity
+                        ? isSaturday
+                          ? 'bg-gradient-to-b from-amber-950/40 to-slate-950 border-amber-500/40 hover:border-amber-400 text-slate-200'
+                          : 'bg-slate-950/90 border-slate-800 hover:border-amber-500/40 text-slate-200'
+                        : 'bg-slate-950/40 border-slate-800/60 opacity-60 hover:opacity-100 text-slate-400'
+                    }`}
+                  >
+                    {/* Top Badge */}
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md font-mono ${
+                        isSelected
+                          ? 'bg-amber-500 text-slate-950'
+                          : 'bg-slate-900 text-slate-400 border border-slate-800'
+                      }`}>
+                        {day.label} {day.date}
+                      </span>
 
-                  {day.weddings.length > 0 && (
-                    <span className="text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded">
-                      👑 BODA
-                    </span>
-                  )}
-                </div>
+                      {day.weddings.length > 0 && (
+                        <span className="text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                          👑 BODA
+                        </span>
+                      )}
+                    </div>
 
-                {/* Day Title */}
-                <div>
-                  <h4 className="font-extrabold text-white text-xs font-['Outfit'] truncate">
-                    {day.title}
-                  </h4>
-                  <p className="text-[10px] text-slate-400 truncate mt-0.5">
-                    {day.badge}
-                  </p>
-                </div>
+                    {/* Day Title */}
+                    <div>
+                      <h4 className="font-extrabold text-white text-xs font-['Outfit'] truncate">
+                        {day.title}
+                      </h4>
+                      <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                        {day.badge}
+                      </p>
+                    </div>
 
-                {/* Indicator Tag */}
-                <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-                  {hasActivity ? (
-                    <span className="font-bold text-amber-400 flex items-center space-x-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                      <span>{day.totalCount} {day.totalCount === 1 ? 'actividad' : 'actividades'}</span>
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-500 font-medium">Libre / Backup</span>
-                  )}
+                    {/* Indicator Tag */}
+                    <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                      {hasActivity ? (
+                        <span className="font-bold text-amber-400 flex items-center space-x-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                          <span>{day.totalCount} {day.totalCount === 1 ? 'actividad' : 'actividades'}</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-500 font-medium">Libre / Backup</span>
+                      )}
 
-                  <ChevronRight className={`w-3.5 h-3.5 text-slate-500 transition-transform ${isSelected ? 'rotate-90 text-amber-400' : ''}`} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                      <ChevronRight className={`w-3.5 h-3.5 text-slate-500 transition-transform ${isSelected ? 'rotate-90 text-amber-400' : ''}`} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
 
         {/* DETAILED TASKS & WEDDINGS BREAKDOWN ACCORDING TO SELECTED DAY */}
         <div className="space-y-4 pt-4 border-t border-slate-800">

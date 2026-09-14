@@ -25,11 +25,13 @@ import {
   Lock,
   Edit3,
   Trash2,
-  KeyRound
+  KeyRound,
+  Zap
 } from 'lucide-react';
 import { initialBalancesData } from '../data/balancesData';
 import LiveMonitorPanel from './LiveMonitorPanel';
 import AdminClockEditModal from './AdminClockEditModal';
+import TaskFlowGraphView from './TaskFlowGraphView';
 
 export default function PartnerDashboardView({ 
   activeWeekData, 
@@ -331,7 +333,19 @@ export default function PartnerDashboardView({
           }`}
         >
           <Calendar className="w-4 h-4" />
-          <span>📋 Planificación de la Semana</span>
+          <span>📋 Planificación (Lista)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('graph')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+            activeTab === 'graph'
+              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <Zap className="w-4 h-4 text-amber-400" />
+          <span>🕸️ Grafo de Tareas & Flujo</span>
         </button>
 
         <button
@@ -834,6 +848,11 @@ export default function PartnerDashboardView({
             </div>
           ))}
         </div>
+      )}
+
+      {/* TAB 7: Interactive Task Flow Graph */}
+      {activeTab === 'graph' && (
+        <TaskFlowGraphView activeWeekData={activeWeekData} />
       )}
 
       {/* Admin Clock Edit Modal */}
