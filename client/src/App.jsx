@@ -174,8 +174,8 @@ export default function App() {
                 <p className="text-2xl font-bold text-amber-400 mt-1 font-['Outfit']">{totalPersonnel} personas</p>
               </div>
               <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800/80">
-                <p className="text-xs font-medium text-slate-400">Conductores Flota</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-1 font-['Outfit']">4 vehículos</p>
+                <p className="text-xs font-medium text-slate-400">Flota Activa</p>
+                <p className="text-2xl font-bold text-emerald-400 mt-1 font-['Outfit']">3 Camiones</p>
               </div>
             </div>
           </div>
@@ -231,7 +231,7 @@ export default function App() {
                         <IconComp className="w-5 h-5 text-amber-400" />
                       </div>
                       <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 group-hover:bg-amber-500/20 group-hover:text-amber-300 transition-colors">
-                        {item.role.includes("Flota") ? "4 Miembros" : item.role.includes("Dirección") ? "2 Miembros" : item.role.includes("Base") ? "2 Miembros" : "1 Supervisión"}
+                        {item.role.includes("Flota") ? "3 Camiones (4 Cond.)" : item.role.includes("Dirección") ? "2 Miembros" : item.role.includes("Base") ? "2 Miembros" : "1 Supervisión"}
                       </span>
                     </div>
 
