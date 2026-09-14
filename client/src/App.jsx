@@ -271,6 +271,21 @@ export default function App() {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
+  // Admin mode state (Raúl/dev is auto-admin; socias link is visual read-only by default)
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const workerParam = params.get('worker');
+    const isRaul = workerParam && (workerParam.toLowerCase() === 'raúl' || workerParam.toLowerCase() === 'raul');
+    const hasAdminFlag = params.get('admin') === 'true' || params.has('admin');
+    return isRaul || hasAdminFlag;
+  });
+
+  const params = new URLSearchParams(window.location.search);
+  const workerParam = params.get('worker');
+  const isRaul = workerParam && (workerParam.toLowerCase() === 'raúl' || workerParam.toLowerCase() === 'raul');
+  const hasAdminFlag = params.get('admin') === 'true' || params.has('admin');
+  const isAdmin = isRaul || hasAdminFlag || isAdminUnlocked;
+
   if (isPartnerMode) {
     return (
       <div className="bg-slate-950 min-h-screen text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950">
@@ -281,6 +296,8 @@ export default function App() {
           onSelectWeek={setActiveWeekId}
           workersList={WORKERS_LIST}
           clockEntries={clockEntries}
+          isAdmin={isAdmin}
+          onUnlockAdmin={() => setIsAdminUnlocked(true)}
           onOpenClockIn={(workerName) => {
             if (workerName && typeof workerName === 'string') setActiveWorker(workerName);
             setIsClockInModalOpen(true);
@@ -309,7 +326,7 @@ export default function App() {
           entries={clockEntries}
           workersList={WORKERS_LIST}
           onClearEntries={handleClearClockEntries}
-          isAdmin={true}
+          isAdmin={isAdmin}
           onUpdateEntry={handleUpdateClockEntry}
           onDeleteEntry={handleDeleteClockEntry}
           onClockEntryCreated={handleClockEntryCreated}

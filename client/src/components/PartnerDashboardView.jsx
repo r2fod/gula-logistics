@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   DollarSign, 
@@ -24,7 +24,8 @@ import {
   Eye,
   Lock,
   Edit3,
-  Trash2
+  Trash2,
+  KeyRound
 } from 'lucide-react';
 import { initialBalancesData } from '../data/balancesData';
 import LiveMonitorPanel from './LiveMonitorPanel';
@@ -37,6 +38,8 @@ export default function PartnerDashboardView({
   onSelectWeek, 
   workersList = [], 
   clockEntries = [], 
+  isAdmin = false,
+  onUnlockAdmin,
   onOpenClockIn,
   onOpenPayroll,
   onOpenGemini,
@@ -50,10 +53,22 @@ export default function PartnerDashboardView({
   const [activeTab, setActiveTab] = useState('balances'); // 'balances' | 'fichajes' | 'live' | 'financial' | 'logistics' | 'schedule'
   const [copiedLink, setCopiedLink] = useState(false);
   const [expandedWorkerId, setExpandedWorkerId] = useState('jefferson');
+  const [adminUnlocked, setAdminUnlocked] = useState(isAdmin);
 
-  // Admin Modal State
-  const [editingEntry, setEditingEntry] = useState(null);
-  const [isAdminEditOpen, setIsAdminEditOpen] = useState(false);
+  useEffect(() => {
+    setAdminUnlocked(isAdmin);
+  }, [isAdmin]);
+
+  const handleRequestAdminUnlock = () => {
+    const pwd = prompt("Introduce la clave de Administrador de Gula Logística:");
+    if (pwd === 'gula2026' || pwd === 'admin' || pwd === '1234') {
+      setAdminUnlocked(true);
+      if (onUnlockAdmin) onUnlockAdmin();
+      alert("🟢 Modo Administrador desbloqueado. Ya puedes realizar cambios.");
+    } else if (pwd !== null) {
+      alert("❌ Clave incorrecta. El panel se mantiene en Modo Solo Lectura.");
+    }
+  };
 
   const getPartnerSecureLink = () => {
     return `${window.location.origin}${window.location.pathname}?socias`;
@@ -172,13 +187,32 @@ export default function PartnerDashboardView({
               </div>
             </div>
             <div>
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-['Outfit']">
                   Panel Ejecutivo de Socias & Dirección
                 </h1>
-                <span className="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-500 text-slate-950">
-                  ADMIN AUTORIZADO
-                </span>
+                {adminUnlocked ? (
+                  <span className="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-500 text-slate-950 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3" />
+                    <span>ADMIN AUTORIZADO</span>
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1">
+                    <Eye className="w-3 h-3 text-blue-400" />
+                    <span>👁️ MODO VISUAL LECTURA</span>
+                  </span>
+                )}
+
+                {!adminUnlocked && (
+                  <button
+                    onClick={handleRequestAdminUnlock}
+                    className="text-[10px] bg-slate-900 hover:bg-slate-800 text-amber-400 px-2.5 py-0.5 rounded-full border border-amber-500/30 font-bold transition-all flex items-center gap-1"
+                    title="Desbloquear edición de fichajes y administración"
+                  >
+                    <KeyRound className="w-3 h-3 text-amber-400" />
+                    <span>🔑 Activar Modo Edición</span>
+                  </button>
+                )}
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
                 Gula Logística | {activeWeekData?.meta?.week || "Semana 3"} ({activeWeekData?.meta?.dateRange})
@@ -199,7 +233,13 @@ export default function PartnerDashboardView({
             </select>
 
             <button
-              onClick={onOpenAddWeek}
+              onClick={() => {
+                if (adminUnlocked) {
+                  onOpenAddWeek();
+                } else {
+                  handleRequestAdminUnlock();
+                }
+              }}
               className="bg-slate-900 hover:bg-slate-800 text-slate-200 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1 border border-slate-800 transition-all"
             >
               <Plus className="w-3.5 h-3.5 text-amber-400" />
@@ -227,7 +267,13 @@ export default function PartnerDashboardView({
           </button>
 
           <button
-            onClick={onOpenGemini}
+            onClick={() => {
+              if (adminUnlocked) {
+                onOpenGemini();
+              } else {
+                handleRequestAdminUnlock();
+              }
+            }}
             className="bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-md active:scale-95 transition-all"
           >
             <Wand2 className="w-4 h-4" />
@@ -534,7 +580,7 @@ export default function PartnerDashboardView({
         </div>
       )}
 
-      {/* TAB 2: Control & Edición de Fichajes Admin */}
+      {/* TAB 2: Control & Consulta de Fichajes Registrados */}
       {activeTab === 'fichajes' && (
         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-5 animate-fadeIn">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
@@ -542,24 +588,43 @@ export default function PartnerDashboardView({
               <div className="flex items-center space-x-2">
                 <Lock className="w-5 h-5 text-amber-400" />
                 <h3 className="text-xl font-extrabold text-white font-['Outfit']">
-                  Gestión y Edición de Fichajes (Solo Admin)
+                  Historial de Fichajes Registrados
                 </h3>
-                <span className="px-2.5 py-0.5 text-[10px] font-extrabold bg-amber-500 text-slate-950 rounded-full">
-                  CONTROL ADMINISTRATIVO
-                </span>
+                {adminUnlocked ? (
+                  <span className="px-2.5 py-0.5 text-[10px] font-extrabold bg-amber-500 text-slate-950 rounded-full">
+                    CONTROL ADMINISTRATIVO
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-0.5 text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full flex items-center gap-1">
+                    <Eye className="w-3 h-3 text-blue-400" />
+                    <span>MODO SOLO LECTURA (SOCIAS)</span>
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-400 mt-1">
-                Una vez enviado por un trabajador, solo las socias pueden modificar hora, fecha, tipo o eliminar el fichaje.
+                {adminUnlocked 
+                  ? 'Como Administrador autorizado, puedes editar la fecha/hora o eliminar fichajes.' 
+                  : 'Fichajes inmutables registrados por los trabajadores. Los datos están protegidos contra edición accidental.'}
               </p>
             </div>
 
-            <button
-              onClick={handleOpenCreateEntry}
-              className="py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center space-x-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Añadir Fichaje Manual (Admin)</span>
-            </button>
+            {adminUnlocked ? (
+              <button
+                onClick={handleOpenCreateEntry}
+                className="py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center space-x-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Añadir Fichaje Manual (Admin)</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleRequestAdminUnlock}
+                className="py-2.5 px-4 rounded-xl bg-slate-950 border border-slate-800 text-amber-400 font-bold text-xs flex items-center space-x-2 hover:bg-slate-900 transition-all"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                <span>🔒 Fichajes Inmutables (Activar Edición Admin)</span>
+              </button>
+            )}
           </div>
 
           {clockEntries.length === 0 ? (
@@ -579,7 +644,7 @@ export default function PartnerDashboardView({
                     <th className="py-3.5 px-4">Tarea / Concepto</th>
                     <th className="py-3.5 px-4">Tarifa (€/h)</th>
                     <th className="py-3.5 px-4">Estado Seguridad</th>
-                    <th className="py-3.5 px-4 text-center">Acciones Admin</th>
+                    {adminUnlocked && <th className="py-3.5 px-4 text-center">Acciones Admin</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
@@ -612,30 +677,32 @@ export default function PartnerDashboardView({
                       <td className="py-3.5 px-4">
                         <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 inline-flex items-center space-x-1">
                           <Lock className="w-3 h-3 text-amber-400" />
-                          <span>🔒 Bloqueado a Trabajador</span>
+                          <span>🔒 Registrado & Verificado</span>
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <div className="flex items-center justify-center space-x-2">
-                          <button
-                            onClick={() => handleOpenEditEntry(entry)}
-                            className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold flex items-center space-x-1.5 transition-all"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            <span>Editar</span>
-                          </button>
+                      {adminUnlocked && (
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center space-x-2">
+                            <button
+                              onClick={() => handleOpenEditEntry(entry)}
+                              className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold flex items-center space-x-1.5 transition-all"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>Editar</span>
+                            </button>
 
-                          <button
-                            onClick={() => {
-                              if (onDeleteClockEntry) onDeleteClockEntry(entry.id);
-                            }}
-                            className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all"
-                            title="Eliminar Fichaje (Admin)"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
+                            <button
+                              onClick={() => {
+                                if (onDeleteClockEntry) onDeleteClockEntry(entry.id);
+                              }}
+                              className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all"
+                              title="Eliminar Fichaje (Admin)"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
