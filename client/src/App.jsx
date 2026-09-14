@@ -440,6 +440,7 @@ export default function App() {
           onOpenShareModal={() => setIsShareModalOpen(true)}
           onOpenAddWeek={() => setIsWeekModalOpen(true)}
           onTogglePublicView={() => { setIsPartnerMode(false); setIsPublicPreviewMode(true); }}
+          onGoToDashboard={() => { setIsPartnerMode(false); setIsPublicPreviewMode(false); setActiveWorker(null); }}
           onUpdateClockEntry={handleUpdateClockEntry}
           onDeleteClockEntry={handleDeleteClockEntry}
           onClockEntryCreated={handleClockEntryCreated}
