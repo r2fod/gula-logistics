@@ -390,7 +390,7 @@ export default function BalancesAgreementsModal({ isOpen, onClose, balancesData,
                       <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                         Desglose de Conceptos & Turnos
                       </span>
-                      <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      <div className={`space-y-1.5 pr-1 ${worker.breakdown.length > 5 ? 'max-h-48 overflow-y-auto' : ''}`}>
                         {worker.breakdown.map((item, idx) => (
                           <div 
                             key={idx}
