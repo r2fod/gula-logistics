@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Edit3, Save, Plus, Trash2, Calendar } from 'lucide-react';
 
 export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, workersList = [], onSaveWeekData }) {
   const [localWeek, setLocalWeek] = useState(null);
+  const wasOpenRef = useRef(false);
 
   useEffect(() => {
-    if (isOpen && activeWeekData) {
-      // Deep clone to avoid mutating state directly while editing
+    // Solo recargar del servidor al ABRIR el modal (transición false→true) —
+    // si se recarga en cada cambio de `activeWeekData`, el poll de fondo de
+    // App.jsx (refetch cada 20s) pisa cualquier edición a medio hacer con el
+    // dato viejo del servidor, borrando lo que se esté escribiendo.
+    if (isOpen && !wasOpenRef.current && activeWeekData) {
       setLocalWeek(JSON.parse(JSON.stringify(activeWeekData)));
     }
+    wasOpenRef.current = isOpen;
   }, [isOpen, activeWeekData]);
 
   if (!isOpen || !localWeek) return null;
