@@ -8,7 +8,8 @@ export const logisticsData = {
     { role: "Dirección / Cocina / Ventas", members: "Anna y Cliente3" },
     { role: "Jefe Logística", members: "Persona8 (Supervisa y ayuda en base)" },
     { role: "Base & Preparación", members: "Persona4 (Pedidos/Checklist) + Persona5 (Apoyo Log/Prep)" },
-    { role: "Flota / Conductores", members: "Persona1 & Persona2 (Veteranos) | Jaime (Guiado) | Persona3 (Backup)" }
+    { role: "Flota / Conductores", members: "Persona1 & Persona2 (Veteranos) | Jaime (Guiado) | Persona3 (Backup)" },
+    { role: "Limpieza & Vajilla Eventos", members: "Persona6 + Persona7 (Extra 10€/h)" }
   ],
   schedule: {
     martes: {
