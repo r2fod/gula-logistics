@@ -41,8 +41,8 @@ export const logisticsData = {
     jueves: {
       title: "Jueves 17", badge: "Eventos Empresa1 & Empresa2",
       tasks: [
-        { id: "j1", text: "Jornada Eventos: Catering Empresa1 (100 pax) — descarga y montaje de estructura en lugar del evento (Conduce/Apoyo: Jaime, Persona3).", location: "Evento Empresa1", timeFrame: "09:00 - 18:00", mapsUrl: "", assigned: ["Jaime", "Persona3"], completed: false },
-        { id: "j2", text: "Evento Empresa2 — logística completa, descarga y montaje estructura (Persona5).", location: "Evento Empresa2", timeFrame: "09:00 - 18:00", mapsUrl: "", assigned: ["Persona5"], completed: false },
+        { id: "j1", text: "Jornada Eventos: Catering Empresa1 (100 pax) — descarga y montaje de estructura en el lugar del evento (Conduce: Jaime | Apoyo descarga y montaje: Persona3).", location: "Evento Empresa1", timeFrame: "09:00 - 18:00", mapsUrl: "", assigned: ["Jaime", "Persona3"], completed: false, truck: "Camión Gula" },
+        { id: "j2", text: "Evento Empresa2 — logística completa, descarga y montaje de estructura (Conduce: Persona1 | Apoyo descarga y montaje: Persona5).", location: "Evento Empresa2", timeFrame: "09:00 - 18:00", mapsUrl: "", assigned: ["Persona1", "Persona5"], completed: false, truck: "Camión Covey" },
         { id: "j3", text: "Regreso de eventos y pre-carga de frío para el fin de semana. Persona4 verifica checklist y prepara material. Persona8 supervisa.", location: "Almacén Base", timeFrame: "19:00 - 21:00", mapsUrl: "", assigned: ["Persona4", "Persona8"], completed: false }
       ]
     },
