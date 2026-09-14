@@ -127,9 +127,9 @@ export default function PayrollReportModal({
               <DollarSign className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center flex-wrap gap-2">
                 <h3 className="text-xl font-bold font-['Outfit']">Informe de Fichajes, Horas & Nóminas</h3>
-                <span className="px-2 py-0.5 text-[10px] font-extrabold rounded bg-slate-800 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                <span className="px-2 py-0.5 text-[10px] font-extrabold rounded bg-slate-800 text-amber-400 border border-amber-500/30 flex items-center gap-1 shrink-0">
                   <Lock className="w-3 h-3 text-amber-400" />
                   <span>Fichajes Bloqueados</span>
                 </span>
