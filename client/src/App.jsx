@@ -74,7 +74,15 @@ export default function App() {
 
   const [activeWeekId, setActiveWeekId] = useState('week_3');
   const [activeWorker, setActiveWorker] = useState(null);
-  const [isPartnerMode, setIsPartnerMode] = useState(true);
+  const [isPartnerMode, setIsPartnerMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const hasSociasFlag = params.has('socias') || params.get('socias') !== null;
+    const tokenParam = params.get('token') || params.get('key');
+    const roleParam = params.get('role');
+    const viewParam = params.get('view');
+    if (viewParam === 'public') return false;
+    return (hasSociasFlag || !!tokenParam || roleParam === 'socias' || viewParam === 'socias');
+  });
 
   // Modals
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -249,6 +257,7 @@ export default function App() {
           onOpenGemini={() => setIsGeminiModalOpen(true)}
           onOpenShareModal={() => setIsShareModalOpen(true)}
           onOpenAddWeek={() => setIsWeekModalOpen(true)}
+          onTogglePublicView={() => setIsPartnerMode(false)}
         />
 
         <ClockInModal
