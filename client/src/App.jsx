@@ -704,11 +704,11 @@ export default function App() {
             </div>
 
             {/* Week Selector Dropdown & Badge */}
-            <div className="flex items-center space-x-2.5">
+            <div className="flex flex-wrap items-center gap-2.5 min-w-0 w-full sm:w-auto">
               <select
                 value={activeWeekId}
                 onChange={(e) => setActiveWeekId(e.target.value)}
-                className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3.5 py-2 rounded-xl text-xs focus:outline-none shadow-inner"
+                className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3.5 py-2 rounded-xl text-xs focus:outline-none shadow-inner min-w-0 max-w-full flex-1 sm:flex-none sm:max-w-[220px] truncate"
               >
                 {Object.values(allWeeks).map((w) => (
                   <option key={w.id} value={w.id}>{w.name} ({w.meta?.dateRange})</option>
