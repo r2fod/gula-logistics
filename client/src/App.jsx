@@ -33,6 +33,7 @@ import ClockInModal from './components/ClockInModal';
 import PayrollReportModal from './components/PayrollReportModal';
 import PartnerDashboardModal from './components/PartnerDashboardModal';
 import SecureAccessModal from './components/SecureAccessModal';
+import BalancesAgreementsModal from './components/BalancesAgreementsModal';
 import { logisticsData as BASE_DATA } from './data/logisticsData';
 
 const WORKERS_LIST = [
@@ -83,6 +84,7 @@ export default function App() {
   const [isPayrollModalOpen, setIsPayrollModalOpen] = useState(false);
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
   const [isSecureAccessModalOpen, setIsSecureAccessModalOpen] = useState(false);
+  const [isBalancesModalOpen, setIsBalancesModalOpen] = useState(false);
 
   const [copiedWorker, setCopiedWorker] = useState(null);
   const [copiedPartnerLink, setCopiedPartnerLink] = useState(false);
@@ -96,6 +98,7 @@ export default function App() {
     const workerParam = params.get('worker');
     const tokenParam = params.get('token') || params.get('key');
     const roleParam = params.get('role');
+    const viewParam = params.get('view') || params.get('modal');
 
     if (weekParam && allWeeks[weekParam]) {
       setActiveWeekId(weekParam);
@@ -103,6 +106,9 @@ export default function App() {
     if (workerParam) {
       const matched = WORKERS_LIST.find(w => w.name.toLowerCase() === workerParam.toLowerCase());
       if (matched) setActiveWorker(matched.name);
+    }
+    if (viewParam === 'saldos' || viewParam === 'acuerdos') {
+      setIsBalancesModalOpen(true);
     }
     if (tokenParam === SECURE_PARTNER_TOKEN || roleParam === 'socias' || tokenParam === 'socias2026' || tokenParam === 'gula2026') {
       setIsPartnerMode(true);
@@ -299,6 +305,14 @@ export default function App() {
                 <span>🔒 Acceso Socias</span>
               </button>
             )}
+
+            {/* Saldos & Acuerdos Button */}
+            <button
+              onClick={() => setIsBalancesModalOpen(true)}
+              className="flex-1 lg:flex-none bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-700 transition-all shadow-sm"
+            >
+              <span>📜 Saldos & Acuerdos</span>
+            </button>
 
             {/* Payroll Report */}
             <button
@@ -622,6 +636,11 @@ export default function App() {
         entries={clockEntries}
         workersList={WORKERS_LIST}
         activeWeekData={activeWeek}
+      />
+
+      <BalancesAgreementsModal
+        isOpen={isBalancesModalOpen}
+        onClose={() => setIsBalancesModalOpen(false)}
       />
 
       <SecureAccessModal
