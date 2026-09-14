@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   DollarSign, 
@@ -24,6 +24,7 @@ import {
   Minimize2
 } from 'lucide-react';
 import { initialBalancesData } from '../data/balancesData';
+import { fetchBalancesFromAPI } from '../data/apiService';
 import LiveMonitorPanel from './LiveMonitorPanel';
 
 export default function PartnerDashboardModal({ 
@@ -38,6 +39,15 @@ export default function PartnerDashboardModal({
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeTab, setActiveTab] = useState('balances'); // Default to balances view matching user request!
   const [expandedWorkerId, setExpandedWorkerId] = useState('jefferson');
+  const [balancesData, setBalancesData] = useState(initialBalancesData);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchBalancesFromAPI().then(apiData => {
+        if (apiData && apiData.workers) setBalancesData(apiData);
+      });
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -333,7 +343,7 @@ export default function PartnerDashboardModal({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {initialBalancesData.workers.map((worker) => {
+              {(balancesData.workers || []).map((worker) => {
                 const isExpanded = expandedWorkerId === worker.id;
 
                 return (

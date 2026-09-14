@@ -29,6 +29,7 @@ import {
   Zap
 } from 'lucide-react';
 import { initialBalancesData } from '../data/balancesData';
+import { fetchBalancesFromAPI } from '../data/apiService';
 import LiveMonitorPanel from './LiveMonitorPanel';
 import AdminClockEditModal from './AdminClockEditModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
@@ -59,24 +60,24 @@ export default function PartnerDashboardView({
   const [adminUnlocked, setAdminUnlocked] = useState(isAdmin);
   const [isAdminEditOpen, setIsAdminEditOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
+  const [balancesData, setBalancesData] = useState(initialBalancesData);
 
   useEffect(() => {
     setAdminUnlocked(isAdmin);
   }, [isAdmin]);
 
-  const handleRequestAdminUnlock = () => {
-    if (onOpenAdminLogin) {
-      onOpenAdminLogin();
-    } else {
-      const pwd = prompt("Introduce la clave de Administrador (Raúl):");
-      if (pwd && ['raul', 'raul2026', 'gula2026', 'admin', '1234'].includes(pwd.toLowerCase().trim())) {
-        setAdminUnlocked(true);
-        if (onUnlockAdmin) onUnlockAdmin();
-        alert("🟢 Modo Administrador (Raúl) desbloqueado.");
-      } else if (pwd !== null) {
-        alert("❌ Clave incorrecta. El panel se mantiene en Modo Solo Lectura de Socias.");
-      }
+  // Live financial balances come only from the backend/MongoDB — never from
+  // the bundled placeholder, which holds no real amounts.
+  useEffect(() => {
+    if (activeTab === 'balances' && adminUnlocked) {
+      fetchBalancesFromAPI().then(apiData => {
+        if (apiData && apiData.workers) setBalancesData(apiData);
+      });
     }
+  }, [activeTab, adminUnlocked]);
+
+  const handleRequestAdminUnlock = () => {
+    if (onOpenAdminLogin) onOpenAdminLogin();
   };
 
   const getPartnerSecureLink = () => {
@@ -419,13 +420,13 @@ export default function PartnerDashboardView({
               </button>
 
               <span className="text-xs text-slate-400 font-semibold bg-slate-900 px-3 py-2 rounded-xl border border-slate-800 hidden md:inline">
-                Actualizado: {initialBalancesData.lastUpdated}
+                Actualizado: {balancesData.lastUpdated || '—'}
               </span>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {initialBalancesData.workers.map((worker) => {
+            {(balancesData.workers || []).map((worker) => {
               const isExpanded = expandedWorkerId === worker.id;
 
               return (

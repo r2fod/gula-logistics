@@ -137,7 +137,7 @@ export default function BalancesAgreementsModal({ isOpen, onClose }) {
                     Control de Saldos & Acuerdos
                   </h3>
                   <span className="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                    ACTUALIZADO {initialBalancesData.lastUpdated}
+                    ACTUALIZADO {balancesData.lastUpdated || '—'}
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">

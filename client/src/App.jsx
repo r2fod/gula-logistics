@@ -37,12 +37,14 @@ import BalancesAgreementsModal from './components/BalancesAgreementsModal';
 import WorkerView from './components/WorkerView';
 import AdminLoginModal from './components/AdminLoginModal';
 import { logisticsData as BASE_DATA } from './data/logisticsData';
-import { 
-  fetchClockEntriesFromAPI, 
-  saveClockEntryToAPI, 
-  updateClockEntryInAPI, 
-  deleteClockEntryInAPI, 
-  clearAllClockEntriesInAPI 
+import {
+  fetchClockEntriesFromAPI,
+  saveClockEntryToAPI,
+  updateClockEntryInAPI,
+  deleteClockEntryInAPI,
+  clearAllClockEntriesInAPI,
+  getStoredAdminToken,
+  setStoredAdminToken
 } from './data/apiService';
 
 const WORKERS_LIST = [
@@ -111,8 +113,6 @@ export default function App() {
   const [copiedWorker, setCopiedWorker] = useState(null);
   const [copiedPartnerLink, setCopiedPartnerLink] = useState(false);
 
-  const SECURE_PARTNER_TOKEN = 'gula_socias_secure_98f7a2b9d31e40c5';
-
   // Detect URL params & sync sensitive clock entries from MongoDB / API
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -134,15 +134,15 @@ export default function App() {
     if (viewParam === 'saldos' || viewParam === 'acuerdos') {
       setIsBalancesModalOpen(true);
     }
-    if (
-      hasSociasFlag ||
-      hasAdminFlag ||
-      tokenParam === SECURE_PARTNER_TOKEN || 
-      roleParam === 'socias' || 
-      roleParam === 'admin' ||
-      tokenParam === 'socias2026' || 
-      tokenParam === 'gula2026'
-    ) {
+
+    // A real, server-issued admin session token travelling in the link
+    // (shared by an admin via "Copiar Link Socias") unlocks the same access
+    // as logging in directly — no password baked into the URL or the bundle.
+    if (tokenParam) {
+      setStoredAdminToken(tokenParam, Date.now() + 30 * 24 * 60 * 60 * 1000);
+      setIsAdminUnlocked(true);
+    }
+    if (hasSociasFlag || hasAdminFlag || roleParam === 'socias' || roleParam === 'admin' || !!tokenParam) {
       setIsPartnerMode(true);
     }
 
@@ -259,8 +259,14 @@ export default function App() {
     return `${window.location.origin}${window.location.pathname}?week=${activeWeekId}&worker=${encodeURIComponent(workerName)}`;
   };
 
+  // The secure "socias" link now carries a real, server-issued admin session
+  // token (obtained after logging in with AdminLoginModal) instead of a
+  // static secret baked into the client bundle. Returns null if no admin
+  // session is active yet.
   const getPartnerSecureLink = () => {
-    return `${window.location.origin}${window.location.pathname}?token=${SECURE_PARTNER_TOKEN}`;
+    const token = getStoredAdminToken();
+    if (!token) return null;
+    return `${window.location.origin}${window.location.pathname}?token=${token}`;
   };
 
   const copyWorkerLink = (workerName) => {
@@ -270,7 +276,9 @@ export default function App() {
   };
 
   const copyPartnerSecureLink = () => {
-    navigator.clipboard.writeText(getPartnerSecureLink());
+    const link = getPartnerSecureLink();
+    if (!link) return;
+    navigator.clipboard.writeText(link);
     setCopiedPartnerLink(true);
     setTimeout(() => setCopiedPartnerLink(false), 3000);
   };
@@ -283,6 +291,7 @@ export default function App() {
 
   const sharePartnerLinkWhatsApp = () => {
     const link = getPartnerSecureLink();
+    if (!link) return;
     const text = `🔒 Hola Socias, aquí tenéis el Enlace Seguro de Dirección para Gula Logística (Planificación + Saldos de Horas): ${link}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
@@ -715,32 +724,38 @@ export default function App() {
                 <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full">SEGURO</span>
               </div>
 
-              <div className="flex items-center space-x-2 pt-1">
-                <button
-                  onClick={copyPartnerSecureLink}
-                  className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center justify-center space-x-1.5 transition-colors border border-slate-700"
-                >
-                  {copiedPartnerLink ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-emerald-400">¡Copiado!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Copiar Link Socias</span>
-                    </>
-                  )}
-                </button>
+              {isAdmin ? (
+                <div className="flex items-center space-x-2 pt-1">
+                  <button
+                    onClick={copyPartnerSecureLink}
+                    className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center justify-center space-x-1.5 transition-colors border border-slate-700"
+                  >
+                    {copiedPartnerLink ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400">¡Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copiar Link Socias</span>
+                      </>
+                    )}
+                  </button>
 
-                <button
-                  onClick={sharePartnerLinkWhatsApp}
-                  className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>WhatsApp Socias</span>
-                </button>
-              </div>
+                  <button
+                    onClick={sharePartnerLinkWhatsApp}
+                    className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>WhatsApp Socias</span>
+                  </button>
+                </div>
+              ) : (
+                <p className="text-[11px] text-amber-300/80 pt-1">
+                  Inicia sesión como Administrador para generar el enlace seguro (el enlace incluye tu sesión, ya no una clave fija).
+                </p>
+              )}
             </div>
 
             {/* Workers List */}
