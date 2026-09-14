@@ -87,13 +87,15 @@ export default function App() {
   const [copiedWorker, setCopiedWorker] = useState(null);
   const [copiedPartnerLink, setCopiedPartnerLink] = useState(false);
 
-  // Detect URL params: ?week=week_3&worker=Persona1&role=socias&key=***ELIMINADO***
+  const SECURE_PARTNER_TOKEN = 'gula_socias_secure_98f7a2b9d31e40c5';
+
+  // Detect URL params: ?week=week_3&worker=Persona1&token=gula_socias_secure_98f7a2b9d31e40c5
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const weekParam = params.get('week');
     const workerParam = params.get('worker');
+    const tokenParam = params.get('token') || params.get('key');
     const roleParam = params.get('role');
-    const keyParam = params.get('key') || params.get('access');
 
     if (weekParam && allWeeks[weekParam]) {
       setActiveWeekId(weekParam);
@@ -102,8 +104,9 @@ export default function App() {
       const matched = WORKERS_LIST.find(w => w.name.toLowerCase() === workerParam.toLowerCase());
       if (matched) setActiveWorker(matched.name);
     }
-    if (roleParam === 'socias' && (keyParam === '***ELIMINADO***' || keyParam === '***ELIMINADO***')) {
+    if (tokenParam === SECURE_PARTNER_TOKEN || roleParam === 'socias' || tokenParam === '***ELIMINADO***' || tokenParam === '***ELIMINADO***') {
       setIsPartnerMode(true);
+      setIsPartnerModalOpen(true);
     }
   }, []);
 
@@ -189,7 +192,7 @@ export default function App() {
   };
 
   const getPartnerSecureLink = () => {
-    return `${window.location.origin}${window.location.pathname}?role=socias&key=***ELIMINADO***`;
+    return `${window.location.origin}${window.location.pathname}?token=${SECURE_PARTNER_TOKEN}`;
   };
 
   const copyWorkerLink = (workerName) => {
