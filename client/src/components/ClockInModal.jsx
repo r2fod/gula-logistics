@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Play, Square, X, CheckCircle2, User, DollarSign, ShieldCheck } from 'lucide-react';
+import { Clock, Play, Square, X, CheckCircle2, User, DollarSign, ShieldCheck, Lock } from 'lucide-react';
 
 export default function ClockInModal({ 
   isOpen, 
@@ -194,6 +194,14 @@ export default function ClockInModal({
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
             />
           </div>
+        </div>
+
+        {/* Lock Security Notice */}
+        <div className="mb-4 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] flex items-start space-x-2">
+          <Lock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <span>
+            <b>Aviso de Seguridad:</b> Una vez enviado el fichaje, queda registrado y <b>bloqueado</b>. Solo la Administración / Socias puede modificarlo.
+          </span>
         </div>
 
         {/* Action Buttons */}
