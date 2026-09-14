@@ -85,15 +85,29 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
       });
     };
 
-    const linkTrucksFromText = (taskId, text) => {
-      if (text.includes('Covey')) links.push({ source: taskId, target: 'truck_covey' });
-      if (text.includes('Albacar')) links.push({ source: taskId, target: 'truck_albacar' });
-      if (text.includes('Gula')) links.push({ source: taskId, target: 'truck_gula' });
+    const truckIdByText = (text) => {
+      if (text.includes('Covey')) return 'truck_covey';
+      if (text.includes('Albacar')) return 'truck_albacar';
+      if (text.includes('Gula')) return 'truck_gula';
+      return null;
+    };
+
+    // Prefer the task's own `truck` field (set via the manual editor) over
+    // scanning the text — a task can use a truck without naming it in the sentence.
+    const linkTruck = (taskId, truckField, text) => {
+      if (truckField) {
+        const truckId = truckIdByText(truckField);
+        if (truckId) links.push({ source: taskId, target: truckId });
+        return;
+      }
       if (text.includes('3 camiones')) {
         links.push({ source: taskId, target: 'truck_gula' });
         links.push({ source: taskId, target: 'truck_covey' });
         links.push({ source: taskId, target: 'truck_albacar' });
+        return;
       }
+      const truckId = truckIdByText(text);
+      if (truckId) links.push({ source: taskId, target: truckId });
     };
 
     // 4. Task Nodes & Links
@@ -113,10 +127,11 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
         const textStr = typeof tItem === 'object' ? tItem.text : tItem;
         const completed = typeof tItem === 'object' ? !!tItem.completed : false;
         const assigned = typeof tItem === 'object' ? tItem.assigned : [];
+        const truck = typeof tItem === 'object' ? tItem.truck : null;
         nodes.push({ id, type: 'task', label: textStr, completed, dayId, dayKey, idx });
         links.push({ source: dayId, target: id });
 
-        linkTrucksFromText(id, textStr);
+        linkTruck(id, truck, textStr);
         linkAssignedWorkers(id, assigned);
       });
     });
@@ -150,10 +165,11 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
       const id = `task_domingo_${idx}`;
       const textStr = typeof tItem === 'object' ? tItem.text : tItem;
       const assigned = typeof tItem === 'object' ? tItem.assigned : [];
+      const truck = typeof tItem === 'object' ? tItem.truck : null;
       nodes.push({ id, type: 'task', label: textStr, dayId: 'day_domingo', dayKey: 'sundayMonday', idx });
       links.push({ source: 'day_domingo', target: id });
 
-      linkTrucksFromText(id, textStr);
+      linkTruck(id, truck, textStr);
       linkAssignedWorkers(id, assigned);
     });
 
