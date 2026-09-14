@@ -26,7 +26,6 @@ const FALLBACK_DATA = {
     status: "Operativa Activa"
   },
   team: [
-    { role: "Dirección / Cocina", members: "Anna y Rocío", category: "management", icon: ChefHat, count: 2 },
     { role: "Jefe Logística", members: "Raúl (Supervisa)", category: "lead", icon: ShieldCheck, count: 1 },
     { role: "Base & Preparación", members: "Irene + Jeferson", category: "prep", icon: PackageCheck, count: 2 },
     { role: "Flota", members: "Gonzalo, Ricardo, Jaime, Johan", category: "fleet", icon: Truck, count: 4 }
