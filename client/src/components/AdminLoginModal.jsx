@@ -1,23 +1,31 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, X, KeyRound, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Lock, X, KeyRound, AlertCircle, RefreshCw } from 'lucide-react';
+import { loginAdmin } from '../data/apiService';
 
 export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const cleanPwd = password.trim().toLowerCase();
-    
-    if (['gula2026', 'raul2026', 'raul', '1234'].includes(cleanPwd)) {
-      setError('');
+    if (!password.trim() || loading) return;
+
+    setLoading(true);
+    setError('');
+
+    const result = await loginAdmin(password.trim());
+
+    setLoading(false);
+
+    if (result.success) {
       setPassword('');
       onSuccess();
       onClose();
     } else {
-      setError('Clave de Administrador incorrecta. Acceso reservado a Raúl.');
+      setError(result.error || 'Clave de Administrador incorrecta.');
     }
   };
 
@@ -78,10 +86,20 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
             </button>
             <button
               type="submit"
-              className="flex-1 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold shadow-lg shadow-amber-500/20 transition-all active:scale-95 flex items-center justify-center space-x-1.5"
+              disabled={loading}
+              className="flex-1 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold shadow-lg shadow-amber-500/20 transition-all active:scale-95 flex items-center justify-center space-x-1.5 disabled:opacity-60"
             >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Entrar como Admin</span>
+              {loading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Verificando...</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Entrar como Admin</span>
+                </>
+              )}
             </button>
           </div>
         </form>

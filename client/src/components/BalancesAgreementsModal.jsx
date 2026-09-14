@@ -27,26 +27,25 @@ import {
 import { initialBalancesData } from '../data/balancesData';
 import { fetchBalancesFromAPI } from '../data/apiService';
 
-export default function BalancesAgreementsModal({ isOpen, onClose }) {
+export default function BalancesAgreementsModal({ isOpen, onClose, balancesData, setBalancesData, isAdmin }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all'); // 'all' | 'favor' | 'debt' | 'payroll'
   const [copiedId, setCopiedId] = useState(null);
   const [expandedWorkerId, setExpandedWorkerId] = useState('jefferson'); // Default expand Jefferson to show purse details
-  const [balancesData, setBalancesData] = useState(initialBalancesData);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && setBalancesData) {
       fetchBalancesFromAPI().then(apiData => {
         if (apiData && apiData.workers) {
           setBalancesData(apiData);
         }
       });
     }
-  }, [isOpen]);
+  }, [isOpen, setBalancesData]);
 
   if (!isOpen) return null;
 
-  const workers = balancesData.workers || initialBalancesData.workers;
+  const workers = balancesData?.workers || initialBalancesData.workers;
 
   // Filter workers based on search and tab
   const filteredWorkers = workers.filter(w => {
@@ -137,7 +136,7 @@ export default function BalancesAgreementsModal({ isOpen, onClose }) {
                     Control de Saldos & Acuerdos
                   </h3>
                   <span className="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-                    ACTUALIZADO {initialBalancesData.lastUpdated}
+                    ACTUALIZADO {balancesData.lastUpdated || '—'}
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-1">

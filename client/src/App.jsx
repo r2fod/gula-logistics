@@ -34,23 +34,31 @@ import PayrollReportModal from './components/PayrollReportModal';
 import PartnerDashboardModal from './components/PartnerDashboardModal';
 import PartnerDashboardView from './components/PartnerDashboardView';
 import BalancesAgreementsModal from './components/BalancesAgreementsModal';
+import AdminWorkerEditorModal from './components/AdminWorkerEditorModal';
+import AdminTaskEditorModal from './components/AdminTaskEditorModal';
+
 import WorkerView from './components/WorkerView';
+import PublicView from './components/PublicView';
 import AdminLoginModal from './components/AdminLoginModal';
 import { logisticsData as BASE_DATA } from './data/logisticsData';
-import { 
-  fetchClockEntriesFromAPI, 
-  saveClockEntryToAPI, 
-  updateClockEntryInAPI, 
-  deleteClockEntryInAPI, 
-  clearAllClockEntriesInAPI 
+import {
+  fetchClockEntriesFromAPI,
+  saveClockEntryToAPI,
+  updateClockEntryInAPI,
+  deleteClockEntryInAPI,
+  clearAllClockEntriesInAPI,
+  getStoredAdminToken,
+  setStoredAdminToken,
+  logoutAdmin
 } from './data/apiService';
+import { initialBalancesData } from './data/balancesData';
 
-const WORKERS_LIST = [
+const DEFAULT_WORKERS_LIST = [
   { name: "Gonzalo", role: "Conductor Flota (Veterano)", truck: "Camión Covey (Alquiler)", avatar: "🚛", isPayroll: false, rate: 10 },
   { name: "Ricardo", role: "Conductor Flota (Veterano)", truck: "Camión Gula (Propio)", avatar: "🚚", isPayroll: false, rate: 10 },
   { name: "Jaime", role: "Conductor Flota (Guiado)", truck: "Camión Albacar (Alquiler)", avatar: "🚛", isPayroll: false, rate: 10 },
   { name: "Johan", role: "Conductor & Backup", truck: "Camión Covey / Apoyo", avatar: "🚚", isPayroll: false, rate: 10 },
-  { name: "Irene", role: "Base & Checklist", truck: "Almacén Base", avatar: "📦", isPayroll: true, rate: 14 },
+  { name: "Irene", role: "Ayudante Logística / Prepara Eventos / Verifica Checklist", truck: "Almacén Base", avatar: "📦", isPayroll: true, rate: 14 },
   { name: "Jeferson", role: "Apoyo Logística & Prep", truck: "Base / Camión Gula", avatar: "📦", isPayroll: false, rate: 10 },
   { name: "Kerly", role: "Gula Limpieza Eventos", truck: "Limpieza Almacén", avatar: "🧹", isPayroll: false, rate: 10 },
   { name: "Jose", role: "Gula Limpieza & Apoyo", truck: "Limpieza Almacén", avatar: "🧹", isPayroll: false, rate: 10 },
@@ -64,9 +72,59 @@ const BASE_WEEK_3 = {
 };
 
 export default function App() {
+  const [workersList, setWorkersList] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gula_workers_v1');
+      return saved ? JSON.parse(saved) : DEFAULT_WORKERS_LIST;
+    } catch {
+      return DEFAULT_WORKERS_LIST;
+    }
+  });
+
+  const [balancesData, setBalancesData] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gula_balances_v1');
+      return saved ? JSON.parse(saved) : initialBalancesData;
+    } catch {
+      return initialBalancesData;
+    }
+  });
+
+  const handleAddWorker = (newWorker) => {
+    // 1. Añadir a la lista de trabajadores
+    const updatedWorkers = [...workersList, newWorker];
+    setWorkersList(updatedWorkers);
+    localStorage.setItem('gula_workers_v1', JSON.stringify(updatedWorkers));
+
+    // 2. Añadir perfil de saldo automático
+    const newBalanceProfile = {
+      id: newWorker.name.toLowerCase().replace(/\s+/g, '-'),
+      name: newWorker.name,
+      role: newWorker.role,
+      avatar: newWorker.avatar || "👤",
+      status: "Sin saldo",
+      statusType: "neutral",
+      currentBalance: 0.00,
+      agreements: [
+        "Extra a 10,00 € / hora (Por Defecto)"
+      ],
+      breakdown: [
+        { concept: "Alta inicial en el sistema", amount: 0.00, isPositive: true }
+      ],
+      notes: "Añadido manualmente al sistema."
+    };
+
+    const updatedBalances = {
+      ...balancesData,
+      workers: [...(balancesData.workers || []), newBalanceProfile]
+    };
+    setBalancesData(updatedBalances);
+    localStorage.setItem('gula_balances_v1', JSON.stringify(updatedBalances));
+  };
+
   const [allWeeks, setAllWeeks] = useState(() => {
     try {
-      const saved = localStorage.getItem('gula_logistics_all_weeks_v8');
+      const saved = localStorage.getItem('gula_logistics_all_weeks_v10');
       return saved ? JSON.parse(saved) : { week_3: BASE_WEEK_3 };
     } catch {
       return { week_3: BASE_WEEK_3 };
@@ -85,9 +143,18 @@ export default function App() {
   const [activeWeekId, setActiveWeekId] = useState('week_3');
   const [activeWorker, setActiveWorker] = useState(null);
   const [showFullTeamView, setShowFullTeamView] = useState(false);
+  const [isPublicPreviewMode, setIsPublicPreviewMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('view') === 'public';
+  });
   const [isPartnerMode, setIsPartnerMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     const viewParam = params.get('view');
+
+    // ❗ CRITICAL: Si hay ?worker= en la URL, SIEMPRE modo trabajador (ignora localStorage)
+    const workerParam = params.get('worker');
+    if (workerParam) return false;
+
     if (viewParam === 'public') return false;
 
     const hasSociasFlag = params.has('socias') || params.get('socias') !== null;
@@ -95,7 +162,10 @@ export default function App() {
     const tokenParam = params.get('token') || params.get('key');
     const roleParam = params.get('role');
 
-    return (hasSociasFlag || hasAdminFlag || !!tokenParam || roleParam === 'socias' || viewParam === 'socias' || roleParam === 'admin');
+    // A real admin session token (not a fakeable flag) also defaults back to partner view.
+    const savedAdminMode = !!getStoredAdminToken();
+
+    return (hasSociasFlag || hasAdminFlag || !!tokenParam || roleParam === 'socias' || viewParam === 'socias' || roleParam === 'admin' || savedAdminMode);
   });
 
   // Modals
@@ -106,12 +176,12 @@ export default function App() {
   const [isPayrollModalOpen, setIsPayrollModalOpen] = useState(false);
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
   const [isBalancesModalOpen, setIsBalancesModalOpen] = useState(false);
+  const [isWorkerEditorModalOpen, setIsWorkerEditorModalOpen] = useState(false);
+  const [isTaskEditorModalOpen, setIsTaskEditorModalOpen] = useState(false);
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
 
   const [copiedWorker, setCopiedWorker] = useState(null);
   const [copiedPartnerLink, setCopiedPartnerLink] = useState(false);
-
-  const SECURE_PARTNER_TOKEN = 'gula_socias_secure_98f7a2b9d31e40c5';
 
   // Detect URL params & sync sensitive clock entries from MongoDB / API
   useEffect(() => {
@@ -128,21 +198,21 @@ export default function App() {
       setActiveWeekId(weekParam);
     }
     if (workerParam) {
-      const matched = WORKERS_LIST.find(w => w.name.toLowerCase() === workerParam.toLowerCase());
+      const matched = workersList.find(w => w.name.toLowerCase() === workerParam.toLowerCase());
       if (matched) setActiveWorker(matched.name);
     }
     if (viewParam === 'saldos' || viewParam === 'acuerdos') {
       setIsBalancesModalOpen(true);
     }
-    if (
-      hasSociasFlag ||
-      hasAdminFlag ||
-      tokenParam === SECURE_PARTNER_TOKEN || 
-      roleParam === 'socias' || 
-      roleParam === 'admin' ||
-      tokenParam === 'socias2026' || 
-      tokenParam === 'gula2026'
-    ) {
+
+    // A real, server-issued admin session token travelling in the link
+    // (shared by an admin via "Copiar Link Socias") unlocks the same access
+    // as logging in directly — no password baked into the URL or the bundle.
+    if (tokenParam) {
+      setStoredAdminToken(tokenParam, Date.now() + 30 * 24 * 60 * 60 * 1000);
+      setIsAdminUnlocked(true);
+    }
+    if (hasSociasFlag || hasAdminFlag || roleParam === 'socias' || roleParam === 'admin' || !!tokenParam) {
       setIsPartnerMode(true);
     }
 
@@ -154,13 +224,31 @@ export default function App() {
     });
   }, []);
 
+  // Poll for fresh clock entries so the Live Monitor reflects fichajes made
+  // from other workers' own links (their phones) without a manual refresh.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchClockEntriesFromAPI().then(remoteEntries => {
+        if (remoteEntries && Array.isArray(remoteEntries)) {
+          setClockEntries(remoteEntries);
+        }
+      });
+    }, 20000);
+    return () => clearInterval(interval);
+  }, []);
+
   const updateWeeks = (newWeeks) => {
     setAllWeeks(newWeeks);
     try {
-      localStorage.setItem('gula_logistics_all_weeks_v8', JSON.stringify(newWeeks));
+      localStorage.setItem('gula_logistics_all_weeks_v10', JSON.stringify(newWeeks));
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const handleUpdateActiveWeek = (updatedWeekData) => {
+    const newWeeks = { ...allWeeks, [activeWeekId]: updatedWeekData };
+    updateWeeks(newWeeks);
   };
 
   const handleClockEntryCreated = (newEntry) => {
@@ -259,8 +347,14 @@ export default function App() {
     return `${window.location.origin}${window.location.pathname}?week=${activeWeekId}&worker=${encodeURIComponent(workerName)}`;
   };
 
+  // The secure "socias" link now carries a real, server-issued admin session
+  // token (obtained after logging in with AdminLoginModal) instead of a
+  // static secret baked into the client bundle. Returns null if no admin
+  // session is active yet.
   const getPartnerSecureLink = () => {
-    return `${window.location.origin}${window.location.pathname}?token=${SECURE_PARTNER_TOKEN}`;
+    const token = getStoredAdminToken();
+    if (!token) return null;
+    return `${window.location.origin}${window.location.pathname}?token=${token}`;
   };
 
   const copyWorkerLink = (workerName) => {
@@ -270,7 +364,9 @@ export default function App() {
   };
 
   const copyPartnerSecureLink = () => {
-    navigator.clipboard.writeText(getPartnerSecureLink());
+    const link = getPartnerSecureLink();
+    if (!link) return;
+    navigator.clipboard.writeText(link);
     setCopiedPartnerLink(true);
     setTimeout(() => setCopiedPartnerLink(false), 3000);
   };
@@ -283,13 +379,21 @@ export default function App() {
 
   const sharePartnerLinkWhatsApp = () => {
     const link = getPartnerSecureLink();
+    if (!link) return;
     const text = `🔒 Hola Socias, aquí tenéis el Enlace Seguro de Dirección para Gula Logística (Planificación + Saldos de Horas): ${link}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  // Admin mode state (Requires explicit password via AdminLoginModal)
-  const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
+  // Admin mode state — the source of truth is the signed backend session
+  // token (getStoredAdminToken), never a plain localStorage flag a visitor
+  // could fake from devtools with localStorage.setItem('x', 'true').
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => !!getStoredAdminToken());
   const isAdmin = isAdminUnlocked;
+
+  const handleAdminLogout = () => {
+    logoutAdmin();
+    setIsAdminUnlocked(false);
+  };
 
   const params = new URLSearchParams(window.location.search);
   const workerParam = params.get('worker');
@@ -302,10 +406,13 @@ export default function App() {
           allWeeks={allWeeks}
           activeWeekId={activeWeekId}
           onSelectWeek={setActiveWeekId}
-          workersList={WORKERS_LIST}
+          workersList={workersList}
           clockEntries={clockEntries}
           isAdmin={isAdmin}
-          onUnlockAdmin={() => setIsAdminUnlocked(true)}
+          onAddWorker={handleAddWorker}
+          onOpenWorkerEditor={() => setIsWorkerEditorModalOpen(true)}
+          onOpenTaskEditor={() => setIsTaskEditorModalOpen(true)}
+          onLogoutAdmin={handleAdminLogout}
           onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
           onOpenClockIn={(workerName) => {
             if (workerName && typeof workerName === 'string') setActiveWorker(workerName);
@@ -315,7 +422,7 @@ export default function App() {
           onOpenGemini={() => setIsGeminiModalOpen(true)}
           onOpenShareModal={() => setIsShareModalOpen(true)}
           onOpenAddWeek={() => setIsWeekModalOpen(true)}
-          onTogglePublicView={() => setIsPartnerMode(false)}
+          onTogglePublicView={() => { setIsPartnerMode(false); setIsPublicPreviewMode(true); }}
           onUpdateClockEntry={handleUpdateClockEntry}
           onDeleteClockEntry={handleDeleteClockEntry}
           onClockEntryCreated={handleClockEntryCreated}
@@ -324,7 +431,7 @@ export default function App() {
         <ClockInModal
           isOpen={isClockInModalOpen}
           onClose={() => setIsClockInModalOpen(false)}
-          workersList={WORKERS_LIST}
+          workersList={workersList}
           initialWorkerName={activeWorker}
           onClockEntryCreated={handleClockEntryCreated}
         />
@@ -333,7 +440,7 @@ export default function App() {
           isOpen={isPayrollModalOpen}
           onClose={() => setIsPayrollModalOpen(false)}
           entries={clockEntries}
-          workersList={WORKERS_LIST}
+          workersList={workersList}
           onClearEntries={handleClearClockEntries}
           isAdmin={isAdmin}
           onUpdateEntry={handleUpdateClockEntry}
@@ -351,12 +458,144 @@ export default function App() {
         <GeminiAssistantModal
           isOpen={isGeminiModalOpen}
           onClose={() => setIsGeminiModalOpen(false)}
-          onApplyGeneratedSchedule={handleApplyGeminiSchedule}
+          onApplyGeneratedSchedule={handleUpdateActiveWeek}
+          activeWeekData={activeWeek}
         />
+
+        {/* Share Modal (Copied from bottom to be available in Partner Mode) */}
+        {isShareModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+            <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl text-white">
+              <button 
+                onClick={() => setIsShareModalOpen(false)}
+                className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                  <Share2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold font-['Outfit']">Enlaces de WhatsApp</h3>
+                  <p className="text-xs text-slate-400">Envía a cada trabajador o socia su enlace seguro</p>
+                </div>
+              </div>
+
+              {/* Partner Link Box */}
+              <div className="mb-5 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-400 flex items-center space-x-1.5">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Enlace Seguro para Socias (1 Clic - Sin clave)</span>
+                  </span>
+                  <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full">SEGURO</span>
+                </div>
+
+                <div className="flex items-center space-x-2 pt-1">
+                  <button
+                    onClick={copyPartnerSecureLink}
+                    className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center justify-center space-x-1.5 transition-colors border border-slate-700"
+                  >
+                    {copiedPartnerLink ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400">¡Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copiar Link Socias</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={sharePartnerLinkWhatsApp}
+                    className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>WhatsApp Socias</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Workers List */}
+              <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                <span className="text-xs font-semibold text-slate-400 block uppercase tracking-wider">Enlaces de Trabajadores</span>
+                {workersList.map((w, idx) => (
+                  <div key={idx} className="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-2xl">{w.avatar}</span>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <h4 className="font-bold text-white text-sm">{w.name}</h4>
+                          {w.isPayroll ? (
+                            <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30">Nómina</span>
+                          ) : (
+                            <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30">10€/h</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400">{w.role}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2 w-full sm:w-auto">
+                      <button
+                        onClick={() => copyWorkerLink(w.name)}
+                        className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center space-x-1.5 transition-colors"
+                      >
+                        {copiedWorker === w.name ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <span className="text-emerald-400">¡Copiado!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            <span>Copiar Link</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() => shareViaWhatsApp(w.name)}
+                        className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>WhatsApp</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         <BalancesAgreementsModal
           isOpen={isBalancesModalOpen}
           onClose={() => setIsBalancesModalOpen(false)}
+          balancesData={balancesData}
+          setBalancesData={(newData) => {
+            setBalancesData(newData);
+            localStorage.setItem('gula_balances_v1', JSON.stringify(newData));
+          }}
+        />
+
+        <AdminWorkerEditorModal 
+          isOpen={isWorkerEditorModalOpen}
+          onClose={() => setIsWorkerEditorModalOpen(false)}
+          onAddWorker={handleAddWorker}
+        />
+
+        <AdminTaskEditorModal
+          isOpen={isTaskEditorModalOpen}
+          onClose={() => setIsTaskEditorModalOpen(false)}
+          activeWeekData={activeWeek}
+          workersList={workersList}
+          onSaveWeekData={handleUpdateActiveWeek}
         />
 
         <AdminLoginModal
@@ -376,12 +615,49 @@ export default function App() {
       <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-4 sm:p-6 md:p-8 font-sans selection:bg-amber-500 selection:text-slate-950">
         <WorkerView
           workerName={activeWorker}
-          workersList={WORKERS_LIST}
+          workersList={workersList}
           activeWeekData={activeWeek}
           clockEntries={clockEntries}
           onToggleTask={(dayKey, taskIdx) => toggleTask(dayKey, taskIdx)}
           onClockEntryCreated={handleClockEntryCreated}
           onOpenAdminDashboard={() => setIsPartnerMode(true)}
+        />
+      </div>
+    );
+  }
+
+  // Genuinely public, no-sensitive-data view: no saldos, no nóminas, no admin
+  // controls, regardless of whether this browser also has an admin session.
+  if (isPublicPreviewMode && !isPartnerMode && !activeWorker) {
+    return (
+      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans">
+        <div className="max-w-6xl mx-auto space-y-4">
+          <button
+            onClick={() => setIsPublicPreviewMode(false)}
+            className="text-xs bg-slate-900 hover:bg-slate-800 text-slate-300 px-3.5 py-2 rounded-xl font-semibold transition-colors border border-slate-800 flex items-center gap-1.5"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+            <span>Volver al Panel</span>
+          </button>
+          <PublicView
+            data={activeWeek}
+            workersList={workersList}
+            clockEntries={clockEntries}
+            onToggleTask={() => {}}
+            onClockEntryCreated={handleClockEntryCreated}
+            onOpenClockModal={(workerName) => {
+              if (workerName) setActiveWorker(workerName);
+              setIsClockInModalOpen(true);
+            }}
+          />
+        </div>
+
+        <ClockInModal
+          isOpen={isClockInModalOpen}
+          onClose={() => setIsClockInModalOpen(false)}
+          workersList={workersList}
+          initialWorkerName={activeWorker}
+          onClockEntryCreated={handleClockEntryCreated}
         />
       </div>
     );
@@ -509,7 +785,7 @@ export default function App() {
           <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 text-white p-5 rounded-3xl border border-blue-800/80 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-3.5">
               <div className="text-3xl p-2 bg-slate-950 rounded-2xl border border-slate-800">
-                {WORKERS_LIST.find(w => w.name === activeWorker)?.avatar || "👤"}
+                {workersList.find(w => w.name === activeWorker)?.avatar || "👤"}
               </div>
               <div>
                 <div className="flex items-center space-x-2">
@@ -522,9 +798,9 @@ export default function App() {
                 </div>
                 <h2 className="text-lg font-extrabold font-['Outfit']">Planificación de {activeWorker} — {activeWeek.name}</h2>
                 <div className="flex items-center space-x-2 text-xs text-slate-300 mt-1">
-                  <span>{WORKERS_LIST.find(w => w.name === activeWorker)?.role}</span>
+                  <span>{workersList.find(w => w.name === activeWorker)?.role}</span>
                   <span>•</span>
-                  {WORKERS_LIST.find(w => w.name === activeWorker)?.isPayroll ? (
+                  {workersList.find(w => w.name === activeWorker)?.isPayroll ? (
                     <span className="text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">Nómina Fija</span>
                   ) : (
                     <span className="text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Extra (10 €/h)</span>
@@ -568,13 +844,13 @@ export default function App() {
         <section className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-              <Users className="text-amber-400 w-4.5 h-4.5" /> Equipo, Nóminas y Extras ({WORKERS_LIST.length} Miembros)
+              <Users className="text-amber-400 w-4.5 h-4.5" /> Equipo, Nóminas y Extras ({workersList.length} Miembros)
             </h2>
             <span className="text-xs text-slate-400 hidden sm:inline">Haz clic en un trabajador para filtrar sus tareas</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-9 gap-3 text-xs">
-            {WORKERS_LIST.map((w, idx) => (
+            {workersList.map((w, idx) => (
               <div 
                 key={idx} 
                 onClick={() => setActiveWorker(w.name === activeWorker ? null : w.name)}
@@ -715,38 +991,44 @@ export default function App() {
                 <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full">SEGURO</span>
               </div>
 
-              <div className="flex items-center space-x-2 pt-1">
-                <button
-                  onClick={copyPartnerSecureLink}
-                  className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center justify-center space-x-1.5 transition-colors border border-slate-700"
-                >
-                  {copiedPartnerLink ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-emerald-400">¡Copiado!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Copiar Link Socias</span>
-                    </>
-                  )}
-                </button>
+              {isAdmin ? (
+                <div className="flex items-center space-x-2 pt-1">
+                  <button
+                    onClick={copyPartnerSecureLink}
+                    className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center justify-center space-x-1.5 transition-colors border border-slate-700"
+                  >
+                    {copiedPartnerLink ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400">¡Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copiar Link Socias</span>
+                      </>
+                    )}
+                  </button>
 
-                <button
-                  onClick={sharePartnerLinkWhatsApp}
-                  className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>WhatsApp Socias</span>
-                </button>
-              </div>
+                  <button
+                    onClick={sharePartnerLinkWhatsApp}
+                    className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5" />
+                    <span>WhatsApp Socias</span>
+                  </button>
+                </div>
+              ) : (
+                <p className="text-[11px] text-amber-300/80 pt-1">
+                  Inicia sesión como Administrador para generar el enlace seguro (el enlace incluye tu sesión, ya no una clave fija).
+                </p>
+              )}
             </div>
 
             {/* Workers List */}
             <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
               <span className="text-xs font-semibold text-slate-400 block uppercase tracking-wider">Enlaces de Trabajadores</span>
-              {WORKERS_LIST.map((w, idx) => (
+              {workersList.map((w, idx) => (
                 <div key={idx} className="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-center space-x-3">
                     <span className="text-2xl">{w.avatar}</span>
@@ -800,7 +1082,7 @@ export default function App() {
       <ClockInModal
         isOpen={isClockInModalOpen}
         onClose={() => setIsClockInModalOpen(false)}
-        workersList={WORKERS_LIST}
+        workersList={workersList}
         initialWorkerName={activeWorker}
         onClockEntryCreated={handleClockEntryCreated}
       />
@@ -809,7 +1091,7 @@ export default function App() {
         isOpen={isPayrollModalOpen}
         onClose={() => setIsPayrollModalOpen(false)}
         entries={clockEntries}
-        workersList={WORKERS_LIST}
+        workersList={workersList}
         onClearEntries={handleClearClockEntries}
         isAdmin={isPartnerMode}
         onUpdateEntry={handleUpdateClockEntry}
@@ -821,7 +1103,7 @@ export default function App() {
         isOpen={isPartnerModalOpen}
         onClose={() => setIsPartnerModalOpen(false)}
         entries={clockEntries}
-        workersList={WORKERS_LIST}
+        workersList={workersList}
         activeWeekData={activeWeek}
         onClockEntryCreated={handleClockEntryCreated}
         onOpenClockModal={(workerName) => {
@@ -833,6 +1115,11 @@ export default function App() {
       <BalancesAgreementsModal
         isOpen={isBalancesModalOpen}
         onClose={() => setIsBalancesModalOpen(false)}
+        balancesData={balancesData}
+        setBalancesData={(newData) => {
+          setBalancesData(newData);
+          localStorage.setItem('gula_balances_v1', JSON.stringify(newData));
+        }}
       />
 
       <WeekManagerModal
