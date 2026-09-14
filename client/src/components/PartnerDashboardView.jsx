@@ -53,6 +53,7 @@ export default function PartnerDashboardView({
   onOpenShareModal,
   onOpenAddWeek,
   onTogglePublicView,
+  onGoToDashboard,
   onUpdateClockEntry,
   onDeleteClockEntry,
   onClockEntryCreated,
@@ -76,12 +77,12 @@ export default function PartnerDashboardView({
   // Live financial balances come only from the backend/MongoDB — never from
   // the bundled placeholder, which holds no real amounts.
   useEffect(() => {
-    if (activeTab === 'balances' && adminUnlocked) {
+    if (activeTab === 'balances') {
       fetchBalancesFromAPI().then(apiData => {
         if (apiData && apiData.workers) setBalancesData(apiData);
       });
     }
-  }, [activeTab, adminUnlocked]);
+  }, [activeTab]);
 
   const handleRequestAdminUnlock = () => {
     if (onOpenAdminLogin) onOpenAdminLogin();
@@ -309,6 +310,13 @@ export default function PartnerDashboardView({
               <span>Vista Pública</span>
             </button>
           )}
+
+          {onGoToDashboard && (
+            <button onClick={onGoToDashboard} className="bg-slate-900 hover:bg-slate-800 text-emerald-400 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-emerald-500/30 transition-all" title="Panel de Control">
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              <span>Panel de Control</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -326,19 +334,29 @@ export default function PartnerDashboardView({
           <span>🔴 Actividad en Tiempo Real</span>
         </button>
 
-        {adminUnlocked && (
-          <button
-            onClick={() => setActiveTab('balances')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-              activeTab === 'balances'
-                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <TrendingUp className="w-3.5 h-3.5" />
-            <span>📜 Control de Saldos & Acuerdos</span>
-          </button>
-        )}
+        <button
+          onClick={() => setActiveTab('balances')}
+          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'balances'
+              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <TrendingUp className="w-3.5 h-3.5" />
+          <span>📜 Control de Saldos & Acuerdos</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('financial')}
+          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'financial'
+              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <DollarSign className="w-3.5 h-3.5" />
+          <span>💶 Resumen Financiero & Extras</span>
+        </button>
 
         <button
           onClick={() => setActiveTab('schedule')}
@@ -375,20 +393,6 @@ export default function PartnerDashboardView({
           <Truck className="w-3.5 h-3.5" />
           <span>🚚 Flota & Bodas</span>
         </button>
-
-        {adminUnlocked && (
-          <button
-            onClick={() => setActiveTab('financial')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-              activeTab === 'financial'
-                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <DollarSign className="w-3.5 h-3.5" />
-            <span>💶 Resumen Financiero & Extras</span>
-          </button>
-        )}
 
         <button
           onClick={() => setActiveTab('fichajes')}
