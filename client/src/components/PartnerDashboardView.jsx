@@ -292,16 +292,16 @@ export default function PartnerDashboardView({
             </button>
           )}
 
-          {adminUnlocked && (
-            <button onClick={onOpenShareModal} className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-blue-600/30 active:scale-95 transition-all">
+          {onOpenShareModal && (
+            <button onClick={onOpenShareModal} className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-blue-600/30 active:scale-95 transition-all" title="Enlaces de WhatsApp (Trabajadores y Socias)">
               <Share2 className="w-3.5 h-3.5" />
-              <span>🔗 Generar Enlaces</span>
+              <span>🔗 Enlaces WhatsApp</span>
             </button>
           )}
 
-          <button onClick={handleCopySecureLink} className="bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-slate-800 transition-all">
-            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copiedLink ? '¡Copiado!' : 'Copiar Link'}</span>
+          <button onClick={handleCopySecureLink} className="bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-amber-500/30 transition-all" title="Copiar enlace directo al Panel de Socias">
+            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-amber-400" />}
+            <span>{copiedLink ? '¡Link Copiado!' : 'Copiar Link Socias'}</span>
           </button>
 
           {onTogglePublicView && (

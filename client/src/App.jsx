@@ -364,14 +364,13 @@ export default function App() {
     return `${window.location.origin}${window.location.pathname}?week=${activeWeekId}&worker=${encodeURIComponent(workerName)}`;
   };
 
-  // The secure "socias" link now carries a real, server-issued admin session
-  // token (obtained after logging in with AdminLoginModal) instead of a
-  // static secret baked into the client bundle. Returns null if no admin
-  // session is active yet.
+  // Enlace para Socias: si hay token de admin lo incluye, y si no, genera el enlace directo ?socias
   const getPartnerSecureLink = () => {
     const token = getStoredAdminToken();
-    if (!token) return null;
-    return `${window.location.origin}${window.location.pathname}?token=${token}`;
+    if (token) {
+      return `${window.location.origin}${window.location.pathname}?socias&token=${token}`;
+    }
+    return `${window.location.origin}${window.location.pathname}?socias`;
   };
 
   const copyWorkerLink = (workerName) => {
@@ -503,13 +502,22 @@ export default function App() {
               </div>
 
               {/* Partner Link Box */}
-              <div className="mb-5 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+              <div className="mb-5 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-amber-400 flex items-center space-x-1.5">
                     <ShieldCheck className="w-4 h-4" />
-                    <span>Enlace Seguro para Socias (1 Clic - Sin clave)</span>
+                    <span>Enlace para Socias (1 Clic - Sin clave)</span>
                   </span>
-                  <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full">SEGURO</span>
+                  <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full">SOCIAS</span>
+                </div>
+
+                <div className="flex items-center bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={getPartnerSecureLink()}
+                    className="bg-transparent text-xs text-amber-300/90 font-mono w-full focus:outline-none select-all"
+                  />
                 </div>
 
                 <div className="flex items-center space-x-2 pt-1">
@@ -998,47 +1006,50 @@ export default function App() {
             </div>
 
             {/* Partner Link Box */}
-            <div className="mb-5 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+            <div className="mb-5 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-amber-400 flex items-center space-x-1.5">
                   <ShieldCheck className="w-4 h-4" />
-                  <span>Enlace Seguro para Socias (1 Clic - Sin clave)</span>
+                  <span>Enlace para Socias (1 Clic - Sin clave)</span>
                 </span>
-                <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full">SEGURO</span>
+                <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full">SOCIAS</span>
               </div>
 
-              {isAdmin ? (
-                <div className="flex items-center space-x-2 pt-1">
-                  <button
-                    onClick={copyPartnerSecureLink}
-                    className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center justify-center space-x-1.5 transition-colors border border-slate-700"
-                  >
-                    {copiedPartnerLink ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-emerald-400">¡Copiado!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Copiar Link Socias</span>
-                      </>
-                    )}
-                  </button>
+              <div className="flex items-center bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={getPartnerSecureLink()}
+                  className="bg-transparent text-xs text-amber-300/90 font-mono w-full focus:outline-none select-all"
+                />
+              </div>
 
-                  <button
-                    onClick={sharePartnerLinkWhatsApp}
-                    className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20"
-                  >
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    <span>WhatsApp Socias</span>
-                  </button>
-                </div>
-              ) : (
-                <p className="text-[11px] text-amber-300/80 pt-1">
-                  Inicia sesión como Administrador para generar el enlace seguro (el enlace incluye tu sesión, ya no una clave fija).
-                </p>
-              )}
+              <div className="flex items-center space-x-2 pt-1">
+                <button
+                  onClick={copyPartnerSecureLink}
+                  className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center justify-center space-x-1.5 transition-colors border border-slate-700"
+                >
+                  {copiedPartnerLink ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400">¡Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copiar Link Socias</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={sharePartnerLinkWhatsApp}
+                  className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  <span>WhatsApp Socias</span>
+                </button>
+              </div>
             </div>
 
             {/* Workers List */}
