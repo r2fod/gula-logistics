@@ -33,7 +33,8 @@ export const logisticsData = {
       title: "Miércoles 16", badge: "Recogidas & Descarga Adelantada",
       tasks: [
         { id: "mi1", text: "(Backup) Recogida Dealde si no se hizo el martes — mañana temprano (1 persona: Ricardo).", location: "Dealde Paterna", timeFrame: "08:00 - 10:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Dealde+Paterna+Valencia", assigned: ["Ricardo"], completed: false },
-        { id: "mi2", text: "Viaje, descarga adelantada y montaje de estructura en Villajoyosa (Conduce: Gonzalo | Apoyo descarga y montaje: Johan, Jeferson).", location: "Villajoyosa", timeFrame: "15:00 - 20:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Villajoyosa", assigned: ["Gonzalo", "Johan", "Jeferson"], completed: false }
+        { id: "mi2", text: "Viaje, descarga adelantada y montaje de estructura — Boda María y Joaquín (Conduce: Ricardo | Apoyo descarga y montaje: Jeferson, Johan | Raúl supervisa).", location: "", timeFrame: "15:00 - 20:00", mapsUrl: "", assigned: ["Ricardo", "Jeferson", "Johan", "Raúl"], completed: false, truck: "Camión Albacar" },
+        { id: "mi3", text: "Preparación y organización de material para los eventos Encamina y SUOT de mañana jueves (Irene dirige checklist).", location: "Almacén Base", timeFrame: "15:00 - 19:00", mapsUrl: "", assigned: ["Irene"], completed: false }
       ]
     },
     jueves: {
