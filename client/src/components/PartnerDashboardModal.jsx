@@ -31,7 +31,9 @@ export default function PartnerDashboardModal({
   onClose, 
   entries = [], 
   workersList = [], 
-  activeWeekData 
+  activeWeekData,
+  onClockEntryCreated,
+  onOpenClockModal
 }) {
   const [copiedLink, setCopiedLink] = useState(false);
   const [activeTab, setActiveTab] = useState('balances'); // Default to balances view matching user request!

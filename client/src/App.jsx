@@ -634,6 +634,11 @@ export default function App() {
         entries={clockEntries}
         workersList={WORKERS_LIST}
         activeWeekData={activeWeek}
+        onClockEntryCreated={handleClockEntryCreated}
+        onOpenClockModal={(workerName) => {
+          if (workerName) setActiveWorker(workerName);
+          setIsClockInModalOpen(true);
+        }}
       />
 
       <BalancesAgreementsModal

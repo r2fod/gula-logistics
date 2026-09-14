@@ -54,6 +54,7 @@ export default function ClockInModal({
       timestamp: now.toISOString(),
       timeFormatted: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       dateFormatted: now.toLocaleDateString(),
+      taskName: note.trim() || 'Inicio de Jornada Operativa',
       note: note.trim()
     };
     onClockEntryCreated(entry);
@@ -144,28 +145,52 @@ export default function ClockInModal({
 
           {/* Active Shift Status */}
           {activeShift ? (
-            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-center justify-between">
-              <span className="flex items-center space-x-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>En Turno desde las <strong>{activeShift.timeFormatted}</strong></span>
-              </span>
-              <span className="text-[10px] text-slate-400">{activeShift.dateFormatted}</span>
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs space-y-1">
+              <div className="flex items-center justify-between font-bold">
+                <span className="flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  <span>En Turno & Tarea Activa</span>
+                </span>
+                <span className="text-emerald-400 font-mono">{activeShift.timeFormatted}</span>
+              </div>
+              {activeShift.taskName && (
+                <p className="text-[11px] text-slate-300 font-medium pt-1 border-t border-emerald-500/20">
+                  📌 <b>Tarea:</b> {activeShift.taskName}
+                </p>
+              )}
             </div>
           ) : (
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 text-xs text-center">
-              Actualmente fuera de turno
+            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 text-xs text-center font-medium">
+              ⚪ Actualmente fuera de turno
             </div>
           )}
 
+          {/* Task Presets & Selection */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Observaciones / Tarea (Opcional)
+              Tarea / Operativa a Realizar
             </label>
+            <select
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-xs text-white font-medium focus:outline-none focus:border-emerald-500 mb-2"
+            >
+              <option value="">Selecciona o escribe una tarea...</option>
+              <option value="🚚 Ruta Albacar — Recogida Camión (Gonzalo y Ricardo)">🚚 Ruta Albacar — Recogida Camión</option>
+              <option value="📦 Pre-carga en Almacén Base (Johan y Jeferson)">📦 Pre-carga en Almacén Base</option>
+              <option value="🚚 Descarga Fincas — Mas dels Refranys y Villajoyosa">🚚 Descarga Fincas (Mas dels Refranys)</option>
+              <option value="🚚 Ruta Carvillo — Recogida 90 Sillas Extra">🚚 Ruta Carvillo — 90 Sillas Extra</option>
+              <option value="🧹 Higienización & Limpieza Vajilla Eventos (Kerly y Jose)">🧹 Higienización & Limpieza Vajilla</option>
+              <option value="📋 Supervisión Flota & Validación Albaranes (Raúl e Irene)">📋 Supervisión Flota & Albaranes</option>
+              <option value="🏔️ Evento Boda Sot de Chera (250 pax)">🏔️ Evento Boda Sot de Chera</option>
+              <option value="🔄 Logística Inversa & Estiba Camiones">🔄 Logística Inversa & Estiba</option>
+            </select>
+
             <input
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="ej. Recogida Camión Albacar / Carga evento"
+              placeholder="O escribe una tarea personalizada..."
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
             />
           </div>

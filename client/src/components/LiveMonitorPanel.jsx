@@ -22,7 +22,9 @@ export default function LiveMonitorPanel({
   clockEntries = [], 
   activeSchedule = {}, 
   isFullScreen = false,
-  onToggleFullScreen 
+  onToggleFullScreen,
+  onClockEntryCreated,
+  onOpenClockModal
 }) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'active' | 'trucks' | 'base'
@@ -352,6 +354,49 @@ export default function LiveMonitorPanel({
                     Extra (10€/h)
                   </span>
                 )}
+              </div>
+
+              {/* Direct Task Action Control Button */}
+              <div className="pt-2">
+                <button
+                  onClick={() => {
+                    if (worker.isClockedIn) {
+                      const now = new Date();
+                      const entry = {
+                        id: Date.now().toString(),
+                        workerName: worker.name,
+                        role: worker.role,
+                        isPayroll: worker.isPayroll,
+                        rate: worker.rate || 10,
+                        type: 'salida',
+                        timestamp: now.toISOString(),
+                        timeFormatted: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        dateFormatted: now.toLocaleDateString(),
+                        note: `Finalizada tarea: ${worker.currentTask}`
+                      };
+                      if (onClockEntryCreated) onClockEntryCreated(entry);
+                    } else {
+                      if (onOpenClockModal) onOpenClockModal(worker.name);
+                    }
+                  }}
+                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-all shadow-md active:scale-95 ${
+                    worker.isClockedIn
+                      ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/20'
+                      : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
+                  }`}
+                >
+                  {worker.isClockedIn ? (
+                    <>
+                      <Square className="w-3.5 h-3.5 fill-current" />
+                      <span>⏹️ Finalizar Tarea Activa</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>▶️ Iniciar Nueva Tarea</span>
+                    </>
+                  )}
+                </button>
               </div>
 
             </div>
