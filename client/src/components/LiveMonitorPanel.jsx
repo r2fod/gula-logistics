@@ -42,8 +42,17 @@ export default function LiveMonitorPanel({
     }
   });
 
-  // Schedule lookup helper for current day tasks
-  const getAssignedTaskForWorker = (workerName) => {
+  const parseTimeToMinutes = (str) => {
+    const m = /(\d{1,2}):(\d{2})/.exec(str || '');
+    if (!m) return null;
+    return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+  };
+
+  // Schedule lookup helper for current day tasks. A worker can have several
+  // tasks the same day (e.g. Ricardo: recogida + carga + otra recogida el
+  // martes) — devolvemos todas y dejamos que el caller elija cuál mostrar
+  // como "actual", en vez de quedarnos con la primera que encuentre find().
+  const getAssignedTasksForWorker = (workerName) => {
     const days = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const todayIndex = currentTime.getDay();
     const dayKey = days[todayIndex] || 'martes';
@@ -55,28 +64,57 @@ export default function LiveMonitorPanel({
     // spell out the worker's name (e.g. "Recoger Generador SOS."), so
     // text-scanning alone silently misses real assignments.
     const nameLower = workerName.toLowerCase();
-    const matched = tasks.find(t => {
+    return tasks.filter(t => {
       if (typeof t === 'object' && Array.isArray(t.assigned) && t.assigned.length > 0) {
         return t.assigned.some(a => a.toLowerCase() === nameLower);
       }
       const text = typeof t === 'object' ? t.text : t;
       return text.toLowerCase().includes(nameLower);
     });
+  };
 
-    if (matched) {
-      return typeof matched === 'object' ? matched.text : matched;
+  const DEFAULT_TASK_BY_WORKER = {
+    'Gonzalo': '🚚 Ruta Flota / Albacar & Fincas',
+    'Ricardo': '🚚 Ruta Flota / Albacar & Fincas',
+    'Jaime': '🚛 Camión 3 / Guiado María y Joaquín',
+    'Johan': '🚚 Descarga Fincas / Backup Camión 2',
+    'Irene': '📦 Almacén Base / Checklist Pedidos & Frío',
+    'Jeferson': '📦 Pre-carga Almacén & Soporte Logística',
+    'Kerly': '🧹 Higienización & Vajilla Eventos',
+    'Jose': '🧹 Higienización & Vajilla Eventos',
+    'Raúl': '📋 Supervisión Flota & Estiba Camiones'
+  };
+
+  const getWorkerTaskInfo = (workerName) => {
+    const matches = getAssignedTasksForWorker(workerName);
+
+    if (matches.length === 0) {
+      return { text: DEFAULT_TASK_BY_WORKER[workerName] || '📋 Asignado en Operativa Activa', extraCount: 0 };
     }
 
-    // Default fallback task by role
-    if (workerName === 'Gonzalo' || workerName === 'Ricardo') return '🚚 Ruta Flota / Albacar & Fincas';
-    if (workerName === 'Jaime') return '🚛 Camión 3 / Guiado María y Joaquín';
-    if (workerName === 'Johan') return '🚚 Descarga Fincas / Backup Camión 2';
-    if (workerName === 'Irene') return '📦 Almacén Base / Checklist Pedidos & Frío';
-    if (workerName === 'Jeferson') return '📦 Pre-carga Almacén & Soporte Logística';
-    if (workerName === 'Kerly' || workerName === 'Jose') return '🧹 Higienización & Vajilla Eventos';
-    if (workerName === 'Raúl') return '📋 Supervisión Flota & Estiba Camiones';
+    const nowMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
 
-    return '📋 Asignado en Operativa Activa';
+    // De las tareas del día, prioriza la que está ocurriendo AHORA según su
+    // horario; si ninguna encaja, la próxima por empezar; si no hay ninguna
+    // con horario, la primera de la lista.
+    const withRange = matches
+      .map(t => {
+        if (typeof t !== 'object' || !t.timeFrame) return null;
+        const [startStr, endStr] = t.timeFrame.split('-');
+        const start = parseTimeToMinutes(startStr);
+        const end = endStr ? parseTimeToMinutes(endStr) : null;
+        return start === null ? null : { task: t, start, end };
+      })
+      .filter(Boolean);
+
+    const current = withRange.find(({ start, end }) => nowMinutes >= start && (end === null || nowMinutes <= end));
+    const upcoming = !current && withRange.filter(({ start }) => start >= nowMinutes).sort((a, b) => a.start - b.start)[0];
+    const primary = current?.task || upcoming?.task || matches[0];
+
+    return {
+      text: typeof primary === 'object' ? primary.text : primary,
+      extraCount: Math.max(0, matches.length - 1)
+    };
   };
 
   const getWorkerLocation = (workerName) => {
@@ -108,13 +146,15 @@ export default function LiveMonitorPanel({
     // Prefer the task the worker actually clocked into (fichar por tarea)
     // over the day-of-week guess, so this reflects real, live control.
     const realTaskName = clockEntry?.taskName || clockEntry?.note;
+    const taskInfo = getWorkerTaskInfo(w.name);
 
     return {
       ...w,
       isClockedIn,
       clockEntry,
       elapsedTimeFormatted,
-      currentTask: realTaskName || getAssignedTaskForWorker(w.name),
+      currentTask: realTaskName || taskInfo.text,
+      extraTasksCount: realTaskName ? 0 : taskInfo.extraCount,
       location: getWorkerLocation(w.name)
     };
   });
@@ -325,9 +365,16 @@ export default function LiveMonitorPanel({
 
                 {/* Current Task Box */}
                 <div className="mt-3 space-y-1.5">
-                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
-                    Actividad / Tarea Asignada
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
+                      Actividad / Tarea Asignada
+                    </span>
+                    {worker.extraTasksCount > 0 && (
+                      <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-md shrink-0">
+                        +{worker.extraTasksCount} más hoy
+                      </span>
+                    )}
+                  </div>
                   <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 text-xs text-slate-200 leading-relaxed font-medium">
                     {worker.currentTask}
                   </div>
