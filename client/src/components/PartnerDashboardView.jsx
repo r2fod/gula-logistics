@@ -730,11 +730,10 @@ export default function PartnerDashboardView({
       {/* TAB 3: Live Monitor Panel */}
       {activeTab === 'live' && (
         <div className="animate-fadeIn">
-          <LiveMonitorPanel 
+          <LiveMonitorPanel
             workersList={workersList}
             clockEntries={clockEntries}
             activeSchedule={activeWeekData?.schedule || {}}
-            isFullScreen={true}
             onClockEntryCreated={onOpenClockIn}
             onOpenClockModal={onOpenClockIn}
           />

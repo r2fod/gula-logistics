@@ -1,21 +1,48 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Calendar, 
-  Truck, 
-  Users, 
-  Clock, 
-  CheckCircle2, 
-  Circle, 
-  MapPin, 
-  Share2, 
-  Filter, 
-  Layers, 
-  ArrowRight, 
-  Sparkles, 
-  Zap, 
+import {
+  Calendar,
+  Truck,
+  Users,
+  Clock,
+  CheckCircle2,
+  Circle,
+  MapPin,
+  Share2,
+  Filter,
+  Layers,
+  ArrowRight,
+  Sparkles,
+  Zap,
   Info,
-  Maximize2
+  Maximize2,
+  PartyPopper,
+  Undo2,
+  ClipboardList,
+  PackageMinus,
+  PackagePlus,
+  PackageCheck
 } from 'lucide-react';
+
+// Categoriza una tarea por su texto para darle un icono/color propio en el
+// grafo — pura ayuda visual para distinguir de un vistazo qué tipo de
+// trabajo es (recogida, carga, descarga, prep, limpieza...), sin tocar
+// el dato en sí. El orden importa: "descarga" contiene "carga" como
+// substring, así que se comprueba primero.
+const TASK_CATEGORY_RULES = [
+  { test: (s) => s.includes('💒'), icon: PartyPopper, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-l-rose-500/70' },
+  { test: (s) => /jornada eventos|catering|evento (suot|encamina)/i.test(s), icon: PartyPopper, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-l-pink-500/70' },
+  { test: (s) => /limpieza|vajilla/i.test(s), icon: Sparkles, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-l-teal-500/70' },
+  { test: (s) => /devoluci[oó]n/i.test(s), icon: Undo2, color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-l-slate-500/70' },
+  { test: (s) => /preparaci[oó]n|organizaci[oó]n|checklist/i.test(s), icon: ClipboardList, color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-l-indigo-500/70' },
+  { test: (s) => /descarga/i.test(s), icon: PackageMinus, color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-l-orange-500/70' },
+  { test: (s) => /\bcarga\b/i.test(s), icon: PackagePlus, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-l-amber-500/70' },
+  { test: (s) => /recog/i.test(s), icon: PackageCheck, color: 'text-cyan-400', bg: 'bg-cyan-500/10', border: 'border-l-cyan-500/70' }
+];
+
+const getTaskCategory = (label) => {
+  const rule = TASK_CATEGORY_RULES.find((r) => r.test(label || ''));
+  return rule || { icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-l-slate-700' };
+};
 
 export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
   const [selectedNodeId, setSelectedNodeId] = useState(null);
@@ -128,7 +155,8 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
         const completed = typeof tItem === 'object' ? !!tItem.completed : false;
         const assigned = typeof tItem === 'object' ? tItem.assigned : [];
         const truck = typeof tItem === 'object' ? tItem.truck : null;
-        nodes.push({ id, type: 'task', label: textStr, completed, dayId, dayKey, idx });
+        const timeFrame = typeof tItem === 'object' ? tItem.timeFrame : null;
+        nodes.push({ id, type: 'task', label: textStr, timeFrame, completed, dayId, dayKey, idx });
         links.push({ source: dayId, target: id });
 
         linkTruck(id, truck, textStr);
@@ -145,7 +173,7 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
 
     weddings.forEach((w, idx) => {
       const id = `task_sabado_${idx}`;
-      nodes.push({ id, type: 'task', label: `💒 ${w.location}`, sub: w.details, dayId: 'day_sabado', dayKey: 'saturdaySpecial', idx });
+      nodes.push({ id, type: 'task', label: `💒 ${w.location}`, sub: w.details, timeFrame: w.timeFrame, dayId: 'day_sabado', dayKey: 'saturdaySpecial', idx });
       links.push({ source: 'day_sabado', target: id });
 
       if (w.truck?.includes('Gula')) links.push({ source: id, target: 'truck_gula' });
@@ -166,7 +194,8 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
       const textStr = typeof tItem === 'object' ? tItem.text : tItem;
       const assigned = typeof tItem === 'object' ? tItem.assigned : [];
       const truck = typeof tItem === 'object' ? tItem.truck : null;
-      nodes.push({ id, type: 'task', label: textStr, dayId: 'day_domingo', dayKey: 'sundayMonday', idx });
+      const timeFrame = typeof tItem === 'object' ? tItem.timeFrame : null;
+      nodes.push({ id, type: 'task', label: textStr, timeFrame, dayId: 'day_domingo', dayKey: 'sundayMonday', idx });
       links.push({ source: 'day_domingo', target: id });
 
       linkTruck(id, truck, textStr);
@@ -394,18 +423,20 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
                   const isSelected = selectedNodeId === t.id;
                   const isConnected = connectedNodeIds.has(t.id);
                   const opacityClass = selectedNodeId && !isConnected ? 'opacity-30 blur-[0.5px]' : 'opacity-100';
+                  const category = getTaskCategory(t.label);
+                  const CategoryIcon = category.icon;
 
                   return (
                     <div
                       key={t.id}
                       onClick={() => setSelectedNodeId(isSelected ? null : t.id)}
-                      className={`cursor-pointer transition-all duration-300 p-3 rounded-2xl border bg-slate-900/80 border-slate-800 ${opacityClass} ${
+                      className={`cursor-pointer transition-all duration-300 p-3 rounded-2xl border border-l-4 bg-slate-900/80 border-slate-800 ${category.border} ${opacityClass} ${
                         isSelected ? 'border-amber-400 ring-2 ring-amber-400 scale-[1.02] shadow-xl shadow-amber-500/20' : 'hover:border-slate-700'
                       }`}
                     >
                       <div className="flex items-start space-x-2">
                         {t.dayKey && onToggleTask ? (
-                          <button 
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
                               onToggleTask(t.dayKey, t.idx);
@@ -415,10 +446,21 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
                             {t.completed ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Circle className="w-4 h-4" />}
                           </button>
                         ) : (
-                          <Clock className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                          <CategoryIcon className={`w-4 h-4 ${category.color} mt-0.5 shrink-0`} />
                         )}
 
-                        <div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                            <span className={`inline-flex items-center justify-center w-5 h-5 rounded-md shrink-0 ${category.bg} ${category.color}`}>
+                              <CategoryIcon className="w-3 h-3" />
+                            </span>
+                            {t.timeFrame && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded-md">
+                                <Clock className="w-3 h-3" />
+                                {t.timeFrame}
+                              </span>
+                            )}
+                          </div>
                           <p className={`text-xs font-medium leading-snug ${t.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>
                             {t.label}
                           </p>
@@ -538,14 +580,19 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
 
                   {/* Tasks List snippet */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
-                    {dayTasks.map(t => (
-                      <div key={t.id} className="text-xs bg-slate-950 p-2.5 rounded-xl border border-slate-800/80 text-slate-300 flex items-start space-x-2">
-                        <Clock className="w-3.5 h-3.5 text-amber-400 mt-0.5 shrink-0" />
-                        <span className={t.completed ? 'line-through text-slate-500' : 'text-slate-200'}>
-                          {t.label}
-                        </span>
-                      </div>
-                    ))}
+                    {dayTasks.map(t => {
+                      const category = getTaskCategory(t.label);
+                      const CategoryIcon = category.icon;
+                      return (
+                        <div key={t.id} className={`text-xs bg-slate-950 p-2.5 rounded-xl border border-l-4 border-slate-800/80 ${category.border} text-slate-300 flex items-start space-x-2`}>
+                          <CategoryIcon className={`w-3.5 h-3.5 ${category.color} mt-0.5 shrink-0`} />
+                          <span className={t.completed ? 'line-through text-slate-500' : 'text-slate-200'}>
+                            {t.timeFrame && <span className="text-blue-300 font-bold">{t.timeFrame} — </span>}
+                            {t.label}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
