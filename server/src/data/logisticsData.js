@@ -45,7 +45,7 @@ export const logisticsData = {
     jueves: {
       title: "Jueves 17", badge: "Eventos Encamina & SUOT",
       tasks: [
-        { id: "j1", text: "Jornada Eventos: Catering Encamina (100 pax) — descarga y montaje de estructura en el lugar del evento (Conduce: Jaime | Apoyo descarga y montaje: Johan).", location: "Evento Encamina", timeFrame: "09:00 - 18:00", mapsUrl: "", assigned: ["Jaime", "Johan"], completed: false, truck: "Camión Gula" },
+        { id: "j1", text: "Jornada Eventos: Catering Encamina (100 pax) — descarga y montaje de estructura en el lugar del evento (Conduce: Jaime | Apoyo descarga y montaje: Ricardo, Johan).", location: "Evento Encamina", timeFrame: "09:00 - 18:00", mapsUrl: "", assigned: ["Jaime", "Ricardo", "Johan"], completed: false, truck: "Camión Gula" },
         { id: "j2", text: "Evento SUOT — logística completa, descarga y montaje de estructura (Conduce: Gonzalo | Apoyo descarga y montaje: Jeferson).", location: "Evento SUOT", timeFrame: "09:00 - 18:00", mapsUrl: "", assigned: ["Gonzalo", "Jeferson"], completed: false, truck: "Camión Covey" },
         { id: "j3", text: "Regreso de eventos y pre-carga de frío para el fin de semana. Irene verifica checklist y prepara material. Raúl supervisa.", location: "Almacén Base", timeFrame: "19:00 - 21:00", mapsUrl: "", assigned: ["Irene", "Raúl"], completed: false }
       ]
