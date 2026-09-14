@@ -40,12 +40,26 @@ const DEFAULT_DATA = {
   ]
 };
 
+const sanitizeData = (raw) => {
+  if (!raw || typeof raw !== 'object') return DEFAULT_DATA;
+  const cleanTeam = (raw.team || DEFAULT_DATA.team).filter(
+    item => !item.role.toLowerCase().includes('cocina') && !item.role.toLowerCase().includes('dirección')
+  );
+  return {
+    ...DEFAULT_DATA,
+    ...raw,
+    team: cleanTeam
+  };
+};
+
 export default function App() {
-  // Load initial data from localStorage or default
+  // Load initial data from localStorage or default with strict sanitization
   const [data, setData] = useState(() => {
     try {
-      const saved = localStorage.getItem('gula_logistics_data_v2');
-      return saved ? JSON.parse(saved) : DEFAULT_DATA;
+      localStorage.removeItem('gula_logistics_data');
+      localStorage.removeItem('gula_logistics_data_v2');
+      const saved = localStorage.getItem('gula_logistics_v3_clean');
+      return saved ? sanitizeData(JSON.parse(saved)) : DEFAULT_DATA;
     } catch {
       return DEFAULT_DATA;
     }
@@ -60,9 +74,10 @@ export default function App() {
 
   // Sync to localStorage
   const handleDataChange = (newData) => {
-    setData(newData);
+    const cleaned = sanitizeData(newData);
+    setData(cleaned);
     try {
-      localStorage.setItem('gula_logistics_data_v2', JSON.stringify(newData));
+      localStorage.setItem('gula_logistics_v3_clean', JSON.stringify(cleaned));
     } catch (e) {
       console.error('Error al guardar en localStorage:', e);
     }
