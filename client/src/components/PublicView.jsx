@@ -22,7 +22,9 @@ export default function PublicView({
   workersList = [], 
   clockEntries = [], 
   onToggleTask, 
-  onOpenLogin 
+  onOpenLogin,
+  onClockEntryCreated,
+  onOpenClockModal
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
@@ -122,6 +124,8 @@ export default function PublicView({
         activeSchedule={data.schedule || {}}
         isFullScreen={isFullScreen}
         onToggleFullScreen={() => setIsFullScreen(!isFullScreen)}
+        onClockEntryCreated={onClockEntryCreated}
+        onOpenClockModal={onOpenClockModal}
       />
 
       {/* Mobile Selector Tabs */}
