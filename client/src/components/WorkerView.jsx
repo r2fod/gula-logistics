@@ -131,11 +131,11 @@ export default function WorkerView({
             </div>
           </div>
 
-          {/* Quick Actions & General View Toggle */}
-          <div className="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-end">
+          {/* Quick Clock-in Action Button */}
+          <div className="flex items-center space-x-3 w-full md:w-auto justify-end">
             <button
               onClick={() => setIsClockModalOpen(true)}
-              className={`py-3 px-5 rounded-2xl text-xs font-extrabold flex items-center space-x-2 transition-all shadow-xl active:scale-95 ${
+              className={`w-full md:w-auto py-3.5 px-6 rounded-2xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all shadow-xl active:scale-95 ${
                 activeShift
                   ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/20'
                   : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
@@ -144,17 +144,6 @@ export default function WorkerView({
               <Clock className="w-4 h-4" />
               <span>{activeShift ? '🔴 Salida / Finalizar Tarea' : '🟢 Fichar Entrada'}</span>
             </button>
-
-            {onToggleGeneralView && (
-              <button
-                onClick={onToggleGeneralView}
-                className="py-3 px-4 bg-slate-950 hover:bg-slate-900 text-slate-300 rounded-2xl border border-slate-800 text-xs font-bold flex items-center space-x-1.5 transition-all"
-                title="Ver planificación global de todo el equipo"
-              >
-                <Eye className="w-4 h-4 text-amber-400" />
-                <span className="hidden sm:inline">Ver Toda la Flota</span>
-              </button>
-            )}
           </div>
         </div>
 

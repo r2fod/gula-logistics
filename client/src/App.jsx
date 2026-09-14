@@ -336,7 +336,7 @@ export default function App() {
     );
   }
 
-  if (activeWorker && !showFullTeamView && !isPartnerMode) {
+  if (activeWorker && !isPartnerMode) {
     return (
       <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-4 sm:p-6 md:p-8 font-sans selection:bg-amber-500 selection:text-slate-950">
         <WorkerView
@@ -346,7 +346,6 @@ export default function App() {
           clockEntries={clockEntries}
           onToggleTask={(dayKey, taskIdx) => toggleTask(dayKey, taskIdx)}
           onClockEntryCreated={handleClockEntryCreated}
-          onToggleGeneralView={() => setShowFullTeamView(true)}
         />
       </div>
     );
