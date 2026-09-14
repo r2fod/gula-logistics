@@ -35,15 +35,24 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
     setLocalWeek(updated);
   };
 
+  // Escribir el nombre/dirección del sitio genera el link de Google Maps
+  // solo — ya no hace falta copiar y pegar la URL a mano.
+  const buildMapsUrl = (place) => place
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`
+    : '';
+
   const handleTaskMetadataChange = (dayKey, taskIndex, field, newValue) => {
     const updated = { ...localWeek };
     const taskList = dayKey === 'sundayMonday' ? updated.sundayMonday.tasks : updated.schedule[dayKey].tasks;
     const task = taskList[taskIndex];
-    
+
     if (typeof task === 'string') {
       taskList[taskIndex] = { text: task, [field]: newValue };
     } else {
       taskList[taskIndex][field] = newValue;
+      if (field === 'location') {
+        taskList[taskIndex].mapsUrl = buildMapsUrl(newValue);
+      }
     }
     setLocalWeek(updated);
   };
@@ -73,6 +82,9 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
   const handleWeddingChange = (weddingIndex, field, newValue) => {
     const updated = { ...localWeek };
     updated.saturdaySpecial.weddings[weddingIndex][field] = newValue;
+    if (field === 'location') {
+      updated.saturdaySpecial.weddings[weddingIndex].mapsUrl = buildMapsUrl(newValue);
+    }
     setLocalWeek(updated);
   };
 
@@ -177,7 +189,9 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                   {localWeek.schedule[dayKey].tasks.map((task, idx) => {
                     const textValue = typeof task === 'object' ? task.text : task;
                     const timeValue = typeof task === 'object' ? (task.timeFrame || '') : '';
+                    const locationValue = typeof task === 'object' ? (task.location || '') : '';
                     const mapsValue = typeof task === 'object' ? (task.mapsUrl || '') : '';
+                    const phoneValue = typeof task === 'object' ? (task.phone || '') : '';
                     const assignedValue = (typeof task === 'object' && Array.isArray(task.assigned)) ? task.assigned : [];
                     const truckValue = typeof task === 'object' ? (task.truck || '') : '';
 
@@ -199,12 +213,26 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                               className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
                             />
                             <input
-                              type="text"
-                              value={mapsValue}
-                              onChange={(e) => handleTaskMetadataChange(dayKey, idx, 'mapsUrl', e.target.value)}
-                              placeholder="URL de Google Maps"
-                              className="flex-[2] bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-blue-300 focus:outline-none focus:border-blue-500"
+                              type="tel"
+                              value={phoneValue}
+                              onChange={(e) => handleTaskMetadataChange(dayKey, idx, 'phone', e.target.value)}
+                              placeholder="Teléfono de contacto"
+                              className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
                             />
+                          </div>
+                          <div>
+                            <input
+                              type="text"
+                              value={locationValue}
+                              onChange={(e) => handleTaskMetadataChange(dayKey, idx, 'location', e.target.value)}
+                              placeholder="Ubicación / dirección (genera el link de Maps solo)"
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-blue-500"
+                            />
+                            {mapsValue && (
+                              <a href={mapsValue} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:text-blue-300 underline mt-1 inline-block">
+                                📍 Abrir en Google Maps
+                              </a>
+                            )}
                           </div>
                           <div>
                             <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Camión</label>
@@ -286,23 +314,28 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
                         <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Horario</label>
-                        <input 
-                          type="text" 
-                          value={w.timeFrame || ''} 
+                        <input
+                          type="text"
+                          value={w.timeFrame || ''}
                           onChange={(e) => handleWeddingChange(idx, 'timeFrame', e.target.value)}
                           className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-rose-500 outline-none"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Google Maps URL</label>
-                        <input 
-                          type="text" 
-                          value={w.mapsUrl || ''} 
-                          onChange={(e) => handleWeddingChange(idx, 'mapsUrl', e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-blue-300 focus:border-rose-500 outline-none"
+                        <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Teléfono</label>
+                        <input
+                          type="tel"
+                          value={w.phone || ''}
+                          onChange={(e) => handleWeddingChange(idx, 'phone', e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-rose-500 outline-none"
                         />
                       </div>
                     </div>
+                    {w.mapsUrl && (
+                      <a href={w.mapsUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:text-blue-300 underline inline-block">
+                        📍 Abrir en Google Maps
+                      </a>
+                    )}
                     <div>
                       <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Asignar a</label>
                       <AssignedPicker
@@ -335,7 +368,9 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                   {localWeek.sundayMonday.tasks.map((task, idx) => {
                     const textValue = typeof task === 'object' ? task.text : task;
                     const timeValue = typeof task === 'object' ? (task.timeFrame || '') : '';
+                    const locationValue = typeof task === 'object' ? (task.location || '') : '';
                     const mapsValue = typeof task === 'object' ? (task.mapsUrl || '') : '';
+                    const phoneValue = typeof task === 'object' ? (task.phone || '') : '';
                     const assignedValue = (typeof task === 'object' && Array.isArray(task.assigned)) ? task.assigned : [];
                     const truckValue = typeof task === 'object' ? (task.truck || '') : '';
 
@@ -357,12 +392,26 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                               className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
                             />
                             <input
-                              type="text"
-                              value={mapsValue}
-                              onChange={(e) => handleTaskMetadataChange('sundayMonday', idx, 'mapsUrl', e.target.value)}
-                              placeholder="URL de Google Maps"
-                              className="flex-[2] bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-blue-300 focus:outline-none focus:border-blue-500"
+                              type="tel"
+                              value={phoneValue}
+                              onChange={(e) => handleTaskMetadataChange('sundayMonday', idx, 'phone', e.target.value)}
+                              placeholder="Teléfono de contacto"
+                              className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
                             />
+                          </div>
+                          <div>
+                            <input
+                              type="text"
+                              value={locationValue}
+                              onChange={(e) => handleTaskMetadataChange('sundayMonday', idx, 'location', e.target.value)}
+                              placeholder="Ubicación / dirección (genera el link de Maps solo)"
+                              className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-blue-500"
+                            />
+                            {mapsValue && (
+                              <a href={mapsValue} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:text-blue-300 underline mt-1 inline-block">
+                                📍 Abrir en Google Maps
+                              </a>
+                            )}
                           </div>
                           <div>
                             <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Camión</label>
