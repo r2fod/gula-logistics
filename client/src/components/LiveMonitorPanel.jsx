@@ -11,19 +11,15 @@ import {
   Play,
   Square,
   Radio,
-  CheckCircle2, 
+  CheckCircle2,
   AlertCircle,
-  Maximize2,
-  Minimize2,
   RefreshCw
 } from 'lucide-react';
 
-export default function LiveMonitorPanel({ 
-  workersList = [], 
-  clockEntries = [], 
-  activeSchedule = {}, 
-  isFullScreen = false,
-  onToggleFullScreen,
+export default function LiveMonitorPanel({
+  workersList = [],
+  clockEntries = [],
+  activeSchedule = {},
   onClockEntryCreated,
   onOpenClockModal
 }) {
@@ -134,8 +130,8 @@ export default function LiveMonitorPanel({
   });
 
   return (
-    <div className={`space-y-6 transition-all ${isFullScreen ? 'p-6 bg-slate-950 text-white min-h-screen' : ''}`}>
-      
+    <div className="space-y-6">
+
       {/* Live Monitor Header */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -179,17 +175,6 @@ export default function LiveMonitorPanel({
                 {currentTime.toLocaleTimeString()}
               </span>
             </div>
-
-            {onToggleFullScreen && (
-              <button
-                onClick={onToggleFullScreen}
-                className="py-2.5 px-3.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-2xl border border-slate-700 text-xs font-bold flex items-center space-x-1.5 transition-all shadow-md active:scale-95"
-                title={isFullScreen ? "Salir de Pantalla Completa" : "Ver Pantalla Completa"}
-              >
-                {isFullScreen ? <Minimize2 className="w-4 h-4 text-amber-400" /> : <Maximize2 className="w-4 h-4 text-amber-400" />}
-                <span className="hidden sm:inline">{isFullScreen ? 'Normal' : 'Pantalla Completa'}</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -257,7 +242,7 @@ export default function LiveMonitorPanel({
       </div>
 
       {/* Workers Real-Time Live Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
         {filteredWorkers.map((worker) => {
           // Calculate progress percentage of standard 8h shift
           const targetShiftHours = 8;

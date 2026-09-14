@@ -649,7 +649,7 @@ export default function App() {
   if (isPublicPreviewMode && !isPartnerMode && !activeWorker) {
     return (
       <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans">
-        <div className="max-w-6xl mx-auto space-y-4">
+        <div className="w-full space-y-4">
           <button
             onClick={() => setIsPublicPreviewMode(false)}
             className="text-xs bg-slate-900 hover:bg-slate-800 text-slate-300 px-3.5 py-2 rounded-xl font-semibold transition-colors border border-slate-800 flex items-center gap-1.5"
