@@ -1107,7 +1107,7 @@ export default function App() {
         entries={clockEntries}
         workersList={workersList}
         onClearEntries={handleClearClockEntries}
-        isAdmin={isPartnerMode}
+        isAdmin={isAdmin}
         onUpdateEntry={handleUpdateClockEntry}
         onDeleteEntry={handleDeleteClockEntry}
         onClockEntryCreated={handleClockEntryCreated}

@@ -244,21 +244,23 @@ export default function AdminClockEditModal({
             <div></div>
           )}
 
-          <div className="flex items-center space-x-2.5 w-full sm:w-auto justify-end">
-            <button
-              onClick={onClose}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleSave}
-              className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold flex items-center justify-center space-x-1.5 shadow-lg shadow-amber-500/20 transition-all"
-            >
-              <Check className="w-4 h-4" />
-              <span>{entry ? 'Guardar Cambios Admin' : 'Crear Fichaje Admin'}</span>
-            </button>
-          </div>
+          {!confirmDelete && (
+            <div className="flex items-center space-x-2.5 w-full sm:w-auto justify-end">
+              <button
+                onClick={onClose}
+                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSave}
+                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold flex items-center justify-center space-x-1.5 shadow-lg shadow-amber-500/20 transition-all"
+              >
+                <Check className="w-4 h-4" />
+                <span>{entry ? 'Guardar Cambios Admin' : 'Crear Fichaje Admin'}</span>
+              </button>
+            </div>
+          )}
         </div>
 
       </div>
