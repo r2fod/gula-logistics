@@ -39,7 +39,11 @@ export default function PublicView({
   };
 
   const tasks = (data.tasks || []).filter(t => !t.isPrivate);
-  const trucks = data.trucks || [];
+  const trucks = (data.trucks && data.trucks.length > 0) ? data.trucks : [
+    { name: "Camión Gula", tag: "Propio (Gula)", status: "Operativo — Propiedad Gula Logística" },
+    { name: "Camión Covey", tag: "Alquiler Covey", status: "Operativo — Vehículo de Alquiler" },
+    { name: "Camión Albacar", tag: "Alquiler Albacar", status: "Operativo — Vehículo de Alquiler" }
+  ];
   const team = data.team || [];
 
   const completedTasksCount = tasks.filter(t => t.completed).length;
