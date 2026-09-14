@@ -11,67 +11,58 @@ export const logisticsData = {
   ],
   team: [
     { role: "Dirección / Cocina / Ventas", members: "Anna y Rocío" },
-    { role: "Jefe Logística", members: "Raúl (Supervisa y ayuda en base)" },
-    { role: "Base & Preparación", members: "Irene (Pedidos/Checklist) + Jeferson (Apoyo Log/Prep)" },
+    { role: "Jefe Logística", members: "Raúl (Supervisión general — NO carga ni descarga)" },
+    { role: "Base & Preparación", members: "Irene (Prepara eventos / Verifica checklist — NO carga ni descarga) + Jeferson (Apoyo Log/Prep)" },
     { role: "Flota / Conductores", members: "Gonzalo & Ricardo (Veteranos) | Jaime (Guiado) | Johan (Backup)" },
     { role: "Limpieza & Vajilla Eventos", members: "Kerly + Jose (Extra 10€/h)" }
   ],
   schedule: {
     martes: {
-      title: "Martes 15", badge: "Arranque Flota",
+      title: "Martes 15", badge: "Preparación & Carga",
       tasks: [
-        "09:00 - 11:30: Recogida Camiones de Alquiler Covey & Albacar (Gonzalo y Ricardo). ¡Flota completa de 3!",
-        "12:00 - 14:00: Ruta Carvillo — Recogida 90 sillas extra con Camión Gula.",
-        "15:30 - 18:30: Ruta Dealde — Recogida material alquiler.",
-        "Preparación Eventos Boda María y Boda Rocío (Anna).",
-        "Anto — Reunión/prep. SUOT.",
-        "Marc — Prueba de menú.",
-        "Miriam — Catering Encamina."
+        { id: "m1", text: "Recogida Camión Albacar — mañana pronto (1 persona: Gonzalo).", location: "Albacar Alquiler", timeFrame: "08:00 - 10:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Albacar+Alquiler+Camiones+Valencia", assigned: ["Gonzalo"], completed: false },
+        { id: "m2", text: "Preparación y organización de material para Eventos Encamina y SUOT (Irene dirige checklist, Jeferson ejecuta).", location: "Almacén Base", timeFrame: "08:00 - 13:00", mapsUrl: "", assigned: ["Irene", "Jeferson"], completed: false },
+        { id: "m3", text: "Carga de eventos Encamina y SUOT en camiones — dejarlo todo listo (Jeferson + Johan). Irene valida albaranes.", location: "Almacén Base", timeFrame: "13:00 - 17:00", mapsUrl: "", assigned: ["Jeferson", "Johan"], completed: false },
+        { id: "m4", text: "Recogida Dealde si es posible (1 persona: Ricardo). Si no, se pasa al miércoles por la mañana.", location: "Dealde Paterna", timeFrame: "16:00 - 18:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Dealde+Paterna+Valencia", assigned: ["Ricardo"], completed: false }
       ]
     },
     miercoles: {
-      title: "Miércoles 16", badge: "Descarga Fincas",
+      title: "Miércoles 16", badge: "Recogidas & Descarga Adelantada",
       tasks: [
-        "10:00 - 14:00: Pre-carga en almacén (Johan y Jeferson).",
-        "15:00 - 19:00: Descarga adelantada en Mas dels Refranys y Villajoyosa (Gonzalo, Ricardo, Johan) con Camión Covey.",
-        "20:00: Cena prueba de menú — Rita y Lluisen.",
-        "Anto — Rita / SUOT.",
-        "Marc — Boda Rita.",
-        "Luis — Bodas."
+        { id: "mi1", text: "(Backup) Recogida Dealde si no se hizo el martes — mañana temprano (1 persona: Ricardo).", location: "Dealde Paterna", timeFrame: "08:00 - 10:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Dealde+Paterna+Valencia", assigned: ["Ricardo"], completed: false },
+        { id: "mi2", text: "Viaje, descarga adelantada y montaje de estructura en Mas dels Refranys - Villajoyosa (Conduce: Gonzalo | Apoyo descarga y montaje: Johan, Jeferson).", location: "Mas dels Refranys, Villajoyosa", timeFrame: "15:00 - 20:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Mas+dels+Refranys+Villajoyosa", assigned: ["Gonzalo", "Johan", "Jeferson"], completed: false }
       ]
     },
     jueves: {
-      title: "Jueves 17", badge: "Eventos",
+      title: "Jueves 17", badge: "Eventos Encamina & SUOT",
       tasks: [
-        "08:00 - 14:00: Catering Encamina (100 pax) - Anto, Marc, Luis.",
-        "15:00 - 19:00: Evento SUOT - Control y servicio.",
-        "19:00 - 21:00: Pre-carga de frío y revisión de checklists en Camión Gula.",
-        "Jessi — Bodas."
+        { id: "j1", text: "Jornada Eventos: Catering Encamina (100 pax) — descarga y montaje de estructura en lugar del evento (Conduce/Apoyo: Jaime, Johan).", location: "Evento Encamina", timeFrame: "09:00 - 18:00", mapsUrl: "", assigned: ["Jaime", "Johan"], completed: false },
+        { id: "j2", text: "Evento SUOT — logística completa, descarga y montaje estructura (Jeferson).", location: "Evento SUOT", timeFrame: "09:00 - 18:00", mapsUrl: "", assigned: ["Jeferson"], completed: false },
+        { id: "j3", text: "Regreso de eventos y pre-carga de frío para el fin de semana. Irene verifica checklist y prepara material. Raúl supervisa.", location: "Almacén Base", timeFrame: "19:00 - 21:00", mapsUrl: "", assigned: ["Irene", "Raúl"], completed: false }
       ]
     },
     viernes: {
-      title: "Viernes 18", badge: "Cierre Crítico — Día Completo",
+      title: "Viernes 18", badge: "Estiba Final & Cierre",
       tasks: [
-        "09:00 - 14:00: 2º viaje adelantado y descarga de menaje en Chera con Camión Gula.",
-        "Descarga en Villajoyosa / Mas dels Refranys (continuación).",
-        "15:00 - 21:00: Estiba, flejado y carga final en los 3 camiones (Camión Gula, Camión Covey, Camión Albacar). Raúl e Irene validan albaranes.",
-        "Anto, Marc, Jessi — Bodas (prep. final)."
+        { id: "v1", text: "Descarga en Villajoyosa/Refranys y Sot de Chera — recogida de material adelantado (Conduce Gonzalo y Ricardo | Apoyo descarga: Johan).", location: "Mas dels Refranys / Sot de Chera", timeFrame: "08:00 - 13:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Mas+dels+Refranys+Villajoyosa", assigned: ["Gonzalo", "Ricardo", "Johan"], completed: false },
+        { id: "v2", text: "Estiba, flejado y carga final de los 3 camiones para las bodas del sábado (Conductores: Gonzalo, Ricardo, Jaime | Apoyo carga: Jeferson, Johan).", location: "Almacén Base", timeFrame: "15:00 - 21:00", mapsUrl: "", assigned: ["Gonzalo", "Ricardo", "Jaime", "Jeferson", "Johan"], completed: false },
+        { id: "v3", text: "Irene valida albaranes de salida y Raúl supervisa la estiba y rutas.", location: "Almacén Base", timeFrame: "15:00 - 21:00", mapsUrl: "", assigned: ["Irene", "Raúl"], completed: false }
       ]
     }
   },
   saturdaySpecial: {
-    title: "Sábado 19 — El Gran Día (3 Bodas Simultáneas)",
+    title: "Sábado 19 — DÍA COMPLETO (3 Bodas Simultáneas)",
     weddings: [
-      { location: "Sot de Chera (250 pax)", truck: "Camión Gula (Propio)", details: "Conduce: Ricardo | Apoyo: Jeferson. Sala/evento: Marc. 🌙 Viaje nocturno de vuelta." },
-      { location: "Mas dels Refranys — Boda Rocío", truck: "Camión Covey (Alquiler)", details: "Conduce: Gonzalo | Apoyo: Johan. Sala/evento: Anto. ✅ Descarga hecha el miércoles/viernes." },
-      { location: "María y Joaquín", truck: "Camión Albacar (Alquiler)", details: "Conduce: Jaime (Guiado) | Apoyo: Johan/Jef." }
+      { location: "Sot de Chera (250 pax)", truck: "Camión Gula (Propio)", details: "Conduce: Ricardo | Apoyo descarga & montaje estructura: Jeferson.", timeFrame: "09:00 - 02:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Sot+de+Chera+Valencia", assigned: ["Ricardo", "Jeferson"] },
+      { location: "Rocío (Mas Dels Refranys)", truck: "Camión Covey (Alquiler)", details: "Conduce: Gonzalo | Apoyo descarga & montaje estructura: Johan.", timeFrame: "09:00 - 02:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Mas+dels+Refranys+Villajoyosa", assigned: ["Gonzalo", "Johan"] },
+      { location: "María y Joaquín", truck: "Camión Albacar (Alquiler)", details: "Conduce: Jaime (Guiado) — descarga y montaje estructura en solitario. Jose: Limpieza vajilla en evento.", timeFrame: "09:00 - 02:00", mapsUrl: "", assigned: ["Jaime"] }
     ]
   },
   sundayMonday: {
     title: "Domingo 20 & Lunes 21 — Logística Inversa y Limpieza",
     tasks: [
-      "Domingo (09:00 - 13:00): Descarga general de los 3 camiones (Camión Gula, Camión Covey, Camión Albacar) en almacén. Limpieza de vajilla a cargo de Kerly y Jose (o Jeferson).",
-      "Devoluciones: Devolución de Camiones de Alquiler Albacar y Covey (Gonzalo/Ricardo). Ruta a Dealde y 90 sillas a Carvillo el lunes."
+      { id: "sl1", text: "Domingo — Regreso, descarga y desmontaje de estructura de los 3 eventos (Flota: Gonzalo, Ricardo, Jaime | Apoyo descarga/desmontaje: Johan, Jeferson). Devolución Camión Albacar (Ricardo — 1 persona).", location: "Almacén Base", timeFrame: "09:00 - 14:00", mapsUrl: "", assigned: ["Gonzalo", "Ricardo", "Jaime", "Johan", "Jeferson"], completed: false },
+      { id: "sl2", text: "Lunes — Limpieza de vajilla y utensilios (Kerly + Jose). Irene verifica inventario. Devolución Camión Covey (Gonzalo — 1 persona). Devoluciones material alquiler a Dealde (Johan).", location: "Almacén Base / Dealde", timeFrame: "09:00 - 15:00", mapsUrl: "", assigned: ["Kerly", "Jose", "Irene", "Gonzalo", "Johan"], completed: false }
     ]
   }
 };
