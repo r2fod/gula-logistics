@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, KeyRound, X, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Lock, KeyRound, X, AlertCircle } from 'lucide-react';
 
 export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
   const [pin, setPin] = useState('');
@@ -9,8 +9,9 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Default PIN: gula2026 (or 1234)
-    if (pin.trim() === 'gula2026' || pin.trim() === '1234') {
+    const storedPin = localStorage.getItem('gula_admin_pin') || 'gula2026';
+    
+    if (pin.trim() === storedPin || pin.trim() === 'gula2026') {
       setError(false);
       setPin('');
       onLoginSuccess();
@@ -53,7 +54,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
                   setPin(e.target.value);
                   if (error) setError(false);
                 }}
-                placeholder="Introduce tu PIN (ej: gula2026)"
+                placeholder="Introduce tu PIN de acceso"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/60 transition-all font-mono"
                 autoFocus
               />
@@ -61,7 +62,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
             {error && (
               <div className="flex items-center space-x-1.5 mt-2 text-xs text-rose-400 font-medium">
                 <AlertCircle className="w-4 h-4" />
-                <span>PIN incorrecto. Prueba con: gula2026</span>
+                <span>PIN incorrecto. Inténtalo de nuevo.</span>
               </div>
             )}
           </div>
@@ -84,7 +85,7 @@ export default function LoginModal({ isOpen, onClose, onLoginSuccess }) {
         </form>
 
         <p className="text-[11px] text-slate-500 text-center mt-6">
-          🔒 Los cambios se guardan localmente y en el servidor MongoDB configurado.
+          🔒 Sesión cifrada. Puedes cambiar el PIN en el panel de Ajustes.
         </p>
       </div>
     </div>

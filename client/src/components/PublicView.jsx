@@ -27,7 +27,7 @@ export default function PublicView({ data, onToggleTask, onOpenLogin }) {
     setTimeout(() => setCopiedLink(false), 3000);
   };
 
-  const tasks = data.tasks || [];
+  const tasks = (data.tasks || []).filter(t => !t.isPrivate);
   const trucks = data.trucks || [];
   const team = data.team || [];
 

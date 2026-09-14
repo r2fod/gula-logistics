@@ -3,31 +3,28 @@ import {
   Save, 
   Plus, 
   Trash2, 
-  Edit3, 
   CheckCircle2, 
-  X, 
   Truck, 
   Users, 
   Calendar, 
   ListTodo, 
   Sparkles,
   ShieldCheck,
-  PackageCheck,
+  Lock,
+  KeyRound,
+  EyeOff,
+  Check,
   AlertCircle
 } from 'lucide-react';
 
 export default function AdminPanel({ data, onChangeData, onLogout }) {
-  const [activeTab, setActiveTab] = useState('general'); // 'general' | 'team' | 'trucks' | 'tasks'
+  const [activeTab, setActiveTab] = useState('general'); // 'general' | 'team' | 'trucks' | 'tasks' | 'security'
 
   // General state handlers
   const [meta, setMeta] = useState(data.meta || { week: 'Semana 3', dateRange: '', status: 'Operativa Activa' });
   const [team, setTeam] = useState(data.team || []);
   const [trucks, setTrucks] = useState(data.trucks || []);
-  const [tasks, setTasks] = useState(data.tasks || [
-    { id: '1', text: 'Revisión de aceites y combustible', assignedTo: 'Camión Gula', priority: 'Alta', completed: true },
-    { id: '2', text: 'Carga de cajas térmicas de evento', assignedTo: 'Base & Preparación', priority: 'Alta', completed: false },
-    { id: '3', text: 'Limpieza de cámara frigorífica de Camión Covey', assignedTo: 'Camión Covey', priority: 'Media', completed: false }
-  ]);
+  const [tasks, setTasks] = useState(data.tasks || []);
 
   // Form states
   const [newTeamRole, setNewTeamRole] = useState('');
@@ -40,27 +37,54 @@ export default function AdminPanel({ data, onChangeData, onLogout }) {
   const [newTaskText, setNewTaskText] = useState('');
   const [newTaskAssignee, setNewTaskAssignee] = useState('Camión Gula');
   const [newTaskPriority, setNewTaskPriority] = useState('Alta');
+  const [newTaskIsPrivate, setNewTaskIsPrivate] = useState(false);
+
+  // Password / Security Form
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinSuccessMsg, setPinSuccessMsg] = useState('');
+  const [pinErrorMsg, setPinErrorMsg] = useState('');
 
   const handleSaveAll = () => {
-    const updatedData = {
-      ...data,
-      meta,
-      team,
-      trucks,
-      tasks
-    };
+    const updatedData = { ...data, meta, team, trucks, tasks };
     onChangeData(updatedData);
+  };
+
+  // Change PIN handler
+  const handleChangePin = (e) => {
+    e.preventDefault();
+    setPinErrorMsg('');
+    setPinSuccessMsg('');
+
+    const savedPin = localStorage.getItem('gula_admin_pin') || 'gula2026';
+    if (currentPin.trim() !== savedPin) {
+      setPinErrorMsg('El PIN actual introducido no es correcto.');
+      return;
+    }
+
+    if (newPin.trim().length < 4) {
+      setPinErrorMsg('El nuevo PIN debe tener al menos 4 caracteres.');
+      return;
+    }
+
+    if (newPin.trim() !== confirmPin.trim()) {
+      setPinErrorMsg('Las contraseñas no coinciden.');
+      return;
+    }
+
+    localStorage.setItem('gula_admin_pin', newPin.trim());
+    setPinSuccessMsg('¡PIN de administración actualizado correctamente!');
+    setCurrentPin('');
+    setNewPin('');
+    setConfirmPin('');
   };
 
   // Team Handlers
   const handleAddTeamRole = (e) => {
     e.preventDefault();
     if (!newTeamRole.trim() || !newTeamMembers.trim()) return;
-    const newItem = {
-      role: newTeamRole.trim(),
-      members: newTeamMembers.trim(),
-      category: 'fleet'
-    };
+    const newItem = { role: newTeamRole.trim(), members: newTeamMembers.trim(), category: 'fleet' };
     const updatedTeam = [...team, newItem];
     setTeam(updatedTeam);
     setNewTeamRole('');
@@ -111,11 +135,13 @@ export default function AdminPanel({ data, onChangeData, onLogout }) {
       text: newTaskText.trim(),
       assignedTo: newTaskAssignee,
       priority: newTaskPriority,
+      isPrivate: newTaskIsPrivate,
       completed: false
     };
     const updatedTasks = [...tasks, newTask];
     setTasks(updatedTasks);
     setNewTaskText('');
+    setNewTaskIsPrivate(false);
     onChangeData({ ...data, meta, team, trucks, tasks: updatedTasks });
   };
 
@@ -170,9 +196,7 @@ export default function AdminPanel({ data, onChangeData, onLogout }) {
         <button
           onClick={() => setActiveTab('general')}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
-            activeTab === 'general'
-              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            activeTab === 'general' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           <Calendar className="w-4 h-4" />
@@ -182,9 +206,7 @@ export default function AdminPanel({ data, onChangeData, onLogout }) {
         <button
           onClick={() => setActiveTab('team')}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
-            activeTab === 'team'
-              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            activeTab === 'team' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           <Users className="w-4 h-4" />
@@ -194,9 +216,7 @@ export default function AdminPanel({ data, onChangeData, onLogout }) {
         <button
           onClick={() => setActiveTab('trucks')}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
-            activeTab === 'trucks'
-              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            activeTab === 'trucks' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           <Truck className="w-4 h-4" />
@@ -206,13 +226,21 @@ export default function AdminPanel({ data, onChangeData, onLogout }) {
         <button
           onClick={() => setActiveTab('tasks')}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
-            activeTab === 'tasks'
-              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+            activeTab === 'tasks' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           <ListTodo className="w-4 h-4" />
           <span>Tareas & Checklist ({tasks.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('security')}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
+            activeTab === 'security' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Lock className="w-4 h-4" />
+          <span>Seguridad & PIN</span>
         </button>
       </div>
 
@@ -335,7 +363,6 @@ export default function AdminPanel({ data, onChangeData, onLogout }) {
                 <button
                   onClick={() => handleDeleteTeamRole(idx)}
                   className="p-2 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition-colors"
-                  title="Eliminar rol"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -472,9 +499,9 @@ export default function AdminPanel({ data, onChangeData, onLogout }) {
                   onChange={(e) => setNewTaskAssignee(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500/60"
                 >
-                  <option value="Camión Gula">Camión Gula</option>
-                  <option value="Camión Covey">Camión Covey</option>
-                  <option value="Camión Albacar">Camión Albacar</option>
+                  {trucks.map((t, idx) => (
+                    <option key={idx} value={t.name}>{t.name}</option>
+                  ))}
                   <option value="Base & Preparación">Base & Preparación</option>
                   <option value="Jefe Logística">Jefe Logística</option>
                 </select>
@@ -494,6 +521,20 @@ export default function AdminPanel({ data, onChangeData, onLogout }) {
                   <option value="Baja">Baja</option>
                 </select>
               </div>
+            </div>
+
+            <div className="flex items-center space-x-2 pt-1">
+              <input
+                type="checkbox"
+                id="privateTask"
+                checked={newTaskIsPrivate}
+                onChange={(e) => setNewTaskIsPrivate(e.target.checked)}
+                className="w-4 h-4 rounded bg-slate-950 border-slate-800 text-amber-500 focus:ring-amber-500"
+              />
+              <label htmlFor="privateTask" className="text-xs text-slate-300 flex items-center space-x-1 cursor-pointer">
+                <EyeOff className="w-3.5 h-3.5 text-amber-400" />
+                <span>Privada (Ocultar en la Vista Pública para personal externo)</span>
+              </label>
             </div>
 
             <button
@@ -529,9 +570,17 @@ export default function AdminPanel({ data, onChangeData, onLogout }) {
                   </button>
 
                   <div>
-                    <p className={`text-sm font-medium ${task.completed ? 'line-through text-slate-400' : 'text-white'}`}>
-                      {task.text}
-                    </p>
+                    <div className="flex items-center space-x-2">
+                      <p className={`text-sm font-medium ${task.completed ? 'line-through text-slate-400' : 'text-white'}`}>
+                        {task.text}
+                      </p>
+                      {task.isPrivate && (
+                        <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold flex items-center space-x-1">
+                          <EyeOff className="w-3 h-3" />
+                          <span>Privada</span>
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center space-x-3 mt-1 text-[11px] text-slate-400">
                       <span>📌 {task.assignedTo}</span>
                       <span className={`px-2 py-0.5 rounded-md font-semibold text-[10px] ${
@@ -553,6 +602,84 @@ export default function AdminPanel({ data, onChangeData, onLogout }) {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Tab 5: Security & Change PIN */}
+      {activeTab === 'security' && (
+        <form onSubmit={handleChangePin} className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6 max-w-xl">
+          <div className="flex items-center space-x-3">
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-400">
+              <KeyRound className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white font-['Outfit']">Cambiar PIN de Administración</h3>
+              <p className="text-xs text-slate-400">Establece tu nueva contraseña privada para gestionar la logística</p>
+            </div>
+          </div>
+
+          {pinErrorMsg && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium flex items-center space-x-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{pinErrorMsg}</span>
+            </div>
+          )}
+
+          {pinSuccessMsg && (
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium flex items-center space-x-2">
+              <Check className="w-4 h-4 shrink-0" />
+              <span>{pinSuccessMsg}</span>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                PIN Actual
+              </label>
+              <input
+                type="password"
+                value={currentPin}
+                onChange={(e) => setCurrentPin(e.target.value)}
+                placeholder="Introduce tu PIN actual"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-500/60"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                Nuevo PIN de Acceso
+              </label>
+              <input
+                type="password"
+                value={newPin}
+                onChange={(e) => setNewPin(e.target.value)}
+                placeholder="Escribe tu nuevo PIN (mínimo 4 caracteres)"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-500/60"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                Confirmar Nuevo PIN
+              </label>
+              <input
+                type="password"
+                value={confirmPin}
+                onChange={(e) => setConfirmPin(e.target.value)}
+                placeholder="Repite tu nuevo PIN"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-amber-500/60"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-bold shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center space-x-2"
+          >
+            <KeyRound className="w-4 h-4" />
+            <span>Actualizar PIN de Seguridad</span>
+          </button>
+        </form>
       )}
     </div>
   );
