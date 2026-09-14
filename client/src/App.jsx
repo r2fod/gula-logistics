@@ -463,6 +463,7 @@ export default function App() {
           onUpdateEntry={handleUpdateClockEntry}
           onDeleteEntry={handleDeleteClockEntry}
           onClockEntryCreated={handleClockEntryCreated}
+          activeWeekData={activeWeek}
         />
 
         <WeekManagerModal
@@ -1111,6 +1112,7 @@ export default function App() {
         onUpdateEntry={handleUpdateClockEntry}
         onDeleteEntry={handleDeleteClockEntry}
         onClockEntryCreated={handleClockEntryCreated}
+        activeWeekData={activeWeek}
       />
 
 
