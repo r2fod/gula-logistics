@@ -24,7 +24,10 @@ export const logisticsData = {
     martes: {
       title: "Martes 15", badge: "Preparación & Carga",
       tasks: [
-        { id: "m1", text: "Recogida Camión Albacar + Recoger Sofá Eventos — mañana pronto (1 persona: Gonzalo).", location: "Albacar Alquiler", timeFrame: "08:00 - 10:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Albacar+Alquiler+Camiones+Valencia", assigned: ["Gonzalo"], completed: false },
+        { id: "m1a", text: "Recoger Sillas Carvillo — 90 sillas en jaula + jaula vacía.", location: "Carvillo", timeFrame: "", mapsUrl: "", assigned: ["Gonzalo"], completed: false },
+        { id: "m1b", text: "Recoger Generador SOS.", location: "SOS", timeFrame: "", mapsUrl: "", assigned: ["Gonzalo"], completed: false },
+        { id: "m1c", text: "Recoger Sofá Events & Style.", location: "Events & Style", timeFrame: "", mapsUrl: "", assigned: ["Gonzalo"], completed: false },
+        { id: "m1d", text: "Recogida Camión Albacar (Ricardo y Johan — uno se trae el coche, otro el camión).", location: "Albacar Alquiler", timeFrame: "08:00 - 10:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Albacar+Alquiler+Camiones+Valencia", assigned: ["Ricardo", "Johan"], completed: false },
         { id: "m2", text: "Preparación y organización de material para Eventos Encamina y SUOT (Irene dirige checklist, Jeferson ejecuta).", location: "Almacén Base", timeFrame: "08:00 - 13:00", mapsUrl: "", assigned: ["Irene", "Jeferson"], completed: false },
         { id: "m3", text: "Carga de eventos Encamina y SUOT en camiones — dejarlo todo listo (Jeferson + Johan). Irene valida albaranes.", location: "Almacén Base", timeFrame: "13:00 - 17:00", mapsUrl: "", assigned: ["Jeferson", "Johan"], completed: false },
         { id: "m4", text: "Recogida Dealde si es posible (1 persona: Ricardo). Si no, se pasa al miércoles por la mañana.", location: "Dealde Paterna", timeFrame: "16:00 - 18:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Dealde+Paterna+Valencia", assigned: ["Ricardo"], completed: false }
