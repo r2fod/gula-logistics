@@ -99,6 +99,7 @@ export default function App() {
     const tokenParam = params.get('token') || params.get('key');
     const roleParam = params.get('role');
     const viewParam = params.get('view') || params.get('modal');
+    const hasSociasFlag = params.has('socias') || params.get('socias') !== null;
 
     if (weekParam && allWeeks[weekParam]) {
       setActiveWeekId(weekParam);
@@ -110,7 +111,13 @@ export default function App() {
     if (viewParam === 'saldos' || viewParam === 'acuerdos') {
       setIsBalancesModalOpen(true);
     }
-    if (tokenParam === SECURE_PARTNER_TOKEN || roleParam === 'socias' || tokenParam === 'socias2026' || tokenParam === 'gula2026') {
+    if (
+      hasSociasFlag ||
+      tokenParam === SECURE_PARTNER_TOKEN || 
+      roleParam === 'socias' || 
+      tokenParam === 'socias2026' || 
+      tokenParam === 'gula2026'
+    ) {
       setIsPartnerMode(true);
       setIsPartnerModalOpen(true);
     }
