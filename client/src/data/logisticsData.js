@@ -20,7 +20,7 @@ export const logisticsData = {
     martes: {
       title: "Martes 15", badge: "Preparación & Carga",
       tasks: [
-        { id: "m1", text: "Recogida Camión Albacar — mañana pronto (1 persona: Persona1).", location: "Albacar Alquiler", timeFrame: "08:00 - 10:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Albacar+Alquiler+Camiones+Valencia", assigned: ["Persona1"], completed: false },
+        { id: "m1", text: "Recogida Camión Albacar + Recoger Sofá Eventos — mañana pronto (1 persona: Persona1).", location: "Albacar Alquiler", timeFrame: "08:00 - 10:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Albacar+Alquiler+Camiones+Valencia", assigned: ["Persona1"], completed: false },
         { id: "m2", text: "Preparación y organización de material para Eventos Empresa1 y Empresa2 (Persona4 dirige checklist, Persona5 ejecuta).", location: "Almacén Base", timeFrame: "08:00 - 13:00", mapsUrl: "", assigned: ["Persona4", "Persona5"], completed: false },
         { id: "m3", text: "Carga de eventos Empresa1 y Empresa2 en camiones — dejarlo todo listo (Persona5 + Persona3). Persona4 valida albaranes.", location: "Almacén Base", timeFrame: "13:00 - 17:00", mapsUrl: "", assigned: ["Persona5", "Persona3"], completed: false },
         { id: "m4", text: "Recogida Empresa5 si es posible (1 persona: Persona2). Si no, se pasa al miércoles por la mañana.", location: "Empresa5 Paterna", timeFrame: "16:00 - 18:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Empresa5+Paterna+Valencia", assigned: ["Persona2"], completed: false }
@@ -30,7 +30,8 @@ export const logisticsData = {
       title: "Miércoles 16", badge: "Recogidas & Descarga Adelantada",
       tasks: [
         { id: "mi1", text: "(Backup) Recogida Empresa5 si no se hizo el martes — mañana temprano (1 persona: Persona2).", location: "Empresa5 Paterna", timeFrame: "08:00 - 10:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Empresa5+Paterna+Valencia", assigned: ["Persona2"], completed: false },
-        { id: "mi2", text: "Viaje, descarga adelantada y montaje de estructura en Mas dels Refranys - Villajoyosa (Conduce: Persona1 | Apoyo descarga y montaje: Persona3, Persona5).", location: "Mas dels Refranys, Villajoyosa", timeFrame: "15:00 - 20:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Mas+dels+Refranys+Villajoyosa", assigned: ["Persona1", "Persona3", "Persona5"], completed: false }
+        { id: "mi2", text: "Viaje, descarga adelantada y montaje de estructura en Villajoyosa (Conduce: Persona1 | Apoyo descarga y montaje: Persona3, Persona5).", location: "Villajoyosa", timeFrame: "15:00 - 20:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Villajoyosa", assigned: ["Persona1", "Persona3", "Persona5"], completed: false },
+        { id: "mi3", text: "Cena prueba de menú — Cliente13 y Cliente14.", location: "", timeFrame: "20:00", mapsUrl: "", assigned: [], completed: false }
       ]
     },
     jueves: {
@@ -44,7 +45,9 @@ export const logisticsData = {
     viernes: {
       title: "Viernes 18", badge: "Estiba Final & Cierre",
       tasks: [
-        { id: "v1", text: "Descarga en Villajoyosa/Refranys y Lugar1 de Chera — recogida de material adelantado (Conduce Persona1 y Persona2 | Apoyo descarga: Persona3).", location: "Mas dels Refranys / Lugar1 de Chera", timeFrame: "08:00 - 13:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Mas+dels+Refranys+Villajoyosa", assigned: ["Persona1", "Persona2", "Persona3"], completed: false },
+        { id: "v1", text: "Descarga Refranys — recogida de material adelantado (Conduce Persona1 | Apoyo descarga: Persona3).", location: "Mas dels Refranys", timeFrame: "12:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Mas+dels+Refranys+Villajoyosa", assigned: ["Persona1", "Persona3"], completed: false },
+        { id: "v1b", text: "Descarga Lugar1 de Chera — recogida de material adelantado (Conduce Persona2).", location: "Lugar1 de Chera", timeFrame: "15:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Lugar1+de+Chera+Valencia", assigned: ["Persona2"], completed: false },
+        { id: "v1c", text: "Recoger Generador 7K + Recoger Fulanita.", location: "", timeFrame: "", mapsUrl: "", assigned: [], completed: false },
         { id: "v2", text: "Estiba, flejado y carga final de los 3 camiones para las bodas del sábado (Conductores: Persona1, Persona2, Jaime | Apoyo carga: Persona5, Persona3).", location: "Almacén Base", timeFrame: "15:00 - 21:00", mapsUrl: "", assigned: ["Persona1", "Persona2", "Jaime", "Persona5", "Persona3"], completed: false },
         { id: "v3", text: "Persona4 valida albaranes de salida y Persona8 supervisa la estiba y rutas.", location: "Almacén Base", timeFrame: "15:00 - 21:00", mapsUrl: "", assigned: ["Persona4", "Persona8"], completed: false }
       ]
