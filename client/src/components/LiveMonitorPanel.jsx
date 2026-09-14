@@ -55,10 +55,16 @@ export default function LiveMonitorPanel({
     const daySchedule = activeSchedule[dayKey] || activeSchedule['martes'] || {};
     const tasks = daySchedule.tasks || [];
 
-    // Find task matching worker name
+    // Prefer the task's own `assigned` list — the task text doesn't always
+    // spell out the worker's name (e.g. "Recoger Generador SOS."), so
+    // text-scanning alone silently misses real assignments.
+    const nameLower = workerName.toLowerCase();
     const matched = tasks.find(t => {
+      if (typeof t === 'object' && Array.isArray(t.assigned) && t.assigned.length > 0) {
+        return t.assigned.some(a => a.toLowerCase() === nameLower);
+      }
       const text = typeof t === 'object' ? t.text : t;
-      return text.toLowerCase().includes(workerName.toLowerCase());
+      return text.toLowerCase().includes(nameLower);
     });
 
     if (matched) {
