@@ -27,7 +27,8 @@ export default function WorkerView({
   clockEntries = [],
   onToggleTask,
   onClockEntryCreated,
-  onToggleGeneralView
+  onToggleGeneralView,
+  onOpenAdminDashboard
 }) {
   const [isClockModalOpen, setIsClockModalOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -183,11 +184,21 @@ export default function WorkerView({
             </div>
           </div>
 
-          {/* Quick Clock-in Action Button */}
-          <div className="flex items-center space-x-3 w-full md:w-auto justify-end">
+          {/* Action Buttons: Clock-in + Admin Dashboard Toggle for Raúl */}
+          <div className="flex items-center space-x-3 w-full md:w-auto justify-end flex-wrap sm:flex-nowrap gap-2">
+            {(currentWorkerObj.name.toLowerCase() === 'raúl' || currentWorkerObj.name.toLowerCase() === 'raul') && onOpenAdminDashboard && (
+              <button
+                onClick={onOpenAdminDashboard}
+                className="w-full sm:w-auto py-3.5 px-5 rounded-2xl text-xs font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center space-x-2 transition-all shadow-xl active:scale-95 border border-amber-400"
+              >
+                <ShieldCheck className="w-4 h-4 text-slate-950" />
+                <span>👑 Panel Admin Completo</span>
+              </button>
+            )}
+
             <button
               onClick={() => setIsClockModalOpen(true)}
-              className={`w-full md:w-auto py-3.5 px-6 rounded-2xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all shadow-xl active:scale-95 ${
+              className={`w-full sm:w-auto py-3.5 px-6 rounded-2xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all shadow-xl active:scale-95 ${
                 activeShift
                   ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/20'
                   : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'

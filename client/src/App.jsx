@@ -79,15 +79,15 @@ export default function App() {
   const [showFullTeamView, setShowFullTeamView] = useState(false);
   const [isPartnerMode, setIsPartnerMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
+    const viewParam = params.get('view');
+    if (viewParam === 'public') return false;
+
     const hasSociasFlag = params.has('socias') || params.get('socias') !== null;
     const hasAdminFlag = params.has('admin') || params.get('admin') === 'true';
     const tokenParam = params.get('token') || params.get('key');
     const roleParam = params.get('role');
-    const viewParam = params.get('view');
-    const workerParam = params.get('worker');
-    const isRaul = workerParam && (workerParam.toLowerCase() === 'raúl' || workerParam.toLowerCase() === 'raul');
-    if (viewParam === 'public') return false;
-    return (hasSociasFlag || hasAdminFlag || isRaul || !!tokenParam || roleParam === 'socias' || viewParam === 'socias' || roleParam === 'admin');
+
+    return (hasSociasFlag || hasAdminFlag || !!tokenParam || roleParam === 'socias' || viewParam === 'socias' || roleParam === 'admin');
   });
 
   // Modals
@@ -104,7 +104,7 @@ export default function App() {
 
   const SECURE_PARTNER_TOKEN = 'gula_socias_secure_98f7a2b9d31e40c5';
 
-  // Detect URL params: ?week=week_3&worker=Raúl&admin=true
+  // Detect URL params: ?week=week_3&worker=Raúl
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const weekParam = params.get('week');
@@ -114,7 +114,6 @@ export default function App() {
     const viewParam = params.get('view') || params.get('modal');
     const hasSociasFlag = params.has('socias') || params.get('socias') !== null;
     const hasAdminFlag = params.has('admin') || params.get('admin') === 'true';
-    const isRaul = workerParam && (workerParam.toLowerCase() === 'raúl' || workerParam.toLowerCase() === 'raul');
 
     if (weekParam && allWeeks[weekParam]) {
       setActiveWeekId(weekParam);
@@ -129,7 +128,6 @@ export default function App() {
     if (
       hasSociasFlag ||
       hasAdminFlag ||
-      isRaul ||
       tokenParam === SECURE_PARTNER_TOKEN || 
       roleParam === 'socias' || 
       roleParam === 'admin' ||
@@ -137,7 +135,6 @@ export default function App() {
       tokenParam === 'gula2026'
     ) {
       setIsPartnerMode(true);
-      setIsPartnerModalOpen(true);
     }
   }, []);
 
@@ -363,6 +360,7 @@ export default function App() {
           clockEntries={clockEntries}
           onToggleTask={(dayKey, taskIdx) => toggleTask(dayKey, taskIdx)}
           onClockEntryCreated={handleClockEntryCreated}
+          onOpenAdminDashboard={() => setIsPartnerMode(true)}
         />
       </div>
     );
