@@ -9,6 +9,7 @@ const router = express.Router();
 let currentMemoryData = { ...logisticsData };
 let currentMemoryWeeks = {
   week_3: {
+    weekId: "week_3",
     id: "week_3",
     name: "Semana 3",
     ...logisticsData
@@ -48,14 +49,24 @@ router.post('/update', async (req, res) => {
 router.get('/weeks', async (req, res) => {
   try {
     if (mongoose.connection.readyState === 1) {
-      const weeksDocs = await LogisticsWeek.find();
-      if (weeksDocs && weeksDocs.length > 0) {
-        const weeksMap = {};
-        weeksDocs.forEach(w => {
-          weeksMap[w.weekId] = w;
+      let weeksDocs = await LogisticsWeek.find();
+
+      // First-ever read: bootstrap Mongo from the seed so every device
+      // starts from the same shared week instead of each browser's own copy.
+      if (!weeksDocs || weeksDocs.length === 0) {
+        const seeded = await LogisticsWeek.create({
+          weekId: 'week_3',
+          name: 'Semana 3',
+          ...logisticsData
         });
-        return res.json(weeksMap);
+        weeksDocs = [seeded];
       }
+
+      const weeksMap = {};
+      weeksDocs.forEach(w => {
+        weeksMap[w.weekId] = w;
+      });
+      return res.json(weeksMap);
     }
     return res.json(currentMemoryWeeks);
   } catch (error) {
