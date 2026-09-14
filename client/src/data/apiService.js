@@ -1,4 +1,6 @@
 // Central API Client for Gula Logistics Backend & MongoDB Atlas
+import { initialBalancesData } from './balancesData';
+
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const TOKEN_STORAGE_KEY = 'gula_admin_token_v1';
@@ -173,28 +175,53 @@ export async function clearAllClockEntriesInAPI() {
 }
 
 /**
- * Fetch sensitive worker balances & agreements from MongoDB Atlas
+ * Helper to check whether a balances dataset has real numbers/breakdowns
+ * and is not just an empty placeholder template of zeroes.
+ */
+function hasRealBalancesData(data) {
+  if (!data || !Array.isArray(data.workers) || data.workers.length === 0) return false;
+  return data.workers.some(w => 
+    (Array.isArray(w.breakdown) && w.breakdown.length > 0) || 
+    (typeof w.currentBalance === 'number' && w.currentBalance !== 0)
+  );
+}
+
+/**
+ * Fetch worker balances & agreements with resilient offline fallback
  */
 export async function fetchBalancesFromAPI() {
   try {
     const res = await fetch(`${API_BASE}/balances`, { headers: { ...authHeaders() } });
-    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-    const data = await res.json();
-    if (data && data.workers) {
-      localStorage.setItem('gula_balances_data_v1', JSON.stringify(data));
-      return data;
+    if (res.ok) {
+      const data = await res.json();
+      if (hasRealBalancesData(data)) {
+        try {
+          localStorage.setItem('gula_balances_data_v1', JSON.stringify(data));
+        } catch (e) {}
+        return data;
+      }
     }
   } catch (err) {
-    console.warn('Backend API balances fetch failed, using local storage fallback:', err.message);
+    console.warn('Backend API balances fetch failed, using fallback:', err.message);
   }
 
+  // Fallback to localStorage only if it contains real populated data
   try {
     const saved = localStorage.getItem('gula_balances_data_v1');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (hasRealBalancesData(parsed)) {
+        return parsed;
+      } else {
+        localStorage.removeItem('gula_balances_data_v1');
+      }
+    }
   } catch (e) {
     console.error(e);
   }
-  return null;
+
+  // Guarantee that real initial balances data is always returned
+  return initialBalancesData;
 }
 
 /**

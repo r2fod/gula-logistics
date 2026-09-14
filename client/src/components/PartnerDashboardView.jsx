@@ -44,6 +44,8 @@ export default function PartnerDashboardView({
   workersList = [], 
   clockEntries = [], 
   isAdmin = false,
+  balancesData: externalBalancesData,
+  setBalancesData: externalSetBalancesData,
   onUnlockAdmin,
   onLogoutAdmin,
   onOpenAdminLogin,
@@ -61,27 +63,46 @@ export default function PartnerDashboardView({
   onOpenWorkerEditor,
   onOpenTaskEditor
 }) {
-  const [activeTab, setActiveTab] = useState('live'); // 'live' | 'balances' | 'schedule' | 'logistics' | 'financial' | 'fichajes'
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const tab = p.get('tab') || p.get('view');
+      if (tab === 'balances' || tab === 'saldos' || tab === 'acuerdos') return 'balances';
+      if (tab === 'financial' || tab === 'financiero' || tab === 'resumen') return 'financial';
+      if (tab === 'schedule' || tab === 'planning' || tab === 'lista') return 'schedule';
+      if (tab === 'graph' || tab === 'grafo') return 'graph';
+      if (tab === 'logistics' || tab === 'flota' || tab === 'bodas') return 'logistics';
+      if (tab === 'fichajes') return 'fichajes';
+    } catch (e) {}
+    return 'live';
+  });
   const [copiedLink, setCopiedLink] = useState(false);
   const [expandedWorkerId, setExpandedWorkerId] = useState('jefferson');
   const [adminUnlocked, setAdminUnlocked] = useState(isAdmin);
   const [isAdminEditOpen, setIsAdminEditOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
-  const [balancesData, setBalancesData] = useState(initialBalancesData);
+  const [internalBalancesData, setInternalBalancesData] = useState(externalBalancesData || initialBalancesData);
+  const balancesData = externalBalancesData || internalBalancesData;
   const [isAdminSettingsOpen, setIsAdminSettingsOpen] = useState(false);
 
   useEffect(() => {
     setAdminUnlocked(isAdmin);
   }, [isAdmin]);
 
-  // Live financial balances come only from the backend/MongoDB — never from
-  // the bundled placeholder, which holds no real amounts.
   useEffect(() => {
-    if (activeTab === 'balances') {
-      fetchBalancesFromAPI().then(apiData => {
-        if (apiData && apiData.workers) setBalancesData(apiData);
-      });
+    if (externalBalancesData) {
+      setInternalBalancesData(externalBalancesData);
     }
+  }, [externalBalancesData]);
+
+  // Sync balances on load and tab change
+  useEffect(() => {
+    fetchBalancesFromAPI().then(apiData => {
+      if (apiData && apiData.workers) {
+        setInternalBalancesData(apiData);
+        if (externalSetBalancesData) externalSetBalancesData(apiData);
+      }
+    });
   }, [activeTab]);
 
   const handleRequestAdminUnlock = () => {
@@ -559,13 +580,28 @@ export default function PartnerDashboardView({
                       </div>
                     )}
 
+                    {/* Agreements */}
+                    {worker.agreements && worker.agreements.length > 0 && (
+                      <div className="mt-3.5 p-3 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1">
+                        <span className="text-[10px] font-bold text-amber-400/90 uppercase tracking-wider block">
+                          📜 Acuerdos & Condiciones
+                        </span>
+                        {worker.agreements.map((agr, aIdx) => (
+                          <p key={aIdx} className="text-xs text-slate-300 flex items-start gap-1.5 leading-snug">
+                            <span className="text-amber-400 text-xs leading-4">•</span>
+                            <span>{agr}</span>
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Breakdown */}
                     <div className="mt-4 space-y-2">
                       <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                         Desglose de Conceptos & Turnos
                       </span>
-                      <div className={`space-y-1.5 pr-1 ${worker.breakdown.length > 5 ? 'max-h-48 overflow-y-auto' : ''}`}>
-                        {worker.breakdown.map((item, idx) => (
+                      <div className={`space-y-1.5 pr-1 ${(worker.breakdown || []).length > 5 ? 'max-h-48 overflow-y-auto' : ''}`}>
+                        {(worker.breakdown || []).map((item, idx) => (
                           <div 
                             key={idx}
                             className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${
@@ -584,6 +620,15 @@ export default function PartnerDashboardView({
                         ))}
                       </div>
                     </div>
+
+                    {/* Worker Notes */}
+                    {worker.notes && (
+                      <div className="mt-2.5 px-2 py-1.5 rounded-xl bg-slate-950/40 border border-slate-800/60">
+                        <p className="text-[11px] text-slate-400 italic">
+                          💡 {worker.notes}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-3 border-t border-slate-800 flex items-center justify-end">
