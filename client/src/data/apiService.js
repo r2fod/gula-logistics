@@ -215,3 +215,40 @@ export async function saveWorkerBalanceToAPI(workerId, updatePayload) {
   }
   return updatePayload;
 }
+
+/**
+ * Fetch the shared weekly planning (schedule, weddings, etc.) from MongoDB —
+ * so every device sees the same plan instead of each browser's own local copy.
+ */
+export async function fetchWeeksFromAPI() {
+  try {
+    const res = await fetch(`${API_BASE}/logistics/weeks`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const data = await res.json();
+    if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+      return data;
+    }
+  } catch (err) {
+    console.warn('Backend API weeks fetch failed, using local fallback:', err.message);
+  }
+  return null;
+}
+
+/**
+ * Save the full weeks map (all weeks) to MongoDB Atlas
+ */
+export async function saveWeeksToAPI(weeksPayload) {
+  try {
+    const res = await fetch(`${API_BASE}/logistics/weeks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(weeksPayload)
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn('Backend API weeks save failed:', err.message);
+  }
+  return null;
+}
