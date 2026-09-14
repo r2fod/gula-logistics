@@ -18,3 +18,7 @@
 ## Ideas mencionadas pero no confirmadas como necesarias
 
 - El usuario preguntó por "código limpio, sin duplicados, buen rendimiento, escalable" de forma genérica — no se ha hecho una auditoría completa, solo se ha limpiado lo que se ha encontrado de paso (ver MEJORAS.md).
+
+## Investigado y no reproducido (dejar constancia por si vuelve a pasar)
+
+- [ ] **Salto espontáneo de pestaña en `PartnerDashboardView`**: el usuario reportó que, tras ~90s en "Control de Saldos & Acuerdos" sin interactuar, la vista volvió sola a "Actividad en Tiempo Real". Investigado a fondo: `activeTab` es estado local que solo cambia en los 7 `onClick` de las pestañas (`client/src/components/PartnerDashboardView.jsx`), no hay ningún `useEffect` que lo reinicie por props, y el polling de 20s de `App.jsx` (`fetchClockEntriesFromAPI`/`fetchWeeksFromAPI`) solo cambia las props que recibe el componente — no le pasa una `key`, así que React no debería desmontarlo. Instrumentado con logs de mount/unmount y de cambios de `activeTab`, y verificado con identidad de nodo DOM: tras 6+ ciclos de polling (~185s) en la pestaña de Saldos, sin backend real disponible, el componente nunca se desmontó ni la pestaña cambió sola. Solo se observó el salto una vez, sin comprobación intermedia — lo más probable es que fuera un clic accidental durante esa verificación manual, no un bug de la app. Si vuelve a pasar, sería útil anotar el minuto exacto y si coincidió con algún clic/scroll concreto.
