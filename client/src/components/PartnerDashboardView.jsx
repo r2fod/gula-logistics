@@ -193,7 +193,7 @@ export default function PartnerDashboardView({
     <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-4 md:p-5 font-sans space-y-3">
       
       {/* Top Page Navigation Bar - Compact */}
-      <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 px-4 py-3 rounded-2xl shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2">
+      <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 px-4 py-3 rounded-2xl shadow-xl flex flex-col lg:flex-row lg:flex-wrap justify-between items-start lg:items-center gap-2">
         
         {/* Title & Selector (compact) */}
         <div className="flex items-center gap-3 min-w-0">
