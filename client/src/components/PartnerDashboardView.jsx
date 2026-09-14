@@ -57,6 +57,8 @@ export default function PartnerDashboardView({
   const [copiedLink, setCopiedLink] = useState(false);
   const [expandedWorkerId, setExpandedWorkerId] = useState('jefferson');
   const [adminUnlocked, setAdminUnlocked] = useState(isAdmin);
+  const [isAdminEditOpen, setIsAdminEditOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null);
 
   useEffect(() => {
     setAdminUnlocked(isAdmin);
@@ -204,10 +206,10 @@ export default function PartnerDashboardView({
                     <span>👑 MODO ADMINISTRADOR (RAÚL)</span>
                   </span>
                 ) : (
-                  <span className="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center gap-1">
+                  <button onClick={handleRequestAdminUnlock} className="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center gap-1 transition-colors cursor-pointer">
                     <Eye className="w-3 h-3 text-blue-400" />
-                    <span>👁️ VISTA SOCIAS (SOLO LECTURA)</span>
-                  </span>
+                    <span>👁️ VISTA SOCIAS (CLICK PARA ADMIN)</span>
+                  </button>
                 )}
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -250,13 +252,15 @@ export default function PartnerDashboardView({
             <span>⏱️ Fichar Tarea</span>
           </button>
 
-          <button
-            onClick={onOpenPayroll}
-            className="bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 border border-slate-800 transition-all"
-          >
-            <DollarSign className="w-4 h-4 text-amber-400" />
-            <span>Nóminas & Informes</span>
-          </button>
+          {adminUnlocked && (
+            <button
+              onClick={onOpenPayroll}
+              className="bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 border border-slate-800 transition-all"
+            >
+              <DollarSign className="w-4 h-4 text-amber-400" />
+              <span>Nóminas & Informes</span>
+            </button>
+          )}
 
           {adminUnlocked && (
             <button
@@ -269,13 +273,15 @@ export default function PartnerDashboardView({
           )}
 
           {/* Generar Enlaces (WhatsApp) Button */}
-          <button
-            onClick={onOpenShareModal}
-            className="bg-blue-600 hover:bg-blue-500 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-blue-600/30 active:scale-95 transition-all"
-          >
-            <Share2 className="w-4 h-4" />
-            <span>🔗 Generar Enlaces (WhatsApp)</span>
-          </button>
+          {adminUnlocked && (
+            <button
+              onClick={onOpenShareModal}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-blue-600/30 active:scale-95 transition-all"
+            >
+              <Share2 className="w-4 h-4" />
+              <span>🔗 Generar Enlaces (WhatsApp)</span>
+            </button>
+          )}
 
           <button
             onClick={handleCopySecureLink}
@@ -312,17 +318,19 @@ export default function PartnerDashboardView({
           <span>🔴 Actividad en Tiempo Real</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('balances')}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
-            activeTab === 'balances'
-              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <TrendingUp className="w-4 h-4" />
-          <span>📜 Control de Saldos & Acuerdos</span>
-        </button>
+        {adminUnlocked && (
+          <button
+            onClick={() => setActiveTab('balances')}
+            className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+              activeTab === 'balances'
+                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            <span>📜 Control de Saldos & Acuerdos</span>
+          </button>
+        )}
 
         <button
           onClick={() => setActiveTab('schedule')}
@@ -360,17 +368,19 @@ export default function PartnerDashboardView({
           <span>🚚 Flota & Bodas</span>
         </button>
 
-        <button
-          onClick={() => setActiveTab('financial')}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
-            activeTab === 'financial'
-              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <DollarSign className="w-4 h-4" />
-          <span>💶 Resumen Financiero & Extras</span>
-        </button>
+        {adminUnlocked && (
+          <button
+            onClick={() => setActiveTab('financial')}
+            className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+              activeTab === 'financial'
+                ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <DollarSign className="w-4 h-4" />
+            <span>💶 Resumen Financiero & Extras</span>
+          </button>
+        )}
 
         <button
           onClick={() => setActiveTab('fichajes')}

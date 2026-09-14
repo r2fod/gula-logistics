@@ -287,20 +287,12 @@ export default function App() {
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  // Admin mode state (Raúl/dev is auto-admin; socias link is visual read-only by default)
-  const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    const workerParam = params.get('worker');
-    const isRaul = workerParam && (workerParam.toLowerCase() === 'raúl' || workerParam.toLowerCase() === 'raul');
-    const hasAdminFlag = params.get('admin') === 'true' || params.has('admin');
-    return isRaul || hasAdminFlag;
-  });
+  // Admin mode state (Requires explicit password via AdminLoginModal)
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
+  const isAdmin = isAdminUnlocked;
 
   const params = new URLSearchParams(window.location.search);
   const workerParam = params.get('worker');
-  const isRaul = workerParam && (workerParam.toLowerCase() === 'raúl' || workerParam.toLowerCase() === 'raul');
-  const hasAdminFlag = params.get('admin') === 'true' || params.has('admin');
-  const isAdmin = isRaul || hasAdminFlag || isAdminUnlocked;
 
   if (isPartnerMode) {
     return (
@@ -470,30 +462,36 @@ export default function App() {
             </button>
 
             {/* Saldos & Acuerdos Button */}
-            <button
-              onClick={() => setIsBalancesModalOpen(true)}
-              className="flex-1 lg:flex-none bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-800 transition-all shadow-sm"
-            >
-              <span>📜 Saldos & Acuerdos</span>
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setIsBalancesModalOpen(true)}
+                className="flex-1 lg:flex-none bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-800 transition-all shadow-sm"
+              >
+                <span>📜 Saldos & Acuerdos</span>
+              </button>
+            )}
 
             {/* Payroll Report */}
-            <button
-              onClick={() => setIsPayrollModalOpen(true)}
-              className="flex-1 lg:flex-none bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-800 transition-all"
-            >
-              <DollarSign className="w-3.5 h-3.5 text-amber-400" />
-              <span>Nóminas</span>
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setIsPayrollModalOpen(true)}
+                className="flex-1 lg:flex-none bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-800 transition-all"
+              >
+                <DollarSign className="w-3.5 h-3.5 text-amber-400" />
+                <span>Nóminas</span>
+              </button>
+            )}
 
             {/* Gemini AI */}
-            <button
-              onClick={() => setIsGeminiModalOpen(true)}
-              className="flex-1 lg:flex-none bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
-            >
-              <Wand2 className="w-4 h-4" />
-              <span>Gemini AI</span>
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setIsGeminiModalOpen(true)}
+                className="flex-1 lg:flex-none bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
+              >
+                <Wand2 className="w-4 h-4" />
+                <span>Gemini AI</span>
+              </button>
+            )}
 
             {/* Share Worker Links */}
             <button
@@ -538,11 +536,11 @@ export default function App() {
             <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
               {(activeWorker.toLowerCase() === 'raúl' || activeWorker.toLowerCase() === 'raul') && (
                 <button
-                  onClick={() => setIsPartnerMode(true)}
+                  onClick={() => setIsAdminLoginOpen(true)}
                   className="bg-amber-500 hover:bg-amber-400 text-slate-950 px-4 py-2 rounded-xl text-xs font-extrabold transition-colors shadow-md flex items-center gap-1.5"
                 >
                   <ShieldCheck className="w-4 h-4" />
-                  <span>👑 Panel Admin Completo</span>
+                  <span>👑 Iniciar Sesión Admin</span>
                 </button>
               )}
 
