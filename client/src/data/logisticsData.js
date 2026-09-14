@@ -20,7 +20,10 @@ export const logisticsData = {
     martes: {
       title: "Martes 15", badge: "Preparación & Carga",
       tasks: [
-        { id: "m1", text: "Recogida Camión Albacar + Recoger Sofá Eventos — mañana pronto (1 persona: Persona1).", location: "Albacar Alquiler", timeFrame: "08:00 - 10:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Albacar+Alquiler+Camiones+Valencia", assigned: ["Persona1"], completed: false },
+        { id: "m1a", text: "Recoger Sillas Carvillo — 90 sillas en jaula + jaula vacía.", location: "Carvillo", timeFrame: "", mapsUrl: "", assigned: ["Persona1"], completed: false },
+        { id: "m1b", text: "Recoger Generador SOS.", location: "SOS", timeFrame: "", mapsUrl: "", assigned: ["Persona1"], completed: false },
+        { id: "m1c", text: "Recoger Sofá Events & Style.", location: "Events & Style", timeFrame: "", mapsUrl: "", assigned: ["Persona1"], completed: false },
+        { id: "m1d", text: "Recogida Camión Albacar (Persona2 y Persona3 — uno se trae el coche, otro el camión).", location: "Albacar Alquiler", timeFrame: "08:00 - 10:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Albacar+Alquiler+Camiones+Valencia", assigned: ["Persona2", "Persona3"], completed: false },
         { id: "m2", text: "Preparación y organización de material para Eventos Empresa1 y Empresa2 (Persona4 dirige checklist, Persona5 ejecuta).", location: "Almacén Base", timeFrame: "08:00 - 13:00", mapsUrl: "", assigned: ["Persona4", "Persona5"], completed: false },
         { id: "m3", text: "Carga de eventos Empresa1 y Empresa2 en camiones — dejarlo todo listo (Persona5 + Persona3). Persona4 valida albaranes.", location: "Almacén Base", timeFrame: "13:00 - 17:00", mapsUrl: "", assigned: ["Persona5", "Persona3"], completed: false },
         { id: "m4", text: "Recogida Empresa5 si es posible (1 persona: Persona2). Si no, se pasa al miércoles por la mañana.", location: "Empresa5 Paterna", timeFrame: "16:00 - 18:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Empresa5+Paterna+Valencia", assigned: ["Persona2"], completed: false }
