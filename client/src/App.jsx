@@ -709,7 +709,7 @@ export default function App() {
               <select
                 value={activeWeekId}
                 onChange={(e) => setActiveWeekId(e.target.value)}
-                className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3.5 py-2 rounded-xl text-xs focus:outline-none shadow-inner min-w-0 max-w-full flex-1 sm:flex-none sm:max-w-[220px] truncate"
+                className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3.5 py-2 rounded-xl text-xs focus:outline-none shadow-inner min-w-0 max-w-full flex-1 sm:flex-none sm:max-w-sm truncate"
               >
                 {Object.values(allWeeks).map((w) => (
                   <option key={w.id} value={w.id}>{w.name} ({w.meta?.dateRange})</option>

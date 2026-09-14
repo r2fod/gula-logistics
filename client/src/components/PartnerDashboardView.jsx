@@ -242,7 +242,7 @@ export default function PartnerDashboardView({
           <select
             value={activeWeekId}
             onChange={(e) => onSelectWeek(e.target.value)}
-            className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs focus:outline-none min-w-0 max-w-full flex-1 lg:flex-none lg:max-w-[200px] truncate"
+            className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs focus:outline-none min-w-0 max-w-full flex-1 lg:flex-none lg:max-w-sm truncate"
           >
             {Object.values(allWeeks).map((w) => (
               <option key={w.id} value={w.id}>{w.name} ({w.meta?.dateRange})</option>
