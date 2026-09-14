@@ -31,7 +31,6 @@ import WeekManagerModal from './components/WeekManagerModal';
 import GeminiAssistantModal from './components/GeminiAssistantModal';
 import ClockInModal from './components/ClockInModal';
 import PayrollReportModal from './components/PayrollReportModal';
-import PartnerDashboardModal from './components/PartnerDashboardModal';
 import PartnerDashboardView from './components/PartnerDashboardView';
 import BalancesAgreementsModal from './components/BalancesAgreementsModal';
 import AdminWorkerEditorModal from './components/AdminWorkerEditorModal';
@@ -176,7 +175,6 @@ export default function App() {
   const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
   const [isClockInModalOpen, setIsClockInModalOpen] = useState(false);
   const [isPayrollModalOpen, setIsPayrollModalOpen] = useState(false);
-  const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
   const [isBalancesModalOpen, setIsBalancesModalOpen] = useState(false);
   const [isWorkerEditorModalOpen, setIsWorkerEditorModalOpen] = useState(false);
   const [isTaskEditorModalOpen, setIsTaskEditorModalOpen] = useState(false);
@@ -746,10 +744,7 @@ export default function App() {
 
             {/* Partner Dashboard Button */}
             <button
-              onClick={() => {
-                setIsPartnerMode(true);
-                setIsPartnerModalOpen(true);
-              }}
+              onClick={() => setIsPartnerMode(true)}
               className="flex-1 lg:flex-none bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
             >
               <ShieldCheck className="w-4 h-4" />
@@ -1118,18 +1113,6 @@ export default function App() {
         onClockEntryCreated={handleClockEntryCreated}
       />
 
-      <PartnerDashboardModal
-        isOpen={isPartnerModalOpen}
-        onClose={() => setIsPartnerModalOpen(false)}
-        entries={clockEntries}
-        workersList={workersList}
-        activeWeekData={activeWeek}
-        onClockEntryCreated={handleClockEntryCreated}
-        onOpenClockModal={(workerName) => {
-          if (workerName) setActiveWorker(workerName);
-          setIsClockInModalOpen(true);
-        }}
-      />
 
       <BalancesAgreementsModal
         isOpen={isBalancesModalOpen}
