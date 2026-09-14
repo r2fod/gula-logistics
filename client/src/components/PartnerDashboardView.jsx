@@ -234,6 +234,15 @@ export default function PartnerDashboardView({
             <span>Gemini AI</span>
           </button>
 
+          {/* Generar Enlaces (WhatsApp) Button */}
+          <button
+            onClick={onOpenShareModal}
+            className="bg-blue-600 hover:bg-blue-500 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-blue-600/30 active:scale-95 transition-all"
+          >
+            <Share2 className="w-4 h-4" />
+            <span>🔗 Generar Enlaces (WhatsApp)</span>
+          </button>
+
           <button
             onClick={handleCopySecureLink}
             className="bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center gap-1.5 border border-slate-800 transition-all"
@@ -333,7 +342,7 @@ export default function PartnerDashboardView({
       {/* TAB 1: Saldos & Acuerdos Detallados */}
       {activeTab === 'balances' && (
         <div className="space-y-6 animate-fadeIn">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-800 pb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
             <div>
               <h3 className="text-xl font-extrabold text-white font-['Outfit'] flex items-center space-x-2">
                 <TrendingUp className="w-5 h-5 text-amber-400" />
@@ -343,9 +352,20 @@ export default function PartnerDashboardView({
                 Desglose individual de turnos, bolsas de horas, roturas de vajilla y botones de WhatsApp.
               </p>
             </div>
-            <span className="text-xs text-slate-400 font-semibold bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800">
-              Actualizado: {initialBalancesData.lastUpdated}
-            </span>
+
+            <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+              <button
+                onClick={onOpenShareModal}
+                className="py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs flex items-center space-x-2 shadow-lg shadow-blue-600/30 transition-all active:scale-95"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>🔗 Generar Enlaces (WhatsApp)</span>
+              </button>
+
+              <span className="text-xs text-slate-400 font-semibold bg-slate-900 px-3 py-2 rounded-xl border border-slate-800 hidden md:inline">
+                Actualizado: {initialBalancesData.lastUpdated}
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
