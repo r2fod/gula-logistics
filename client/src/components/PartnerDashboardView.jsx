@@ -20,7 +20,8 @@ import {
   Plus,
   Activity,
   AlertTriangle,
-  ListTodo
+  ListTodo,
+  Eye
 } from 'lucide-react';
 import { initialBalancesData } from '../data/balancesData';
 import LiveMonitorPanel from './LiveMonitorPanel';
@@ -36,7 +37,8 @@ export default function PartnerDashboardView({
   onOpenPayroll,
   onOpenGemini,
   onOpenShareModal,
-  onOpenAddWeek
+  onOpenAddWeek,
+  onTogglePublicView
 }) {
   const [activeTab, setActiveTab] = useState('balances'); // 'balances' | 'live' | 'financial' | 'logistics' | 'schedule'
   const [copiedLink, setCopiedLink] = useState(false);
@@ -225,13 +227,16 @@ export default function PartnerDashboardView({
             <span>{copiedLink ? '¡Link Copiado!' : 'Copiar Link Socias'}</span>
           </button>
 
-          <button
-            onClick={shareSecureLinkWhatsApp}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-95 transition-all"
-          >
-            <MessageCircle className="w-4 h-4" />
-            <span>WhatsApp Socias</span>
-          </button>
+          {onTogglePublicView && (
+            <button
+              onClick={() => onTogglePublicView(false)}
+              className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center gap-1.5 border border-amber-500/30 transition-all shadow-sm"
+              title="Cambiar a la Vista Pública General"
+            >
+              <Eye className="w-4 h-4" />
+              <span>👁️ Vista Pública</span>
+            </button>
+          )}
         </div>
       </header>
 
