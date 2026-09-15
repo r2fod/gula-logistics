@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   User, 
   Clock, 
@@ -17,7 +17,9 @@ import {
   BarChart3,
   Award,
   Filter,
-  Zap
+  Zap,
+  Target,
+  ArrowRight
 } from 'lucide-react';
 import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
@@ -96,11 +98,9 @@ export default function WorkerView({
     let weddings = [];
 
     const isAssigned = (t) => {
-      // Prefer explicit assigned array
       if (typeof t === 'object' && Array.isArray(t.assigned) && t.assigned.length > 0) {
         return t.assigned.some(a => a.toLowerCase() === nameLower);
       }
-      // Fallback: scan task text
       const text = typeof t === 'object' ? t.text : t;
       return text.toLowerCase().includes(nameLower);
     };
@@ -139,6 +139,60 @@ export default function WorkerView({
     return acc + completed;
   }, 0);
 
+  // Auto-detect immediate / first pending task for ZERO-SCROLL instant clock-in
+  const immediateTask = useMemo(() => {
+    if (activeShift) {
+      return {
+        isShiftActive: true,
+        taskName: activeShift.taskName || 'Turno Activo General',
+        dayTitle: 'Turno en curso',
+        dayBadge: '🔴 En Directo',
+        timeFrame: elapsedTimeFormatted,
+        isWedding: false
+      };
+    }
+
+    // Look for first uncompleted task across days
+    for (const day of daysWithActivities) {
+      for (const t of day.tasks) {
+        const isCompleted = typeof t === 'object' ? t.completed : false;
+        if (!isCompleted) {
+          const text = typeof t === 'object' ? t.text : t;
+          const timeFrame = typeof t === 'object' ? t.timeFrame : null;
+          const location = typeof t === 'object' ? t.location : null;
+          const mapsUrl = typeof t === 'object' ? t.mapsUrl : null;
+          return {
+            isShiftActive: false,
+            dayKey: day.key,
+            dayTitle: day.title,
+            dayBadge: day.badge,
+            taskName: text,
+            timeFrame,
+            location,
+            mapsUrl,
+            rawTask: t,
+            isWedding: false
+          };
+        }
+      }
+      if (day.weddings && day.weddings.length > 0) {
+        const w = day.weddings[0];
+        return {
+          isShiftActive: false,
+          dayKey: day.key,
+          dayTitle: day.title,
+          dayBadge: 'Boda Fin de Semana',
+          taskName: `Boda: ${w.location} (${w.truck})`,
+          timeFrame: w.timeFrame,
+          location: w.location,
+          rawTask: w,
+          isWedding: true
+        };
+      }
+    }
+    return null;
+  }, [daysWithActivities, activeShift, elapsedTimeFormatted]);
+
   // Saturday special check
   const saturdayWeddings = (activeWeekData.saturdaySpecial?.weddings || []).filter(w => 
     w.details.toLowerCase().includes(currentWorkerObj.name.toLowerCase()) ||
@@ -151,146 +205,241 @@ export default function WorkerView({
     : daysWithActivities.filter(d => d.key === selectedDayKey);
 
   return (
-    <div className="space-y-6 animate-fadeIn w-full">
+    <div className="space-y-4 sm:space-y-6 animate-fadeIn w-full max-w-full overflow-x-hidden">
       
-      {/* Worker Personal Header Card */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
+      {/* 1. Worker Personal Profile Header Card - Compact & Clean */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           {/* Profile Details */}
-          <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 rounded-3xl bg-slate-950 border border-slate-800 flex items-center justify-center text-4xl shadow-inner shrink-0">
+          <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-3xl sm:text-4xl shadow-inner shrink-0">
               {currentWorkerObj.avatar}
             </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-extrabold text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 uppercase tracking-wider">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <span className="text-[9px] sm:text-[10px] font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 uppercase tracking-wider">
                   Mi Panel Personal
                 </span>
                 {currentWorkerObj.isPayroll ? (
-                  <span className="text-[10px] font-extrabold text-amber-300 bg-amber-500/20 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                  <span className="text-[9px] sm:text-[10px] font-extrabold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">
                     ⭐ Nómina Fija
                   </span>
                 ) : (
-                  <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
-                    💶 Tarifa Extra (10,00 €/h)
+                  <span className="text-[9px] sm:text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    💶 10,00 €/h
                   </span>
                 )}
               </div>
 
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-['Outfit'] mt-1">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-['Outfit'] mt-0.5 truncate">
                 Hola, {currentWorkerObj.name} 👋
               </h1>
 
-              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 mt-1">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] sm:text-xs text-slate-400 mt-0.5">
                 <span className="font-semibold text-slate-300">{currentWorkerObj.role}</span>
                 <span>•</span>
-                <span className="flex items-center space-x-1 text-amber-300">
-                  <Truck className="w-3.5 h-3.5" />
-                  <span>{currentWorkerObj.truck}</span>
+                <span className="flex items-center space-x-1 text-amber-300 truncate">
+                  <Truck className="w-3 h-3 shrink-0" />
+                  <span className="truncate">{currentWorkerObj.truck}</span>
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Action Buttons: Clock-in + Admin Dashboard Toggle for Raúl */}
-          <div className="flex items-center space-x-3 w-full md:w-auto justify-end flex-wrap sm:flex-nowrap gap-2">
-            {(currentWorkerObj.name.toLowerCase() === 'raúl' || currentWorkerObj.name.toLowerCase() === 'raul') && onOpenAdminDashboard && (
-              <button
-                onClick={onOpenAdminDashboard}
-                className="w-full sm:w-auto py-3.5 px-5 rounded-2xl text-xs font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center space-x-2 transition-all shadow-xl active:scale-95 border border-amber-400"
-              >
-                <ShieldCheck className="w-4 h-4 text-slate-950" />
-                <span>👑 Panel Admin Completo</span>
-              </button>
-            )}
-
+          {/* Admin Toggle if Raúl */}
+          {(currentWorkerObj.name.toLowerCase() === 'raúl' || currentWorkerObj.name.toLowerCase() === 'raul') && onOpenAdminDashboard && (
             <button
-              onClick={() => { setPrefilledTask(null); setIsClockModalOpen(true); }}
-              className={`w-full sm:w-auto py-3.5 px-6 rounded-2xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all shadow-xl active:scale-95 ${
-                activeShift
-                  ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/20'
-                  : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
-              }`}
+              onClick={onOpenAdminDashboard}
+              className="w-full sm:w-auto py-2 px-3.5 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center space-x-1.5 transition-all shadow-md active:scale-95 border border-amber-400 shrink-0"
             >
-              <Clock className="w-4 h-4" />
-              <span>{activeShift ? '🔴 Salida / Finalizar Tarea' : '🟢 Fichar Entrada General'}</span>
+              <ShieldCheck className="w-4 h-4 text-slate-950" />
+              <span>👑 Panel Admin Completo</span>
             </button>
-          </div>
+          )}
         </div>
 
-        {/* Live Active Shift & Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-slate-800/80">
-          <div className={`p-4 rounded-2xl border ${
+        {/* 🎯 HERO ACTION CARD: IMMEDIATE TASK (0 SCROLL REQUIRED!) */}
+        <div className={`rounded-2xl p-4 sm:p-5 border transition-all ${
+          activeShift
+            ? 'bg-gradient-to-r from-rose-950/50 via-slate-950 to-rose-950/30 border-rose-500/50 shadow-xl shadow-rose-950/30'
+            : immediateTask
+            ? 'bg-gradient-to-br from-emerald-950/40 via-slate-950 to-amber-950/30 border-emerald-500/40 shadow-xl shadow-emerald-950/20'
+            : 'bg-slate-950/80 border-slate-800'
+        }`}>
+          {activeShift ? (
+            /* ACTIVE SHIFT: Live Clock-Out Button */
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rose-500/20 pb-2.5">
+                <div className="flex items-center space-x-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-400">
+                    🔴 ESTÁS EN TURNO ACTIVO
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-slate-400">Tiempo transcurrido:</span>
+                  <span className="text-base font-extrabold font-mono text-emerald-400 bg-slate-900 px-2.5 py-0.5 rounded-lg border border-slate-800">
+                    {elapsedTimeFormatted}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-xs text-slate-400 block">Tarea en curso:</span>
+                <p className="text-sm sm:text-base font-extrabold text-white font-['Outfit'] mt-0.5">
+                  📌 {activeShift.taskName || 'Turno Operativo General'}
+                </p>
+              </div>
+
+              <button
+                onClick={() => { setPrefilledTask(null); setIsClockModalOpen(true); }}
+                className="w-full py-3.5 px-6 rounded-xl text-sm font-extrabold bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center space-x-2 transition-all shadow-xl shadow-rose-600/30 active:scale-95"
+              >
+                <Square className="w-4 h-4" />
+                <span>🔴 Fichar Salida / Finalizar Tarea</span>
+              </button>
+            </div>
+          ) : immediateTask ? (
+            /* PENDING TASK: 1-Click Clock-In Button */
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2 border-b border-emerald-500/20 pb-2">
+                <div className="flex items-center space-x-1.5 text-emerald-400">
+                  <Target className="w-4 h-4 animate-pulse" />
+                  <span className="text-[10px] font-black uppercase tracking-wider">
+                    TU PRIMERA TAREA ASIGNADA
+                  </span>
+                </div>
+                <span className="text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-md">
+                  📅 {immediateTask.dayTitle}
+                </span>
+              </div>
+
+              <div>
+                <h2 className="text-sm sm:text-base font-extrabold text-white font-['Outfit'] leading-snug">
+                  {immediateTask.taskName}
+                </h2>
+                {immediateTask.timeFrame && (
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-amber-300 mt-1">
+                    <span className="flex items-center gap-1 font-semibold">
+                      <Clock className="w-3 h-3" />
+                      {immediateTask.timeFrame}
+                    </span>
+                    {immediateTask.location && (
+                      <span className="text-slate-400 flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-rose-400" />
+                        {immediateTask.location}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* PRIMARY 1-CLICK CLOCK-IN BUTTON */}
+              <button
+                onClick={() => {
+                  setPrefilledTask(immediateTask.taskName);
+                  setIsClockModalOpen(true);
+                }}
+                className="w-full py-3.5 px-6 rounded-xl text-xs sm:text-sm font-extrabold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 flex items-center justify-center space-x-2 transition-all shadow-xl shadow-emerald-500/25 active:scale-95"
+              >
+                <Play className="w-4 h-4 fill-current" />
+                <span>⏱️ Fichar Esta Tarea Ahora (1 Toque)</span>
+              </button>
+
+              <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
+                <button
+                  onClick={() => {
+                    setPrefilledTask(null);
+                    setIsClockModalOpen(true);
+                  }}
+                  className="hover:text-amber-400 text-slate-400 underline decoration-slate-700 hover:decoration-amber-400 transition-colors"
+                >
+                  ➕ O fichar otra tarea / fichaje libre
+                </button>
+                <span className="text-[10px] text-slate-500">Queda bloqueado tras enviar</span>
+              </div>
+            </div>
+          ) : (
+            /* NO PENDING TASKS */
+            <div className="space-y-2.5 text-center py-2">
+              <span className="text-sm font-bold text-slate-200 block">
+                🎉 ¡Estás al día! No tienes más tareas pendientes hoy.
+              </span>
+              <button
+                onClick={() => { setPrefilledTask(null); setIsClockModalOpen(true); }}
+                className="w-full sm:w-auto py-2.5 px-5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-all shadow-md"
+              >
+                🟢 Fichar Tarea Extra o Libre
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 2. Compact 2x2 on Mobile / 4-Col on Desktop Metrics Bar */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 pt-2 border-t border-slate-800/80 text-xs">
+          <div className={`p-2.5 rounded-xl border ${
             activeShift ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-slate-950/80 border-slate-800 text-slate-400'
           }`}>
-            <span className="text-[10px] font-bold block uppercase tracking-wider">Estado de Jornada</span>
-            <div className="flex items-center space-x-2 mt-1">
-              <span className={`w-2.5 h-2.5 rounded-full ${activeShift ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`}></span>
-              <span className="font-bold text-sm text-white font-['Outfit']">
-                {activeShift ? '🟢 EN TURNO Y TRABAJANDO' : '⚪ FUERA DE TURNO'}
+            <span className="text-[9px] font-bold block uppercase tracking-wider">Estado</span>
+            <div className="flex items-center space-x-1.5 mt-0.5">
+              <span className={`w-2 h-2 rounded-full ${activeShift ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`}></span>
+              <span className="font-bold text-xs text-white truncate font-['Outfit']">
+                {activeShift ? 'En Turno' : 'Fuera de Turno'}
               </span>
             </div>
-            {activeShift && (
-              <p className="text-[11px] text-slate-300 mt-1 truncate">📌 <b>Tarea:</b> {activeShift.taskName}</p>
-            )}
           </div>
 
-          <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Turno Actual</span>
-            <p className="text-xl font-extrabold text-emerald-400 font-mono mt-1">
-              {activeShift ? elapsedTimeFormatted : '0h 00m 00s'}
+          <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+            <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Turno Actual</span>
+            <p className="text-xs sm:text-sm font-extrabold text-emerald-400 font-mono mt-0.5 truncate">
+              {activeShift ? elapsedTimeFormatted : '0h 00m'}
             </p>
-            <span className="text-[10px] text-slate-500 block mt-0.5">Tiempo en tiempo real</span>
           </div>
 
-          <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider font-mono">Horas Fichadas</span>
-            <p className="text-xl font-extrabold text-amber-400 font-mono mt-1">
+          <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+            <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider font-mono">Horas Semana</span>
+            <p className="text-xs sm:text-sm font-extrabold text-amber-400 font-mono mt-0.5">
               {totalCompletedHours.toFixed(1)}h
             </p>
-            <span className="text-[10px] text-slate-500 block mt-0.5">Total registrado en semana</span>
           </div>
 
-          <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
-            <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Tareas Asignadas</span>
-            <p className="text-xl font-extrabold text-blue-400 mt-1 font-['Outfit']">
-              {totalAssignedTasks} <span className="text-xs text-slate-400 font-normal">esta semana</span>
+          <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+            <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Tareas Semana</span>
+            <p className="text-xs sm:text-sm font-extrabold text-blue-400 mt-0.5 font-['Outfit']">
+              {totalAssignedTasks} <span className="text-[10px] text-slate-400 font-normal">({completedTasksCount} ok)</span>
             </p>
-            <span className="text-[10px] text-slate-500 block mt-0.5">{completedTasksCount} completadas</span>
           </div>
         </div>
 
-        {/* Lock Security Notice */}
-        <div className="bg-slate-950/90 border border-slate-800 p-3 rounded-2xl flex items-center justify-between text-xs text-slate-300">
-          <div className="flex items-center space-x-2">
-            <Lock className="w-4 h-4 text-amber-400 shrink-0" />
-            <span>
-              <b>Fichajes Seguros:</b> Una vez enviado un fichaje, queda <b>bloqueado</b>. La modificación queda reservada a Administración / Socias.
-            </span>
-          </div>
-          <span className="text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded shrink-0">
+        {/* Lock Security Notice - Slim 1-line */}
+        <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+          <span className="flex items-center gap-1.5">
+            <Lock className="w-3 h-3 text-amber-400 shrink-0" />
+            <span>Fichajes bloqueados tras registro (solo Socias/Admin editan).</span>
+          </span>
+          <span className="text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded">
             🔒 INMUTABLE
           </span>
         </div>
       </div>
 
-      {/* 📅 SECTION: 7-DAY VISUAL WEEKLY TIMELINE BAR (VISTA VISUAL DE SU SEMANA) */}
-      <div className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 shadow-2xl backdrop-blur-xl space-y-5">
+      {/* 📅 SECTION: 7-DAY VISUAL WEEKLY TIMELINE BAR */}
+      <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
         
-        {/* Header & Filter Controller */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+        {/* Header & View Mode Switcher */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-[10px] font-extrabold bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                Vista Semanal 360°
+              <span className="text-[9px] font-extrabold bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                Planificación
               </span>
-              <span className="text-xs text-slate-400">{activeWeekData?.meta?.dateRange}</span>
+              <span className="text-[11px] text-slate-400">{activeWeekData?.meta?.dateRange}</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-['Outfit'] mt-1 flex items-center space-x-2">
-              <Calendar className="w-6 h-6 text-amber-400" />
-              <span>Vista Visual de tu Semana (7 Días)</span>
+            <h2 className="text-base sm:text-xl font-extrabold text-white tracking-tight font-['Outfit'] mt-0.5 flex items-center space-x-2">
+              <Calendar className="w-5 h-5 text-amber-400" />
+              <span>Cuadrante de la Semana (7 Días)</span>
             </h2>
           </div>
 
@@ -298,27 +447,26 @@ export default function WorkerView({
             <button
               onClick={() => {
                 setViewModeType('calendar');
-                setSelectedDayKey('all');
               }}
-              className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all border ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all border ${
                 viewModeType === 'calendar'
-                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-lg shadow-amber-500/20'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
                   : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
               }`}
             >
-              📅 Calendario 7 Días
+              📅 Calendario
             </button>
 
             <button
               onClick={() => setViewModeType('graph')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all border ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all border ${
                 viewModeType === 'graph'
-                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-lg shadow-amber-500/20'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
                   : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
               }`}
             >
               <Zap className="w-3.5 h-3.5 text-amber-400 inline mr-1" />
-              <span>🕸️ Grafo de Tareas</span>
+              <span>🕸️ Grafo</span>
             </button>
           </div>
         </div>
@@ -327,68 +475,48 @@ export default function WorkerView({
           <TaskFlowGraphView activeWeekData={activeWeekData} onToggleTask={onToggleTask} />
         ) : (
           <>
-            {/* 7-DAY HORIZONTAL CALENDAR GRID / RIBBON */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+            {/* HORIZONTAL SCROLLABLE DAY PILLS BAR (SLIDER INSTEAD OF 400PX STACK) */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 pt-1 -mx-1 px-1">
+              <button
+                onClick={() => setSelectedDayKey('all')}
+                className={`px-3 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all shrink-0 border ${
+                  selectedDayKey === 'all'
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
+                    : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
+                }`}
+              >
+                📋 Toda la Semana ({totalAssignedTasks})
+              </button>
+
               {daysWithActivities.map((day) => {
                 const isSelected = selectedDayKey === day.key;
                 const hasActivity = day.totalCount > 0;
                 const isSaturday = day.key === 'sabado';
 
                 return (
-                  <div
+                  <button
                     key={day.key}
-                    onClick={() => setSelectedDayKey(isSelected ? 'all' : day.key)}
-                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-3 relative overflow-hidden ${
+                    onClick={() => setSelectedDayKey(day.key)}
+                    className={`px-3 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all shrink-0 flex items-center gap-1.5 border ${
                       isSelected
-                        ? 'bg-gradient-to-b from-amber-500/20 to-slate-950 border-amber-500 ring-2 ring-amber-500/40 text-white shadow-xl scale-[1.02]'
+                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md scale-105'
                         : hasActivity
                         ? isSaturday
-                          ? 'bg-gradient-to-b from-amber-950/40 to-slate-950 border-amber-500/40 hover:border-amber-400 text-slate-200'
-                          : 'bg-slate-950/90 border-slate-800 hover:border-amber-500/40 text-slate-200'
-                        : 'bg-slate-950/40 border-slate-800/60 opacity-60 hover:opacity-100 text-slate-400'
+                          ? 'bg-amber-950/30 text-amber-300 border-amber-500/40 hover:border-amber-400'
+                          : 'bg-slate-950 text-slate-200 border-slate-800 hover:border-amber-500/40'
+                        : 'bg-slate-950/40 text-slate-500 border-slate-800/60'
                     }`}
                   >
-                    {/* Top Badge */}
-                    <div className="flex items-center justify-between">
-                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md font-mono ${
-                        isSelected
-                          ? 'bg-amber-500 text-slate-950'
-                          : 'bg-slate-900 text-slate-400 border border-slate-800'
+                    <span>{day.label} {day.date}</span>
+                    {day.totalCount > 0 && (
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        isSelected ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-amber-300'
                       }`}>
-                        {day.label} {day.date}
+                        {day.totalCount}
                       </span>
-
-                      {day.weddings.length > 0 && (
-                        <span className="text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded">
-                          👑 BODA
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Day Title */}
-                    <div>
-                      <h4 className="font-extrabold text-white text-xs font-['Outfit'] truncate">
-                        {day.title}
-                      </h4>
-                      <p className="text-[10px] text-slate-400 truncate mt-0.5">
-                        {day.badge}
-                      </p>
-                    </div>
-
-                    {/* Indicator Tag */}
-                    <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-                      {hasActivity ? (
-                        <span className="font-bold text-amber-400 flex items-center space-x-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                          <span>{day.totalCount} {day.totalCount === 1 ? 'actividad' : 'actividades'}</span>
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-slate-500 font-medium">Libre / Backup</span>
-                      )}
-
-                      <ChevronRight className={`w-3.5 h-3.5 text-slate-500 transition-transform ${isSelected ? 'rotate-90 text-amber-400' : ''}`} />
-                    </div>
-                  </div>
+                    )}
+                    {isSaturday && <span>👑</span>}
+                  </button>
                 );
               })}
             </div>
@@ -555,6 +683,17 @@ export default function WorkerView({
                               Ruta a {w.location}
                             </a>
                           )}
+
+                          <button
+                            onClick={() => {
+                              setPrefilledTask(`Boda: ${w.location} (${w.truck})`);
+                              setIsClockModalOpen(true);
+                            }}
+                            className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all active:scale-95"
+                          >
+                            <Play className="w-3 h-3 fill-current" />
+                            <span>⏱️ Fichar Boda Sábado</span>
+                          </button>
                         </div>
                       ))}
                     </div>

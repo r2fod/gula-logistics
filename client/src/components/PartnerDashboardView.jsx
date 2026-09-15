@@ -212,28 +212,28 @@ export default function PartnerDashboardView({
   const totalExtraHours = balancesList.reduce((acc, curr) => acc + curr.totalHours, 0);
 
   return (
-    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-4 md:p-5 font-sans space-y-3">
+    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-2.5 sm:p-4 md:p-5 font-sans space-y-3 w-full max-w-full overflow-x-hidden">
       
-      {/* Top Page Navigation Bar - Compact */}
-      <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 px-4 py-3 rounded-2xl shadow-xl flex flex-col lg:flex-row lg:flex-wrap justify-between items-start lg:items-center gap-2">
+      {/* Top Page Navigation Bar - Compact & Responsive */}
+      <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-3 sm:px-4 sm:py-3 rounded-2xl shadow-xl flex flex-col lg:flex-row lg:flex-wrap justify-between items-start lg:items-center gap-2.5 w-full max-w-full overflow-hidden">
         
         {/* Title & Selector (compact) */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 p-0.5 shadow-lg shadow-amber-500/20 shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0 max-w-full flex-wrap sm:flex-nowrap">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 p-0.5 shadow-lg shadow-amber-500/20 shrink-0">
             <div className="w-full h-full bg-slate-950 rounded-[9px] flex items-center justify-center text-amber-400">
               <ShieldCheck className="w-4 h-4" />
             </div>
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
-              <h1 className="text-sm sm:text-base font-extrabold text-white tracking-tight font-['Outfit']">
+              <h1 className="text-xs sm:text-base font-extrabold text-white tracking-tight font-['Outfit'] truncate">
                 Panel Ejecutivo de Socias &amp; Dirección
               </h1>
               {adminUnlocked ? (
                 <>
                   <span className="px-2 py-0.5 text-[9px] font-extrabold rounded-full bg-amber-500 text-slate-950 flex items-center gap-1 shrink-0">
                     <ShieldCheck className="w-2.5 h-2.5" />
-                    <span>👑 ADMIN (RAÚL)</span>
+                    <span>👑 ADMIN</span>
                   </span>
                   <button onClick={() => setIsAdminSettingsOpen(true)} className="px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 flex items-center gap-1 transition-colors shrink-0">
                     <KeyRound className="w-2.5 h-2.5" />
@@ -260,89 +260,89 @@ export default function PartnerDashboardView({
         </div>
 
         {/* Center: Week selector */}
-        <div className="flex flex-wrap items-center gap-2 min-w-0 w-full lg:w-auto">
+        <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
           <select
             value={activeWeekId}
             onChange={(e) => onSelectWeek(e.target.value)}
-            className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs focus:outline-none min-w-0 max-w-full flex-1 lg:flex-none lg:max-w-sm truncate"
+            className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs focus:outline-none min-w-0 max-w-full flex-1 sm:flex-none sm:max-w-xs truncate"
           >
             {Object.values(allWeeks).map((w) => (
               <option key={w.id} value={w.id}>{w.name} ({w.meta?.dateRange})</option>
             ))}
           </select>
           {adminUnlocked && (
-            <button onClick={onOpenAddWeek} className="bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 border border-slate-800 transition-all">
+            <button onClick={onOpenAddWeek} className="bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 border border-slate-800 transition-all shrink-0">
               <Plus className="w-3 h-3 text-amber-400" />
               <span>+ Semana</span>
             </button>
           )}
         </div>
 
-        {/* Right: Action buttons (compact) */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        {/* Right: Action buttons (Responsive grid on mobile, flex toolbar on desktop) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap items-center gap-1.5 w-full lg:w-auto">
           {adminUnlocked && onOpenTaskEditor && (
-            <button onClick={onOpenTaskEditor} className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-orange-500/30 transition-all">
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>✏️ Editar Planning</span>
+            <button onClick={onOpenTaskEditor} className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-orange-500/30 transition-all">
+              <Edit3 className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">✏️ Planning</span>
             </button>
           )}
 
           {adminUnlocked && onOpenWorkerEditor && (
-            <button onClick={onOpenWorkerEditor} className="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-indigo-500/30 transition-all">
-              <Users className="w-3.5 h-3.5" />
-              <span>➕ Añadir Trabajador</span>
+            <button onClick={onOpenWorkerEditor} className="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-indigo-500/30 transition-all">
+              <Users className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">➕ Trabajador</span>
             </button>
           )}
 
-          <button onClick={onOpenClockIn} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-            <Clock className="w-3.5 h-3.5" />
-            <span>⏱️ Fichar Tarea</span>
+          <button onClick={onOpenClockIn} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            <span>⏱️ Fichar</span>
           </button>
 
           {adminUnlocked && (
-            <button onClick={onOpenPayroll} className="bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-slate-800 transition-all">
-              <DollarSign className="w-3.5 h-3.5 text-amber-400" />
+            <button onClick={onOpenPayroll} className="bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-slate-800 transition-all">
+              <DollarSign className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>Nóminas</span>
             </button>
           )}
 
           {adminUnlocked && (
-            <button onClick={onOpenGemini} className="bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all">
-              <Wand2 className="w-3.5 h-3.5" />
-              <span>✨ Gemini AI</span>
+            <button onClick={onOpenGemini} className="bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
+              <Wand2 className="w-3.5 h-3.5 shrink-0" />
+              <span>Gemini AI</span>
             </button>
           )}
 
           {onOpenShareModal && (
-            <button onClick={onOpenShareModal} className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-blue-600/30 active:scale-95 transition-all" title="Enlaces de WhatsApp (Trabajadores y Socias)">
-              <Share2 className="w-3.5 h-3.5" />
-              <span>🔗 Enlaces WhatsApp</span>
+            <button onClick={onOpenShareModal} className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/30 active:scale-95 transition-all" title="Enlaces de WhatsApp (Trabajadores y Socias)">
+              <Share2 className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">WhatsApp</span>
             </button>
           )}
 
-          <button onClick={handleCopySecureLink} className="bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-amber-500/30 transition-all" title="Copiar enlace directo al Panel de Socias">
-            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-amber-400" />}
-            <span>{copiedLink ? '¡Link Copiado!' : 'Copiar Link Socias'}</span>
+          <button onClick={handleCopySecureLink} className="bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-amber-500/30 transition-all" title="Copiar enlace directo al Panel de Socias">
+            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <Copy className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+            <span className="truncate">{copiedLink ? '¡Copiado!' : 'Link Socias'}</span>
           </button>
 
           {onTogglePublicView && (
-            <button onClick={() => onTogglePublicView(false)} className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-amber-500/30 transition-all" title="Vista Pública">
-              <Eye className="w-3.5 h-3.5" />
-              <span>Vista Pública</span>
+            <button onClick={() => onTogglePublicView(false)} className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-amber-500/30 transition-all" title="Vista Pública">
+              <Eye className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Pública</span>
             </button>
           )}
 
           {onGoToDashboard && (
-            <button onClick={onGoToDashboard} className="bg-slate-900 hover:bg-slate-800 text-emerald-400 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-emerald-500/30 transition-all" title="Panel de Control">
-              <LayoutDashboard className="w-3.5 h-3.5" />
-              <span>Panel de Control</span>
+            <button onClick={onGoToDashboard} className="bg-slate-900 hover:bg-slate-800 text-emerald-400 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-emerald-500/30 transition-all" title="Panel de Control">
+              <LayoutDashboard className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Dashboard</span>
             </button>
           )}
         </div>
       </header>
 
       {/* Primary View Navigation Tabs Bar */}
-      <div className="flex items-center space-x-2 bg-slate-900/80 p-2 rounded-2xl border border-slate-800 overflow-x-auto">
+      <div className="flex items-center space-x-2 bg-slate-900/80 p-1.5 sm:p-2 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar w-full max-w-full">
         <button
           onClick={() => setActiveTab('live')}
           className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${

@@ -149,19 +149,19 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
   const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-6xl bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl text-white max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+      <div className="relative w-full max-w-6xl bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl text-white max-h-[94vh] flex flex-col">
         {/* Header */}
-        <div className="p-6 border-b border-slate-800 flex items-center justify-between shrink-0">
+        <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 p-0.5 shadow-lg">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 p-0.5 shadow-lg">
               <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-amber-400">
-                <Edit3 className="w-6 h-6" />
+                <Edit3 className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
             </div>
             <div>
-              <h3 className="text-xl font-bold font-['Outfit']">Editor Manual del Planning</h3>
-              <p className="text-xs text-slate-400">Modificando: {localWeek.name || 'Semana'}</p>
+              <h3 className="text-lg sm:text-xl font-bold font-['Outfit']">Editor Manual del Planning</h3>
+              <p className="text-[11px] sm:text-xs text-slate-400">Modificando: {localWeek.name || 'Semana'}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
@@ -170,7 +170,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto space-y-8">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-6 sm:space-y-8">
           
           {/* Normal Days */}
           {days.map(dayKey => {
@@ -454,10 +454,10 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-slate-800 shrink-0">
+        <div className="p-4 sm:p-6 border-t border-slate-800 shrink-0">
           <button 
             onClick={handleSave}
-            className="w-full py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-95 text-slate-950 font-black text-sm shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
+            className="w-full py-3.5 sm:py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-95 text-slate-950 font-black text-sm shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
           >
             <Save className="w-5 h-5" />
             Guardar y Actualizar Planning

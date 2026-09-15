@@ -110,8 +110,8 @@ export default function BalancesAgreementsModal({ isOpen, onClose, balancesData,
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-6xl bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-8 shadow-2xl text-white max-h-[92vh] overflow-y-auto flex flex-col justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
+      <div className="relative w-full max-w-6xl bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl text-white max-h-[92vh] overflow-y-auto flex flex-col justify-between">
         
         {/* Close Button */}
         <button 
@@ -206,7 +206,7 @@ export default function BalancesAgreementsModal({ isOpen, onClose, balancesData,
           </div>
 
           {/* Filter Tabs */}
-          <div className="flex items-center space-x-2 mb-6 border-b border-slate-800 pb-3 overflow-x-auto">
+          <div className="flex items-center space-x-2 mb-6 border-b border-slate-800 pb-3 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setFilterType('all')}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
@@ -271,13 +271,13 @@ export default function BalancesAgreementsModal({ isOpen, onClose, balancesData,
                   {/* Top Worker Info Bar */}
                   <div>
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-3 min-w-0 flex-1">
                         <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-2xl shrink-0 shadow-inner">
                           {worker.avatar}
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="font-extrabold text-white text-lg font-['Outfit']">{worker.name}</h4>
+                            <h4 className="font-extrabold text-white text-lg font-['Outfit'] truncate">{worker.name}</h4>
                             
                             {/* Badges */}
                             {worker.statusType === 'success' && (

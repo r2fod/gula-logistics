@@ -283,12 +283,12 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
         </div>
 
         {/* Filters & View Toggles */}
-        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full lg:w-auto">
           {/* Day Filter */}
           <select 
             value={filterDay} 
             onChange={(e) => setFilterDay(e.target.value)}
-            className="bg-slate-950 border border-slate-800 text-slate-200 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none"
+            className="bg-slate-950 border border-slate-800 text-slate-200 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none w-full sm:w-auto"
           >
             <option value="all">📅 Todos los Días</option>
             <option value="day_martes">Martes 15</option>
@@ -303,7 +303,7 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
           <select 
             value={filterTruck} 
             onChange={(e) => setFilterTruck(e.target.value)}
-            className="bg-slate-950 border border-slate-800 text-emerald-400 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none"
+            className="bg-slate-950 border border-slate-800 text-emerald-400 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none w-full sm:w-auto"
           >
             <option value="all">🚚 Toda la Flota</option>
             <option value="truck_gula">Camión Gula (Propio)</option>
@@ -315,7 +315,7 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
           <select 
             value={filterWorker} 
             onChange={(e) => setFilterWorker(e.target.value)}
-            className="bg-slate-950 border border-slate-800 text-amber-400 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none"
+            className="bg-slate-950 border border-slate-800 text-amber-400 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none w-full sm:w-auto"
           >
             <option value="all">👥 Todo el Equipo</option>
             <option value="worker_gonzalo">Gonzalo</option>
@@ -330,10 +330,10 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
           </select>
 
           {/* View Mode */}
-          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <div className="col-span-2 sm:col-span-1 flex bg-slate-950 p-1 rounded-xl border border-slate-800 justify-center">
             <button
               onClick={() => setViewMode('graph')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-center ${
                 viewMode === 'graph' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -341,7 +341,7 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
             </button>
             <button
               onClick={() => setViewMode('gantt')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-center ${
                 viewMode === 'gantt' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -353,7 +353,7 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
 
       {/* Main Interactive Node Graph Area */}
       {viewMode === 'graph' ? (
-        <div className="relative bg-slate-950 border border-slate-800 rounded-3xl p-6 overflow-x-auto shadow-2xl min-h-[540px]">
+        <div className="relative bg-slate-950 border border-slate-800 rounded-3xl p-4 sm:p-6 overflow-x-auto no-scrollbar shadow-2xl min-h-[540px]">
           {/* Subtle Grid Canvas Background */}
           <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none rounded-3xl" />
 
