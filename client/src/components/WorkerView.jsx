@@ -73,17 +73,6 @@ export default function WorkerView({
   const myEntries = clockEntries.filter(e => e.workerName.toLowerCase() === currentWorkerObj.name.toLowerCase());
   const activeShift = getActiveShiftForWorker(clockEntries, currentWorkerObj.name);
 
-  // Compañeros fichados ahora mismo (para saber a quién preguntar por si
-  // compartir coche a la base al cargar/descargar) — mismo cálculo que ya
-  // usa el panel en vivo del admin, reutilizado en vez de reimplementarlo.
-  const { activeShifts: coworkersOnShift } = pairShiftsFromEntries(clockEntries);
-  const otherWorkersOnShift = Object.keys(coworkersOnShift)
-    .filter(name => name.toLowerCase() !== currentWorkerObj.name.toLowerCase())
-    .map(name => ({
-      entry: coworkersOnShift[name],
-      profile: workersList.find(w => w.name.toLowerCase() === name.toLowerCase())
-    }));
-
   // Calculate elapsed time if in shift
   let elapsedTimeFormatted = '0h 00m 00s';
   let elapsedHours = 0;
@@ -233,6 +222,35 @@ export default function WorkerView({
     }
     return null;
   }, [daysWithActivities, activeShift, elapsedTimeFormatted]);
+
+  // Compañeros de la MISMA tarea (no cualquiera fichado en algo sin
+  // relación) — para saber a quién preguntar por compartir coche a la
+  // misma sede a cargar o descargar. Se saca de `assigned` de la tarea
+  // actual/próxima, no de quién esté fichado ahora en general (eso podía
+  // enseñar a alguien trabajando en otra cosa sin ninguna relación).
+  const referenceTaskAssigned = (() => {
+    if (activeShift?.taskRef) {
+      const { dayKey, taskIndex } = activeShift.taskRef;
+      const list = dayKey === 'domingo'
+        ? (activeWeekData.sundayMonday?.tasks || [])
+        : (activeWeekData.schedule?.[dayKey]?.tasks || []);
+      const t = list[taskIndex];
+      return (t && typeof t === 'object' && Array.isArray(t.assigned)) ? t.assigned : null;
+    }
+    if (!activeShift && immediateTask?.rawTask && Array.isArray(immediateTask.rawTask.assigned)) {
+      return immediateTask.rawTask.assigned;
+    }
+    return null;
+  })();
+
+  const { activeShifts: clockedInNow } = pairShiftsFromEntries(clockEntries);
+  const taskCoworkers = (referenceTaskAssigned || [])
+    .filter(name => name.toLowerCase() !== currentWorkerObj.name.toLowerCase())
+    .map(name => ({
+      name,
+      profile: workersList.find(w => w.name.toLowerCase() === name.toLowerCase()),
+      isClockedIn: Object.keys(clockedInNow).some(n => n.toLowerCase() === name.toLowerCase())
+    }));
 
   // Saturday special check
   const saturdayWeddings = (activeWeekData.saturdaySpecial?.weddings || []).filter(w => 
@@ -424,28 +442,28 @@ export default function WorkerView({
         </div>
       </div>
 
-      {/* Compañeros en turno ahora — para saber a quién preguntar por si
-          compartir coche a la base al cargar/descargar */}
-      {otherWorkersOnShift.length > 0 && (
+      {/* Compañeros de esta tarea — para saber a quién preguntar por si
+          compartir coche a la misma sede a cargar/descargar */}
+      {taskCoworkers.length > 0 && (
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
           <div className="flex items-center gap-2 text-emerald-400">
             <Users className="w-4 h-4" />
             <span className="text-[11px] font-black uppercase tracking-wider">
-              {otherWorkersOnShift.length} {otherWorkersOnShift.length === 1 ? 'compañero' : 'compañeros'} en turno ahora
+              Contigo en esta tarea
             </span>
             <Car className="w-3.5 h-3.5 text-slate-500 ml-auto shrink-0" />
           </div>
           <div className="flex flex-wrap gap-2">
-            {otherWorkersOnShift.map(({ entry, profile }) => (
+            {taskCoworkers.map(({ name, profile, isClockedIn }) => (
               <div
-                key={entry.workerName}
+                key={name}
                 className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 min-w-0"
               >
                 <span className="text-base shrink-0">{profile?.avatar || '👤'}</span>
                 <div className="min-w-0">
-                  <span className="text-xs font-bold text-white block truncate">{entry.workerName}</span>
-                  <span className="text-[10px] text-slate-400 block truncate max-w-[160px]">
-                    {entry.taskName || 'Turno activo'}
+                  <span className="text-xs font-bold text-white block truncate">{name}</span>
+                  <span className={`text-[10px] block truncate ${isClockedIn ? 'text-emerald-400 font-semibold' : 'text-slate-500'}`}>
+                    {isClockedIn ? '🟢 Ya ha fichado' : 'Aún no ha fichado'}
                   </span>
                 </div>
               </div>

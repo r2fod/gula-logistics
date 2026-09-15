@@ -1,14 +1,14 @@
 # Mejoras — hechas hoy y candidatas futuras
 
-## "Compañeros en turno ahora" en la vista del trabajador
+## "Contigo en esta tarea" en la vista del trabajador (corregido)
 
-Pedido por el usuario: en el link de cada trabajador, saber quién más está fichado en ese momento — para poder preguntar por compartir coche a la base al cargar/descargar, etc.
+Pedido por el usuario: en el link de cada trabajador, saber quién más va a la misma tarea/sede — para poder preguntar por compartir coche a cargar o descargar, etc.
 
-`WorkerView.jsx` calcula ahora quién está en turno con `pairShiftsFromEntries(clockEntries).activeShifts` (la misma función compartida que ya usa el Informe de Fichajes, no una reimplementación nueva) y muestra una tarjeta "N compañeros en turno ahora" justo debajo de la tarjeta principal de turno/tarea, con avatar, nombre y tarea actual de cada uno — se excluye al propio trabajador y la tarjeta desaparece si nadie más está fichado.
+**Primer intento (incorrecto):** mostraba quién estaba fichado en ese momento en general, calculado con `pairShiftsFromEntries(clockEntries).activeShifts`. El usuario lo probó con Jaime (camino a la boda de María y Joaquín en La Vila Joiosa) y salían Irene y Johan — Irene no tiene nada que ver, estaba fichada haciendo preparación de material en el almacén, una tarea sin relación. Fichado ahora ≠ va al mismo sitio.
 
-De paso, `LiveMonitorPanel.jsx` calculaba "quién está en turno" con su propia copia del mismo cálculo (entrada/salida en orden cronológico) — reemplazada por la misma función compartida, para no tener el mismo cálculo triplicado por la app.
+**Corregido:** ahora se saca de `assigned` de la tarea actual/próxima del propio trabajador (`immediateTask.rawTask.assigned`, o si ya está fichado con `taskRef`, de la tarea real a la que apunta ese `taskRef`) — es decir, compañeros de la MISMA tarea, no cualquiera fichado en paralelo. Cada uno muestra además si ya ha fichado o no (🟢 Ya ha fichado / Aún no ha fichado), cruzando esa lista con `pairShiftsFromEntries` solo para ese estado, no para elegir a quién mostrar.
 
-Verificado en el navegador contra fichajes reales de producción: con Irene y Johan fichados, la vista de Gonzalo (sin turno) muestra correctamente "2 compañeros en turno ahora" con sus tareas.
+Verificado con el caso real que reportó el usuario: la vista de Jaime (tarea: Boda María y Joaquín) ahora muestra Ricardo, Johan y Raúl — los 3 compañeros reales de esa tarea — con Johan marcado como ya fichado.
 
 ## Selector de hora en el Editor de Planning (antes texto libre)
 
