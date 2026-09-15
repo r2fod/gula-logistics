@@ -32,7 +32,7 @@ import {
   X
 } from 'lucide-react';
 import { initialBalancesData } from '../data/balancesData';
-import { fetchBalancesFromAPI } from '../data/apiService';
+import { fetchBalancesFromAPI, saveWorkerBalanceToAPI } from '../data/apiService';
 import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../data/shiftCalculations';
 import LiveMonitorPanel from './LiveMonitorPanel';
 import AdminClockEditModal from './AdminClockEditModal';
@@ -92,6 +92,10 @@ export default function PartnerDashboardView({
   const balancesData = externalBalancesData || internalBalancesData;
   const [isAdminSettingsOpen, setIsAdminSettingsOpen] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [addingConceptFor, setAddingConceptFor] = useState(null); // worker.id en edición, o null
+  const [newConceptText, setNewConceptText] = useState('');
+  const [newConceptAmount, setNewConceptAmount] = useState('');
+  const [savingBalanceId, setSavingBalanceId] = useState(null);
 
   const handleTabClick = (tabKey) => {
     setActiveTab(tabKey);
@@ -124,6 +128,44 @@ export default function PartnerDashboardView({
       }
     });
   }, [activeTab]);
+
+  // Actualiza un trabajador dentro de balancesData (en pantalla al instante)
+  // y lo guarda en MongoDB vía PUT /api/balances/:id. Solo admin (los
+  // botones que llaman a esto están ocultos si !adminUnlocked).
+  const persistWorkerBalance = async (workerId, updatedFields) => {
+    const currentWorkers = balancesData.workers || [];
+    const newWorkers = currentWorkers.map(w => w.id === workerId ? { ...w, ...updatedFields } : w);
+    const newBalancesData = { ...balancesData, workers: newWorkers };
+    setInternalBalancesData(newBalancesData);
+    if (externalSetBalancesData) externalSetBalancesData(newBalancesData);
+
+    setSavingBalanceId(workerId);
+    try {
+      await saveWorkerBalanceToAPI(workerId, updatedFields);
+    } finally {
+      setSavingBalanceId(null);
+    }
+  };
+
+  const handleAddConcept = async (worker) => {
+    const amount = parseFloat(newConceptAmount.replace(',', '.'));
+    if (!newConceptText.trim() || Number.isNaN(amount)) return;
+
+    const newItem = { concept: newConceptText.trim(), amount, isPositive: amount >= 0 };
+    const newBreakdown = [...(worker.breakdown || []), newItem];
+    const newBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
+
+    await persistWorkerBalance(worker.id, { breakdown: newBreakdown, currentBalance: newBalance });
+    setAddingConceptFor(null);
+    setNewConceptText('');
+    setNewConceptAmount('');
+  };
+
+  const handleDeleteConcept = async (worker, idx) => {
+    const newBreakdown = (worker.breakdown || []).filter((_, i) => i !== idx);
+    const newBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
+    await persistWorkerBalance(worker.id, { breakdown: newBreakdown, currentBalance: newBalance });
+  };
 
   const handleRequestAdminUnlock = () => {
     if (onOpenAdminLogin) onOpenAdminLogin();
@@ -609,23 +651,80 @@ export default function PartnerDashboardView({
                       </span>
                       <div className={`space-y-1.5 pr-1 ${(worker.breakdown || []).length > 5 ? 'max-h-48 overflow-y-auto' : ''}`}>
                         {(worker.breakdown || []).map((item, idx) => (
-                          <div 
+                          <div
                             key={idx}
-                            className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${
+                            className={`p-2.5 rounded-xl border text-xs flex items-center justify-between gap-2 ${
                               item.amount < 0
                                 ? 'bg-rose-500/10 border-rose-500/20 text-rose-200'
                                 : 'bg-slate-950/80 border-slate-800 text-slate-200'
                             }`}
                           >
                             <span className="font-medium">{item.concept}</span>
-                            <span className={`font-bold font-mono ml-2 shrink-0 ${
-                              item.amount > 0 ? 'text-emerald-400' : item.amount < 0 ? 'text-rose-400' : 'text-slate-400'
-                            }`}>
-                              {item.amount > 0 ? `+${item.amount.toFixed(2)} €` : item.amount < 0 ? `${item.amount.toFixed(2)} €` : '0,00 €'}
-                            </span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className={`font-bold font-mono ${
+                                item.amount > 0 ? 'text-emerald-400' : item.amount < 0 ? 'text-rose-400' : 'text-slate-400'
+                              }`}>
+                                {item.amount > 0 ? `+${item.amount.toFixed(2)} €` : item.amount < 0 ? `${item.amount.toFixed(2)} €` : '0,00 €'}
+                              </span>
+                              {adminUnlocked && (
+                                <button
+                                  onClick={() => handleDeleteConcept(worker, idx)}
+                                  disabled={savingBalanceId === worker.id}
+                                  className="text-slate-500 hover:text-rose-400 transition-colors disabled:opacity-40"
+                                  title="Eliminar concepto"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
+
+                      {adminUnlocked && (
+                        addingConceptFor === worker.id ? (
+                          <div className="p-3 rounded-xl border border-amber-500/30 bg-slate-950/80 space-y-2">
+                            <input
+                              type="text"
+                              value={newConceptText}
+                              onChange={(e) => setNewConceptText(e.target.value)}
+                              placeholder="Concepto (ej: 15/09 Turno extra 3h a 10€/h)"
+                              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                            />
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={newConceptAmount}
+                              onChange={(e) => setNewConceptAmount(e.target.value)}
+                              placeholder="Importe (usa - para restar, ej: -20.00)"
+                              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleAddConcept(worker)}
+                                disabled={savingBalanceId === worker.id}
+                                className="flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all disabled:opacity-50"
+                              >
+                                {savingBalanceId === worker.id ? 'Guardando...' : 'Guardar'}
+                              </button>
+                              <button
+                                onClick={() => { setAddingConceptFor(null); setNewConceptText(''); setNewConceptAmount(''); }}
+                                className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setAddingConceptFor(worker.id)}
+                            className="w-full py-2 rounded-xl border border-dashed border-slate-700 hover:border-amber-500/50 text-slate-400 hover:text-amber-400 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Añadir concepto / horas manual</span>
+                          </button>
+                        )
+                      )}
                     </div>
 
                     {/* Worker Notes */}

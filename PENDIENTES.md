@@ -13,7 +13,6 @@
 - [ ] **Gestión de flota (camiones)**: poder añadir/quitar camiones desde la app, igual que ya existe "Añadir Trabajador" para el roster de personas. Ahora mismo la lista de camiones (`trucks`) solo se edita tocando el código/Mongo directamente.
 - [ ] Migrar el **roster de trabajadores** (`workersList`) a Mongo también — ahora mismo solo vive en `localStorage` del navegador de cada admin, así que añadir un trabajador nuevo en un dispositivo no se ve en otro. Relacionado con el punto de gestión de flota. **También es requisito previo** para poder genericizar `DEFAULT_WORKERS_LIST` en `App.jsx` (nombres reales del equipo) de forma segura — ver `MEJORAS.md`, Fase 1 de limpieza de datos sensibles.
 - [ ] **Fase 3 del plan de limpieza — Animaciones**: `AnimatedBackground.jsx` con iconos flotantes por sección, keyframes CSS en `index.css`, integración en las vistas principales, micro-animaciones en iconos interactivos (hover, pestaña activa...). Diferido a petición del usuario por ser función nueva decorativa, no limpieza — pendiente de decidir cuándo abordarla.
-- [ ] **Editar/añadir horas manualmente en Control de Saldos & Acuerdos**: ahora mismo esa pestaña es de solo visualización (viene de `fetchBalancesFromAPI()`). Pedido por el usuario, sin empezar todavía.
 
 ## Revisión pendiente (el usuario pidió repasar, no se ha cerrado el bucle)
 
