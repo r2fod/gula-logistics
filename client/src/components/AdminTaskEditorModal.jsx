@@ -3,6 +3,56 @@ import { X, Edit3, Save, Plus, Trash2, Calendar, ChevronUp, ChevronDown } from '
 
 const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 
+// El campo de horario era texto libre ("9:30 - 10:30", "10:00-14:00",
+// "13:00-16:00"...) — de ahí salían la mayoría de horas mal formateadas o
+// con solapes difíciles de detectar. Un selector de hora nativo obliga a
+// HH:MM y evita esos despistes. Mantenemos "Pendiente" como estado aparte
+// para tareas que de verdad no tienen hora todavía.
+function parseTimeFrame(tf) {
+  const m = /^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/.exec((tf || '').trim());
+  if (!m) return { start: '', end: '', pending: !!(tf && tf.trim()) };
+  const pad = (n) => n.padStart(2, '0');
+  return { start: `${pad(m[1])}:${m[2]}`, end: `${pad(m[3])}:${m[4]}`, pending: false };
+}
+
+function formatTimeFrame(start, end) {
+  return (start && end) ? `${start} - ${end}` : (start || end || '');
+}
+
+function TimeRangeEditor({ value, onChange }) {
+  const { start, end, pending } = parseTimeFrame(value);
+  return (
+    <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+      <div className="flex items-center gap-1.5">
+        <input
+          type="time"
+          value={start}
+          disabled={pending}
+          onChange={(e) => onChange(formatTimeFrame(e.target.value, end))}
+          className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500 disabled:opacity-40 [color-scheme:dark]"
+        />
+        <span className="text-slate-500 text-[11px] shrink-0">a</span>
+        <input
+          type="time"
+          value={end}
+          disabled={pending}
+          onChange={(e) => onChange(formatTimeFrame(start, e.target.value))}
+          className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500 disabled:opacity-40 [color-scheme:dark]"
+        />
+      </div>
+      <label className="flex items-center gap-1.5 text-[10px] text-slate-400 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={pending}
+          onChange={(e) => onChange(e.target.checked ? 'Pendiente' : '')}
+          className="accent-amber-500"
+        />
+        Sin horario fijo (pendiente)
+      </label>
+    </div>
+  );
+}
+
 export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, workersList = [], onSaveWeekData }) {
   const [localWeek, setLocalWeek] = useState(null);
   const [activeDayId, setActiveDayId] = useState('martes');
@@ -497,12 +547,9 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                             className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500 resize-y min-h-[40px]"
                           />
                           <div className="flex flex-col sm:flex-row gap-2">
-                            <input
-                              type="text"
+                            <TimeRangeEditor
                               value={timeValue}
-                              onChange={(e) => handleTaskMetadataChange(dayKey, idx, 'timeFrame', e.target.value)}
-                              placeholder="Horario (ej: 09:00 - 11:30)"
-                              className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
+                              onChange={(v) => handleTaskMetadataChange(dayKey, idx, 'timeFrame', v)}
                             />
                             <input
                               type="tel"
@@ -662,11 +709,9 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Horario</label>
-                          <input
-                            type="text"
+                          <TimeRangeEditor
                             value={w.timeFrame || ''}
-                            onChange={(e) => handleWeddingChange(idx, 'timeFrame', e.target.value)}
-                            className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white focus:border-rose-500 outline-none"
+                            onChange={(v) => handleWeddingChange(idx, 'timeFrame', v)}
                           />
                         </div>
                         <div>
@@ -785,12 +830,9 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                           className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 resize-y min-h-[40px]"
                         />
                         <div className="flex flex-col sm:flex-row gap-2">
-                          <input
-                            type="text"
+                          <TimeRangeEditor
                             value={timeValue}
-                            onChange={(e) => handleTaskMetadataChange('sundayMonday', idx, 'timeFrame', e.target.value)}
-                            placeholder="Horario (ej: 09:00 - 11:30)"
-                            className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-300 focus:outline-none focus:border-emerald-500"
+                            onChange={(v) => handleTaskMetadataChange('sundayMonday', idx, 'timeFrame', v)}
                           />
                           <input
                             type="tel"
