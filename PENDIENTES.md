@@ -1,50 +1,62 @@
 # Pendientes
 
-_Actualizado tras la auditoría completa + tests unitarios + fixes de seguridad de esta sesión (15/09/2026)._
+_Actualizado tras la auditoría completa + tests unitarios + fixes de seguridad + revisión profunda con Gemini (15/09/2026)._
 
 ## Resuelto en esta sesión (dejado aquí solo como referencia, ya cerrado)
 
 - ~~Render no desplegaba el servidor~~ — resuelto, deploy manual confirmado y funcionando.
 - ~~POST /api/logistics/weeks sin autenticación~~ — resuelto, ahora exige admin; el trabajador sigue pudiendo autocompletar su tarea vía un endpoint nuevo y estrecho (PATCH /weeks/:weekId/tasks) que solo toca `completed` de una tarea.
 - ~~Auto-edición/borrado de fichaje propio nunca funcionaba de verdad~~ — resuelto, se quitó ese botón de la vista del trabajador.
-- ~~Jaime (novato) va solo en la boda de María y Joaquín~~ — resuelto por eliminación: Jaime se quitó del planning de Semana 3 y del roster de la app (ver detalle abajo). La regla de "novato acompañado" ya no aplica.
+- ~~Jaime (novato) va solo en la boda de María y Joaquín~~ — resuelto por eliminación: Jaime se quitó del roster, del planning de Semana 3, y de todo el código (ejemplos, fallbacks, comprobaciones sueltas) donde quedaba mencionado. La regla de "novato acompañado" ya no aplica.
+- ~~El Grafo (🕸️ Grafo & Flujo) mostraba trabajadores y camiones de una lista fija escrita en el código~~ — resuelto: deriva siempre de los datos reales (`workersList` / `activeWeekData.trucks`).
+- ~~El editor de tareas podía fallar en silencio al guardar~~ — parcialmente resuelto: `updateWeeks` avisa con un mensaje claro si el guardado real falla (p.ej. sesión de admin caducada), en vez de fallar callado.
+- ~~Filtro "Trabajador" del Cuadrante resaltaba por texto mencionado, no por `assigned[]` real~~ — resuelto, ahora compara contra la asignación real de cada tarea.
+- ~~Bug de medianoche en Actividad en Tiempo Real~~ — resuelto: las tareas con horario que cruza medianoche (ej. "22:00 - 00:00") ahora sí se detectan como "en curso" durante la noche. Encontrado hoy al verificar un hallazgo de Gemini antes de darlo por bueno.
+- ~~Botones del Informe de Fichajes sin proporcionar / formato de hora mezclado~~ — resuelto, ver detalle en `MEJORAS.md`.
 - Nuevo: botones de Fichar deshabilitados si el día de la tarea aún no ha llegado.
-- Nuevo: horas reales fichadas visibles también en las tarjetas de Saldos & Acuerdos (antes solo en Resumen Financiero).
-- Nuevo: se puede quitar/añadir trabajadores del roster desde la propia app (antes solo se podía añadir).
-- Nuevo: 61 tests unitarios (antes no había ninguno) para la lógica que ya causó bugs reales — fichajes, caso especial domingo/lunes, autenticación, revocación de sesión admin.
-- ~~El Grafo (🕸️ Grafo & Flujo) mostraba trabajadores y camiones de una lista fija escrita en el código~~ — resuelto: `TaskFlowGraphView.jsx` ahora deriva siempre el roster y la flota de los datos reales (`workersList` / `activeWeekData.trucks`). Era la causa de que el Grafo siguiera mostrando a Jaime como nodo tras quitarlo del equipo, y de que nunca reflejara ningún cambio real de personal o flota. Verificado en vivo: Jeferson conecta correctamente con sus 5 tareas/bodas reales.
-- ~~El editor de tareas (asignar/quitar gente de una tarea) podía fallar en silencio~~ — parcialmente resuelto: `updateWeeks` (usado por el editor de tareas, crear/clonar semana, aplicar plan de Gemini) ahora avisa con un mensaje claro si el guardado real falla, en vez de fallar callado. Diagnosticado en vivo reproduciendo el caso real: el guardado funciona perfectamente con una sesión de admin válida — si a ti te falla, probablemente tu sesión de Admin haya caducado o se haya revocado (ver primer punto de abajo); ese aviso nuevo te lo va a decir la próxima vez.
+- Nuevo: horas reales fichadas visibles también en las tarjetas de Saldos & Acuerdos.
+- Nuevo: se puede quitar/añadir trabajadores del roster desde la propia app (antes solo se podía añadir) — **ojo, ver limitación real más abajo**.
+- Nuevo: 61 tests unitarios (antes no había ninguno) para la lógica que ya causó bugs reales.
 
-## 🔴 Prioritario — encontrado en la auditoría de hoy, no arreglado todavía
+## 🔴 Alto impacto / riesgo real — pendiente
 
-- [ ] **Guardados concurrentes se pisan entre sí (demostrado hoy en vivo)**: `POST /api/logistics/weeks` reemplaza el documento COMPLETO con lo que tenga cargado ese navegador en ese momento. Si dos guardados se solapan (dos pestañas, un admin editando mientras se corrige algo por API, etc.), el último en guardar borra silenciosamente cualquier cambio del otro que no tuviera él mismo en su copia local — pasó literalmente hoy: el usuario reasignó a Jeferson correctamente, pero su guardado (con una copia de la semana desactualizada) se llevó por delante 4 correcciones de texto hechas minutos antes. El editor no avisa de esto ni comprueba si el documento cambió entre que se abrió y que se guardó. Arreglarlo de verdad necesita control de concurrencia (versión/`updatedAt` comparado al guardar, o mergear solo el campo tocado en vez de todo el documento) — no trivial, no lo he tocado.
+- [ ] **Fichajes offline se pierden para siempre, sin aviso ni reintento** _(confirmado leyendo el código, no solo dicho por Gemini)_. Cuando un trabajador ficha sin cobertura (típico en fincas de boda), `saveClockEntryToAPI` falla y el fichaje solo queda en el estado local de React + `localStorage`. El problema es el polling de 20s en `App.jsx`: en cuanto vuelve la cobertura, `fetchClockEntriesFromAPI()` trae los datos de Mongo (que NO incluyen ese fichaje, porque nunca llegó a guardarse) y los usa para **sobrescribir tanto el estado como el propio `localStorage`** (`apiService.js`, dentro de `fetchClockEntriesFromAPI`). El fichaje desaparece sin dejar rastro, no hay cola de reintento. Arreglo: una cola persistente de fichajes pendientes de sincronizar (`localStorage`), y que el polling haga *merge* con esa cola en vez de sobrescribir a ciegas.
+- [ ] **`POST /api/clock` acepta `rate`/`earnings`/`durationHours` tal cual los mande el cliente, sin validar** _(confirmado — el modelo `ClockEntry` declara esos campos, y `pairShiftsFromEntries` usa el `rate` del fichaje de salida directamente en el cálculo de coste)_. Como este endpoint es intencionalmente público (los trabajadores fichan sin login), cualquiera que sepa hacer una petición HTTP podría mandar un `rate` inventado y que se calcule un coste falso. Arreglo: en `clock.routes.js`, construir el documento a guardar solo con los campos que de verdad vienen del trabajador (`workerName`, `type`, `timestamp`, `note`, `taskRef`) y derivar `rate`/`isPayroll` en el servidor a partir del roster, nunca aceptar esos valores del cliente.
+- [ ] **El token de admin puede filtrarse por la cabecera `Referer` al compartir el enlace de socias por WhatsApp** _(mecanismo verificado — el enlace lleva `?socias&token=...` en la URL, y por defecto el navegador manda la URL completa como `Referer` al pulsar cualquier enlace externo, como los de Google Maps que hay en varias tareas)_. Arreglo barato: añadir `<meta name="referrer" content="no-referrer">` en `index.html`, y que la app limpie el token de la barra de direcciones (`history.replaceState`) en cuanto lo guarde en `localStorage`.
+- [ ] **Turnos "zombi" sin tope de duración si se olvida fichar salida** _(confirmado — `pairShiftsFromEntries`/`getActiveShiftForWorker` no tienen ningún límite de antigüedad)_. En catering de bodas es normal acabar de madrugada y olvidar fichar salida; si el trabajador no vuelve a fichar hasta días después, el sistema calcula un turno de decenas de horas y lo factura tal cual. Arreglo: considerar "huérfano" un turno abierto de más de, por ejemplo, 16h, y pedir a Admin que lo cierre manualmente en vez de dejar que se calcule solo.
+- [ ] **Riesgo de colisión de ID en fichajes casi simultáneos** _(real pero de probabilidad baja — `id: Date.now().toString()` con índice único en Mongo; si dos fichajes coinciden en el mismo milisegundo, el segundo falla con un 500 que además `apiService.js` traga en silencio)_. Arreglo sencillo: `crypto.randomUUID()` en vez de `Date.now()`.
 
-- [ ] **`apiService.js` sigue tragándose errores en silencio en el resto de escrituras**: `saveClockEntryToAPI`, `updateClockEntryInAPI`, `saveWorkerBalanceToAPI`, `patchTaskCompletionInAPI` no comprueban `res.ok` de forma consistente (a diferencia de `saveWeeksToAPI`, que ya avisa desde hoy) — si el backend rechaza la petición (token caducado, 500, sin conexión en el recinto de una boda), el cambio se ve "guardado" en local pero puede revertirse solo en el siguiente poll de 20s, sin avisar a nadie. Requiere decidir cómo mostrar el error en cada sitio antes de tocarlo.
-- [ ] **Inconsistencia de nombre "Jefferson" vs "Jeferson"**: `balancesData.workers` (Mongo) tiene `"Jefferson Gula"` (doble f) pero el roster (`workersList`) tiene `"Jeferson"` (una f). Por eso sus horas reales fichadas NUNCA aparecen en su tarjeta de Saldos & Acuerdos (el cruce de nombres que añadí hoy no lo encuentra). Hay que decidir cuál es el nombre correcto y corregirlo en el sitio que esté mal — no lo he tocado yo para no renombrar sin tu confirmación (regla de `CLAUDE.md`).
-- [ ] **El roster de trabajadores sigue sin sincronizar entre dispositivos**: la función nueva de añadir/quitar trabajador que acabo de construir sigue guardando solo en `localStorage` de cada navegador — si quitas a alguien desde el móvil, no desaparece en el portátil hasta que también lo quites ahí. Arreglarlo de verdad significa migrar el roster a Mongo (como ya se hizo con el planning) — es una pieza de trabajo con entidad propia, no lo he hecho todavía.
-- [ ] **Fichajes de alguien quitado del roster desaparecen del total sin aviso**: si quitas a un trabajador con la función nueva, sus fichajes históricos siguen en Mongo pero `aggregateShiftsByWorker` ya no los suma en ningún resumen (Resumen Financiero, Saldos) porque solo itera sobre `workersList` actual. Antes esto era solo un riesgo teórico (solo pasaba si renombrabas a alguien); ahora que hay un botón real de "quitar", es mucho más fácil que pase sin querer.
+## 🟡 Impacto medio — pendiente
 
-## Abiertos, esperando decisión o dato tuyo
+- [ ] **Borrar un concepto de "bolsa de horas" (Jeferson) no revierte `purseInfo.consumedHours`** _(según Gemini, no verificado línea a línea por mí todavía)_ — si Admin borra por error un turno manual añadido a alguien con bolsa especial, las horas consumidas de la bolsa podrían quedar descuadradas. Revisar `handleDeleteConcept` en `PartnerDashboardView.jsx` antes de dar por bueno este hallazgo.
+- [ ] **`apiService.js` sigue tragándose errores en silencio en el resto de escrituras** (`saveClockEntryToAPI`, `updateClockEntryInAPI`, `saveWorkerBalanceToAPI`, `patchTaskCompletionInAPI`) — a diferencia de `saveWeeksToAPI`, que ya avisa desde hoy. Requiere decidir cómo mostrar el error en cada sitio.
+- [ ] **Guardados concurrentes se pisan entre sí** (demostrado hoy en vivo con la reasignación de Jeferson): `POST /api/logistics/weeks` reemplaza el documento COMPLETO sin comprobar si cambió entre que se abrió y que se guardó. Arreglo de fondo: control de concurrencia (comparar `updatedAt`/versión al guardar) — no trivial.
+- [ ] **Inconsistencia de nombre "Jefferson" vs "Jeferson"** entre `balancesData.workers` (Mongo) y el roster — sus horas reales nunca cruzan con su ficha de Saldos. Pendiente de que confirmes cuál es el nombre correcto para corregirlo (no lo toco solo, regla de `CLAUDE.md` sobre renombrar).
+- [ ] **El roster de trabajadores (añadir/quitar) solo vive en `localStorage` de cada navegador** — no sincroniza entre dispositivos. Arreglo de fondo: migrarlo a Mongo, como ya se hizo con el planning.
+- [ ] **Fichajes de alguien quitado del roster desaparecen de los totales sin aviso** — `aggregateShiftsByWorker` solo itera `workersList` actual, así que sus horas históricas dejan de sumarse en Resumen Financiero/Saldos en cuanto lo quitas.
+- [ ] **`taskRef` referencia tareas por posición en el array (`{dayKey, taskIndex}`), no por un id estable** _(según Gemini, no verificado por mí)_ — si Admin reordena tareas de un día (subir/bajar) mientras alguien tiene un fichaje abierto con `taskRef` apuntando a ese día, al fichar salida podría autocompletarse la tarea equivocada. Si se confirma, el arreglo es usar el `id` de tarea (ya existe en la mayoría) en vez del índice.
+- [ ] **Filtro "Trabajador" del Informe de Fichajes** no aplica a las 3 tarjetas resumen (Gasto Extras / Horas Extras / Activos), que siguen mostrando el total de todo el equipo.
+- [ ] **Pestaña "Estimado (Planning)"** no se incluye en el texto de "Copiar WhatsApp".
+- [ ] Ricardo tiene dos recogidas la misma mañana del martes (Dealde + apoyo en Albacar con Johan) — posible solape, sin confirmar si es intencional.
 
-- [ ] Ricardo tiene dos recogidas la misma mañana del martes (Dealde + apoyo en Albacar con Johan) — posible solape de horario, sin confirmar si es intencional.
-- [ ] **Filtro "Trabajador" del Informe de Fichajes**: al filtrar por un trabajador, las 3 tarjetas resumen de fichajes reales (Gasto Extras / Horas Extras / Activos) siguen mostrando el total de todo el equipo, no el del trabajador filtrado.
-- [ ] **Pestaña "Estimado (Planning)" y el texto de WhatsApp**: no se incluyó en "Copiar WhatsApp", que sigue siendo solo de fichajes reales.
-- [ ] Texto de la tarea del miércoles "Carga del material de los eventos Encamina y TOUS... (Gonzalo y Jaime)" menciona a Jaime en la descripción aunque él nunca estuvo en el `assigned[]` de esa tarea concreta — inconsistencia cosmética preexistente, no relacionada con la eliminación de hoy (esa tarea no se tocó porque Jaime no estaba asignado ahí).
+## 🟢 Bajo impacto / pulido — pendiente
 
-## Seguridad — detectado hoy, de severidad baja/media, sin tocar
-
-- [ ] **`POST /api/auth/login` sin límite de intentos**: no hay rate-limiting en el servidor, así que en teoría se podría intentar adivinar la contraseña de admin por fuerza bruta (bcrypt lo ralentiza pero no lo bloquea). Con tráfico normal de la app es un riesgo bajo, pero es una mejora real y barata (ej. `express-rate-limit`).
-- [ ] **Vulnerabilidad moderada en `esbuild`/`vite`** (dependencia de desarrollo, `npm audit`): solo afecta al servidor de desarrollo local, no a producción. El fix requiere subir Vite a una versión mayor (breaking change) — no lo he forzado.
-- [ ] La vista de Saldos & Acuerdos sigue accesible sin login de admin si entras directo a la URL — confirmado hoy en producción real. Ya estaba detectado antes de esta sesión, sigue sin decisión sobre si es el comportamiento querido.
-- [ ] `PublicView.jsx` tiene una sección de Checklist que lee `data.tasks`, un campo que no existe en el modelo actual (código muerto, no rompe nada pero no hace nada tampoco).
+- [ ] **La clave de la API de Gemini puede acabar expuesta en el bundle del cliente** si se usa `VITE_GEMINI_API_KEY` (cualquier variable con prefijo `VITE_` se compila en el JS público) — revisar `GeminiAssistantModal.jsx` y mover la llamada a una ruta propia del servidor si de verdad se usa esa variable de entorno en producción.
+- [ ] Comprobaciones por nombre de pila hardcodeado en vez de por el campo `isPayroll` (ej. `workerName === 'Irene' || workerName === 'Raúl'` en `shiftCalculations.js`) — si mañana cambia quién está en nómina fija, hay que tocar código en vez de solo el dato.
+- [ ] Ningún modal bloquea el scroll del fondo en móvil (`overscroll-behavior`/scroll-lock) — puede notarse como saltos raros al hacer scroll dentro de un modal largo en el móvil.
+- [ ] Claves de `localStorage` para saldos divergentes entre `App.jsx` (`gula_balances_v1`) y `apiService.js` (`gula_balances_data_v1`) — revisar si es intencional o un despiste, podría desincronizar la caché local.
+- [ ] `POST /api/auth/login` sin límite de intentos (rate-limiting) — fuerza bruta teórica sobre la contraseña de admin, riesgo bajo con el tráfico actual.
+- [ ] Vulnerabilidad moderada en `esbuild`/`vite` (solo dev, requiere bump de versión mayor de Vite) — no forzado.
+- [ ] Saldos & Acuerdos accesible sin login de admin si se entra directo a la URL.
+- [ ] `PublicView.jsx` tiene una sección de Checklist muerta que lee `data.tasks` (campo inexistente).
 
 ## Funcionalidad pedida, no empezada todavía
 
 - [ ] **Detección de solapes de horario**: avisar si dos tareas asignadas a la misma persona se pisan en el tiempo.
 - [ ] **Gestión de flota (camiones)**: poder añadir/quitar camiones desde la app, igual que ahora ya existe para el roster de personas.
-- [ ] **Fase 3 del plan de limpieza — Animaciones**: `AnimatedBackground.jsx`, keyframes, micro-animaciones. Diferido por decisión tuya.
-- [ ] **Revisión de adaptación a pantallas** (móvil/tablet/desktop): pedida en esta misma sesión, todavía no empezada — es el siguiente paso lógico tras el audit + tests + fixes de seguridad de hoy.
+- [ ] **Fase 3 del plan de limpieza — Animaciones**: diferido por decisión tuya.
+- [ ] **Revisión de adaptación a pantallas** (móvil/tablet/desktop): solo se ha revisado a fondo un modal (Informe de Fichajes) — el resto de vistas siguen sin repasar sistemáticamente.
 
 ## Investigado y no reproducido (dejar constancia por si vuelve a pasar)
 
-- [ ] **Salto espontáneo de pestaña en `PartnerDashboardView`**: reportado una vez, investigado a fondo (logs de mount/unmount, identidad de nodo DOM tras 6+ ciclos de polling), nunca reproducido. Probablemente un clic accidental. Si vuelve a pasar, anotar el minuto exacto y si coincidió con algún clic/scroll concreto.
+- [ ] **Salto espontáneo de pestaña en `PartnerDashboardView`**: reportado una vez, investigado a fondo, nunca reproducido. Probablemente un clic accidental.
