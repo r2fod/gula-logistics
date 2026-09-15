@@ -56,6 +56,7 @@ _Actualizado tras la auditoría completa + tests unitarios + fixes de seguridad 
 - [ ] **Gestión de flota (camiones)**: poder añadir/quitar camiones desde la app, igual que ahora ya existe para el roster de personas.
 - [ ] **Fase 3 del plan de limpieza — Animaciones**: diferido por decisión tuya.
 - [ ] **Revisión de adaptación a pantallas** (móvil/tablet/desktop): solo se ha revisado a fondo un modal (Informe de Fichajes) — el resto de vistas siguen sin repasar sistemáticamente.
+- [ ] **Enlaces de trabajador firmados y revocables individualmente**: pedido por el usuario, pero al explicarle que ahora mismo `?worker=Nombre` no lleva ningún token (cualquiera que sepa el nombre puede entrar y fichar como esa persona) se confirmó que **para el caso real que tenía en mente (quitar acceso a alguien, ej. Jaime) ya basta con quitarlo del roster** — `App.jsx` solo activa la vista de un trabajador si su nombre está en el `workersList` actual, así que un enlace antiguo de alguien ya quitado deja de funcionar solo, sin nada que construir. Lo que sigue sin cubrir es un caso más concreto: revocar el enlace de alguien que SIGUE en el equipo (p.ej. si se sospecha que se filtró) sin tener que quitarlo del roster — para eso sí haría falta un token firmado por trabajador (como ya tienen las socias) con posibilidad de regenerar; no se ha construido porque rompería de golpe los enlaces de todo el equipo al desplegarse, y el usuario no ha confirmado que lo quiera todavía.
 
 ## Investigado y no reproducido (dejar constancia por si vuelve a pasar)
 
