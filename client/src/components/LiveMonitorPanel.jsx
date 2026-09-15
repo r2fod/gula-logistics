@@ -91,10 +91,18 @@ export default function LiveMonitorPanel({
   };
 
   const getWorkerTaskInfo = (workerName) => {
-    const matches = getAssignedTasksForWorker(workerName);
+    const allMatches = getAssignedTasksForWorker(workerName);
 
-    if (matches.length === 0) {
+    if (allMatches.length === 0) {
       return { text: DEFAULT_TASK_BY_WORKER[workerName] || '📋 Asignado en Operativa Activa', extraCount: 0 };
+    }
+
+    // Las tareas ya completadas no deben aparecer aquí como "actual" — este
+    // panel es para ver de un vistazo qué toca ahora, no un historial. Si ya
+    // están todas hechas, se avisa en vez de mostrar la última completada.
+    const matches = allMatches.filter(t => !(typeof t === 'object' && t.completed));
+    if (matches.length === 0) {
+      return { text: '✅ Todas las tareas de hoy completadas', extraCount: 0 };
     }
 
     const nowMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
