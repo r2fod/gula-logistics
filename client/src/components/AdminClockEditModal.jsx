@@ -126,9 +126,9 @@ export default function AdminClockEditModal({
               )}
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              {isAdmin 
-                ? 'Solo Administradores y Socias pueden alterar fichajes registrados.' 
-                : 'Añade o corrige un fichaje olvidado. Quedará registrado para revisión.'}
+              {isAdmin
+                ? 'Solo Administradores y Socias pueden alterar fichajes registrados.'
+                : 'Añade un fichaje que se te olvidó registrar.'}
             </p>
           </div>
         </div>
@@ -145,7 +145,7 @@ export default function AdminClockEditModal({
           <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl mb-5 flex items-center space-x-2.5 text-xs text-emerald-300">
             <User className="w-4 h-4 shrink-0 text-emerald-400" />
             <span>
-              <b>Aviso:</b> Estás editando tu registro manualmente. Esto se notificará a administración.
+              <b>Aviso:</b> Esto crea un fichaje nuevo. Para corregir uno que ya enviaste, pide a Administración/Socias.
             </span>
           </div>
         )}

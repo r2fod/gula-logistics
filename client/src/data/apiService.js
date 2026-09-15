@@ -262,13 +262,14 @@ export async function fetchWeeksFromAPI() {
 }
 
 /**
- * Save the full weeks map (all weeks) to MongoDB Atlas
+ * Save the full weeks map (all weeks) to MongoDB Atlas — reemplaza el
+ * documento completo de cada semana, así que el servidor exige admin.
  */
 export async function saveWeeksToAPI(weeksPayload) {
   try {
     const res = await fetch(`${API_BASE}/logistics/weeks`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(weeksPayload)
     });
     if (res.ok) {
@@ -276,6 +277,29 @@ export async function saveWeeksToAPI(weeksPayload) {
     }
   } catch (err) {
     console.warn('Backend API weeks save failed:', err.message);
+  }
+  return null;
+}
+
+/**
+ * Marca/desmarca UNA tarea del planning como completada — sin necesitar
+ * sesión de admin (a diferencia de saveWeeksToAPI). Es lo que usa el propio
+ * trabajador al fichar salida de una tarea o al tocarla en su cuadrante;
+ * el servidor solo permite tocar el campo `completed` de esa tarea, nunca
+ * el resto del documento de la semana.
+ */
+export async function patchTaskCompletionInAPI(weekId, dayKey, taskIndex, completed) {
+  try {
+    const res = await fetch(`${API_BASE}/logistics/weeks/${weekId}/tasks`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dayKey, taskIndex, completed })
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn('Backend API task completion patch failed:', err.message);
   }
   return null;
 }

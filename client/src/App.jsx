@@ -30,10 +30,12 @@ import {
   setStoredAdminToken,
   logoutAdmin,
   fetchWeeksFromAPI,
-  saveWeeksToAPI
+  saveWeeksToAPI,
+  patchTaskCompletionInAPI
 } from './data/apiService';
 import { initialBalancesData } from './data/balancesData';
 import { getActiveShiftForWorker } from './data/shiftCalculations';
+import { getTaskListForDay, buildTaskListPatch } from './data/taskPlanning';
 
 const DEFAULT_WORKERS_LIST = [
   { name: "Gonzalo", role: "Conductor Flota (Veterano)", truck: "Camión Covey (Alquiler)", avatar: "🚛", isPayroll: false, rate: 10 },
@@ -248,13 +250,24 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  const updateWeeks = (newWeeks) => {
+  // Solo actualiza el estado local (React + localStorage), sin tocar el
+  // servidor — para los casos donde el guardado real se hace aparte con un
+  // endpoint más estrecho (ver toggleTask/markTaskCompleted).
+  const applyLocalWeeksState = (newWeeks) => {
     setAllWeeks(newWeeks);
     try {
       localStorage.setItem('gula_logistics_all_weeks_v10', JSON.stringify(newWeeks));
     } catch (e) {
       console.error(e);
     }
+  };
+
+  // Reemplaza el documento COMPLETO de la semana en el servidor (requiere
+  // admin) — usar solo para guardados masivos de verdad (editor de tareas,
+  // crear/clonar semana, aplicar plan de Gemini). Para marcar una tarea
+  // como hecha, usar patchTaskCompletionInAPI vía toggleTask/markTaskCompleted.
+  const updateWeeks = (newWeeks) => {
+    applyLocalWeeksState(newWeeks);
     saveWeeksToAPI(newWeeks);
   };
 
@@ -317,61 +330,39 @@ export default function App() {
 
   // Toggle tasks. dayKey 'domingo' es especial: agrupa las tareas de
   // domingo Y lunes bajo sundayMonday.tasks (no schedule.domingo, que ni
-  // existe) — mismo criterio que ya usa WorkerView para leerlas.
+  // existe) — resuelto por taskPlanning.js, la única fuente de verdad sobre
+  // dónde vive la lista de tareas de un día (ver comentario ahí).
+  // Guarda solo en el servidor con PATCH /weeks/:weekId/tasks — no requiere
+  // admin (a diferencia de saveWeeksToAPI/updateWeeks), así que es seguro
+  // llamarlo desde la vista de un trabajador sin sesión.
   const toggleTask = (dayKey, taskIdx) => {
-    if (dayKey === 'domingo') {
-      const sunTasks = [...(activeWeek.sundayMonday?.tasks || [])];
-      const taskItem = sunTasks[taskIdx];
-      if (taskItem === undefined) return;
-      if (typeof taskItem === 'object') {
-        taskItem.completed = !taskItem.completed;
-      } else {
-        sunTasks[taskIdx] = { text: taskItem, completed: true };
-      }
-      updateWeeks({ ...allWeeks, [activeWeekId]: { ...activeWeek, sundayMonday: { ...activeWeek.sundayMonday, tasks: sunTasks } } });
-      return;
+    const list = [...getTaskListForDay(activeWeek, dayKey)];
+    const taskItem = list[taskIdx];
+    if (taskItem === undefined) return;
+    const newCompleted = typeof taskItem === 'object' ? !taskItem.completed : true;
+    if (typeof taskItem === 'object') {
+      taskItem.completed = newCompleted;
+    } else {
+      list[taskIdx] = { text: taskItem, completed: newCompleted };
     }
-    const currentSchedule = { ...activeWeek.schedule };
-    if (currentSchedule[dayKey] && currentSchedule[dayKey].tasks) {
-      const taskItem = currentSchedule[dayKey].tasks[taskIdx];
-      if (typeof taskItem === 'object') {
-        taskItem.completed = !taskItem.completed;
-      } else {
-        currentSchedule[dayKey].tasks[taskIdx] = {
-          text: taskItem,
-          completed: true
-        };
-      }
-      updateWeeks({ ...allWeeks, [activeWeekId]: { ...activeWeek, schedule: currentSchedule } });
-    }
+    applyLocalWeeksState({ ...allWeeks, [activeWeekId]: { ...activeWeek, ...buildTaskListPatch(activeWeek, dayKey, list) } });
+    patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, newCompleted);
   };
 
   // Marca una tarea como hecha (nunca la desmarca) — usado al fichar salida
   // de una tarea concreta, para no tener que ir luego a tildarla a mano.
   const markTaskCompleted = (dayKey, taskIdx) => {
-    if (dayKey === 'domingo') {
-      const sunTasks = [...(activeWeek.sundayMonday?.tasks || [])];
-      const taskItem = sunTasks[taskIdx];
-      if (taskItem === undefined) return;
-      if (typeof taskItem === 'object') {
-        if (taskItem.completed) return;
-        taskItem.completed = true;
-      } else {
-        sunTasks[taskIdx] = { text: taskItem, completed: true };
-      }
-      updateWeeks({ ...allWeeks, [activeWeekId]: { ...activeWeek, sundayMonday: { ...activeWeek.sundayMonday, tasks: sunTasks } } });
-      return;
-    }
-    const currentSchedule = { ...activeWeek.schedule };
-    const taskItem = currentSchedule[dayKey]?.tasks?.[taskIdx];
+    const list = [...getTaskListForDay(activeWeek, dayKey)];
+    const taskItem = list[taskIdx];
     if (taskItem === undefined) return;
     if (typeof taskItem === 'object') {
       if (taskItem.completed) return;
       taskItem.completed = true;
     } else {
-      currentSchedule[dayKey].tasks[taskIdx] = { text: taskItem, completed: true };
+      list[taskIdx] = { text: taskItem, completed: true };
     }
-    updateWeeks({ ...allWeeks, [activeWeekId]: { ...activeWeek, schedule: currentSchedule } });
+    applyLocalWeeksState({ ...allWeeks, [activeWeekId]: { ...activeWeek, ...buildTaskListPatch(activeWeek, dayKey, list) } });
+    patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, true);
   };
 
   // Create new week
