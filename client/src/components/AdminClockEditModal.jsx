@@ -8,7 +8,8 @@ export default function AdminClockEditModal({
   workersList = [],
   onUpdateEntry,
   onDeleteEntry,
-  onClockEntryCreated
+  onClockEntryCreated,
+  isAdmin = true
 }) {
   const [workerName, setWorkerName] = useState('');
   const [type, setType] = useState('entrada');
@@ -76,7 +77,7 @@ export default function AdminClockEditModal({
       dateFormatted: dateObj.toLocaleDateString(),
       taskName: note.trim() || (type === 'entrada' ? 'Inicio de Jornada Operativa' : 'Cierre de Jornada'),
       note: note.trim(),
-      editedByAdmin: true,
+      editedByAdmin: isAdmin,
       editedAt: new Date().toISOString()
     };
 
@@ -110,31 +111,44 @@ export default function AdminClockEditModal({
 
         {/* Modal Title */}
         <div className="flex items-center space-x-3 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+          <div className={`w-12 h-12 rounded-2xl ${isAdmin ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'} flex items-center justify-center border`}>
             <ShieldCheck className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
               <h3 className="text-xl font-bold font-['Outfit']">
-                {entry ? 'Modificar Fichaje (Admin)' : 'Nuevo Fichaje Manual (Admin)'}
+                {entry ? 'Modificar Fichaje' : 'Nuevo Fichaje Manual'}
               </h3>
-              <span className="px-2 py-0.5 text-[9px] font-extrabold bg-amber-500 text-slate-950 rounded-md">
-                ADMIN ONLY
-              </span>
+              {isAdmin && (
+                <span className="px-2 py-0.5 text-[9px] font-extrabold bg-amber-500 text-slate-950 rounded-md">
+                  ADMIN ONLY
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Solo Administradores y Socias pueden alterar fichajes registrados.
+              {isAdmin 
+                ? 'Solo Administradores y Socias pueden alterar fichajes registrados.' 
+                : 'Añade o corrige un fichaje olvidado. Quedará registrado para revisión.'}
             </p>
           </div>
         </div>
 
-        {/* Admin Lock Warning Notice */}
-        <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl mb-5 flex items-center space-x-2.5 text-xs text-amber-300">
-          <Lock className="w-4 h-4 shrink-0 text-amber-400" />
-          <span>
-            <b>Control de Integridad:</b> Este registro fue bloqueado al crearse por el trabajador. Solo la dirección puede modificar horas o importes.
-          </span>
-        </div>
+        {/* Notice */}
+        {isAdmin ? (
+          <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl mb-5 flex items-center space-x-2.5 text-xs text-amber-300">
+            <Lock className="w-4 h-4 shrink-0 text-amber-400" />
+            <span>
+              <b>Control de Integridad:</b> Este registro fue bloqueado al crearse por el trabajador. Solo la dirección puede modificar horas o importes.
+            </span>
+          </div>
+        ) : (
+          <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl mb-5 flex items-center space-x-2.5 text-xs text-emerald-300">
+            <User className="w-4 h-4 shrink-0 text-emerald-400" />
+            <span>
+              <b>Aviso:</b> Estás editando tu registro manualmente. Esto se notificará a administración.
+            </span>
+          </div>
+        )}
 
         <div className="space-y-4 mb-6">
           {/* Worker Selector */}
@@ -254,10 +268,12 @@ export default function AdminClockEditModal({
               </button>
               <button
                 onClick={handleSave}
-                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-extrabold flex items-center justify-center space-x-1.5 shadow-lg shadow-amber-500/20 transition-all"
+                className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-slate-950 text-xs font-extrabold flex items-center justify-center space-x-1.5 shadow-lg transition-all ${
+                  isAdmin ? 'bg-amber-500 hover:bg-amber-400 shadow-amber-500/20' : 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20'
+                }`}
               >
                 <Check className="w-4 h-4" />
-                <span>{entry ? 'Guardar Cambios Admin' : 'Crear Fichaje Admin'}</span>
+                <span>{entry ? 'Guardar Cambios' : 'Crear Fichaje'}</span>
               </button>
             </div>
           )}

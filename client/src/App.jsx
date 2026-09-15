@@ -441,6 +441,8 @@ export default function App() {
           clockEntries={clockEntries}
           onToggleTask={(dayKey, taskIdx) => toggleTask(dayKey, taskIdx)}
           onClockEntryCreated={handleClockEntryCreated}
+          onUpdateClockEntry={handleUpdateClockEntry}
+          onDeleteClockEntry={handleDeleteClockEntry}
           onOpenAdminDashboard={() => {
             setActiveWorker(null);
             clearUrlParams();
