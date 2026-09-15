@@ -558,7 +558,7 @@ export default function App() {
       {/* Share Modal with Worker Links & Secure Partner Link */}
       {isShareModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-          <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-2xl text-white max-h-[92vh] overflow-y-auto">
+          <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-2xl text-white max-h-[92vh] overflow-y-auto overflow-x-hidden">
             <button 
               onClick={() => setIsShareModalOpen(false)}
               className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
@@ -586,19 +586,19 @@ export default function App() {
                 <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full">SOCIAS</span>
               </div>
 
-              <div className="flex items-center bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2">
+              <div className="flex items-center bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 min-w-0">
                 <input
                   type="text"
                   readOnly
                   value={getPartnerSecureLink()}
-                  className="bg-transparent text-xs text-amber-300/90 font-mono w-full focus:outline-none select-all"
+                  className="bg-transparent text-xs text-amber-300/90 font-mono w-full min-w-0 focus:outline-none select-all truncate"
                 />
               </div>
 
               <div className="flex items-center space-x-2 pt-1">
                 <button
                   onClick={copyPartnerSecureLink}
-                  className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center justify-center space-x-1.5 transition-colors border border-slate-700"
+                  className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center justify-center space-x-1.5 transition-colors border border-slate-700 whitespace-nowrap"
                 >
                   {copiedPartnerLink ? (
                     <>
@@ -615,7 +615,7 @@ export default function App() {
 
                 <button
                   onClick={sharePartnerLinkWhatsApp}
-                  className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20"
+                  className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20 whitespace-nowrap"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                   <span>WhatsApp Socias</span>
@@ -624,29 +624,29 @@ export default function App() {
             </div>
 
             {/* Workers List */}
-            <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto overflow-x-hidden pr-1">
               <span className="text-xs font-semibold text-slate-400 block uppercase tracking-wider">Enlaces de Trabajadores</span>
               {workersList.map((w, idx) => (
-                <div key={idx} className="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-2xl">{w.avatar}</span>
-                    <div>
+                <div key={idx} className="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 overflow-hidden">
+                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                    <span className="text-2xl shrink-0">{w.avatar}</span>
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center space-x-2">
-                        <h4 className="font-bold text-white text-sm">{w.name}</h4>
+                        <h4 className="font-bold text-white text-sm truncate">{w.name}</h4>
                         {w.isPayroll ? (
-                          <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30">Nómina</span>
+                          <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30 shrink-0">Nómina</span>
                         ) : (
-                          <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30">10€/h</span>
+                          <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 shrink-0">10€/h</span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-400">{w.role}</p>
+                      <p className="text-xs text-slate-400 truncate" title={w.role}>{w.role}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2 w-full sm:w-auto">
+                  <div className="flex items-center space-x-2 w-full sm:w-auto shrink-0">
                     <button
                       onClick={() => copyWorkerLink(w.name)}
-                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center space-x-1.5 transition-colors"
+                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center space-x-1.5 transition-colors whitespace-nowrap shrink-0"
                     >
                       {copiedWorker === w.name ? (
                         <>
@@ -663,7 +663,7 @@ export default function App() {
 
                     <button
                       onClick={() => shareViaWhatsApp(w.name)}
-                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20"
+                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20 whitespace-nowrap shrink-0"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
                       <span>WhatsApp</span>
