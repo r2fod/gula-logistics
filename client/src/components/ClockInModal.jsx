@@ -8,6 +8,7 @@ export default function ClockInModal({
   workersList,
   initialWorkerName,
   initialTaskName,
+  taskRef,
   clockEntries = [],
   onClockEntryCreated
 }) {
@@ -56,7 +57,10 @@ export default function ClockInModal({
       timeFormatted: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       dateFormatted: now.toLocaleDateString(),
       taskName: note.trim() || 'Inicio de Jornada Operativa',
-      note: note.trim()
+      note: note.trim(),
+      // Referencia a la tarea real del planning (día + índice) para poder
+      // marcarla como hecha sola cuando se fiche la salida de este turno.
+      taskRef: taskRef || null
     };
     onClockEntryCreated(entry);
     setNote('');

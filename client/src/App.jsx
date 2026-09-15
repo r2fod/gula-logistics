@@ -33,6 +33,7 @@ import {
   saveWeeksToAPI
 } from './data/apiService';
 import { initialBalancesData } from './data/balancesData';
+import { getActiveShiftForWorker } from './data/shiftCalculations';
 
 const DEFAULT_WORKERS_LIST = [
   { name: "Gonzalo", role: "Conductor Flota (Veterano)", truck: "Camión Covey (Alquiler)", avatar: "🚛", isPayroll: false, rate: 10 },
@@ -271,6 +272,17 @@ export default function App() {
       console.error(e);
     }
     saveClockEntryToAPI(newEntry);
+
+    // Al fichar salida de una tarea concreta (fichada con taskRef desde
+    // "Fichar Esta Tarea" / "Fichar Entrada Ahora"), marcarla como hecha
+    // sola en el planning — se busca en los fichajes previos a este (el
+    // array `clockEntries` de este cierre, sin el `newEntry` todavía).
+    if (newEntry.type === 'salida') {
+      const closingShift = getActiveShiftForWorker(clockEntries, newEntry.workerName);
+      if (closingShift?.taskRef) {
+        markTaskCompleted(closingShift.taskRef.dayKey, closingShift.taskRef.taskIndex);
+      }
+    }
   };
 
   const handleUpdateClockEntry = (updatedEntry) => {
@@ -318,6 +330,21 @@ export default function App() {
       }
       updateWeeks({ ...allWeeks, [activeWeekId]: { ...activeWeek, schedule: currentSchedule } });
     }
+  };
+
+  // Marca una tarea como hecha (nunca la desmarca) — usado al fichar salida
+  // de una tarea concreta, para no tener que ir luego a tildarla a mano.
+  const markTaskCompleted = (dayKey, taskIdx) => {
+    const currentSchedule = { ...activeWeek.schedule };
+    const taskItem = currentSchedule[dayKey]?.tasks?.[taskIdx];
+    if (taskItem === undefined) return;
+    if (typeof taskItem === 'object') {
+      if (taskItem.completed) return;
+      taskItem.completed = true;
+    } else {
+      currentSchedule[dayKey].tasks[taskIdx] = { text: taskItem, completed: true };
+    }
+    updateWeeks({ ...allWeeks, [activeWeekId]: { ...activeWeek, schedule: currentSchedule } });
   };
 
   // Create new week

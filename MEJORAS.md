@@ -1,5 +1,15 @@
 # Mejoras — hechas hoy y candidatas futuras
 
+## Fichar salida de una tarea la marca como hecha sola
+
+Pedido por el usuario: al fichar la salida de una tarea concreta (botones "Fichar Esta Tarea" / "Fichar Entrada Ahora (1 Toque)" en `WorkerView.jsx`), la tarea del planning se marca como completada automáticamente — antes había que ir aparte a tildarla a mano en el Cuadrante.
+
+Mecanismo: cuando se pulsa "Fichar Esta Tarea"/"Fichar Entrada Ahora", `WorkerView.jsx` resuelve el índice real de esa tarea dentro de `schedule[día].tasks` (mismo criterio de coincidencia por `text` que ya usaba el checkbox manual — `dayGroup.tasks` viene filtrado por trabajador, así que el índice mostrado en pantalla no es el real) y lo guarda como `taskRef: { dayKey, taskIndex }`. `ClockInModal.jsx` adjunta ese `taskRef` al fichaje de **entrada**. Al fichar la **salida** correspondiente (desde cualquier sitio: el modal, el botón directo de Actividad en Tiempo Real, etc.), `App.jsx` busca cuál era el turno activo que se está cerrando (`getActiveShiftForWorker`) y, si su entrada traía `taskRef`, marca esa tarea como `completed: true` (nunca la desmarca si ya lo estaba).
+
+Las bodas del sábado ("Fichar Boda Sábado") quedan fuera de este mecanismo a propósito — no tienen campo `completed` en ningún sitio de la UI todavía, así que no había nada que marcar.
+
+Cambio de esquema necesario: `taskRef` no existía en `ClockEntry.model.js` — sin añadirlo, Mongoose lo habría descartado en silencio al guardar la entrada, y la marca de completado habría dejado de funcionar en cuanto el poll de 20s trajera de vuelta el fichaje sin ese campo (aunque en el momento sí pareciera funcionar, por el estado optimista local).
+
 ## Cifras reales de la bolsa de Jefferson sacadas del código (auditoría)
 
 La auditoría completa pedida por el usuario encontró que las cifras reales del acuerdo de bolsa mensual de Jefferson (700€ base, 200€ alojamiento, 500€ neto, 8,75€/h, 10€/h extra tras 80h) estaban escritas dos veces en el código, no solo en Mongo: como `default` de cada campo en `PurseInfoSchema` (`server/src/models/WorkerBalance.model.js`) y hardcodeadas en la tarjeta "Bolsa Mensual" de `PartnerDashboardView.jsx` (`80h (700€ - 200€ Aloj.) = 500€ Neto`, en vez de leer `worker.purseInfo.*` como ya hacía correctamente `handleSendWhatsApp`). El repo se trata como público — es la misma clase de fuga que ya se corrigió una vez en `balancesData.js`.
