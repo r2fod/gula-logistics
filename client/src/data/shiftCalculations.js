@@ -1,3 +1,23 @@
+// El servidor devuelve los fichajes más recientes primero (para que el
+// historial se vea así en la UI), pero emparejar entrada/salida y saber
+// "quién está fichado ahora" necesita procesarlos en orden cronológico —
+// si no, un trabajador con más de un fichaje histórico queda con su
+// PRIMERA entrada de siempre marcada como "la más reciente" (no desficha
+// nunca). Usar siempre esta función antes de mirar el orden del array.
+export function sortEntriesByTimestamp(entries = []) {
+  return [...entries].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+}
+
+// Devuelve el fichaje de entrada activo de un trabajador (o null si no está
+// fichado ahora mismo), calculado en orden cronológico real.
+export function getActiveShiftForWorker(entries = [], workerName) {
+  if (!workerName) return null;
+  const mine = entries.filter(e => e.workerName?.toLowerCase() === workerName.toLowerCase());
+  const sorted = sortEntriesByTimestamp(mine);
+  const lastEntry = sorted[sorted.length - 1];
+  return (lastEntry && lastEntry.type === 'entrada') ? lastEntry : null;
+}
+
 // Empareja fichajes de entrada/salida en turnos con duración y coste —
 // misma lógica que antes vivía duplicada en PartnerDashboardView.jsx
 // (agregación por trabajador) y PayrollReportModal.jsx (lista de turnos).
@@ -9,7 +29,7 @@ export function pairShiftsFromEntries(entries = []) {
   const shifts = [];
   const activeWorkerShifts = {};
 
-  entries.forEach(entry => {
+  sortEntriesByTimestamp(entries).forEach(entry => {
     const { workerName, type, timestamp, timeFormatted, dateFormatted, isPayroll, rate, note } = entry;
 
     if (type === 'entrada') {

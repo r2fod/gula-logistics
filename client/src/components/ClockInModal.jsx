@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Play, Square, X, CheckCircle2, User, DollarSign, ShieldCheck, Lock } from 'lucide-react';
+import { getActiveShiftForWorker } from '../data/shiftCalculations';
 
-export default function ClockInModal({ 
-  isOpen, 
-  onClose, 
-  workersList, 
-  initialWorkerName, 
+export default function ClockInModal({
+  isOpen,
+  onClose,
+  workersList,
+  initialWorkerName,
   initialTaskName,
-  onClockEntryCreated 
+  clockEntries = [],
+  onClockEntryCreated
 }) {
   const [selectedWorker, setSelectedWorker] = useState(initialWorkerName || workersList[0]?.name || 'Gonzalo');
   const [note, setNote] = useState(initialTaskName || '');
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [activeShift, setActiveShift] = useState(null);
 
   // Live timer
   useEffect(() => {
@@ -29,24 +30,14 @@ export default function ClockInModal({
     }
   }, [isOpen, initialTaskName]);
 
-  // Check if selected worker is currently clocked in
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('gula_clock_entries_v1');
-      if (saved) {
-        const entries = JSON.parse(saved);
-        const workerEntries = entries.filter(e => e.workerName === selectedWorker);
-        const lastEntry = workerEntries[workerEntries.length - 1];
-        if (lastEntry && lastEntry.type === 'entrada') {
-          setActiveShift(lastEntry);
-        } else {
-          setActiveShift(null);
-        }
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }, [selectedWorker, isOpen]);
+  // Si el trabajador está actualmente en turno, igual que en WorkerView —
+  // se calcula de los fichajes reales (API/Mongo) en orden cronológico, no
+  // de una copia propia en localStorage (podía quedar desincronizada si el
+  // fichaje de entrada se hizo desde otro dispositivo, ej. un móvil
+  // compartido en el evento) ni del orden del array tal cual (el servidor
+  // devuelve los más recientes primero, así que "el último del array" no
+  // es "el más reciente" — ver getActiveShiftForWorker).
+  const activeShift = getActiveShiftForWorker(clockEntries, selectedWorker);
 
   if (!isOpen) return null;
 

@@ -24,6 +24,7 @@ import {
 import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
+import { getActiveShiftForWorker } from '../data/shiftCalculations';
 
 export default function WorkerView({
   workerName,
@@ -60,10 +61,14 @@ export default function WorkerView({
     rate: 10
   };
 
-  // Worker's own active shift
+  // Worker's own active shift. El servidor devuelve los fichajes más
+  // recientes primero (para el historial), así que "el último del array"
+  // NO es "el más reciente" — hay que mirar el orden cronológico real
+  // (ver getActiveShiftForWorker), si no un trabajador con 2+ fichajes
+  // históricos queda con su primera entrada de siempre marcada como activa
+  // para siempre y nunca puede desfichar.
   const myEntries = clockEntries.filter(e => e.workerName.toLowerCase() === currentWorkerObj.name.toLowerCase());
-  const lastEntry = myEntries[myEntries.length - 1];
-  const activeShift = (lastEntry && lastEntry.type === 'entrada') ? lastEntry : null;
+  const activeShift = getActiveShiftForWorker(clockEntries, currentWorkerObj.name);
 
   // Calculate elapsed time if in shift
   let elapsedTimeFormatted = '0h 00m 00s';
@@ -851,6 +856,7 @@ export default function WorkerView({
         workersList={workersList}
         initialWorkerName={currentWorkerObj.name}
         initialTaskName={prefilledTask}
+        clockEntries={clockEntries}
         onClockEntryCreated={onClockEntryCreated}
       />
 
