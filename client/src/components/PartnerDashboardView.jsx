@@ -1089,7 +1089,7 @@ export default function PartnerDashboardView({
             workersList={workersList}
             clockEntries={clockEntries}
             activeSchedule={activeWeekData?.schedule || {}}
-            onClockEntryCreated={onOpenClockIn}
+            onClockEntryCreated={onClockEntryCreated}
             onOpenClockModal={onOpenClockIn}
           />
         </div>
