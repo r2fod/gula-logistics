@@ -27,6 +27,7 @@ import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
+import { getTaskListForDay, resolveTaskIndexByText } from '../data/taskPlanning';
 
 export default function WorkerView({
   workerName,
@@ -47,8 +48,10 @@ export default function WorkerView({
   const [selectedDayKey, setSelectedDayKey] = useState('all');
   const [viewModeType, setViewModeType] = useState('calendar'); // 'calendar' | 'graph'
   const [workerTab, setWorkerTab] = useState('tasks'); // 'tasks' | 'history'
+  // Solo para AÑADIR un fichaje manual olvidado (POST, sin admin) — nunca
+  // para editar/borrar uno ya enviado: eso está bloqueado y solo puede
+  // hacerlo Administración (el servidor lo exige en clock.routes.js).
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingEntry, setEditingEntry] = useState(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -133,8 +136,7 @@ export default function WorkerView({
         return w.details.toLowerCase().includes(nameLower) || w.truck.toLowerCase().includes(nameLower);
       });
     } else if (dayKey === 'domingo') {
-      const sunTasks = activeWeekData.sundayMonday?.tasks || [];
-      tasks = sunTasks.filter(isAssigned);
+      tasks = getTaskListForDay(activeWeekData, dayKey).filter(isAssigned);
     }
 
     return { tasks, weddings, totalCount: tasks.length + weddings.length };
@@ -147,13 +149,7 @@ export default function WorkerView({
   // day.tasks de daysWithActivities) están filtradas por trabajador, así que
   // el índice que se ve ahí NUNCA es el índice real — hay que volver a
   // buscarlo por texto contra la lista completa antes de tocar el planning.
-  const resolveRealTaskIndex = (dayKey, taskText) => {
-    const list = dayKey === 'domingo'
-      ? (activeWeekData.sundayMonday?.tasks || [])
-      : (activeWeekData.schedule?.[dayKey]?.tasks || []);
-    const idx = list.findIndex(t => (typeof t === 'object' ? t.text : t) === taskText);
-    return idx !== -1 ? idx : null;
-  };
+  const resolveRealTaskIndex = (dayKey, taskText) => resolveTaskIndexByText(activeWeekData, dayKey, taskText);
 
   // Build full activities per day
   const daysWithActivities = weekDays.map(day => {
@@ -231,9 +227,7 @@ export default function WorkerView({
   const referenceTaskAssigned = (() => {
     if (activeShift?.taskRef) {
       const { dayKey, taskIndex } = activeShift.taskRef;
-      const list = dayKey === 'domingo'
-        ? (activeWeekData.sundayMonday?.tasks || [])
-        : (activeWeekData.schedule?.[dayKey]?.tasks || []);
+      const list = getTaskListForDay(activeWeekData, dayKey);
       const t = list[taskIndex];
       return (t && typeof t === 'object' && Array.isArray(t.assigned)) ? t.assigned : null;
     }
@@ -266,6 +260,17 @@ export default function WorkerView({
   const todayIndex = new Date().getDay();
   const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
   const todayKey = dayNames[todayIndex];
+
+  // Para deshabilitar "Fichar" en un día que todavía no ha llegado (evita
+  // fichar por error una tarea de dentro de varios días). Compara por
+  // orden de día de la semana (lunes→domingo), el mismo criterio que ya
+  // usa "Hoy" (todayKey) arriba — no por fecha exacta del calendario.
+  const weekDayOrder = weekDays.map(d => d.key);
+  const todayOrdinal = weekDayOrder.indexOf(todayKey);
+  const isDayInFuture = (dayKey) => {
+    const ordinal = weekDayOrder.indexOf(dayKey);
+    return ordinal !== -1 && todayOrdinal !== -1 && ordinal > todayOrdinal;
+  };
 
   return (
     <div className="space-y-4 sm:space-y-5 animate-fadeIn w-full max-w-full overflow-x-hidden">
@@ -392,22 +397,44 @@ export default function WorkerView({
                 )}
               </div>
 
-              {/* PRIMARY 1-CLICK CLOCK-IN BUTTON */}
-              <button
-                onClick={() => {
-                  setPrefilledTask(immediateTask.taskName);
-                  setTaskRef(
-                    !immediateTask.isWedding && immediateTask.dayKey && immediateTask.taskIndex != null
-                      ? { dayKey: immediateTask.dayKey, taskIndex: immediateTask.taskIndex }
-                      : null
-                  );
-                  setIsClockModalOpen(true);
-                }}
-                className="w-full py-3.5 px-4 rounded-xl text-sm font-extrabold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 flex items-center justify-center space-x-2 transition-all shadow-xl shadow-emerald-500/25 active:scale-95"
-              >
-                <Play className="w-4 h-4 fill-current" />
-                <span>🟢 Fichar Entrada Ahora (1 Toque)</span>
-              </button>
+              {/* PRIMARY 1-CLICK CLOCK-IN BUTTON — deshabilitado si el día de
+                  esta tarea todavía no ha llegado, para no fichar por error
+                  una tarea de dentro de varios días. */}
+              {(() => {
+                const isLocked = immediateTask.dayKey && isDayInFuture(immediateTask.dayKey);
+                return (
+                  <button
+                    onClick={() => {
+                      if (isLocked) return;
+                      setPrefilledTask(immediateTask.taskName);
+                      setTaskRef(
+                        !immediateTask.isWedding && immediateTask.dayKey && immediateTask.taskIndex != null
+                          ? { dayKey: immediateTask.dayKey, taskIndex: immediateTask.taskIndex }
+                          : null
+                      );
+                      setIsClockModalOpen(true);
+                    }}
+                    disabled={isLocked}
+                    className={`w-full py-3.5 px-4 rounded-xl text-sm font-extrabold flex items-center justify-center space-x-2 transition-all ${
+                      isLocked
+                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none'
+                        : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 shadow-xl shadow-emerald-500/25 active:scale-95'
+                    }`}
+                  >
+                    {isLocked ? (
+                      <>
+                        <Lock className="w-4 h-4" />
+                        <span>🔒 Disponible el {immediateTask.dayTitle}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4 fill-current" />
+                        <span>🟢 Fichar Entrada Ahora (1 Toque)</span>
+                      </>
+                    )}
+                  </button>
+                );
+              })()}
 
               <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
                 <button
@@ -716,21 +743,29 @@ export default function WorkerView({
                                   </div>
                                 )}
 
-                                {/* Per-Task Clock-In Button */}
+                                {/* Per-Task Clock-In Button — deshabilitado
+                                    si el día todavía no ha llegado. */}
                                 {!isCompleted && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setPrefilledTask(taskLabel);
-                                      const realTaskIndex = resolveRealTaskIndex(dayGroup.key, taskText);
-                                      setTaskRef(realTaskIndex !== null ? { dayKey: dayGroup.key, taskIndex: realTaskIndex } : null);
-                                      setIsClockModalOpen(true);
-                                    }}
-                                    className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95"
-                                  >
-                                    <Play className="w-3 h-3" />
-                                    <span>⏱️ Fichar Esta Tarea</span>
-                                  </button>
+                                  isDayInFuture(dayGroup.key) ? (
+                                    <span className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed">
+                                      <Lock className="w-3 h-3" />
+                                      <span>Aún no ha llegado este día</span>
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setPrefilledTask(taskLabel);
+                                        const realTaskIndex = resolveRealTaskIndex(dayGroup.key, taskText);
+                                        setTaskRef(realTaskIndex !== null ? { dayKey: dayGroup.key, taskIndex: realTaskIndex } : null);
+                                        setIsClockModalOpen(true);
+                                      }}
+                                      className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95"
+                                    >
+                                      <Play className="w-3 h-3" />
+                                      <span>⏱️ Fichar Esta Tarea</span>
+                                    </button>
+                                  )
                                 )}
                               </li>
                             );
@@ -772,17 +807,24 @@ export default function WorkerView({
                                 </a>
                               )}
 
-                              <button
-                                onClick={() => {
-                                  setPrefilledTask(`Boda: ${w.location} (${w.truck})`);
-                                  setTaskRef(null); // las bodas del sábado no tienen "completed" propio todavía
-                                  setIsClockModalOpen(true);
-                                }}
-                                className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all active:scale-95"
-                              >
-                                <Play className="w-3 h-3 fill-current" />
-                                <span>⏱️ Fichar Boda Sábado</span>
-                              </button>
+                              {isDayInFuture('sabado') ? (
+                                <span className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed w-fit">
+                                  <Lock className="w-3 h-3" />
+                                  <span>Aún no ha llegado este día</span>
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    setPrefilledTask(`Boda: ${w.location} (${w.truck})`);
+                                    setTaskRef(null); // las bodas del sábado no tienen "completed" propio todavía
+                                    setIsClockModalOpen(true);
+                                  }}
+                                  className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all active:scale-95"
+                                >
+                                  <Play className="w-3 h-3 fill-current" />
+                                  <span>⏱️ Fichar Boda Sábado</span>
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -816,10 +858,7 @@ export default function WorkerView({
               {myEntries.length} fichajes enviados
             </span>
             <button
-              onClick={() => {
-                setEditingEntry(null);
-                setIsEditModalOpen(true);
-              }}
+              onClick={() => setIsEditModalOpen(true)}
               className="py-1.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-[11px] flex items-center space-x-1 shadow-md shadow-amber-500/20 transition-all active:scale-95"
             >
               <span>+ Añadir Manual</span>
@@ -859,15 +898,9 @@ export default function WorkerView({
                     <span className="text-[10px] text-slate-400">
                       {entry.durationHours ? `Duración: ${Number(entry.durationHours).toFixed(1)}h` : 'Turno registrado'}
                     </span>
-                    <button
-                      onClick={() => {
-                        setEditingEntry(entry);
-                        setIsEditModalOpen(true);
-                      }}
-                      className="px-3 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold transition-all active:scale-95"
-                    >
-                      ✏️ Editar
-                    </button>
+                    <span className="text-[10px] font-bold text-amber-300 flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-amber-400" /> Bloqueado
+                    </span>
                   </div>
                 </div>
               ))}
@@ -912,16 +945,8 @@ export default function WorkerView({
                           <span>Guardado</span>
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-right">
-                        <button
-                          onClick={() => {
-                            setEditingEntry(entry);
-                            setIsEditModalOpen(true);
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold transition-all active:scale-95"
-                        >
-                          Editar
-                        </button>
+                      <td className="py-3 px-3 text-right text-[10px] font-bold text-amber-300">
+                        Solo Admin
                       </td>
                     </tr>
                   ))}
@@ -945,19 +970,13 @@ export default function WorkerView({
         onClockEntryCreated={onClockEntryCreated}
       />
 
-      {/* Manual Clock Edit/Add Modal for worker */}
+      {/* Modal para AÑADIR (nunca editar/borrar) un fichaje manual olvidado */}
       <AdminClockEditModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
-        entry={editingEntry}
+        entry={null}
         workersList={[currentWorkerObj]}
         isAdmin={false}
-        onUpdateEntry={(updatedEntry) => {
-          if (onUpdateClockEntry) onUpdateClockEntry(updatedEntry);
-        }}
-        onDeleteEntry={(entryId) => {
-          if (onDeleteClockEntry) onDeleteClockEntry(entryId);
-        }}
         onClockEntryCreated={onClockEntryCreated}
       />
 
