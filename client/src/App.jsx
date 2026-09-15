@@ -40,7 +40,6 @@ import { getTaskListForDay, buildTaskListPatch } from './data/taskPlanning';
 const DEFAULT_WORKERS_LIST = [
   { name: "Gonzalo", role: "Conductor Flota (Veterano)", truck: "Camión Covey (Alquiler)", avatar: "🚛", isPayroll: false, rate: 10 },
   { name: "Ricardo", role: "Conductor Flota (Veterano)", truck: "Camión Gula (Propio)", avatar: "🚚", isPayroll: false, rate: 10 },
-  { name: "Jaime", role: "Conductor Flota (Guiado)", truck: "Camión Albacar (Alquiler)", avatar: "🚛", isPayroll: false, rate: 10 },
   { name: "Johan", role: "Conductor & Backup", truck: "Camión Covey / Apoyo", avatar: "🚚", isPayroll: false, rate: 10 },
   { name: "Irene", role: "Ayudante Logística / Prepara Eventos / Verifica Checklist", truck: "Almacén Base", avatar: "📦", isPayroll: true, rate: 14 },
   { name: "Jeferson", role: "Apoyo Logística & Prep", truck: "Base / Camión Gula", avatar: "📦", isPayroll: false, rate: 10 },
@@ -110,6 +109,15 @@ export default function App() {
     };
     setBalancesData(updatedBalances);
     localStorage.setItem('gula_balances_v1', JSON.stringify(updatedBalances));
+  };
+
+  // Quita a alguien del roster operativo (selectores de fichaje/asignación).
+  // No borra su ficha en Saldos & Acuerdos ni sus fichajes históricos —
+  // eso es un registro financiero, se mantiene aunque ya no esté activo.
+  const handleRemoveWorker = (workerName) => {
+    const updatedWorkers = workersList.filter(w => w.name !== workerName);
+    setWorkersList(updatedWorkers);
+    localStorage.setItem('gula_workers_v1', JSON.stringify(updatedWorkers));
   };
 
   const [allWeeks, setAllWeeks] = useState(() => {
@@ -699,10 +707,12 @@ export default function App() {
         </div>
       )}
 
-      <AdminWorkerEditorModal 
+      <AdminWorkerEditorModal
         isOpen={isWorkerEditorModalOpen}
         onClose={() => setIsWorkerEditorModalOpen(false)}
+        workersList={workersList}
         onAddWorker={handleAddWorker}
+        onRemoveWorker={handleRemoveWorker}
       />
 
       <AdminTaskEditorModal
