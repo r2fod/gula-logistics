@@ -54,7 +54,9 @@ export default function ClockInModal({
       rate: currentWorkerObj.rate || 10,
       type: 'entrada',
       timestamp: now.toISOString(),
-      timeFormatted: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      // Locale y hour12 fijos: sin esto, el formato (24h o 12h AM/PM)
+      // dependía del idioma/región del navegador de quien fichaba.
+      timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
       dateFormatted: now.toLocaleDateString(),
       taskName: note.trim() || 'Inicio de Jornada Operativa',
       note: note.trim(),
@@ -77,7 +79,7 @@ export default function ClockInModal({
       rate: currentWorkerObj.rate || 10,
       type: 'salida',
       timestamp: now.toISOString(),
-      timeFormatted: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
       dateFormatted: now.toLocaleDateString(),
       note: note.trim()
     };
