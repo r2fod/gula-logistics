@@ -1,5 +1,11 @@
 # Pendientes
 
+## 🔴 Urgente — el servidor (Render) no está desplegando los últimos cambios
+
+Confirmado probando el bug de "fichar salida no marca la tarea como hecha": el cliente manda todo bien (comprobado interceptando la petición real del navegador — `taskRef` viaja correcto), pero el servidor en producción no lo guarda porque sigue corriendo una versión de `ClockEntry.model.js` de antes de que se le añadiera ese campo, hace ya varios commits. `git push` a `main` debería disparar el auto-deploy de Render, pero no está pasando (o está tardando muchísimo más de lo normal — ya se avisó una vez en esta sesión).
+
+**Cualquier cambio de esta sesión que toque `server/src/models/` o `server/src/routes/` puede no estar realmente en producción** — el cliente (GitHub Pages) sí se despliega bien porque ese lo hago yo directo con `npm run deploy`, es un mecanismo aparte. Hace falta que el usuario entre al dashboard de Render y le dé a "Manual Deploy" (o revise por qué el auto-deploy no salta) — no hay forma de forzarlo desde aquí.
+
 ## Abiertos, esperando decisión o dato del usuario
 
 - [ ] **Jaime (novato) va solo en la boda de María y Joaquín** (sábado, Semana 3): regla de negocio dice que Jaime debe ir siempre acompañado de Ricardo o Gonzalo por ser novato, pero las 3 bodas son simultáneas — Ricardo y Gonzalo están cada uno en su propia boda a la misma hora, así que no pueden acompañarlo ahí. Sin resolver: ¿se pasa a Johan (o a otra persona del roster) como apoyo en vez de Ricardo/Gonzalo, o se acepta como excepción inevitable dado que solo hay 2 veteranos para 3 bodas a la vez?

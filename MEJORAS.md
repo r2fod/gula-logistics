@@ -1,5 +1,20 @@
 # Mejoras — hechas hoy y candidatas futuras
 
+## App instalable (Chrome/Safari, móvil y Mac) — base para avisos push
+
+Pedido por el usuario: poder "instalar" la app en el móvil y en el Mac como una app de verdad, con vistas a poder mandar avisos push del navegador más adelante (confirmó que ese es el canal que quiere, no WhatsApp ni email).
+
+Añadido lo necesario para que Chrome/Safari ofrezcan "Instalar app" / "Añadir al Dock":
+- `client/public/manifest.json` — nombre "Logística Gula" (mismo patrón que sus otras apps: "Checklist Gula", etc.), `display: standalone`, iconos.
+- `client/public/icons/` — set de iconos (192, 512, 512 maskable, apple-touch-icon) generados a partir del mismo 🚚 que ya usa la app como favicon, sobre fondo `#020617` (slate-950, el mismo de la app) en cuadrado redondeado — confirmado con el usuario que le gustaba este estilo antes de dejarlo así.
+- `client/public/sw.js` — service worker mínimo. A propósito **no cachea nada del bundle** (network passthrough puro) — esta sesión ya sufrió varias veces problemas de caché de Vite sirviendo código viejo, así que mejor no arriesgar eso por la instalabilidad. Ya trae los listeners `push`/`notificationclick` preparados para cuando el backend pueda mandar avisos reales.
+- `client/index.html` — `<link rel="manifest">`, `apple-touch-icon`, `theme-color` y meta tags de `apple-mobile-web-app-*` para que también funcione como PWA en iOS/Mac.
+- `client/src/main.jsx` — registra el service worker.
+
+**Lo que falta y necesita el backend (bloqueado ahora mismo, ver más abajo):** para que lleguen avisos push de verdad cuando cambie algo en el planning, hace falta un endpoint que guarde las suscripciones push de cada trabajador y otro que dispare el aviso (librería `web-push` + claves VAPID) cuando se guarde una semana. No se ha empezado porque el servidor lleva un rato sin desplegar los últimos cambios (ver el punto del bug de `taskRef` más abajo) — no tiene sentido añadir más código de servidor mientras el que ya hay no está en producción.
+
+Verificado en el navegador: manifest y service worker se registran correctamente, sin cachear el bundle.
+
 ## "Contigo en esta tarea" en la vista del trabajador (corregido)
 
 Pedido por el usuario: en el link de cada trabajador, saber quién más va a la misma tarea/sede — para poder preguntar por compartir coche a cargar o descargar, etc.
