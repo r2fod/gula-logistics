@@ -336,80 +336,151 @@ export default function PayrollReportModal({
               <p className="text-[11px] text-slate-500 mt-1">Los fichajes se calculan cuando un trabajador ficha su entrada y salida.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto no-scrollbar">
-              <table className="w-full min-w-[620px] text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
-                    <th className="py-3 px-3">Trabajador</th>
-                    <th className="py-3 px-3">Tipo / Tarifa</th>
-                    <th className="py-3 px-3">Entrada</th>
-                    <th className="py-3 px-3">Salida</th>
-                    <th className="py-3 px-3">Horas</th>
-                    <th className="py-3 px-3 text-right">Coste (€)</th>
-                    <th className="py-3 px-3 text-center">Estado / Admin</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {filteredShifts.map((s) => (
-                    <tr key={s.id} className="hover:bg-slate-950/50 transition-colors">
-                      <td className="py-3 px-3 font-bold text-white">
-                        {s.workerName}
-                      </td>
-                      <td className="py-3 px-3">
-                        {s.isSalaried ? (
-                          <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold">
-                            Nómina Fija
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
-                            Extra (10,00 €/h)
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-slate-300">
-                        <div>{s.startTime}</div>
-                        <div className="text-[10px] text-slate-500">{s.startDate}</div>
-                      </td>
-                      <td className="py-3 px-3 text-slate-300">
-                        <div>{s.endTime}</div>
-                        <div className="text-[10px] text-slate-500">{s.endDate}</div>
-                      </td>
-                      <td className="py-3 px-3 font-semibold text-emerald-400">
-                        {s.durationFormatted}
-                      </td>
-                      <td className="py-3 px-3 text-right font-bold text-amber-400 font-mono text-sm">
+            <>
+              {/* Mobile Card Layout (sm:hidden) */}
+              <div className="block sm:hidden space-y-2.5">
+                {filteredShifts.map((s) => (
+                  <div key={s.id} className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-white text-sm truncate">{s.workerName}</span>
+                      {s.isSalaried ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold shrink-0">
+                          Nómina Fija
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold shrink-0">
+                          Extra (10,00 €/h)
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="bg-slate-900/60 rounded-lg p-2">
+                        <span className="block text-[10px] text-slate-500 uppercase tracking-wide">🟢 Entrada</span>
+                        <span className="text-slate-200 font-mono">{s.startTime}</span>
+                        <span className="block text-[10px] text-slate-500">{s.startDate}</span>
+                      </div>
+                      <div className="bg-slate-900/60 rounded-lg p-2">
+                        <span className="block text-[10px] text-slate-500 uppercase tracking-wide">🔴 Salida</span>
+                        <span className="text-slate-200 font-mono">{s.endTime}</span>
+                        <span className="block text-[10px] text-slate-500">{s.endDate}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1.5 border-t border-slate-800/60">
+                      <span className="font-semibold text-emerald-400">{s.durationFormatted}</span>
+                      <span className="font-bold text-amber-400 font-mono text-sm">
                         {s.isSalaried ? '0,00 €' : `${s.cost.toFixed(2)} €`}
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        {isAdmin ? (
-                          <div className="flex items-center justify-center space-x-1">
-                            <button
-                              onClick={() => handleOpenEdit(s.startEntry)}
-                              className="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 transition-colors"
-                              title="Editar Fichaje Entrada (Admin)"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleOpenEdit(s.endEntry)}
-                              className="p-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 transition-colors"
-                              title="Editar Fichaje Salida (Admin)"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 font-medium flex items-center justify-center space-x-1">
-                            <Lock className="w-3 h-3 text-slate-400" />
-                            <span>Bloqueado</span>
-                          </span>
-                        )}
-                      </td>
+                      </span>
+                    </div>
+
+                    {isAdmin ? (
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => handleOpenEdit(s.startEntry)}
+                          className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold transition-colors"
+                          title="Editar Fichaje de Entrada (Admin)"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 shrink-0" />
+                          <span>Editar Entrada</span>
+                        </button>
+                        <button
+                          onClick={() => handleOpenEdit(s.endEntry)}
+                          className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-[11px] font-bold transition-colors"
+                          title="Editar Fichaje de Salida (Admin)"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 shrink-0" />
+                          <span>Editar Salida</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-1.5 pt-1 text-[10px] text-slate-400 font-medium">
+                        <Lock className="w-3 h-3 text-slate-400" />
+                        <span>Bloqueado</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table View (hidden sm:block) */}
+              <div className="hidden sm:block overflow-x-auto no-scrollbar">
+                <table className="w-full min-w-[680px] text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
+                      <th className="py-3 px-3">Trabajador</th>
+                      <th className="py-3 px-3">Tipo / Tarifa</th>
+                      <th className="py-3 px-3">Entrada</th>
+                      <th className="py-3 px-3">Salida</th>
+                      <th className="py-3 px-3">Horas</th>
+                      <th className="py-3 px-3 text-right">Coste (€)</th>
+                      <th className="py-3 px-3 text-center">Estado / Admin</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {filteredShifts.map((s) => (
+                      <tr key={s.id} className="hover:bg-slate-950/50 transition-colors">
+                        <td className="py-3 px-3 font-bold text-white">
+                          {s.workerName}
+                        </td>
+                        <td className="py-3 px-3">
+                          {s.isSalaried ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold">
+                              Nómina Fija
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                              Extra (10,00 €/h)
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-slate-300">
+                          <div>{s.startTime}</div>
+                          <div className="text-[10px] text-slate-500">{s.startDate}</div>
+                        </td>
+                        <td className="py-3 px-3 text-slate-300">
+                          <div>{s.endTime}</div>
+                          <div className="text-[10px] text-slate-500">{s.endDate}</div>
+                        </td>
+                        <td className="py-3 px-3 font-semibold text-emerald-400">
+                          {s.durationFormatted}
+                        </td>
+                        <td className="py-3 px-3 text-right font-bold text-amber-400 font-mono text-sm">
+                          {s.isSalaried ? '0,00 €' : `${s.cost.toFixed(2)} €`}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          {isAdmin ? (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => handleOpenEdit(s.startEntry)}
+                                className="flex items-center gap-1 px-2 h-9 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-colors"
+                                title="Editar Fichaje de Entrada (Admin)"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 shrink-0" />
+                                <span className="text-[10px] font-bold">Entrada</span>
+                              </button>
+                              <button
+                                onClick={() => handleOpenEdit(s.endEntry)}
+                                className="flex items-center gap-1 px-2 h-9 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-colors"
+                                title="Editar Fichaje de Salida (Admin)"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 shrink-0" />
+                                <span className="text-[10px] font-bold">Salida</span>
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 font-medium flex items-center justify-center space-x-1">
+                              <Lock className="w-3 h-3 text-slate-400" />
+                              <span>Bloqueado</span>
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )
         )}
 

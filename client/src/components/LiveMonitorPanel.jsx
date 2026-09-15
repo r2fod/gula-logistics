@@ -417,7 +417,8 @@ export default function LiveMonitorPanel({
                         rate: worker.rate || 10,
                         type: 'salida',
                         timestamp: now.toISOString(),
-                        timeFormatted: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        // Locale y hour12 fijos: mismo criterio que ClockInModal/AdminClockEditModal.
+                        timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false }),
                         dateFormatted: now.toLocaleDateString(),
                         note: `Finalizada tarea: ${worker.currentTask}`
                       };
