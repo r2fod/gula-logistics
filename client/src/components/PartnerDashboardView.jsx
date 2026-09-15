@@ -1448,7 +1448,7 @@ export default function PartnerDashboardView({
 
       {/* TAB 7: Interactive Task Flow Graph */}
       {activeTab === 'graph' && (
-        <TaskFlowGraphView activeWeekData={activeWeekData} />
+        <TaskFlowGraphView activeWeekData={activeWeekData} workersList={workersList} />
       )}
 
       {/* Admin Clock Edit Modal */}

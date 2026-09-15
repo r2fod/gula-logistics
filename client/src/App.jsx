@@ -274,9 +274,18 @@ export default function App() {
   // admin) — usar solo para guardados masivos de verdad (editor de tareas,
   // crear/clonar semana, aplicar plan de Gemini). Para marcar una tarea
   // como hecha, usar patchTaskCompletionInAPI vía toggleTask/markTaskCompleted.
-  const updateWeeks = (newWeeks) => {
+  //
+  // El cambio se aplica igualmente en local aunque falle el guardado real
+  // (para no perder lo escrito), pero se avisa siempre que el servidor lo
+  // rechace — si no, el cambio parece guardado y desaparece solo en el
+  // siguiente refresco de 20s sin explicación (p.ej. sesión de admin
+  // caducada o revocada tras cambiar la contraseña).
+  const updateWeeks = async (newWeeks) => {
     applyLocalWeeksState(newWeeks);
-    saveWeeksToAPI(newWeeks);
+    const result = await saveWeeksToAPI(newWeeks);
+    if (!result) {
+      alert('⚠️ No se pudo guardar en el servidor (posible sesión de administrador caducada). El cambio se ve aquí pero puede desaparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite el cambio.');
+    }
   };
 
   const handleUpdateActiveWeek = (updatedWeekData) => {

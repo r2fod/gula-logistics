@@ -44,7 +44,7 @@ const getTaskCategory = (label) => {
   return rule || { icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-l-slate-700' };
 };
 
-export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
+export default function TaskFlowGraphView({ activeWeekData, workersList = [], onToggleTask }) {
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [filterDay, setFilterDay] = useState('all');
   const [filterTruck, setFilterTruck] = useState('all');
@@ -52,55 +52,70 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
   const [viewMode, setViewMode] = useState('graph'); // 'graph' | 'gantt'
   const [mobileColumn, setMobileColumn] = useState('all'); // 'all' | 'days' | 'tasks' | 'trucks' | 'workers'
 
-  // Extract structured graph nodes & links from activeWeekData or fallback defaults
+  // Extract structured graph nodes & links from activeWeekData. Workers y
+  // camiones se derivan SIEMPRE de los datos reales (workersList / trucks
+  // de la semana activa) — antes eran listas fijas escritas a mano en este
+  // componente, así que quitar/añadir a alguien del roster (o un camión)
+  // no se reflejaba aquí: el grafo se quedaba enseñando gente que ya no
+  // estaba asignada a nada (p.ej. Jaime, tras quitarlo del equipo).
+  const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  const slug = (s) => normalize(s).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+
   const graphData = useMemo(() => {
     const nodes = [];
     const links = [];
 
-    // 1. Time / Day Nodes
+    // 1. Time / Day Nodes — título/badge reales de la semana activa cuando
+    // existen, con el texto de siempre como respaldo si faltan.
+    const dayFallback = {
+      martes: { label: 'Martes 15', sub: 'Arranque Flota' },
+      miercoles: { label: 'Miércoles 16', sub: 'Descarga Fincas' },
+      jueves: { label: 'Jueves 17', sub: 'Eventos' },
+      viernes: { label: 'Viernes 18', sub: 'Cierre Crítico' }
+    };
     const days = [
-      { id: 'day_martes', label: 'Martes 15', sub: 'Arranque Flota', dayKey: 'martes', color: 'border-blue-500 bg-blue-500/10 text-blue-400' },
-      { id: 'day_miercoles', label: 'Miércoles 16', sub: 'Descarga Fincas', dayKey: 'miercoles', color: 'border-cyan-500 bg-cyan-500/10 text-cyan-400' },
-      { id: 'day_jueves', label: 'Jueves 17', sub: 'Eventos', dayKey: 'jueves', color: 'border-purple-500 bg-purple-500/10 text-purple-400' },
-      { id: 'day_viernes', label: 'Viernes 18', sub: 'Cierre Crítico', dayKey: 'viernes', color: 'border-amber-500 bg-amber-500/10 text-amber-400' },
-      { id: 'day_sabado', label: 'Sábado 19', sub: '3 Bodas Simultáneas', dayKey: 'saturdaySpecial', color: 'border-rose-500 bg-rose-500/10 text-rose-400' },
-      { id: 'day_domingo', label: 'Domingo 20 & Lunes 21', sub: 'Logística Inversa', dayKey: 'sundayMonday', color: 'border-emerald-500 bg-emerald-500/10 text-emerald-400' }
-    ];
+      { id: 'day_martes', dayKey: 'martes', color: 'border-blue-500 bg-blue-500/10 text-blue-400' },
+      { id: 'day_miercoles', dayKey: 'miercoles', color: 'border-cyan-500 bg-cyan-500/10 text-cyan-400' },
+      { id: 'day_jueves', dayKey: 'jueves', color: 'border-purple-500 bg-purple-500/10 text-purple-400' },
+      { id: 'day_viernes', dayKey: 'viernes', color: 'border-amber-500 bg-amber-500/10 text-amber-400' },
+      { id: 'day_sabado', dayKey: 'saturdaySpecial', label: activeWeekData?.saturdaySpecial?.title || 'Sábado 19', sub: '3 Bodas Simultáneas', color: 'border-rose-500 bg-rose-500/10 text-rose-400' },
+      { id: 'day_domingo', dayKey: 'sundayMonday', label: activeWeekData?.sundayMonday?.title || 'Domingo 20 & Lunes 21', sub: 'Logística Inversa', color: 'border-emerald-500 bg-emerald-500/10 text-emerald-400' }
+    ].map(d => ({
+      ...d,
+      label: d.label || activeWeekData?.schedule?.[d.dayKey]?.title || dayFallback[d.dayKey]?.label || d.dayKey,
+      sub: d.sub || activeWeekData?.schedule?.[d.dayKey]?.badge || dayFallback[d.dayKey]?.sub || ''
+    }));
 
     days.forEach(d => {
       nodes.push({ id: d.id, type: 'day', label: d.label, sub: d.sub, dayKey: d.dayKey, color: d.color });
     });
 
-    // 2. Trucks Nodes
-    const trucks = [
-      { id: 'truck_gula', name: 'Camión Gula', tag: 'PROPIO GULA', color: 'border-emerald-500 text-emerald-400 bg-emerald-500/10' },
-      { id: 'truck_covey', name: 'Camión Covey', tag: 'ALQUILER COVEY', color: 'border-blue-500 text-blue-400 bg-blue-500/10' },
-      { id: 'truck_albacar', name: 'Camión Albacar', tag: 'ALQUILER ALBACAR', color: 'border-purple-500 text-purple-400 bg-purple-500/10' }
-    ];
+    // 2. Trucks Nodes — de activeWeekData.trucks (Mongo), no de una lista fija.
+    const truckColorByTag = (tag = '') => {
+      if (/propio/i.test(tag)) return 'border-emerald-500 text-emerald-400 bg-emerald-500/10';
+      if (/albacar/i.test(tag)) return 'border-purple-500 text-purple-400 bg-purple-500/10';
+      return 'border-blue-500 text-blue-400 bg-blue-500/10';
+    };
+    const trucks = (activeWeekData?.trucks || []).map(t => ({
+      id: `truck_${slug(t.name)}`,
+      name: t.name,
+      shortName: (t.name || '').replace(/^Cami[oó]n\s+/i, ''),
+      tag: t.tag,
+      color: truckColorByTag(t.tag)
+    }));
 
     trucks.forEach(t => {
       nodes.push({ id: t.id, type: 'truck', label: t.name, sub: t.tag, color: t.color });
     });
 
-    // 3. Worker Nodes
-    const workers = [
-      { id: 'worker_gonzalo', name: 'Gonzalo', role: 'Conductor' },
-      { id: 'worker_ricardo', name: 'Ricardo', role: 'Conductor' },
-      { id: 'worker_jaime', name: 'Jaime', role: 'Conductor' },
-      { id: 'worker_johan', name: 'Johan', role: 'Backup/Conductor' },
-      { id: 'worker_jeferson', name: 'Jeferson', role: 'Apoyo Base' },
-      { id: 'worker_irene', name: 'Irene', role: 'Checklist/Base' },
-      { id: 'worker_kerly', name: 'Kerly', role: 'Limpieza' },
-      { id: 'worker_jose', name: 'Jose', role: 'Limpieza' },
-      { id: 'worker_raul', name: 'Raúl', role: 'Jefe Logística' }
-    ];
+    // 3. Worker Nodes — del roster real (workersList), no de una lista fija.
+    const workers = workersList.map(w => ({ id: `worker_${slug(w.name)}`, name: w.name, role: w.role }));
 
     workers.forEach(w => {
       nodes.push({ id: w.id, type: 'worker', label: w.name, sub: w.role, color: 'border-slate-700 bg-slate-800 text-slate-200' });
     });
 
     // Worker links come from the task's own `assigned` array
-    const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const workerIdByName = {};
     workers.forEach(w => { workerIdByName[normalize(w.name)] = w.id; });
 
@@ -112,10 +127,8 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
     };
 
     const truckIdByText = (text) => {
-      if (text.includes('Covey')) return 'truck_covey';
-      if (text.includes('Albacar')) return 'truck_albacar';
-      if (text.includes('Gula')) return 'truck_gula';
-      return null;
+      const found = trucks.find(t => text.includes(t.name) || (t.shortName && text.includes(t.shortName)));
+      return found ? found.id : null;
     };
 
     const linkTruck = (taskId, truckField, text) => {
@@ -124,10 +137,8 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
         if (truckId) links.push({ source: taskId, target: truckId });
         return;
       }
-      if (text.includes('3 camiones')) {
-        links.push({ source: taskId, target: 'truck_gula' });
-        links.push({ source: taskId, target: 'truck_covey' });
-        links.push({ source: taskId, target: 'truck_albacar' });
+      if (/\d+\s*camiones/i.test(text)) {
+        trucks.forEach(t => links.push({ source: taskId, target: t.id }));
         return;
       }
       const truckId = truckIdByText(text);
@@ -162,29 +173,23 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
     });
 
     // Sábado 3 Bodas
-    const weddings = activeWeekData?.saturdaySpecial?.weddings || [
-      { location: "Sot de Chera (250 pax)", truck: "Camión Gula", details: "Ricardo + Jeferson", assigned: ["Ricardo", "Jeferson"] },
-      { location: "Mas dels Refranys", truck: "Camión Covey", details: "Gonzalo + Johan", assigned: ["Gonzalo", "Johan"] },
-      { location: "María y Joaquín", truck: "Camión Albacar", details: "Jaime + Johan/Jef", assigned: ["Jaime"] }
-    ];
+    const weddings = activeWeekData?.saturdaySpecial?.weddings || [];
 
     weddings.forEach((w, idx) => {
       const id = `task_sabado_${idx}`;
       nodes.push({ id, type: 'task', label: `💒 ${w.location}`, sub: w.details, timeFrame: w.timeFrame, dayId: 'day_sabado', dayKey: 'saturdaySpecial', idx });
       links.push({ source: 'day_sabado', target: id });
 
-      if (w.truck?.includes('Gula')) links.push({ source: id, target: 'truck_gula' });
-      if (w.truck?.includes('Covey')) links.push({ source: id, target: 'truck_covey' });
-      if (w.truck?.includes('Albacar')) links.push({ source: id, target: 'truck_albacar' });
+      if (w.truck) {
+        const truckId = truckIdByText(w.truck);
+        if (truckId) links.push({ source: id, target: truckId });
+      }
 
       linkAssignedWorkers(id, w.assigned);
     });
 
     // Domingo & Lunes tasks
-    const domTasks = activeWeekData?.sundayMonday?.tasks || [
-      { text: "09:00 - 13:00: Descarga general de los 3 camiones en almacén. Limpieza de vajilla por Kerly y Jose", assigned: ["Kerly", "Jose"] },
-      { text: "Devoluciones: Devolución de Camiones de Alquiler Albacar y Covey (Gonzalo/Ricardo). Ruta Dealde y 90 sillas a Carvillo", assigned: ["Gonzalo", "Ricardo"] }
-    ];
+    const domTasks = activeWeekData?.sundayMonday?.tasks || [];
 
     domTasks.forEach((tItem, idx) => {
       const id = `task_domingo_${idx}`;
@@ -200,7 +205,7 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
     });
 
     return { nodes, links };
-  }, [activeWeekData]);
+  }, [activeWeekData, workersList]);
 
   // Connected node IDs calculation when a node is hovered/clicked.
   const connectedNodeIds = useMemo(() => {
@@ -315,27 +320,21 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
               className="bg-slate-950 border border-slate-800 text-emerald-400 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none w-full"
             >
               <option value="all">🚚 Toda la Flota</option>
-              <option value="truck_gula">Camión Gula (Propio)</option>
-              <option value="truck_covey">Camión Covey (Alquiler)</option>
-              <option value="truck_albacar">Camión Albacar (Alquiler)</option>
+              {truckNodes.map(t => (
+                <option key={t.id} value={t.id}>{t.label}{t.sub ? ` (${t.sub})` : ''}</option>
+              ))}
             </select>
 
-            {/* Worker Filter */}
-            <select 
-              value={filterWorker} 
+            {/* Worker Filter — del roster real (workerNodes), no una lista fija */}
+            <select
+              value={filterWorker}
               onChange={(e) => setFilterWorker(e.target.value)}
               className="bg-slate-950 border border-slate-800 text-amber-400 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none w-full"
             >
               <option value="all">👥 Todo el Equipo</option>
-              <option value="worker_gonzalo">Gonzalo</option>
-              <option value="worker_ricardo">Ricardo</option>
-              <option value="worker_jaime">Jaime</option>
-              <option value="worker_johan">Johan</option>
-              <option value="worker_jeferson">Jeferson</option>
-              <option value="worker_irene">Irene</option>
-              <option value="worker_kerly">Kerly</option>
-              <option value="worker_jose">Jose</option>
-              <option value="worker_raul">Raúl</option>
+              {workerNodes.map(w => (
+                <option key={w.id} value={w.id}>{w.label}</option>
+              ))}
             </select>
           </div>
 
