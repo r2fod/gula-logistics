@@ -50,6 +50,7 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
   const [filterTruck, setFilterTruck] = useState('all');
   const [filterWorker, setFilterWorker] = useState('all');
   const [viewMode, setViewMode] = useState('graph'); // 'graph' | 'gantt'
+  const [mobileColumn, setMobileColumn] = useState('all'); // 'all' | 'days' | 'tasks' | 'trucks' | 'workers'
 
   // Extract structured graph nodes & links from activeWeekData or fallback defaults
   const graphData = useMemo(() => {
@@ -98,9 +99,7 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
       nodes.push({ id: w.id, type: 'worker', label: w.name, sub: w.role, color: 'border-slate-700 bg-slate-800 text-slate-200' });
     });
 
-    // Worker links come from the task's own `assigned` array (set by the
-    // manual editor or Gemini AI) — not from scanning the text for a name,
-    // which silently misses anyone not literally spelled out in the sentence.
+    // Worker links come from the task's own `assigned` array
     const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const workerIdByName = {};
     workers.forEach(w => { workerIdByName[normalize(w.name)] = w.id; });
@@ -119,8 +118,6 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
       return null;
     };
 
-    // Prefer the task's own `truck` field (set via the manual editor) over
-    // scanning the text — a task can use a truck without naming it in the sentence.
     const linkTruck = (taskId, truckField, text) => {
       if (truckField) {
         const truckId = truckIdByText(truckField);
@@ -206,14 +203,6 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
   }, [activeWeekData]);
 
   // Connected node IDs calculation when a node is hovered/clicked.
-  // Two hops: día→tarea es un salto, tarea→camión/trabajador es otro — con
-  // un solo salto (el original) seleccionar un día nunca llegaba a iluminar
-  // camiones ni personal, porque ninguno de los dos está enlazado directamente
-  // al nodo del día, solo a sus tareas.
-  // El segundo salto solo puede atravesar nodos de tipo "tarea": si se deja
-  // atravesar también camión/trabajador, seleccionar una tarea de un trabajador
-  // (ej. Ricardo el martes) "se cuela" por ese trabajador y termina iluminando
-  // sus tareas de OTRO día, que no tienen relación real con la tarea marcada.
   const connectedNodeIds = useMemo(() => {
     if (!selectedNodeId) return new Set();
     const nodeTypeById = new Map(graphData.nodes.map(n => [n.id, n.type]));
@@ -236,8 +225,27 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
     return set;
   }, [selectedNodeId, graphData]);
 
+  // Selected node object
+  const selectedNodeObj = graphData.nodes.find(n => n.id === selectedNodeId);
+
+  // Connected route details for interactive banner
+  const connectedRouteDetails = useMemo(() => {
+    if (!selectedNodeId || !selectedNodeObj) return null;
+    const connectedTasks = graphData.nodes.filter(n => n.type === 'task' && connectedNodeIds.has(n.id));
+    const connectedDays = graphData.nodes.filter(n => n.type === 'day' && connectedNodeIds.has(n.id));
+    const connectedTrucks = graphData.nodes.filter(n => n.type === 'truck' && connectedNodeIds.has(n.id));
+    const connectedWorkers = graphData.nodes.filter(n => n.type === 'worker' && connectedNodeIds.has(n.id));
+    return {
+      connectedTasks,
+      connectedDays,
+      connectedTrucks,
+      connectedWorkers
+    };
+  }, [selectedNodeId, selectedNodeObj, graphData, connectedNodeIds]);
+
   // Filtered nodes
   const dayNodes = graphData.nodes.filter(n => n.type === 'day');
+  
   const taskNodes = graphData.nodes.filter(n => {
     if (n.type !== 'task') return false;
     if (filterDay !== 'all' && n.dayId !== filterDay) return false;
@@ -259,81 +267,83 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
   const truckNodes = graphData.nodes.filter(n => n.type === 'truck');
   const workerNodes = graphData.nodes.filter(n => n.type === 'worker');
 
-  const selectedNodeObj = graphData.nodes.find(n => n.id === selectedNodeId);
-
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-4 sm:space-y-6 animate-fadeIn w-full max-w-full">
       {/* Top Header & Interactive Mode Selectors */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-slate-900/90 p-5 rounded-3xl border border-slate-800 shadow-2xl">
-        <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shadow-lg">
-            <Zap className="w-6 h-6 animate-pulse" />
+      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 sm:gap-4 bg-slate-900/90 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-800 shadow-2xl">
+        <div className="flex items-center space-x-3 min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shadow-lg shrink-0">
+            <Zap className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
           </div>
-          <div>
-            <h2 className="text-xl font-black font-['Outfit'] text-white flex items-center gap-2">
-              <span>Grafo Interactivo de Tareas & Flujo Logístico</span>
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-extrabold uppercase">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base sm:text-xl font-black font-['Outfit'] text-white">
+                Grafo Interactivo de Tareas & Flujo
+              </h2>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-extrabold uppercase shrink-0 leading-tight">
                 Visual Flow
               </span>
-            </h2>
-            <p className="text-xs text-slate-400">
-              Visualiza las relaciones y flujo entre Días, Tareas, Camiones y Trabajadores. Toca cualquier nodo para resaltar su ruta.
+            </div>
+            <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 line-clamp-2 sm:line-clamp-none">
+              Relaciones entre Días, Tareas, Camiones y Personal. Toca cualquier elemento para ver su ruta completa.
             </p>
           </div>
         </div>
 
         {/* Filters & View Toggles */}
-        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-          {/* Day Filter */}
-          <select 
-            value={filterDay} 
-            onChange={(e) => setFilterDay(e.target.value)}
-            className="bg-slate-950 border border-slate-800 text-slate-200 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none"
-          >
-            <option value="all">📅 Todos los Días</option>
-            <option value="day_martes">Martes 15</option>
-            <option value="day_miercoles">Miércoles 16</option>
-            <option value="day_jueves">Jueves 17</option>
-            <option value="day_viernes">Viernes 18</option>
-            <option value="day_sabado">Sábado 19 (Bodas)</option>
-            <option value="day_domingo">Domingo 20</option>
-          </select>
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full lg:w-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-1 sm:flex-none">
+            {/* Day Filter */}
+            <select 
+              value={filterDay} 
+              onChange={(e) => setFilterDay(e.target.value)}
+              className="bg-slate-950 border border-slate-800 text-slate-200 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none w-full"
+            >
+              <option value="all">📅 Todos los Días</option>
+              <option value="day_martes">Martes 15</option>
+              <option value="day_miercoles">Miércoles 16</option>
+              <option value="day_jueves">Jueves 17</option>
+              <option value="day_viernes">Viernes 18</option>
+              <option value="day_sabado">Sábado 19 (Bodas)</option>
+              <option value="day_domingo">Domingo 20</option>
+            </select>
 
-          {/* Truck Filter */}
-          <select 
-            value={filterTruck} 
-            onChange={(e) => setFilterTruck(e.target.value)}
-            className="bg-slate-950 border border-slate-800 text-emerald-400 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none"
-          >
-            <option value="all">🚚 Toda la Flota</option>
-            <option value="truck_gula">Camión Gula (Propio)</option>
-            <option value="truck_covey">Camión Covey (Alquiler)</option>
-            <option value="truck_albacar">Camión Albacar (Alquiler)</option>
-          </select>
+            {/* Truck Filter */}
+            <select 
+              value={filterTruck} 
+              onChange={(e) => setFilterTruck(e.target.value)}
+              className="bg-slate-950 border border-slate-800 text-emerald-400 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none w-full"
+            >
+              <option value="all">🚚 Toda la Flota</option>
+              <option value="truck_gula">Camión Gula (Propio)</option>
+              <option value="truck_covey">Camión Covey (Alquiler)</option>
+              <option value="truck_albacar">Camión Albacar (Alquiler)</option>
+            </select>
 
-          {/* Worker Filter */}
-          <select 
-            value={filterWorker} 
-            onChange={(e) => setFilterWorker(e.target.value)}
-            className="bg-slate-950 border border-slate-800 text-amber-400 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none"
-          >
-            <option value="all">👥 Todo el Equipo</option>
-            <option value="worker_gonzalo">Gonzalo</option>
-            <option value="worker_ricardo">Ricardo</option>
-            <option value="worker_jaime">Jaime</option>
-            <option value="worker_johan">Johan</option>
-            <option value="worker_jeferson">Jeferson</option>
-            <option value="worker_irene">Irene</option>
-            <option value="worker_kerly">Kerly</option>
-            <option value="worker_jose">Jose</option>
-            <option value="worker_raul">Raúl</option>
-          </select>
+            {/* Worker Filter */}
+            <select 
+              value={filterWorker} 
+              onChange={(e) => setFilterWorker(e.target.value)}
+              className="bg-slate-950 border border-slate-800 text-amber-400 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none w-full"
+            >
+              <option value="all">👥 Todo el Equipo</option>
+              <option value="worker_gonzalo">Gonzalo</option>
+              <option value="worker_ricardo">Ricardo</option>
+              <option value="worker_jaime">Jaime</option>
+              <option value="worker_johan">Johan</option>
+              <option value="worker_jeferson">Jeferson</option>
+              <option value="worker_irene">Irene</option>
+              <option value="worker_kerly">Kerly</option>
+              <option value="worker_jose">Jose</option>
+              <option value="worker_raul">Raúl</option>
+            </select>
+          </div>
 
-          {/* View Mode */}
-          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+          {/* View Mode Toggle */}
+          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0 justify-center">
             <button
               onClick={() => setViewMode('graph')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-center ${
                 viewMode === 'graph' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -341,7 +351,7 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
             </button>
             <button
               onClick={() => setViewMode('gantt')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-center ${
                 viewMode === 'gantt' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -353,72 +363,204 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
 
       {/* Main Interactive Node Graph Area */}
       {viewMode === 'graph' ? (
-        <div className="relative bg-slate-950 border border-slate-800 rounded-3xl p-6 overflow-x-auto shadow-2xl min-h-[540px]">
+        <div className="relative bg-slate-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-2xl min-h-[480px]">
           {/* Subtle Grid Canvas Background */}
-          <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none rounded-3xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none rounded-2xl sm:rounded-3xl" />
 
-          {/* Active selection banner */}
+          {/* Mobile Column Selector Bar */}
+          <div className="relative z-20 flex md:hidden items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-3">
+            <button
+              onClick={() => setMobileColumn('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+                mobileColumn === 'all'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
+                  : 'bg-slate-900 text-slate-400 border-slate-800'
+              }`}
+            >
+              🌐 Vista Completa
+            </button>
+            <button
+              onClick={() => setMobileColumn('days')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+                mobileColumn === 'days'
+                  ? 'bg-blue-500 text-white border-blue-400 shadow-md'
+                  : 'bg-slate-900 text-slate-400 border-slate-800'
+              }`}
+            >
+              📅 Días ({dayNodes.length})
+            </button>
+            <button
+              onClick={() => setMobileColumn('tasks')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+                mobileColumn === 'tasks'
+                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
+                  : 'bg-slate-900 text-slate-400 border-slate-800'
+              }`}
+            >
+              📋 Tareas ({taskNodes.length})
+            </button>
+            <button
+              onClick={() => setMobileColumn('trucks')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+                mobileColumn === 'trucks'
+                  ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md'
+                  : 'bg-slate-900 text-slate-400 border-slate-800'
+              }`}
+            >
+              🚚 Camiones ({truckNodes.length})
+            </button>
+            <button
+              onClick={() => setMobileColumn('workers')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+                mobileColumn === 'workers'
+                  ? 'bg-purple-500 text-white border-purple-400 shadow-md'
+                  : 'bg-slate-900 text-slate-400 border-slate-800'
+              }`}
+            >
+              👥 Personal ({workerNodes.length})
+            </button>
+          </div>
+
+          {/* Active selection banner & Interactive Connected Route Card */}
           {selectedNodeObj && (
-            <div className="relative z-20 mb-6 bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl flex items-center justify-between text-white animate-fadeIn">
-              <div className="flex items-center space-x-3">
-                <Sparkles className="w-5 h-5 text-amber-400" />
-                <div>
-                  <span className="text-xs uppercase font-extrabold text-amber-400 tracking-wider">Nodo Seleccionado</span>
-                  <h4 className="text-sm font-bold text-white">{selectedNodeObj.label}</h4>
-                  {selectedNodeObj.sub && <p className="text-xs text-slate-300">{selectedNodeObj.sub}</p>}
+            <div className="relative z-20 mb-4 sm:mb-6 bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 border border-amber-500/40 p-3.5 sm:p-5 rounded-2xl shadow-xl space-y-3 animate-fadeIn">
+              <div className="flex items-center justify-between gap-2 border-b border-amber-500/20 pb-2.5">
+                <div className="flex items-center space-x-2.5 min-w-0">
+                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] uppercase font-extrabold text-amber-400 tracking-wider">
+                        Ruta Conectada • Nodo Activo
+                      </span>
+                      <span className="text-[9px] font-bold px-2 py-0.2 rounded-full bg-slate-800 text-slate-300 capitalize">
+                        {selectedNodeObj.type}
+                      </span>
+                    </div>
+                    <h4 className="text-sm sm:text-base font-extrabold text-white truncate font-['Outfit'] mt-0.5">
+                      {selectedNodeObj.label}
+                    </h4>
+                    {selectedNodeObj.sub && <p className="text-[11px] text-amber-200/80">{selectedNodeObj.sub}</p>}
+                  </div>
                 </div>
+                <button 
+                  onClick={() => setSelectedNodeId(null)}
+                  className="text-xs bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-xl font-bold transition-all shrink-0 active:scale-95"
+                >
+                  Desmarcar
+                </button>
               </div>
-              <button 
-                onClick={() => setSelectedNodeId(null)}
-                className="text-xs bg-slate-900 hover:bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl font-bold transition-all"
-              >
-                Desmarcar Nodo
-              </button>
+
+              {/* Connected Route Badges: Days, Trucks, Team */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                {connectedRouteDetails?.connectedDays.length > 0 && (
+                  <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-[10px] font-bold uppercase text-blue-400 block mb-1">📅 Días Involucrados</span>
+                    <div className="flex flex-wrap gap-1">
+                      {connectedRouteDetails.connectedDays.map(d => (
+                        <span key={d.id} className="text-[11px] font-semibold text-slate-200 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-md">
+                          {d.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {connectedRouteDetails?.connectedTrucks.length > 0 && (
+                  <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-[10px] font-bold uppercase text-emerald-400 block mb-1">🚚 Flota Asignada</span>
+                    <div className="flex flex-wrap gap-1">
+                      {connectedRouteDetails.connectedTrucks.map(tr => (
+                        <span key={tr.id} className="text-[11px] font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                          {tr.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {connectedRouteDetails?.connectedWorkers.length > 0 && (
+                  <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+                    <span className="text-[10px] font-bold uppercase text-purple-400 block mb-1">👥 Personal en Ruta</span>
+                    <div className="flex flex-wrap gap-1">
+                      {connectedRouteDetails.connectedWorkers.map(w => (
+                        <span key={w.id} className="text-[11px] font-semibold text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-md">
+                          {w.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Connected Tasks list if selecting day, truck or worker */}
+              {selectedNodeObj.type !== 'task' && connectedRouteDetails?.connectedTasks.length > 0 && (
+                <div className="pt-2 border-t border-slate-800/80">
+                  <span className="text-[10px] font-bold uppercase text-amber-400 block mb-1.5">
+                    📋 Tareas en este Flujo ({connectedRouteDetails.connectedTasks.length})
+                  </span>
+                  <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
+                    {connectedRouteDetails.connectedTasks.map(ct => (
+                      <div key={ct.id} className="text-xs bg-slate-950/90 p-2 rounded-lg border border-slate-800 flex items-center justify-between gap-2">
+                        <span className={`truncate ${ct.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>
+                          {ct.timeFrame ? `${ct.timeFrame} • ` : ''}{ct.label}
+                        </span>
+                        {ct.completed && (
+                          <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
+                            ✓ Hecho
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* 4 Interactive Columns Graph View */}
-          <div className="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-6 min-w-[900px]">
+          {/* 4 Interactive Columns Graph View - Fully responsive */}
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6 w-full max-w-full">
             
             {/* COLUMN 1: DÍAS / HITOS */}
-            <div className="space-y-3">
+            <div className={`space-y-3 ${mobileColumn !== 'all' && mobileColumn !== 'days' ? 'hidden md:block' : 'block'}`}>
               <div className="flex items-center space-x-2 text-xs font-black uppercase text-blue-400 tracking-wider pb-2 border-b border-slate-800">
                 <Calendar className="w-4 h-4" />
                 <span>1. Días & Hitos</span>
               </div>
 
-              {dayNodes.map(d => {
-                const isSelected = selectedNodeId === d.id;
-                const isConnected = connectedNodeIds.has(d.id);
-                const opacityClass = selectedNodeId && !isConnected ? 'opacity-30 blur-[0.5px]' : 'opacity-100';
+              <div className="space-y-2">
+                {dayNodes.map(d => {
+                  const isSelected = selectedNodeId === d.id;
+                  const isConnected = connectedNodeIds.has(d.id);
+                  const opacityClass = selectedNodeId && !isConnected ? 'opacity-30 blur-[0.5px]' : 'opacity-100';
 
-                return (
-                  <div
-                    key={d.id}
-                    onClick={() => setSelectedNodeId(isSelected ? null : d.id)}
-                    className={`cursor-pointer transition-all duration-300 p-3.5 rounded-2xl border ${d.color} ${opacityClass} ${
-                      isSelected ? 'ring-2 ring-amber-400 scale-[1.03] shadow-lg shadow-amber-500/20' : 'hover:scale-[1.01]'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-xs">{d.label}</span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900/60 text-slate-300 border border-slate-700/50">
-                        {d.sub}
-                      </span>
+                  return (
+                    <div
+                      key={d.id}
+                      onClick={() => setSelectedNodeId(isSelected ? null : d.id)}
+                      className={`cursor-pointer transition-all duration-300 p-3 sm:p-3.5 rounded-2xl border ${d.color} ${opacityClass} ${
+                        isSelected ? 'ring-2 ring-amber-400 scale-[1.02] shadow-lg shadow-amber-500/20' : 'hover:scale-[1.01]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold text-xs">{d.label}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900/60 text-slate-300 border border-slate-700/50">
+                          {d.sub}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
 
             {/* COLUMN 2: TAREAS & ACTIVIDADES */}
-            <div className="space-y-3 md:col-span-1">
+            <div className={`space-y-3 md:col-span-1 ${mobileColumn !== 'all' && mobileColumn !== 'tasks' ? 'hidden md:block' : 'block'}`}>
               <div className="flex items-center space-x-2 text-xs font-black uppercase text-amber-400 tracking-wider pb-2 border-b border-slate-800">
                 <Clock className="w-4 h-4" />
                 <span>2. Tareas & Operaciones ({taskNodes.length})</span>
               </div>
 
-              <div className="space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
+              <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1">
                 {taskNodes.map(t => {
                   const isSelected = selectedNodeId === t.id;
                   const isConnected = connectedNodeIds.has(t.id);
@@ -441,7 +583,7 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
                               e.stopPropagation();
                               onToggleTask(t.dayKey, t.idx);
                             }}
-                            className="mt-0.5 text-slate-400 hover:text-emerald-400 transition-colors"
+                            className="mt-0.5 text-slate-400 hover:text-emerald-400 transition-colors shrink-0"
                           >
                             {t.completed ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Circle className="w-4 h-4" />}
                           </button>
@@ -474,45 +616,47 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
             </div>
 
             {/* COLUMN 3: FLOTA & CAMIONES */}
-            <div className="space-y-3">
+            <div className={`space-y-3 ${mobileColumn !== 'all' && mobileColumn !== 'trucks' ? 'hidden md:block' : 'block'}`}>
               <div className="flex items-center space-x-2 text-xs font-black uppercase text-emerald-400 tracking-wider pb-2 border-b border-slate-800">
                 <Truck className="w-4 h-4" />
                 <span>3. Flota de Camiones</span>
               </div>
 
-              {truckNodes.map(tr => {
-                const isSelected = selectedNodeId === tr.id;
-                const isConnected = connectedNodeIds.has(tr.id);
-                const opacityClass = selectedNodeId && !isConnected ? 'opacity-30 blur-[0.5px]' : 'opacity-100';
+              <div className="space-y-2">
+                {truckNodes.map(tr => {
+                  const isSelected = selectedNodeId === tr.id;
+                  const isConnected = connectedNodeIds.has(tr.id);
+                  const opacityClass = selectedNodeId && !isConnected ? 'opacity-30 blur-[0.5px]' : 'opacity-100';
 
-                return (
-                  <div
-                    key={tr.id}
-                    onClick={() => setSelectedNodeId(isSelected ? null : tr.id)}
-                    className={`cursor-pointer transition-all duration-300 p-3.5 rounded-2xl border ${tr.color} ${opacityClass} ${
-                      isSelected ? 'ring-2 ring-emerald-400 scale-[1.03] shadow-lg shadow-emerald-500/20' : 'hover:scale-[1.01]'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <Truck className="w-5 h-5 shrink-0" />
-                      <div>
-                        <h4 className="font-extrabold text-xs">{tr.label}</h4>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{tr.sub}</span>
+                  return (
+                    <div
+                      key={tr.id}
+                      onClick={() => setSelectedNodeId(isSelected ? null : tr.id)}
+                      className={`cursor-pointer transition-all duration-300 p-3 sm:p-3.5 rounded-2xl border ${tr.color} ${opacityClass} ${
+                        isSelected ? 'ring-2 ring-emerald-400 scale-[1.02] shadow-lg shadow-emerald-500/20' : 'hover:scale-[1.01]'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Truck className="w-5 h-5 shrink-0" />
+                        <div className="min-w-0">
+                          <h4 className="font-extrabold text-xs truncate">{tr.label}</h4>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{tr.sub}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
 
             {/* COLUMN 4: TRABAJADORES & ROLES */}
-            <div className="space-y-3">
+            <div className={`space-y-3 ${mobileColumn !== 'all' && mobileColumn !== 'workers' ? 'hidden md:block' : 'block'}`}>
               <div className="flex items-center space-x-2 text-xs font-black uppercase text-purple-400 tracking-wider pb-2 border-b border-slate-800">
                 <Users className="w-4 h-4" />
                 <span>4. Personal Asignado</span>
               </div>
 
-              <div className="grid grid-cols-1 gap-2 max-h-[580px] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 gap-2 max-h-[560px] overflow-y-auto pr-1">
                 {workerNodes.map(w => {
                   const isSelected = selectedNodeId === w.id;
                   const isConnected = connectedNodeIds.has(w.id);
@@ -542,8 +686,8 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
         </div>
       ) : (
         /* GANTT TIMELINE VIEW */
-        <div className="bg-slate-950 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="bg-slate-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-3 border-b border-slate-800">
             <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
               <Layers className="w-4 h-4 text-amber-400" />
               <span>Cronograma Gantt Operativo de la Semana</span>
@@ -559,19 +703,19 @@ export default function TaskFlowGraphView({ activeWeekData, onToggleTask }) {
               const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
               return (
-                <div key={d.id} className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="font-extrabold text-sm text-amber-400">{d.label}</span>
+                <div key={d.id} className="bg-slate-900/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
+                    <div className="flex items-center space-x-2 min-w-0">
+                      <span className="font-extrabold text-xs sm:text-sm text-amber-400 truncate">{d.label}</span>
                       <span className="text-xs text-slate-400">({d.sub})</span>
                     </div>
-                    <span className="text-xs font-mono text-emerald-400 font-bold">
+                    <span className="text-xs font-mono text-emerald-400 font-bold shrink-0">
                       {completedCount} / {totalCount} Tareas ({pct}%)
                     </span>
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                  <div className="w-full h-2 sm:h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
                     <div 
                       className="h-full bg-gradient-to-r from-emerald-500 to-amber-500 transition-all duration-500 rounded-full"
                       style={{ width: `${pct}%` }}

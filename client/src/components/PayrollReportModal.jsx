@@ -2,20 +2,21 @@ import React, { useState } from 'react';
 import { DollarSign, Clock, Users, X, Copy, Check, Trash2, Calendar, FileText, Lock, Edit3, Plus, ShieldCheck } from 'lucide-react';
 import AdminClockEditModal from './AdminClockEditModal';
 
-export default function PayrollReportModal({ 
-  isOpen, 
-  onClose, 
-  entries = [], 
-  workersList = [], 
+export default function PayrollReportModal({
+  isOpen,
+  onClose,
+  entries = [],
+  workersList = [],
   onClearEntries,
   isAdmin = true,
   onUpdateEntry,
   onDeleteEntry,
-  onClockEntryCreated
+  onClockEntryCreated,
+  activeWeekData = null
 }) {
   const [copied, setCopied] = useState(false);
   const [filterWorker, setFilterWorker] = useState('all');
-  const [viewTab, setViewTab] = useState('shifts'); // 'shifts' | 'raw_entries'
+  const [viewTab, setViewTab] = useState('shifts'); // 'shifts' | 'raw_entries' | 'estimated'
   const [editingEntry, setEditingEntry] = useState(null);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
@@ -78,8 +79,95 @@ export default function PayrollReportModal({
   // Summary Metrics
   const totalExtraCost = shifts.reduce((acc, curr) => acc + (curr.isSalaried ? 0 : curr.cost), 0);
   const totalPayrollValuation = shifts.reduce((acc, curr) => acc + (curr.isSalaried ? curr.cost : 0), 0);
-  const totalExtraHours = shifts.reduce((acc, curr) => acc + curr.durationHours, 0);
+  const totalExtraHours = shifts.reduce((acc, curr) => acc + (curr.isSalaried ? 0 : curr.durationHours), 0);
   const activeClockedInCount = Object.keys(activeWorkerShifts).length;
+
+  // Estimación a partir del planning (horario de las tareas), NO de fichajes
+  // reales — solo de referencia, nunca entra en las cifras de arriba.
+  const parseTimeFrame = (timeFrame) => {
+    const match = (timeFrame || '').match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
+    if (!match) return null;
+    const [, h1, m1, h2, m2] = match;
+    const start = Number(h1) * 60 + Number(m1);
+    let end = Number(h2) * 60 + Number(m2);
+    if (end <= start) end += 24 * 60; // cruza medianoche (p.ej. bodas 09:00 - 02:00)
+    return { start, end };
+  };
+
+  const estimationIntervals = []; // { workerName, dayKey, start, end }
+  const unestimableTasks = []; // tareas con gente asignada pero sin horario completo
+
+  const registerTaskEstimate = (dayKey, dayLabel, taskLabel, timeFrame, assigned) => {
+    if (!assigned || assigned.length === 0) return;
+    const range = parseTimeFrame(timeFrame);
+    if (!range) {
+      unestimableTasks.push({ dayLabel, label: taskLabel || '(sin descripción)', assigned });
+      return;
+    }
+    assigned.forEach(workerName => {
+      estimationIntervals.push({ workerName, dayKey, ...range });
+    });
+  };
+
+  if (activeWeekData) {
+    Object.entries(activeWeekData.schedule || {}).forEach(([dayKey, day]) => {
+      (day?.tasks || []).forEach(task => {
+        registerTaskEstimate(dayKey, day.title || dayKey, task.text, task.timeFrame, task.assigned);
+      });
+    });
+    (activeWeekData.saturdaySpecial?.weddings || []).forEach(wedding => {
+      registerTaskEstimate('saturdaySpecial', activeWeekData.saturdaySpecial?.title || 'Sábado', wedding.details || wedding.location, wedding.timeFrame, wedding.assigned);
+    });
+    // "sundayMonday" agrupa DOS días de calendario distintos (domingo y
+    // lunes) bajo una sola clave — cada tarea usa su propia sub-clave para
+    // no fusionar por error horas de un día con las del otro.
+    (activeWeekData.sundayMonday?.tasks || []).forEach((task, idx) => {
+      registerTaskEstimate(`sundayMonday_${idx}`, activeWeekData.sundayMonday?.title || 'Domingo/Lunes', task.text, task.timeFrame, task.assigned);
+    });
+  }
+
+  // Fusiona intervalos solapados por trabajador y día para no contar dos
+  // veces el mismo tramo horario (hay solapes conocidos sin resolver, ver PENDIENTES.md).
+  const intervalGroups = {};
+  estimationIntervals.forEach(({ workerName, dayKey, start, end }) => {
+    const key = `${workerName}__${dayKey}`;
+    if (!intervalGroups[key]) intervalGroups[key] = { workerName, intervals: [] };
+    intervalGroups[key].intervals.push({ start, end });
+  });
+
+  const estimatedHoursByWorker = {};
+  Object.values(intervalGroups).forEach(({ workerName, intervals }) => {
+    const sorted = [...intervals].sort((a, b) => a.start - b.start);
+    const merged = [sorted[0]];
+    for (let i = 1; i < sorted.length; i++) {
+      const last = merged[merged.length - 1];
+      if (sorted[i].start <= last.end) {
+        last.end = Math.max(last.end, sorted[i].end);
+      } else {
+        merged.push({ ...sorted[i] });
+      }
+    }
+    const hours = merged.reduce((acc, m) => acc + (m.end - m.start) / 60, 0);
+    estimatedHoursByWorker[workerName] = (estimatedHoursByWorker[workerName] || 0) + hours;
+  });
+
+  const estimatedSummary = Object.entries(estimatedHoursByWorker).map(([workerName, hours]) => {
+    const workerObj = workersList.find(w => w.name === workerName);
+    const isSalaried = workerObj?.isPayroll || workerName === 'Irene' || workerName === 'Raúl';
+    const rate = workerObj?.rate || (isSalaried ? 14 : 10);
+    return { workerName, hours, isSalaried, rate, cost: isSalaried ? 0 : hours * rate };
+  }).sort((a, b) => b.hours - a.hours);
+
+  const filteredEstimatedSummary = filterWorker === 'all'
+    ? estimatedSummary
+    : estimatedSummary.filter(e => e.workerName === filterWorker);
+
+  const filteredUnestimableTasks = filterWorker === 'all'
+    ? unestimableTasks
+    : unestimableTasks.filter(t => t.assigned.includes(filterWorker));
+
+  const totalEstimatedExtraHours = filteredEstimatedSummary.reduce((acc, e) => acc + (e.isSalaried ? 0 : e.hours), 0);
+  const totalEstimatedExtraCost = filteredEstimatedSummary.reduce((acc, e) => acc + e.cost, 0);
 
   const handleCopySummary = () => {
     let summaryText = `📋 *INFORME DE CONTROL HORARIO Y COSTES - GULA LOGÍSTICA*\n\n`;
@@ -111,8 +199,8 @@ export default function PayrollReportModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl text-white max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+      <div className="relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-2xl text-white max-h-[92vh] overflow-y-auto">
         <button 
           onClick={onClose}
           className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
@@ -127,9 +215,9 @@ export default function PayrollReportModal({
               <DollarSign className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center flex-wrap gap-2">
                 <h3 className="text-xl font-bold font-['Outfit']">Informe de Fichajes, Horas & Nóminas</h3>
-                <span className="px-2 py-0.5 text-[10px] font-extrabold rounded bg-slate-800 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                <span className="px-2 py-0.5 text-[10px] font-extrabold rounded bg-slate-800 text-amber-400 border border-amber-500/30 flex items-center gap-1 shrink-0">
                   <Lock className="w-3 h-3 text-amber-400" />
                   <span>Fichajes Bloqueados</span>
                 </span>
@@ -217,10 +305,10 @@ export default function PayrollReportModal({
         {/* View Tabs & Filter Bar */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4">
           {/* Sub-tabs */}
-          <div className="flex items-center space-x-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <div className="flex items-center space-x-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar max-w-full">
             <button
               onClick={() => setViewTab('shifts')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
                 viewTab === 'shifts' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -228,11 +316,19 @@ export default function PayrollReportModal({
             </button>
             <button
               onClick={() => setViewTab('raw_entries')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
                 viewTab === 'raw_entries' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
               }`}
             >
               ⚙️ Fichajes Individuales ({entries.length})
+            </button>
+            <button
+              onClick={() => setViewTab('estimated')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                viewTab === 'estimated' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              📅 Estimado (Planning)
             </button>
           </div>
 
@@ -272,8 +368,8 @@ export default function PayrollReportModal({
               <p className="text-[11px] text-slate-500 mt-1">Los fichajes se calculan cuando un trabajador ficha su entrada y salida.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+            <div className="overflow-x-auto no-scrollbar">
+              <table className="w-full min-w-[620px] text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
                     <th className="py-3 px-3">Trabajador</th>
@@ -357,8 +453,8 @@ export default function PayrollReportModal({
               <p className="text-xs text-slate-400">No hay fichajes individuales registrados.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
+            <div className="overflow-x-auto no-scrollbar">
+              <table className="w-full min-w-[620px] text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
                     <th className="py-3 px-3">Fecha & Hora</th>
@@ -418,6 +514,83 @@ export default function PayrollReportModal({
               </table>
             </div>
           )
+        )}
+
+        {/* Tab 3: Estimación a partir del planning (NO fichajes reales) */}
+        {viewTab === 'estimated' && (
+          <div className="space-y-4">
+            <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl flex items-start space-x-2.5 text-xs text-amber-300">
+              <Calendar className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+              <span>
+                <b>Es una estimación, no un fichaje real:</b> se calcula a partir del horario planificado de las tareas de esta semana (campo "hora" de cada tarea), no de fichajes de entrada/salida. No se incluye en "Gasto Total Extras" ni "Horas Extras Totales" de arriba — es solo referencia para ver qué se lleva planificado aunque nadie haya fichado todavía.
+              </span>
+            </div>
+
+            {filteredEstimatedSummary.length === 0 ? (
+              <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800">
+                <Calendar className="w-8 h-8 text-slate-500 mx-auto mb-2" />
+                <p className="text-xs text-slate-400">No hay horas estimables para mostrar.</p>
+                <p className="text-[11px] text-slate-500 mt-1">Ninguna tarea de esta semana tiene un horario completo (HH:MM - HH:MM) con alguien asignado.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
+                      <th className="py-3 px-3">Trabajador</th>
+                      <th className="py-3 px-3">Tipo / Tarifa</th>
+                      <th className="py-3 px-3">Horas Estimadas</th>
+                      <th className="py-3 px-3 text-right">Coste Estimado (€)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {filteredEstimatedSummary.map(e => (
+                      <tr key={e.workerName} className="hover:bg-slate-950/50 transition-colors">
+                        <td className="py-3 px-3 font-bold text-white">{e.workerName}</td>
+                        <td className="py-3 px-3">
+                          {e.isSalaried ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold">
+                              Nómina Fija
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                              Extra ({e.rate.toFixed(2)} €/h)
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 font-semibold text-emerald-400">{e.hours.toFixed(1)} h</td>
+                        <td className="py-3 px-3 text-right font-bold text-amber-400 font-mono text-sm">
+                          {e.isSalaried ? '0,00 €' : `${e.cost.toFixed(2)} €`}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t border-slate-800 text-xs font-bold text-white">
+                      <td className="py-3 px-3" colSpan={2}>Total estimado (extras)</td>
+                      <td className="py-3 px-3 text-emerald-400">{totalEstimatedExtraHours.toFixed(1)} h</td>
+                      <td className="py-3 px-3 text-right text-amber-400 font-mono">{totalEstimatedExtraCost.toFixed(2)} €</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
+
+            {filteredUnestimableTasks.length > 0 && (
+              <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-3">
+                <p className="text-[11px] font-semibold text-slate-300 mb-2">
+                  ⚠️ {filteredUnestimableTasks.length} tarea{filteredUnestimableTasks.length === 1 ? '' : 's'} con gente asignada pero sin horario completo (no se ha podido estimar su duración):
+                </p>
+                <ul className="space-y-1 max-h-40 overflow-y-auto pr-1">
+                  {filteredUnestimableTasks.map((t, idx) => (
+                    <li key={idx} className="text-[11px] text-slate-400">
+                      <span className="text-slate-500">{t.dayLabel}:</span> {t.label} — <span className="text-slate-300">{t.assigned.join(', ')}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         )}
       </div>
 

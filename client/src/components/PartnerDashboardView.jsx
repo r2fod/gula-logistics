@@ -27,7 +27,9 @@ import {
   LayoutDashboard,
   Trash2,
   KeyRound,
-  Zap
+  Zap,
+  Menu,
+  X
 } from 'lucide-react';
 import { initialBalancesData } from '../data/balancesData';
 import { fetchBalancesFromAPI } from '../data/apiService';
@@ -44,6 +46,8 @@ export default function PartnerDashboardView({
   workersList = [], 
   clockEntries = [], 
   isAdmin = false,
+  balancesData: externalBalancesData,
+  setBalancesData: externalSetBalancesData,
   onUnlockAdmin,
   onLogoutAdmin,
   onOpenAdminLogin,
@@ -53,38 +57,71 @@ export default function PartnerDashboardView({
   onOpenShareModal,
   onOpenAddWeek,
   onTogglePublicView,
+  onGoToDashboard,
   onUpdateClockEntry,
   onDeleteClockEntry,
   onClockEntryCreated,
   onAddWorker,
   onOpenWorkerEditor,
   onOpenTaskEditor,
-  onGoToDashboard,
-  initialTab = 'live'
+  onToggleTask
 }) {
-  const [activeTab, setActiveTab] = useState(initialTab); // 'live' | 'balances' | 'graph' | 'financial' | 'fichajes'
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const tab = p.get('tab') || p.get('view');
+      if (tab === 'balances' || tab === 'saldos' || tab === 'acuerdos') return 'balances';
+      if (tab === 'financial' || tab === 'financiero' || tab === 'resumen') return 'financial';
+      if (tab === 'schedule' || tab === 'planning' || tab === 'cuadrante') return 'schedule';
+      if (tab === 'graph' || tab === 'grafo') return 'graph';
+      if (tab === 'logistics' || tab === 'flota' || tab === 'bodas') return 'logistics';
+      if (tab === 'fichajes' || tab === 'fichaje') return 'fichajes';
+      if (tab === 'live' || tab === 'directo') return 'live';
+      if (p.has('socias')) return 'balances';
+    } catch (e) {}
+    return 'schedule';
+  });
+  const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [expandedWorkerId, setExpandedWorkerId] = useState('jefferson');
   const [adminUnlocked, setAdminUnlocked] = useState(isAdmin);
   const [isAdminEditOpen, setIsAdminEditOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
-  const [balancesData, setBalancesData] = useState(initialBalancesData);
+  const [internalBalancesData, setInternalBalancesData] = useState(externalBalancesData || initialBalancesData);
+  const balancesData = externalBalancesData || internalBalancesData;
   const [isAdminSettingsOpen, setIsAdminSettingsOpen] = useState(false);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+
+  const handleTabClick = (tabKey) => {
+    setActiveTab(tabKey);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tabKey);
+      if (url.searchParams.has('socias')) {
+        url.searchParams.delete('socias');
+      }
+      window.history.replaceState({}, '', url.toString());
+    } catch (e) {}
+  };
 
   useEffect(() => {
     setAdminUnlocked(isAdmin);
   }, [isAdmin]);
 
-  // Live financial balances come only from the backend/MongoDB — never from
-  // the bundled placeholder, which holds no real amounts. Viewing balances
-  // is available to any socia, not just after the extra admin unlock —
-  // only editing (elsewhere) requires it.
   useEffect(() => {
-    if (activeTab === 'balances') {
-      fetchBalancesFromAPI().then(apiData => {
-        if (apiData && apiData.workers) setBalancesData(apiData);
-      });
+    if (externalBalancesData) {
+      setInternalBalancesData(externalBalancesData);
     }
+  }, [externalBalancesData]);
+
+  // Sync balances on load and tab change
+  useEffect(() => {
+    fetchBalancesFromAPI().then(apiData => {
+      if (apiData && apiData.workers) {
+        setInternalBalancesData(apiData);
+        if (externalSetBalancesData) externalSetBalancesData(apiData);
+      }
+    });
   }, [activeTab]);
 
   const handleRequestAdminUnlock = () => {
@@ -194,28 +231,28 @@ export default function PartnerDashboardView({
   const totalExtraHours = balancesList.reduce((acc, curr) => acc + curr.totalHours, 0);
 
   return (
-    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-4 md:p-5 font-sans space-y-3">
+    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-2.5 sm:p-4 md:p-5 font-sans space-y-3 w-full max-w-full overflow-x-hidden pb-24 lg:pb-6">
       
-      {/* Top Page Navigation Bar - Compact */}
-      <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 px-4 py-3 rounded-2xl shadow-xl flex flex-col lg:flex-row lg:flex-wrap justify-between items-start lg:items-center gap-2">
+      {/* Top Page Navigation Bar - Compact & Responsive */}
+      <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-3 sm:px-4 sm:py-3 rounded-2xl shadow-xl flex flex-col lg:flex-row lg:flex-wrap justify-between items-start lg:items-center gap-2.5 w-full max-w-full overflow-hidden">
         
         {/* Title & Selector (compact) */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 p-0.5 shadow-lg shadow-amber-500/20 shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0 max-w-full flex-wrap sm:flex-nowrap">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 p-0.5 shadow-lg shadow-amber-500/20 shrink-0">
             <div className="w-full h-full bg-slate-950 rounded-[9px] flex items-center justify-center text-amber-400">
-              <ShieldCheck className="w-4 h-4" />
+              <Truck className="w-4 h-4" />
             </div>
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
-              <h1 className="text-sm sm:text-base font-extrabold text-white tracking-tight font-['Outfit']">
-                Panel Ejecutivo de Socias &amp; Dirección
+              <h1 className="text-xs sm:text-base font-extrabold text-white tracking-tight font-['Outfit'] truncate">
+                Panel de Control Gula Logística
               </h1>
               {adminUnlocked ? (
                 <>
                   <span className="px-2 py-0.5 text-[9px] font-extrabold rounded-full bg-amber-500 text-slate-950 flex items-center gap-1 shrink-0">
                     <ShieldCheck className="w-2.5 h-2.5" />
-                    <span>👑 ADMIN (RAÚL)</span>
+                    <span>👑 ADMIN</span>
                   </span>
                   <button onClick={() => setIsAdminSettingsOpen(true)} className="px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 flex items-center gap-1 transition-colors shrink-0">
                     <KeyRound className="w-2.5 h-2.5" />
@@ -230,99 +267,143 @@ export default function PartnerDashboardView({
                 </>
               ) : (
                 <button onClick={handleRequestAdminUnlock} className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center gap-1 transition-colors shrink-0">
-                  <Eye className="w-2.5 h-2.5 text-blue-400" />
-                  <span>SOCIAS → Admin</span>
+                  <KeyRound className="w-2.5 h-2.5 text-blue-400" />
+                  <span>Admin Login</span>
                 </button>
               )}
             </div>
             <p className="text-[10px] text-slate-500 truncate">
-              Gula Logística · {activeWeekData?.meta?.week || "Semana 3"} · {activeWeekData?.meta?.dateRange}
+              {activeWeekData?.meta?.week || "Semana 3"} · {activeWeekData?.meta?.dateRange}
             </p>
           </div>
         </div>
 
         {/* Center: Week selector */}
-        <div className="flex flex-wrap items-center gap-2 min-w-0 w-full lg:w-auto">
+        <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
           <select
             value={activeWeekId}
             onChange={(e) => onSelectWeek(e.target.value)}
-            className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs focus:outline-none min-w-0 max-w-full flex-1 lg:flex-none lg:max-w-sm truncate"
+            className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs focus:outline-none min-w-0 max-w-full flex-1 sm:flex-none sm:max-w-xs truncate"
           >
             {Object.values(allWeeks).map((w) => (
               <option key={w.id} value={w.id}>{w.name} ({w.meta?.dateRange})</option>
             ))}
           </select>
           {adminUnlocked && (
-            <button onClick={onOpenAddWeek} className="bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 border border-slate-800 transition-all">
+            <button onClick={onOpenAddWeek} className="bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 border border-slate-800 transition-all shrink-0">
               <Plus className="w-3 h-3 text-amber-400" />
               <span>+ Semana</span>
             </button>
           )}
         </div>
 
-        {/* Right: Action buttons (compact) */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        {/* Mobile Quick Action & Menu Bar (visible on mobile / tablet) */}
+        <div className="flex lg:hidden items-center justify-between w-full pt-2 border-t border-slate-800/80 mt-1">
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={onOpenClockIn} 
+              className="bg-gradient-to-r from-emerald-500 to-emerald-600 active:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
+            >
+              <Clock className="w-3.5 h-3.5 shrink-0" />
+              <span>⏱️ Fichar</span>
+            </button>
+
+            {onOpenShareModal && (
+              <button 
+                onClick={onOpenShareModal} 
+                className="bg-blue-600/20 active:bg-blue-600/40 text-blue-300 border border-blue-500/30 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>WhatsApp</span>
+              </button>
+            )}
+          </div>
+
+          <button 
+            onClick={() => setIsMobileDrawerOpen(true)}
+            className="bg-slate-800 hover:bg-slate-700 text-white font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-slate-700 shadow-md active:scale-95 transition-all"
+            aria-label="Abrir Menú"
+          >
+            <Menu className="w-4 h-4 text-amber-400" />
+            <span>Menú</span>
+          </button>
+        </div>
+
+        {/* Right: Desktop Action buttons toolbar (hidden on mobile, flex on desktop) */}
+        <div className="hidden lg:flex lg:flex-wrap items-center gap-1.5 w-full lg:w-auto">
+          <button onClick={onOpenClockIn} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            <span>⏱️ Fichar</span>
+          </button>
+
           {adminUnlocked && onOpenTaskEditor && (
-            <button onClick={onOpenTaskEditor} className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-orange-500/30 transition-all">
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>✏️ Editar Planning</span>
+            <button onClick={onOpenTaskEditor} className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-orange-500/30 transition-all">
+              <Edit3 className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">✏️ Planning</span>
             </button>
           )}
 
           {adminUnlocked && onOpenWorkerEditor && (
-            <button onClick={onOpenWorkerEditor} className="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-indigo-500/30 transition-all">
-              <Users className="w-3.5 h-3.5" />
-              <span>➕ Añadir Trabajador</span>
+            <button onClick={onOpenWorkerEditor} className="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-indigo-500/30 transition-all">
+              <Users className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">➕ Trabajador</span>
             </button>
           )}
 
-          <button onClick={onOpenClockIn} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-            <Clock className="w-3.5 h-3.5" />
-            <span>⏱️ Fichar Tarea</span>
-          </button>
-
           {adminUnlocked && (
-            <button onClick={onOpenPayroll} className="bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-slate-800 transition-all">
-              <DollarSign className="w-3.5 h-3.5 text-amber-400" />
+            <button onClick={onOpenPayroll} className="bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-slate-800 transition-all">
+              <DollarSign className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               <span>Nóminas</span>
             </button>
           )}
 
           {adminUnlocked && (
-            <button onClick={onOpenGemini} className="bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-md active:scale-95 transition-all">
-              <Wand2 className="w-3.5 h-3.5" />
-              <span>✨ Gemini AI</span>
+            <button onClick={onOpenGemini} className="bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
+              <Wand2 className="w-3.5 h-3.5 shrink-0" />
+              <span>Gemini AI</span>
             </button>
           )}
 
-          {adminUnlocked && (
-            <button onClick={onOpenShareModal} className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-blue-600/30 active:scale-95 transition-all">
-              <Share2 className="w-3.5 h-3.5" />
-              <span>🔗 Generar Enlaces</span>
+          {onOpenShareModal && (
+            <button onClick={onOpenShareModal} className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/30 active:scale-95 transition-all" title="Enlaces de WhatsApp (Trabajadores y Socias)">
+              <Share2 className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">WhatsApp</span>
             </button>
           )}
 
-          <button onClick={handleCopySecureLink} className="bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-slate-800 transition-all">
-            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copiedLink ? '¡Copiado!' : 'Copiar Link'}</span>
+          <button onClick={handleCopySecureLink} className="bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-amber-500/30 transition-all" title="Copiar enlace directo al Panel de Socias">
+            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <Copy className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+            <span className="truncate">{copiedLink ? '¡Copiado!' : 'Link Socias'}</span>
           </button>
 
           {onTogglePublicView && (
-            <button onClick={() => onTogglePublicView(false)} className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-amber-500/30 transition-all" title="Vista Pública">
-              <Eye className="w-3.5 h-3.5" />
-              <span>Vista Pública</span>
+            <button onClick={() => onTogglePublicView(false)} className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-amber-500/30 transition-all" title="Vista Pública">
+              <Eye className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Vista Pública</span>
             </button>
           )}
         </div>
       </header>
 
       {/* Primary View Navigation Tabs Bar */}
-      <div className="flex items-center space-x-2 bg-slate-900/80 p-2 rounded-2xl border border-slate-800 overflow-x-auto">
+      <div className="flex items-center space-x-2 bg-slate-900/80 p-1.5 sm:p-2 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar w-full max-w-full">
         <button
-          onClick={() => setActiveTab('live')}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+          onClick={() => handleTabClick('schedule')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'schedule'
+              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          <span>📅 Cuadrante Semanal</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('live')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'live'
-              ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20'
+              ? 'bg-emerald-500 text-slate-950 font-extrabold shadow-lg shadow-emerald-500/20'
               : 'text-slate-400 hover:bg-slate-800 hover:text-white'
           }`}
         >
@@ -331,51 +412,63 @@ export default function PartnerDashboardView({
         </button>
 
         <button
-          onClick={() => setActiveTab('balances')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'balances'
-              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <TrendingUp className="w-3.5 h-3.5" />
-          <span>📜 Control de Saldos & Acuerdos</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('graph')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+          onClick={() => handleTabClick('graph')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'graph'
-              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
               : 'text-slate-400 hover:bg-slate-800 hover:text-white'
           }`}
         >
           <Zap className="w-3.5 h-3.5 text-amber-400" />
-          <span>🕸️ Grafo de Tareas & Flujo</span>
+          <span>🕸️ Grafo & Flujo</span>
         </button>
 
         <button
-          onClick={() => setActiveTab('financial')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+          onClick={() => handleTabClick('logistics')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'logistics'
+              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <Truck className="w-3.5 h-3.5" />
+          <span>🚚 Flota & Bodas</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('balances')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'balances'
+              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <TrendingUp className="w-3.5 h-3.5" />
+          <span>📜 Saldos & Acuerdos</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('financial')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'financial'
-              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
               : 'text-slate-400 hover:bg-slate-800 hover:text-white'
           }`}
         >
           <DollarSign className="w-3.5 h-3.5" />
-          <span>💶 Resumen Financiero & Extras</span>
+          <span>💶 Resumen Financiero</span>
         </button>
 
         <button
-          onClick={() => setActiveTab('fichajes')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+          onClick={() => handleTabClick('fichajes')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'fichajes'
-              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
               : 'text-slate-400 hover:bg-slate-800 hover:text-white'
           }`}
         >
           <Lock className="w-3.5 h-3.5 text-amber-400" />
-          <span>⚙️ Fichajes ({clockEntries.length})</span>
+          <span>⚙️ Historial Fichajes ({clockEntries.length})</span>
         </button>
       </div>
 
@@ -531,13 +624,28 @@ export default function PartnerDashboardView({
                       </div>
                     )}
 
+                    {/* Agreements */}
+                    {worker.agreements && worker.agreements.length > 0 && (
+                      <div className="mt-3.5 p-3 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1">
+                        <span className="text-[10px] font-bold text-amber-400/90 uppercase tracking-wider block">
+                          📜 Acuerdos & Condiciones
+                        </span>
+                        {worker.agreements.map((agr, aIdx) => (
+                          <p key={aIdx} className="text-xs text-slate-300 flex items-start gap-1.5 leading-snug">
+                            <span className="text-amber-400 text-xs leading-4">•</span>
+                            <span>{agr}</span>
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Breakdown */}
                     <div className="mt-4 space-y-2">
                       <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                         Desglose de Conceptos & Turnos
                       </span>
-                      <div className={`space-y-1.5 pr-1 ${worker.breakdown.length > 5 ? 'max-h-48 overflow-y-auto' : ''}`}>
-                        {worker.breakdown.map((item, idx) => (
+                      <div className={`space-y-1.5 pr-1 ${(worker.breakdown || []).length > 5 ? 'max-h-48 overflow-y-auto' : ''}`}>
+                        {(worker.breakdown || []).map((item, idx) => (
                           <div 
                             key={idx}
                             className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${
@@ -556,6 +664,15 @@ export default function PartnerDashboardView({
                         ))}
                       </div>
                     </div>
+
+                    {/* Worker Notes */}
+                    {worker.notes && (
+                      <div className="mt-2.5 px-2 py-1.5 rounded-xl bg-slate-950/40 border border-slate-800/60">
+                        <p className="text-[11px] text-slate-400 italic">
+                          💡 {worker.notes}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-3 border-t border-slate-800 flex items-center justify-end">
@@ -794,6 +911,215 @@ export default function PartnerDashboardView({
         </div>
       )}
 
+      {/* TAB 5: Logistics & Weddings */}
+      {activeTab === 'logistics' && (
+        <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4 animate-fadeIn">
+          <h4 className="font-bold text-white text-lg flex items-center space-x-2 font-['Outfit']">
+            <Truck className="w-6 h-6 text-amber-400" />
+            <span>Estado de la Flota & Eventos Clave ({activeWeekData?.meta?.week || "Semana 3"})</span>
+          </h4>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+            {(activeWeekData?.saturdaySpecial?.weddings || []).map((w, idx) => (
+              <div key={`boda-${idx}`} className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-2">
+                <span className="font-extrabold text-amber-300 block text-base font-['Outfit']">🏔️ {w.location}</span>
+                <span className="text-slate-200 block font-semibold">{w.truck}</span>
+                <p className="text-xs text-slate-400 leading-relaxed">{w.details}</p>
+              </div>
+            ))}
+            {(activeWeekData?.schedule?.jueves?.tasks || [])
+              .filter((t) => ['j1', 'j2'].includes(t.id))
+              .map((t) => (
+                <div key={`jueves-${t.id}`} className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-2">
+                  <span className="font-extrabold text-amber-300 block text-base font-['Outfit']">🏔️ {t.location}</span>
+                  <span className="text-slate-200 block font-semibold">Sin camión asignado</span>
+                  <p className="text-xs text-slate-400 leading-relaxed">{t.text}</p>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: Schedule Days (Rich Cuadrante Semanal) */}
+      {activeTab === 'schedule' && (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Team Members Grid - Full Widescreen Layout */}
+          <section className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                <Users className="text-amber-400 w-4 h-4" /> Equipo, Nóminas y Extras ({workersList.length} Miembros)
+              </h2>
+              {selectedWorkerFilter ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-amber-400 font-semibold bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">
+                    Filtrando: {selectedWorkerFilter}
+                  </span>
+                  <button
+                    onClick={() => setSelectedWorkerFilter(null)}
+                    className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-xl border border-slate-700 transition-colors"
+                  >
+                    Ver Todo el Equipo
+                  </button>
+                </div>
+              ) : (
+                <span className="text-xs text-slate-400 hidden sm:inline">
+                  Haz clic en un trabajador para filtrar sus tareas
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-9 gap-3 text-xs">
+              {workersList.map((w, idx) => {
+                const isSelected = selectedWorkerFilter === w.name;
+                return (
+                  <div 
+                    key={idx} 
+                    onClick={() => setSelectedWorkerFilter(isSelected ? null : w.name)}
+                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-2 ${
+                      isSelected 
+                        ? 'bg-amber-500/15 border-amber-500 ring-2 ring-amber-500/40 text-white shadow-lg shadow-amber-500/10' 
+                        : 'bg-slate-950/80 border-slate-800/80 hover:border-amber-500/40 text-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="text-2xl">{w.avatar}</div>
+                      {w.isPayroll ? (
+                        <span className="text-[9px] font-extrabold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Nómina</span>
+                      ) : (
+                        <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">10€/h</span>
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <span className="font-extrabold text-white truncate text-xs block font-['Outfit']">{w.name}</span>
+                      <span className="text-[10px] text-slate-400 block truncate mt-0.5">{w.role}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Schedule Days Grid - 4 Columns Across Widescreen */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+            {Object.entries(activeWeekData?.schedule || {}).map(([key, day]) => (
+              <div key={key} className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-5 shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800/80">
+                    <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
+                      <Calendar className="text-amber-400 w-4.5 h-4.5" /> {day.title}
+                    </h3>
+                    <span className="text-[10px] bg-slate-950 text-amber-300 font-bold px-2.5 py-1 rounded-xl border border-slate-800">
+                      {day.badge}
+                    </span>
+                  </div>
+
+                  <ul className="space-y-2.5 text-xs text-slate-300">
+                    {(day.tasks || []).map((task, idx) => {
+                      const taskText = typeof task === 'object' ? task.text : task;
+                      const isCompleted = typeof task === 'object' ? !!task.completed : false;
+                      const matchesFilter = !selectedWorkerFilter || taskText.toLowerCase().includes(selectedWorkerFilter.toLowerCase());
+
+                      return (
+                        <li 
+                          key={idx} 
+                          onClick={() => onToggleTask && onToggleTask(key, idx)}
+                          className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
+                            isCompleted 
+                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 line-through' 
+                              : matchesFilter && selectedWorkerFilter
+                                ? 'bg-amber-500/10 border-amber-500/60 ring-1 ring-amber-500/40 text-white font-medium shadow-sm'
+                                : !matchesFilter && selectedWorkerFilter
+                                  ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-850 text-slate-400'
+                                  : 'bg-slate-950/80 border-slate-800/80 hover:border-slate-700 text-slate-200'
+                          }`}
+                        >
+                          <div className="mt-0.5 shrink-0">
+                            {isCompleted ? (
+                              <div className="w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center">
+                                <Check className="w-2.5 h-2.5 text-emerald-400" />
+                              </div>
+                            ) : (
+                              <Clock className="text-amber-400 w-4 h-4" />
+                            )}
+                          </div>
+                          <div className="flex-1 leading-relaxed">
+                            <span className={isCompleted ? 'line-through' : ''}>{taskText}</span>
+                            {typeof task === 'object' && task.timeFrame && (
+                              <span className="ml-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 align-middle whitespace-nowrap">
+                                <Clock className="w-3 h-3" />
+                                {task.timeFrame}
+                              </span>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Saturday Special Section */}
+          {activeWeekData?.saturdaySpecial && (
+            <section className="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 border border-amber-500/30 rounded-3xl p-6 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-extrabold text-base sm:text-lg flex items-center gap-2 font-['Outfit'] text-white">
+                  <Sparkles className="text-amber-400 w-5.5 h-5.5" /> {activeWeekData.saturdaySpecial.title}
+                </h3>
+                <span className="text-[11px] bg-amber-500/20 text-amber-300 font-bold px-3 py-1 rounded-xl border border-amber-500/30">
+                  Día Clave
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
+                {(activeWeekData.saturdaySpecial.weddings || []).map((w, idx) => (
+                  <div key={idx} className="bg-slate-950/90 p-5 rounded-2xl border border-slate-800 space-y-3 hover:border-amber-500/30 transition-all">
+                    <div className="flex items-start justify-between">
+                      <span className="font-extrabold text-amber-300 block text-sm sm:text-base font-['Outfit']">🏔️ {w.location}</span>
+                      {w.timeFrame && (
+                        <span className="text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {w.timeFrame}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-slate-200 block font-semibold">{w.truck}</span>
+                    <p className="text-xs text-slate-400 leading-relaxed">{w.details}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Sunday / Monday Section */}
+          {activeWeekData?.sundayMonday && (
+            <section className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 shadow-xl space-y-3.5">
+              <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
+                <Calendar className="text-amber-400 w-4.5 h-4.5" /> {activeWeekData.sundayMonday.title}
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs sm:text-sm text-slate-300">
+                {(activeWeekData.sundayMonday.tasks || []).map((task, idx) => {
+                  const taskText = typeof task === 'object' ? task.text : task;
+                  return (
+                    <div key={idx} className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 leading-relaxed">
+                      <span>{taskText}</span>
+                      {typeof task === 'object' && task.timeFrame && (
+                        <span className="ml-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 align-middle whitespace-nowrap">
+                          <Clock className="w-3 h-3" />
+                          {task.timeFrame}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
 
       {/* TAB 7: Interactive Task Flow Graph */}
       {activeTab === 'graph' && (
@@ -815,6 +1141,247 @@ export default function PartnerDashboardView({
         isOpen={isAdminSettingsOpen}
         onClose={() => setIsAdminSettingsOpen(false)}
       />
+
+      {/* Mobile Slide-over Drawer Menu */}
+      {isMobileDrawerOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex justify-end">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsMobileDrawerOpen(false)}
+          />
+
+          {/* Drawer Content */}
+          <div className="relative w-full max-w-xs bg-slate-900 border-l border-slate-800 h-full p-5 flex flex-col justify-between shadow-2xl overflow-y-auto z-10">
+            <div className="space-y-5">
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center space-x-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <Truck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-white font-['Outfit']">Menú de Gestión</h3>
+                    <p className="text-[10px] text-slate-400">Herramientas & Ajustes</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsMobileDrawerOpen(false)}
+                  className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+                  aria-label="Cerrar Menú"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Status / Role Card */}
+              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-medium">Modo de Acceso</span>
+                  <span className="text-xs font-bold text-white flex items-center gap-1 mt-0.5">
+                    {adminUnlocked ? '👑 Administrador' : '👥 Socias / Lectura'}
+                  </span>
+                </div>
+                {adminUnlocked ? (
+                  <button 
+                    onClick={() => { if (onLogoutAdmin) onLogoutAdmin(); setAdminUnlocked(false); setIsMobileDrawerOpen(false); }}
+                    className="px-2 py-1 text-[10px] font-bold rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                  >
+                    Salir
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => { handleRequestAdminUnlock(); setIsMobileDrawerOpen(false); }}
+                    className="px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-amber-500 text-slate-950 shadow-md"
+                  >
+                    Desbloquear
+                  </button>
+                )}
+              </div>
+
+              {/* Drawer Sections: Operations & Tools */}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                    Operaciones & Turnos
+                  </h4>
+                  <div className="space-y-1.5">
+                    <button
+                      onClick={() => { onOpenClockIn(); setIsMobileDrawerOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-emerald-500 to-emerald-600 text-slate-950 shadow-md"
+                    >
+                      <Clock className="w-4 h-4 shrink-0" />
+                      <span>⏱️ Registrar Fichaje</span>
+                    </button>
+
+                    {adminUnlocked && onOpenTaskEditor && (
+                      <button
+                        onClick={() => { onOpenTaskEditor(); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-orange-400 border border-slate-800"
+                      >
+                        <Edit3 className="w-4 h-4 shrink-0" />
+                        <span>✏️ Editor de Planning Semanal</span>
+                      </button>
+                    )}
+
+                    {adminUnlocked && onOpenWorkerEditor && (
+                      <button
+                        onClick={() => { onOpenWorkerEditor(); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-indigo-300 border border-slate-800"
+                      >
+                        <Users className="w-4 h-4 shrink-0" />
+                        <span>➕ Gestión de Trabajadores</span>
+                      </button>
+                    )}
+
+                    {adminUnlocked && (
+                      <button
+                        onClick={() => { onOpenPayroll(); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-800"
+                      >
+                        <DollarSign className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>💵 Nóminas y Horas Extra</span>
+                      </button>
+                    )}
+
+                    {adminUnlocked && (
+                      <button
+                        onClick={() => { onOpenGemini(); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-500/20 to-indigo-500/20 hover:from-amber-500/30 text-amber-300 border border-amber-500/30"
+                      >
+                        <Wand2 className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>✨ Asistente IA Gemini</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                    Compartir & Accesos
+                  </h4>
+                  <div className="space-y-1.5">
+                    {onOpenShareModal && (
+                      <button
+                        onClick={() => { onOpenShareModal(); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30"
+                      >
+                        <Share2 className="w-4 h-4 text-blue-400 shrink-0" />
+                        <span>💬 Compartir por WhatsApp</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => { handleCopySecureLink(); setIsMobileDrawerOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-amber-300 border border-slate-800"
+                    >
+                      {copiedLink ? <Check className="w-4 h-4 text-emerald-400 shrink-0" /> : <Copy className="w-4 h-4 text-amber-400 shrink-0" />}
+                      <span>{copiedLink ? '¡Enlace Copiado!' : '📋 Copiar Link de Socias'}</span>
+                    </button>
+
+                    {onTogglePublicView && (
+                      <button
+                        onClick={() => { onTogglePublicView(false); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800"
+                      >
+                        <Eye className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>👁️ Vista Pública de Operativa</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {adminUnlocked && (
+                  <div>
+                    <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                      Configuración
+                    </h4>
+                    <div className="space-y-1.5">
+                      <button
+                        onClick={() => { setIsAdminSettingsOpen(true); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800"
+                      >
+                        <KeyRound className="w-4 h-4 text-slate-400 shrink-0" />
+                        <span>⚙️ Claves & Configuración</span>
+                      </button>
+                      <button
+                        onClick={() => { onOpenAddWeek(); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800"
+                      >
+                        <Plus className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>📅 Añadir Nueva Semana</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-800 text-center">
+              <span className="text-[10px] text-slate-500 block">Gula Logística · v2.5 Mobile</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Floating Bottom Navigation Bar (Thumb-Accessible) */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 px-3 py-1.5 flex items-center justify-around shadow-2xl safe-bottom">
+        <button
+          onClick={() => handleTabClick('schedule')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'schedule'
+              ? 'text-amber-400 font-extrabold scale-105'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Calendar className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Cuadrante</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('live')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all relative ${
+            activeTab === 'live'
+              ? 'text-emerald-400 font-extrabold scale-105'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Radio className="w-5 h-5 mb-0.5 text-rose-400 animate-pulse" />
+          <span className="text-[10px]">En Vivo</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('balances')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'balances'
+              ? 'text-amber-400 font-extrabold scale-105'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <TrendingUp className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Saldos</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('graph')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'graph'
+              ? 'text-amber-400 font-extrabold scale-105'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Zap className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Grafo</span>
+        </button>
+
+        <button
+          onClick={() => setIsMobileDrawerOpen(true)}
+          className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-400 hover:text-amber-400 transition-all"
+        >
+          <Menu className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Menú</span>
+        </button>
+      </nav>
     </div>
   );
 }

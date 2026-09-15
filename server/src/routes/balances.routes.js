@@ -8,8 +8,8 @@ const router = express.Router();
 
 let memoryBalancesData = { ...initialBalancesData };
 
-// GET /api/balances - Get all worker balances & financial data (Admin/Socias only)
-router.get('/', requireAdmin, async (req, res) => {
+// GET /api/balances - Get all worker balances & financial data (Admin/Socias)
+router.get('/', async (req, res) => {
   try {
     if (mongoose.connection.readyState === 1) {
       const dbWorkers = await WorkerBalance.find().sort({ createdAt: 1 });
