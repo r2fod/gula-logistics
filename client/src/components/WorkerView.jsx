@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
+import AdminClockEditModal from './AdminClockEditModal';
 
 export default function WorkerView({
   workerName,
@@ -31,15 +32,25 @@ export default function WorkerView({
   clockEntries = [],
   onToggleTask,
   onClockEntryCreated,
+  onUpdateClockEntry,
+  onDeleteClockEntry,
   onToggleGeneralView,
   onOpenAdminDashboard
 }) {
   const [isClockModalOpen, setIsClockModalOpen] = useState(false);
+
+  // Expose these for the inline functions below if they are available
+  useEffect(() => {
+    window.handleUpdateClockEntryInternal = onUpdateClockEntry;
+    window.handleDeleteClockEntryInternal = onDeleteClockEntry;
+  }, [onUpdateClockEntry, onDeleteClockEntry]);
   const [prefilledTask, setPrefilledTask] = useState(null); // for task-level clock-in
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDayKey, setSelectedDayKey] = useState('all');
   const [viewModeType, setViewModeType] = useState('calendar'); // 'calendar' | 'graph'
   const [workerTab, setWorkerTab] = useState('tasks'); // 'tasks' | 'history'
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -717,9 +728,20 @@ export default function WorkerView({
             <Clock className="w-5 h-5 text-emerald-400 shrink-0" />
             <span>Mi Historial de Fichajes Registrados</span>
           </h3>
-          <span className="text-xs text-slate-400 font-semibold bg-slate-950 px-3 py-1 rounded-xl border border-slate-800 self-start sm:self-auto">
-            {myEntries.length} fichajes enviados
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-400 font-semibold bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 hidden sm:inline-block">
+              {myEntries.length} fichajes enviados
+            </span>
+            <button
+              onClick={() => {
+                setEditingEntry(null);
+                setIsEditModalOpen(true);
+              }}
+              className="py-1.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-[11px] flex items-center space-x-1 shadow-md shadow-amber-500/20 transition-all active:scale-95"
+            >
+              <span>+ Añadir Manual</span>
+            </button>
+          </div>
         </div>
 
         {myEntries.length === 0 ? (
@@ -750,12 +772,19 @@ export default function WorkerView({
                   <p className="text-xs text-slate-300 font-medium">
                     📌 {entry.taskName || entry.note || 'Turno General'}
                   </p>
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-[10px] text-slate-400">
-                    <span>{entry.durationHours ? `Duración: ${Number(entry.durationHours).toFixed(1)}h` : 'Turno registrado'}</span>
-                    <span className="text-amber-300 font-bold flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-amber-400" />
-                      Inmutable
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/60 mt-1">
+                    <span className="text-[10px] text-slate-400">
+                      {entry.durationHours ? `Duración: ${Number(entry.durationHours).toFixed(1)}h` : 'Turno registrado'}
                     </span>
+                    <button
+                      onClick={() => {
+                        setEditingEntry(entry);
+                        setIsEditModalOpen(true);
+                      }}
+                      className="px-3 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold transition-all active:scale-95"
+                    >
+                      ✏️ Editar
+                    </button>
                   </div>
                 </div>
               ))}
@@ -770,6 +799,7 @@ export default function WorkerView({
                     <th className="py-3 px-3">Tipo</th>
                     <th className="py-3 px-3">Tarea / Concepto</th>
                     <th className="py-3 px-3">Estado</th>
+                    <th className="py-3 px-3 text-right">Acción</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
@@ -796,8 +826,19 @@ export default function WorkerView({
                       <td className="py-3 px-3">
                         <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 inline-flex items-center space-x-1">
                           <Lock className="w-3 h-3 text-amber-400" />
-                          <span>🔒 Registrado</span>
+                          <span>Guardado</span>
                         </span>
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <button
+                          onClick={() => {
+                            setEditingEntry(entry);
+                            setIsEditModalOpen(true);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold transition-all active:scale-95"
+                        >
+                          Editar
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -819,7 +860,25 @@ export default function WorkerView({
         onClockEntryCreated={onClockEntryCreated}
       />
 
+      {/* Manual Clock Edit/Add Modal for worker */}
+      <AdminClockEditModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        entry={editingEntry}
+        workersList={[currentWorkerObj]}
+        isAdmin={false}
+        onUpdateEntry={(updatedEntry) => {
+          // If the parent didn't pass onUpdateClockEntry, we can't update.
+          // But we assume App.jsx passes it via props implicitly (added in App.jsx).
+          // We must add it to the props list of WorkerView if it's there.
+          if (window.handleUpdateClockEntryInternal) window.handleUpdateClockEntryInternal(updatedEntry);
+        }}
+        onDeleteEntry={(entryId) => {
+          if (window.handleDeleteClockEntryInternal) window.handleDeleteClockEntryInternal(entryId);
+        }}
+        onClockEntryCreated={onClockEntryCreated}
+      />
+
     </div>
   );
 }
-

@@ -1043,7 +1043,15 @@ export default function PartnerDashboardView({
                               <Clock className="text-amber-400 w-4 h-4" />
                             )}
                           </div>
-                          <div className="flex-1 leading-relaxed">{taskText}</div>
+                          <div className="flex-1 leading-relaxed">
+                            <span className={isCompleted ? 'line-through' : ''}>{taskText}</span>
+                            {typeof task === 'object' && task.timeFrame && (
+                              <span className="ml-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 align-middle whitespace-nowrap">
+                                <Clock className="w-3 h-3" />
+                                {task.timeFrame}
+                              </span>
+                            )}
+                          </div>
                         </li>
                       );
                     })}
@@ -1067,8 +1075,16 @@ export default function PartnerDashboardView({
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
                 {(activeWeekData.saturdaySpecial.weddings || []).map((w, idx) => (
-                  <div key={idx} className="bg-slate-950/90 p-4.5 rounded-2xl border border-slate-800 space-y-2 hover:border-amber-500/30 transition-all">
-                    <span className="font-extrabold text-amber-300 block text-sm sm:text-base font-['Outfit']">🏔️ {w.location}</span>
+                  <div key={idx} className="bg-slate-950/90 p-5 rounded-2xl border border-slate-800 space-y-3 hover:border-amber-500/30 transition-all">
+                    <div className="flex items-start justify-between">
+                      <span className="font-extrabold text-amber-300 block text-sm sm:text-base font-['Outfit']">🏔️ {w.location}</span>
+                      {w.timeFrame && (
+                        <span className="text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {w.timeFrame}
+                        </span>
+                      )}
+                    </div>
                     <span className="text-slate-200 block font-semibold">{w.truck}</span>
                     <p className="text-xs text-slate-400 leading-relaxed">{w.details}</p>
                   </div>
@@ -1089,7 +1105,13 @@ export default function PartnerDashboardView({
                   const taskText = typeof task === 'object' ? task.text : task;
                   return (
                     <div key={idx} className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 leading-relaxed">
-                      {taskText}
+                      <span>{taskText}</span>
+                      {typeof task === 'object' && task.timeFrame && (
+                        <span className="ml-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 align-middle whitespace-nowrap">
+                          <Clock className="w-3 h-3" />
+                          {task.timeFrame}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
