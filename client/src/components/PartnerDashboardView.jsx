@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { initialBalancesData } from '../data/balancesData';
 import { fetchBalancesFromAPI } from '../data/apiService';
+import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../data/shiftCalculations';
 import LiveMonitorPanel from './LiveMonitorPanel';
 import AdminClockEditModal from './AdminClockEditModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
@@ -185,46 +186,8 @@ export default function PartnerDashboardView({
   };
 
   // Process shift entries for financial calculations
-  const workerBalances = {};
-  workersList.forEach(w => {
-    workerBalances[w.name] = {
-      name: w.name,
-      role: w.role,
-      avatar: w.avatar,
-      isPayroll: w.isPayroll,
-      rate: w.rate || (w.isPayroll ? 14 : 10),
-      totalHours: 0,
-      totalCost: 0,
-      completedShifts: 0
-    };
-  });
-
-  const activeShifts = {};
-  clockEntries.forEach(entry => {
-    const { workerName, type, timestamp, isPayroll, rate } = entry;
-    if (!workerBalances[workerName]) return;
-
-    if (type === 'entrada') {
-      activeShifts[workerName] = entry;
-    } else if (type === 'salida' && activeShifts[workerName]) {
-      const startEntry = activeShifts[workerName];
-      delete activeShifts[workerName];
-
-      const startDate = new Date(startEntry.timestamp);
-      const endDate = new Date(timestamp);
-      const diffMs = endDate - startDate;
-      const diffHours = Math.max(0, diffMs / (1000 * 60 * 60));
-
-      const isSalaried = isPayroll || workerName === 'Irene' || workerName === 'Raúl';
-      const hourlyRate = rate || (isSalaried ? 14 : 10);
-      const cost = diffHours * hourlyRate;
-
-      workerBalances[workerName].totalHours += diffHours;
-      workerBalances[workerName].totalCost += cost;
-      workerBalances[workerName].completedShifts += 1;
-    }
-  });
-
+  const { shifts: paidShifts } = pairShiftsFromEntries(clockEntries);
+  const workerBalances = aggregateShiftsByWorker(paidShifts, workersList);
   const balancesList = Object.values(workerBalances);
   const totalExtraExpense = balancesList.reduce((acc, curr) => acc + (curr.isPayroll ? 0 : curr.totalCost), 0);
   const totalPayrollValuation = balancesList.reduce((acc, curr) => acc + (curr.isPayroll ? curr.totalCost : 0), 0);

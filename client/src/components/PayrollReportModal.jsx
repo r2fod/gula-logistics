@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DollarSign, Clock, Users, X, Copy, Check, Trash2, Calendar, FileText, Lock, Edit3, Plus, ShieldCheck } from 'lucide-react';
 import AdminClockEditModal from './AdminClockEditModal';
+import { pairShiftsFromEntries } from '../data/shiftCalculations';
 
 export default function PayrollReportModal({
   isOpen,
@@ -23,48 +24,7 @@ export default function PayrollReportModal({
   if (!isOpen) return null;
 
   // Process shift pairs (Entrada -> Salida)
-  const shifts = [];
-  const activeWorkerShifts = {};
-
-  entries.forEach(entry => {
-    const { workerName, type, timestamp, timeFormatted, dateFormatted, isPayroll, rate } = entry;
-
-    if (type === 'entrada') {
-      activeWorkerShifts[workerName] = entry;
-    } else if (type === 'salida' && activeWorkerShifts[workerName]) {
-      const startEntry = activeWorkerShifts[workerName];
-      delete activeWorkerShifts[workerName];
-
-      const startDate = new Date(startEntry.timestamp);
-      const endDate = new Date(timestamp);
-      const diffMs = endDate - startDate;
-      const diffHours = Math.max(0, diffMs / (1000 * 60 * 60));
-
-      const hours = Math.floor(diffHours);
-      const minutes = Math.floor((diffHours - hours) * 60);
-
-      const isSalaried = isPayroll || workerName === 'Irene' || workerName === 'Raúl';
-      const hourlyRate = rate || (isSalaried ? 14 : 10);
-      const totalCost = diffHours * hourlyRate;
-
-      shifts.push({
-        id: `${startEntry.id}-${entry.id}`,
-        startEntry,
-        endEntry: entry,
-        workerName,
-        isSalaried,
-        rate: hourlyRate,
-        startDate: startEntry.dateFormatted,
-        startTime: startEntry.timeFormatted,
-        endDate: dateFormatted,
-        endTime: timeFormatted,
-        durationFormatted: `${hours}h ${minutes}m`,
-        durationHours: diffHours,
-        cost: totalCost,
-        note: startEntry.note || entry.note
-      });
-    }
-  });
+  const { shifts, activeShifts: activeWorkerShifts } = pairShiftsFromEntries(entries);
 
   // Filtered shifts
   const filteredShifts = filterWorker === 'all' 
