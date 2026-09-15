@@ -7,6 +7,12 @@
 - [ ] **Filtro "Trabajador" del Informe de Fichajes**: al filtrar por un trabajador, las 3 tarjetas resumen de fichajes reales (Gasto Extras / Horas Extras / Activos) siguen mostrando el total de todo el equipo, no el del trabajador filtrado (sí se corrigió esto en la pestaña nueva "Estimado (Planning)"). ¿Es el comportamiento deseado para las tarjetas de fichajes reales o deberían recalcularse también con el filtro aplicado?
 - [ ] **Pestaña "Estimado (Planning)" y el texto de WhatsApp**: la nueva pestaña de horas estimadas desde el planning (ver `MEJORAS.md`) no se incluyó en el texto que genera "Copiar WhatsApp", que sigue siendo solo de fichajes reales. ¿Se quiere también un bloque de estimación en ese mensaje, o mejor mantenerlo fuera para no confundirlo con horas ya confirmadas?
 
+## Detectado al investigar el bug de "no desficha" — real, pero no arreglado todavía
+
+- [ ] **Fallos de la API de fichaje se tragan en silencio**: `saveClockEntryToAPI`/`updateClockEntryInAPI`/`deleteClockEntryInAPI` (`client/src/data/apiService.js`) no comprueban `res.ok` — si el backend responde con error (token admin caducado, validación, 500) o directamente no se llega a llamar, el fichaje se queda "guardado" solo en local/localStorage sin avisar a nadie, y en el siguiente poll de 20s puede revertirse sin explicación aparente. Con la conexión del recinto de una boda esto es plausible. No se ha tocado para no arriesgar el fix de esta sesión — requiere decidir cómo mostrar el error al trabajador/admin.
+- [ ] **Sin protección contra doble-toque en Fichar Entrada/Salida** (`ClockInModal.jsx`): un doble clic rápido puede crear dos fichajes del mismo tipo seguidos; al emparejar turnos, el segundo pisa al primero silenciosamente (se pierde la hora real, aunque el fichaje duplicado sigue ahí ensuciando el historial).
+- [ ] **Fichajes de un trabajador que ya no está en `workersList` desaparecen del total sin aviso** (`aggregateShiftsByWorker` en `shiftCalculations.js`) — relevante si se renombra a alguien sin migrar sus fichajes ya existentes (ver regla en `CLAUDE.md`).
+
 ## Funcionalidad pedida, no empezada todavía
 
 - [ ] **Detección de solapes de horario**: avisar si dos tareas asignadas a la misma persona se pisan en el tiempo. Pedido explícitamente por el usuario, no implementado aún.
