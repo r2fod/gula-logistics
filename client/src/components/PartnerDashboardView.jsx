@@ -27,7 +27,9 @@ import {
   LayoutDashboard,
   Trash2,
   KeyRound,
-  Zap
+  Zap,
+  Menu,
+  X
 } from 'lucide-react';
 import { initialBalancesData } from '../data/balancesData';
 import { fetchBalancesFromAPI } from '../data/apiService';
@@ -88,6 +90,7 @@ export default function PartnerDashboardView({
   const [internalBalancesData, setInternalBalancesData] = useState(externalBalancesData || initialBalancesData);
   const balancesData = externalBalancesData || internalBalancesData;
   const [isAdminSettingsOpen, setIsAdminSettingsOpen] = useState(false);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   const handleTabClick = (tabKey) => {
     setActiveTab(tabKey);
@@ -228,7 +231,7 @@ export default function PartnerDashboardView({
   const totalExtraHours = balancesList.reduce((acc, curr) => acc + curr.totalHours, 0);
 
   return (
-    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-2.5 sm:p-4 md:p-5 font-sans space-y-3 w-full max-w-full overflow-x-hidden">
+    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-2.5 sm:p-4 md:p-5 font-sans space-y-3 w-full max-w-full overflow-x-hidden pb-24 lg:pb-6">
       
       {/* Top Page Navigation Bar - Compact & Responsive */}
       <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-3 sm:px-4 sm:py-3 rounded-2xl shadow-xl flex flex-col lg:flex-row lg:flex-wrap justify-between items-start lg:items-center gap-2.5 w-full max-w-full overflow-hidden">
@@ -294,8 +297,40 @@ export default function PartnerDashboardView({
           )}
         </div>
 
-        {/* Right: Action buttons (Responsive grid on mobile, flex toolbar on desktop) */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap items-center gap-1.5 w-full lg:w-auto">
+        {/* Mobile Quick Action & Menu Bar (visible on mobile / tablet) */}
+        <div className="flex lg:hidden items-center justify-between w-full pt-2 border-t border-slate-800/80 mt-1">
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={onOpenClockIn} 
+              className="bg-gradient-to-r from-emerald-500 to-emerald-600 active:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
+            >
+              <Clock className="w-3.5 h-3.5 shrink-0" />
+              <span>⏱️ Fichar</span>
+            </button>
+
+            {onOpenShareModal && (
+              <button 
+                onClick={onOpenShareModal} 
+                className="bg-blue-600/20 active:bg-blue-600/40 text-blue-300 border border-blue-500/30 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>WhatsApp</span>
+              </button>
+            )}
+          </div>
+
+          <button 
+            onClick={() => setIsMobileDrawerOpen(true)}
+            className="bg-slate-800 hover:bg-slate-700 text-white font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-slate-700 shadow-md active:scale-95 transition-all"
+            aria-label="Abrir Menú"
+          >
+            <Menu className="w-4 h-4 text-amber-400" />
+            <span>Menú</span>
+          </button>
+        </div>
+
+        {/* Right: Desktop Action buttons toolbar (hidden on mobile, flex on desktop) */}
+        <div className="hidden lg:flex lg:flex-wrap items-center gap-1.5 w-full lg:w-auto">
           <button onClick={onOpenClockIn} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
             <Clock className="w-3.5 h-3.5 shrink-0" />
             <span>⏱️ Fichar</span>
@@ -1084,6 +1119,247 @@ export default function PartnerDashboardView({
         isOpen={isAdminSettingsOpen}
         onClose={() => setIsAdminSettingsOpen(false)}
       />
+
+      {/* Mobile Slide-over Drawer Menu */}
+      {isMobileDrawerOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex justify-end">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsMobileDrawerOpen(false)}
+          />
+
+          {/* Drawer Content */}
+          <div className="relative w-full max-w-xs bg-slate-900 border-l border-slate-800 h-full p-5 flex flex-col justify-between shadow-2xl overflow-y-auto z-10">
+            <div className="space-y-5">
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center space-x-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                    <Truck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-extrabold text-white font-['Outfit']">Menú de Gestión</h3>
+                    <p className="text-[10px] text-slate-400">Herramientas & Ajustes</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsMobileDrawerOpen(false)}
+                  className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white"
+                  aria-label="Cerrar Menú"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Status / Role Card */}
+              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-medium">Modo de Acceso</span>
+                  <span className="text-xs font-bold text-white flex items-center gap-1 mt-0.5">
+                    {adminUnlocked ? '👑 Administrador' : '👥 Socias / Lectura'}
+                  </span>
+                </div>
+                {adminUnlocked ? (
+                  <button 
+                    onClick={() => { if (onLogoutAdmin) onLogoutAdmin(); setAdminUnlocked(false); setIsMobileDrawerOpen(false); }}
+                    className="px-2 py-1 text-[10px] font-bold rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                  >
+                    Salir
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => { handleRequestAdminUnlock(); setIsMobileDrawerOpen(false); }}
+                    className="px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-amber-500 text-slate-950 shadow-md"
+                  >
+                    Desbloquear
+                  </button>
+                )}
+              </div>
+
+              {/* Drawer Sections: Operations & Tools */}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                    Operaciones & Turnos
+                  </h4>
+                  <div className="space-y-1.5">
+                    <button
+                      onClick={() => { onOpenClockIn(); setIsMobileDrawerOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-emerald-500 to-emerald-600 text-slate-950 shadow-md"
+                    >
+                      <Clock className="w-4 h-4 shrink-0" />
+                      <span>⏱️ Registrar Fichaje</span>
+                    </button>
+
+                    {adminUnlocked && onOpenTaskEditor && (
+                      <button
+                        onClick={() => { onOpenTaskEditor(); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-orange-400 border border-slate-800"
+                      >
+                        <Edit3 className="w-4 h-4 shrink-0" />
+                        <span>✏️ Editor de Planning Semanal</span>
+                      </button>
+                    )}
+
+                    {adminUnlocked && onOpenWorkerEditor && (
+                      <button
+                        onClick={() => { onOpenWorkerEditor(); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-indigo-300 border border-slate-800"
+                      >
+                        <Users className="w-4 h-4 shrink-0" />
+                        <span>➕ Gestión de Trabajadores</span>
+                      </button>
+                    )}
+
+                    {adminUnlocked && (
+                      <button
+                        onClick={() => { onOpenPayroll(); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-800"
+                      >
+                        <DollarSign className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>💵 Nóminas y Horas Extra</span>
+                      </button>
+                    )}
+
+                    {adminUnlocked && (
+                      <button
+                        onClick={() => { onOpenGemini(); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-500/20 to-indigo-500/20 hover:from-amber-500/30 text-amber-300 border border-amber-500/30"
+                      >
+                        <Wand2 className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>✨ Asistente IA Gemini</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                    Compartir & Accesos
+                  </h4>
+                  <div className="space-y-1.5">
+                    {onOpenShareModal && (
+                      <button
+                        onClick={() => { onOpenShareModal(); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30"
+                      >
+                        <Share2 className="w-4 h-4 text-blue-400 shrink-0" />
+                        <span>💬 Compartir por WhatsApp</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => { handleCopySecureLink(); setIsMobileDrawerOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-amber-300 border border-slate-800"
+                    >
+                      {copiedLink ? <Check className="w-4 h-4 text-emerald-400 shrink-0" /> : <Copy className="w-4 h-4 text-amber-400 shrink-0" />}
+                      <span>{copiedLink ? '¡Enlace Copiado!' : '📋 Copiar Link de Socias'}</span>
+                    </button>
+
+                    {onTogglePublicView && (
+                      <button
+                        onClick={() => { onTogglePublicView(false); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800"
+                      >
+                        <Eye className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>👁️ Vista Pública de Operativa</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {adminUnlocked && (
+                  <div>
+                    <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                      Configuración
+                    </h4>
+                    <div className="space-y-1.5">
+                      <button
+                        onClick={() => { setIsAdminSettingsOpen(true); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800"
+                      >
+                        <KeyRound className="w-4 h-4 text-slate-400 shrink-0" />
+                        <span>⚙️ Claves & Configuración</span>
+                      </button>
+                      <button
+                        onClick={() => { onOpenAddWeek(); setIsMobileDrawerOpen(false); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800"
+                      >
+                        <Plus className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>📅 Añadir Nueva Semana</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-800 text-center">
+              <span className="text-[10px] text-slate-500 block">Gula Logística · v2.5 Mobile</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Floating Bottom Navigation Bar (Thumb-Accessible) */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 px-3 py-1.5 flex items-center justify-around shadow-2xl safe-bottom">
+        <button
+          onClick={() => handleTabClick('schedule')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'schedule'
+              ? 'text-amber-400 font-extrabold scale-105'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Calendar className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Cuadrante</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('live')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all relative ${
+            activeTab === 'live'
+              ? 'text-emerald-400 font-extrabold scale-105'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Radio className="w-5 h-5 mb-0.5 text-rose-400 animate-pulse" />
+          <span className="text-[10px]">En Vivo</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('balances')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'balances'
+              ? 'text-amber-400 font-extrabold scale-105'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <TrendingUp className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Saldos</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('graph')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'graph'
+              ? 'text-amber-400 font-extrabold scale-105'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Zap className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Grafo</span>
+        </button>
+
+        <button
+          onClick={() => setIsMobileDrawerOpen(true)}
+          className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-400 hover:text-amber-400 transition-all"
+        >
+          <Menu className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Menú</span>
+        </button>
+      </nav>
     </div>
   );
 }
