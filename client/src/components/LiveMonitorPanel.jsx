@@ -173,45 +173,45 @@ export default function LiveMonitorPanel({
     <div className="space-y-6">
 
       {/* Live Monitor Header */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl space-y-3.5 sm:space-y-4">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 sm:gap-4">
           
-          <div className="flex items-center space-x-3.5">
-            <div className="relative">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-500/20">
-                <Radio className="w-6 h-6 animate-pulse" />
+          <div className="flex items-center space-x-3 min-w-0">
+            <div className="relative shrink-0">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-500/20">
+                <Radio className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
               </div>
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-slate-900 animate-ping"></span>
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 border-2 border-slate-900 animate-ping"></span>
             </div>
 
-            <div>
-              <div className="flex items-center space-x-2">
-                <h3 className="text-xl sm:text-2xl font-extrabold font-['Outfit'] text-white">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <h3 className="text-base sm:text-2xl font-extrabold font-['Outfit'] text-white truncate">
                   Monitor de Actividad en Tiempo Real
                 </h3>
-                <span className="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1">
+                <span className="px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1 shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                   <span>EN VIVO</span>
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Seguimiento en directo de estado de jornada, barra de avance y ubicación por trabajador.
+              <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 truncate">
+                Seguimiento en directo de estado de jornada y avance por trabajador.
               </p>
             </div>
           </div>
 
           {/* Quick Metrics & Controls */}
-          <div className="flex items-center space-x-3 w-full md:w-auto justify-between md:justify-end">
-            <div className="bg-slate-950/80 px-4 py-2 rounded-2xl border border-slate-800 text-center">
-              <span className="text-[10px] text-slate-400 font-semibold block uppercase">Fichados Ahora</span>
-              <span className="text-xl font-extrabold text-emerald-400 font-['Outfit']">
+          <div className="grid grid-cols-2 gap-2 w-full md:w-auto md:flex md:items-center md:space-x-3">
+            <div className="bg-slate-950/80 px-3 sm:px-4 py-2 rounded-xl sm:rounded-2xl border border-slate-800 text-center">
+              <span className="text-[9px] sm:text-[10px] text-slate-400 font-semibold block uppercase tracking-wider">Fichados Ahora</span>
+              <span className="text-lg sm:text-xl font-extrabold text-emerald-400 font-['Outfit']">
                 {activeCount} / {workersList.length}
               </span>
             </div>
 
-            <div className="bg-slate-950/80 px-4 py-2 rounded-2xl border border-slate-800 text-center font-mono">
-              <span className="text-[10px] text-slate-400 font-semibold block uppercase">Hora Oficial</span>
-              <span className="text-sm font-bold text-amber-400">
+            <div className="bg-slate-950/80 px-3 sm:px-4 py-2 rounded-xl sm:rounded-2xl border border-slate-800 text-center font-mono">
+              <span className="text-[9px] sm:text-[10px] text-slate-400 font-semibold block uppercase tracking-wider">Hora Oficial</span>
+              <span className="text-xs sm:text-sm font-bold text-amber-400">
                 {currentTime.toLocaleTimeString()}
               </span>
             </div>
@@ -219,16 +219,16 @@ export default function LiveMonitorPanel({
         </div>
 
         {/* Global Operational Progress Bar */}
-        <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800/80 space-y-2">
+        <div className="bg-slate-950 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-800/80 space-y-2">
           <div className="flex items-center justify-between text-xs font-bold">
             <span className="text-slate-300 flex items-center space-x-1.5">
-              <Activity className="w-4 h-4 text-emerald-400" />
-              <span>Cobertura de Jornada del Equipo en Activo</span>
+              <Activity className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Cobertura de Jornada del Equipo</span>
             </span>
-            <span className="text-emerald-400 font-mono text-sm">{teamActivePercent}% Activo</span>
+            <span className="text-emerald-400 font-mono text-xs sm:text-sm">{teamActivePercent}% Activo</span>
           </div>
 
-          <div className="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-slate-800 p-0.5">
+          <div className="w-full h-2.5 sm:h-3 bg-slate-900 rounded-full overflow-hidden border border-slate-800 p-0.5">
             <div 
               className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 rounded-full transition-all duration-700"
               style={{ width: `${Math.max(5, teamActivePercent)}%` }}
@@ -242,29 +242,29 @@ export default function LiveMonitorPanel({
         </div>
 
         {/* Filter Buttons */}
-        <div className="flex items-center space-x-2 pt-2 border-t border-slate-800/80 overflow-x-auto">
+        <div className="flex items-center space-x-2 pt-2 border-t border-slate-800/80 overflow-x-auto no-scrollbar w-full max-w-full">
           <button
             onClick={() => setFilterStatus('all')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
               filterStatus === 'all' ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
             }`}
           >
-            Todos el Equipo ({workersList.length})
+            Todos ({workersList.length})
           </button>
 
           <button
             onClick={() => setFilterStatus('active')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
               filterStatus === 'active' ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
             }`}
           >
-            🟢 Activos en Turno ({activeCount})
+            En Turno ({activeCount})
           </button>
 
           <button
             onClick={() => setFilterStatus('trucks')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-              filterStatus === 'trucks' ? 'bg-blue-500 text-white shadow-md shadow-blue-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
+              filterStatus === 'trucks' ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
             }`}
           >
             🚚 Conductores Flota
@@ -272,7 +272,7 @@ export default function LiveMonitorPanel({
 
           <button
             onClick={() => setFilterStatus('base')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
               filterStatus === 'base' ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
             }`}
           >

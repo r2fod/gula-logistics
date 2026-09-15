@@ -24,7 +24,8 @@ import {
   ShieldCheck,
   Lock,
   Eye,
-  KeyRound
+  KeyRound,
+  Edit3
 } from 'lucide-react';
 
 import WeekManagerModal from './components/WeekManagerModal';
@@ -188,6 +189,16 @@ export default function App() {
 
   const [copiedWorker, setCopiedWorker] = useState(null);
   const [copiedPartnerLink, setCopiedPartnerLink] = useState(false);
+
+  const clearUrlParams = () => {
+    try {
+      const url = new URL(window.location.href);
+      url.search = '';
+      window.history.pushState({}, '', url.pathname);
+    } catch {
+      // safe fallback
+    }
+  };
 
   // Detect URL params & sync sensitive clock entries from MongoDB / API
   useEffect(() => {
@@ -447,7 +458,7 @@ export default function App() {
           onOpenShareModal={() => setIsShareModalOpen(true)}
           onOpenAddWeek={() => setIsWeekModalOpen(true)}
           onTogglePublicView={() => { setIsPartnerMode(false); setIsPublicPreviewMode(true); }}
-          onGoToDashboard={() => { setIsPartnerMode(false); setIsPublicPreviewMode(false); setActiveWorker(null); }}
+          onGoToDashboard={() => { setIsPartnerMode(false); setIsPublicPreviewMode(false); setActiveWorker(null); clearUrlParams(); }}
           onUpdateClockEntry={handleUpdateClockEntry}
           onDeleteClockEntry={handleDeleteClockEntry}
           onClockEntryCreated={handleClockEntryCreated}
@@ -490,8 +501,8 @@ export default function App() {
 
         {/* Share Modal (Copied from bottom to be available in Partner Mode) */}
         {isShareModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-            <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl text-white">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+            <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-2xl text-white max-h-[92vh] overflow-y-auto">
               <button 
                 onClick={() => setIsShareModalOpen(false)}
                 className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
@@ -668,7 +679,7 @@ export default function App() {
       <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans">
         <div className="w-full space-y-4">
           <button
-            onClick={() => setIsPublicPreviewMode(false)}
+            onClick={() => { setIsPublicPreviewMode(false); clearUrlParams(); }}
             className="text-xs bg-slate-900 hover:bg-slate-800 text-slate-300 px-3.5 py-2 rounded-xl font-semibold transition-colors border border-slate-800 flex items-center gap-1.5"
           >
             <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
@@ -703,7 +714,7 @@ export default function App() {
       <div className="w-full space-y-6">
         
         {/* Header Navigation Banner - Fluid Widescreen */}
-        <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-5 sm:p-6 rounded-3xl shadow-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-4 sm:p-6 rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           
           {/* Title & Brand */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between lg:justify-start gap-4 w-full lg:w-auto">
@@ -749,33 +760,73 @@ export default function App() {
             </div>
           </div>
 
-          {/* Action Buttons Toolbar - Proportions & Spacing */}
-          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+          {/* Action Buttons Toolbar - Responsive Grid & Flex */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap items-center gap-2 w-full lg:w-auto">
             {/* Clock In Button */}
             <button
               onClick={() => setIsClockInModalOpen(true)}
-              className="flex-1 lg:flex-none bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
+              className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
             >
-              <Clock className="w-4 h-4" />
+              <Clock className="w-4 h-4 shrink-0" />
               <span>⏱️ Fichar</span>
             </button>
 
             {/* Partner Dashboard Button */}
             <button
               onClick={() => setIsPartnerMode(true)}
-              className="flex-1 lg:flex-none bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+              className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
             >
-              <ShieldCheck className="w-4 h-4" />
-              <span>👑 Panel Socias & Saldos</span>
+              <ShieldCheck className="w-4 h-4 shrink-0" />
+              <span className="truncate">👑 Socias & Saldos</span>
             </button>
+
+            {/* Public View Button */}
+            <button
+              onClick={() => setIsPublicPreviewMode(true)}
+              className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-amber-500/30 transition-all"
+            >
+              <Eye className="w-4 h-4 shrink-0" />
+              <span className="truncate">Vista Pública</span>
+            </button>
+
+            {/* Share Worker Links */}
+            <button
+              onClick={() => setIsShareModalOpen(true)}
+              className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/30 transition-all active:scale-95"
+            >
+              <Share2 className="w-4 h-4 shrink-0" />
+              <span>WhatsApp</span>
+            </button>
+
+            {/* Admin Planning Editor */}
+            {isAdmin && (
+              <button
+                onClick={() => setIsTaskEditorModalOpen(true)}
+                className="bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 font-bold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-orange-500/30 transition-all"
+              >
+                <Edit3 className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">✏️ Planning</span>
+              </button>
+            )}
+
+            {/* Admin Add Worker */}
+            {isAdmin && (
+              <button
+                onClick={() => setIsWorkerEditorModalOpen(true)}
+                className="bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 font-bold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-indigo-500/30 transition-all"
+              >
+                <Users className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">➕ Trabajador</span>
+              </button>
+            )}
 
             {/* Saldos & Acuerdos Button */}
             {isAdmin && (
               <button
                 onClick={() => setIsBalancesModalOpen(true)}
-                className="flex-1 lg:flex-none bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-800 transition-all shadow-sm"
+                className="bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-slate-800 transition-all shadow-sm"
               >
-                <span>📜 Saldos & Acuerdos</span>
+                <span className="truncate">📜 Saldos</span>
               </button>
             )}
 
@@ -783,9 +834,9 @@ export default function App() {
             {isAdmin && (
               <button
                 onClick={() => setIsPayrollModalOpen(true)}
-                className="flex-1 lg:flex-none bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-800 transition-all"
+                className="bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-slate-800 transition-all"
               >
-                <DollarSign className="w-3.5 h-3.5 text-amber-400" />
+                <DollarSign className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span>Nóminas</span>
               </button>
             )}
@@ -794,21 +845,12 @@ export default function App() {
             {isAdmin && (
               <button
                 onClick={() => setIsGeminiModalOpen(true)}
-                className="flex-1 lg:flex-none bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95"
+                className="bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-95"
               >
-                <Wand2 className="w-4 h-4" />
+                <Wand2 className="w-4 h-4 shrink-0" />
                 <span>Gemini AI</span>
               </button>
             )}
-
-            {/* Share Worker Links */}
-            <button
-              onClick={() => setIsShareModalOpen(true)}
-              className="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 transition-all active:scale-95"
-            >
-              <Share2 className="w-4 h-4" />
-              <span>WhatsApp</span>
-            </button>
           </div>
         </header>
 
@@ -994,8 +1036,8 @@ export default function App() {
 
       {/* Share Modal with Worker Links & Secure Partner Link */}
       {isShareModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-          <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-2xl text-white max-h-[92vh] overflow-y-auto">
             <button 
               onClick={() => setIsShareModalOpen(false)}
               className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
@@ -1157,6 +1199,20 @@ export default function App() {
         isOpen={isGeminiModalOpen}
         onClose={() => setIsGeminiModalOpen(false)}
         onApplyGeneratedSchedule={handleApplyGeminiSchedule}
+      />
+
+      <AdminWorkerEditorModal 
+        isOpen={isWorkerEditorModalOpen}
+        onClose={() => setIsWorkerEditorModalOpen(false)}
+        onAddWorker={handleAddWorker}
+      />
+
+      <AdminTaskEditorModal
+        isOpen={isTaskEditorModalOpen}
+        onClose={() => setIsTaskEditorModalOpen(false)}
+        activeWeekData={activeWeek}
+        workersList={workersList}
+        onSaveWeekData={handleUpdateActiveWeek}
       />
 
       <AdminLoginModal
