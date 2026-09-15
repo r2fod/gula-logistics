@@ -1,5 +1,15 @@
 # Mejoras — hechas hoy y candidatas futuras
 
+## "Compañeros en turno ahora" en la vista del trabajador
+
+Pedido por el usuario: en el link de cada trabajador, saber quién más está fichado en ese momento — para poder preguntar por compartir coche a la base al cargar/descargar, etc.
+
+`WorkerView.jsx` calcula ahora quién está en turno con `pairShiftsFromEntries(clockEntries).activeShifts` (la misma función compartida que ya usa el Informe de Fichajes, no una reimplementación nueva) y muestra una tarjeta "N compañeros en turno ahora" justo debajo de la tarjeta principal de turno/tarea, con avatar, nombre y tarea actual de cada uno — se excluye al propio trabajador y la tarjeta desaparece si nadie más está fichado.
+
+De paso, `LiveMonitorPanel.jsx` calculaba "quién está en turno" con su propia copia del mismo cálculo (entrada/salida en orden cronológico) — reemplazada por la misma función compartida, para no tener el mismo cálculo triplicado por la app.
+
+Verificado en el navegador contra fichajes reales de producción: con Irene y Johan fichados, la vista de Gonzalo (sin turno) muestra correctamente "2 compañeros en turno ahora" con sus tareas.
+
 ## Selector de hora en el Editor de Planning (antes texto libre)
 
 Pedido por el usuario tras ver que el horario de las tareas se escribía a mano como texto libre ("9:30 - 10:30", "10:00-14:00", "13:00-16:00"...) — de ahí salían la mayoría de las horas mal formateadas y los solapes de camión que costó tanto detectar en esta sesión (un simple espacio o cero de menos ya rompía el parseo en otros sitios de la app).
