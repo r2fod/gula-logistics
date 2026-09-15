@@ -1,31 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Truck, 
-  Users, 
-  Calendar, 
-  Clock, 
-  Flame as Fire, 
-  Broom, 
-  Share2, 
-  Check, 
-  Copy, 
-  Send, 
-  X, 
-  CheckCircle2, 
-  UserCheck, 
-  Sparkles,
+import {
+  Share2,
+  Check,
+  Copy,
+  X,
   MessageCircle,
-  Plus,
-  Wand2,
-  DollarSign,
-  Play,
-  Square,
-  FileText,
-  ShieldCheck,
-  Lock,
-  Eye,
-  KeyRound,
-  Edit3
+  ShieldCheck
 } from 'lucide-react';
 
 import WeekManagerModal from './components/WeekManagerModal';
@@ -149,7 +129,6 @@ export default function App() {
 
   const [activeWeekId, setActiveWeekId] = useState('week_3');
   const [activeWorker, setActiveWorker] = useState(null);
-  const [showFullTeamView, setShowFullTeamView] = useState(false);
   const [isPublicPreviewMode, setIsPublicPreviewMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('view') === 'public';
@@ -425,9 +404,6 @@ export default function App() {
     logoutAdmin();
     setIsAdminUnlocked(false);
   };
-
-  const params = new URLSearchParams(window.location.search);
-  const workerParam = params.get('worker');
 
   if (activeWorker) {
     return (

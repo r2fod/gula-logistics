@@ -38,12 +38,6 @@ export default function WorkerView({
   onOpenAdminDashboard
 }) {
   const [isClockModalOpen, setIsClockModalOpen] = useState(false);
-
-  // Expose these for the inline functions below if they are available
-  useEffect(() => {
-    window.handleUpdateClockEntryInternal = onUpdateClockEntry;
-    window.handleDeleteClockEntryInternal = onDeleteClockEntry;
-  }, [onUpdateClockEntry, onDeleteClockEntry]);
   const [prefilledTask, setPrefilledTask] = useState(null); // for task-level clock-in
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDayKey, setSelectedDayKey] = useState('all');
@@ -868,13 +862,10 @@ export default function WorkerView({
         workersList={[currentWorkerObj]}
         isAdmin={false}
         onUpdateEntry={(updatedEntry) => {
-          // If the parent didn't pass onUpdateClockEntry, we can't update.
-          // But we assume App.jsx passes it via props implicitly (added in App.jsx).
-          // We must add it to the props list of WorkerView if it's there.
-          if (window.handleUpdateClockEntryInternal) window.handleUpdateClockEntryInternal(updatedEntry);
+          if (onUpdateClockEntry) onUpdateClockEntry(updatedEntry);
         }}
         onDeleteEntry={(entryId) => {
-          if (window.handleDeleteClockEntryInternal) window.handleDeleteClockEntryInternal(entryId);
+          if (onDeleteClockEntry) onDeleteClockEntry(entryId);
         }}
         onClockEntryCreated={onClockEntryCreated}
       />
