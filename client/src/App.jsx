@@ -458,6 +458,7 @@ export default function App() {
           onClose={() => setIsClockInModalOpen(false)}
           workersList={workersList}
           initialWorkerName={activeWorker}
+          clockEntries={clockEntries}
           onClockEntryCreated={handleClockEntryCreated}
         />
       </div>
@@ -501,6 +502,7 @@ export default function App() {
         onClose={() => setIsClockInModalOpen(false)}
         workersList={workersList}
         initialWorkerName={activeWorker}
+        clockEntries={clockEntries}
         onClockEntryCreated={handleClockEntryCreated}
       />
 

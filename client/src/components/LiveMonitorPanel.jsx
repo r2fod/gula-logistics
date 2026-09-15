@@ -15,6 +15,7 @@ import {
   AlertCircle,
   RefreshCw
 } from 'lucide-react';
+import { sortEntriesByTimestamp } from '../data/shiftCalculations';
 
 export default function LiveMonitorPanel({
   workersList = [],
@@ -32,9 +33,13 @@ export default function LiveMonitorPanel({
     return () => clearInterval(timer);
   }, []);
 
-  // Map active clock entries per worker
+  // Map active clock entries per worker. El servidor devuelve los fichajes
+  // más recientes primero (para el historial), pero aquí hace falta el
+  // orden cronológico real para que entrada/salida se vayan sustituyendo
+  // correctamente — si no, el último fichaje de cada trabajador que se
+  // procesa es el más ANTIGUO y el estado "en turno" sale al revés.
   const activeShifts = {};
-  clockEntries.forEach(entry => {
+  sortEntriesByTimestamp(clockEntries).forEach(entry => {
     if (entry.type === 'entrada') {
       activeShifts[entry.workerName] = entry;
     } else if (entry.type === 'salida') {
