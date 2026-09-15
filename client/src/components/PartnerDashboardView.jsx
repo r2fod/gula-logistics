@@ -358,6 +358,20 @@ export default function PartnerDashboardView({
   const totalPayrollValuation = balancesList.reduce((acc, curr) => acc + (curr.isPayroll ? curr.totalCost : 0), 0);
   const totalExtraHours = balancesList.reduce((acc, curr) => acc + curr.totalHours, 0);
 
+  // workerBalances viene indexado por el nombre "de pila" tal cual está en
+  // workersList (ej. "Ricardo"), pero balancesData.workers usa "Nombre
+  // Apellido" (ej. "Ricardo Gula") — coincidencia exacta nunca los cruza.
+  // Busca por prefijo de palabra completa para tolerar ese sufijo.
+  const findWorkerHours = (balanceWorkerName) => {
+    if (!balanceWorkerName) return null;
+    const normalized = balanceWorkerName.trim().toLowerCase();
+    const rosterKey = Object.keys(workerBalances).find(rosterName => {
+      const rn = rosterName.toLowerCase();
+      return normalized === rn || normalized.startsWith(`${rn} `);
+    });
+    return rosterKey ? workerBalances[rosterKey] : null;
+  };
+
   return (
     <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-2.5 sm:p-4 md:p-5 font-sans space-y-3 w-full max-w-full overflow-x-hidden pb-24 lg:pb-6">
       
@@ -703,15 +717,19 @@ export default function PartnerDashboardView({
                     {/* Horas reales fichadas — mismo cálculo que Resumen
                         Financiero (workerBalances/aggregateShiftsByWorker),
                         solo que también se muestra aquí junto al saldo. */}
-                    {workerBalances[worker.name] && workerBalances[worker.name].completedShifts > 0 && (
-                      <div className="mt-3 flex items-center gap-2 text-xs bg-slate-950/70 border border-slate-800 rounded-xl px-3 py-2">
-                        <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="text-slate-300">
-                          <b className="text-emerald-400 font-mono">{workerBalances[worker.name].totalHours.toFixed(1)}h</b> fichadas
-                          {' '}({workerBalances[worker.name].totalCost.toFixed(2)} €)
-                        </span>
-                      </div>
-                    )}
+                    {(() => {
+                      const hours = findWorkerHours(worker.name);
+                      if (!hours || hours.completedShifts === 0) return null;
+                      return (
+                        <div className="mt-3 flex items-center gap-2 text-xs bg-slate-950/70 border border-slate-800 rounded-xl px-3 py-2">
+                          <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          <span className="text-slate-300">
+                            <b className="text-emerald-400 font-mono">{hours.totalHours.toFixed(1)}h</b> fichadas
+                            {' '}({hours.totalCost.toFixed(2)} €)
+                          </span>
+                        </div>
+                      );
+                    })()}
 
                     {/* Special Jefferson Purse Box */}
                     {worker.isSpecialPurse && worker.purseInfo && (
