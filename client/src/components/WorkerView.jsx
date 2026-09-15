@@ -138,6 +138,21 @@ export default function WorkerView({
     return { tasks, weddings, totalCount: tasks.length + weddings.length };
   };
 
+  // Resuelve el índice REAL de una tarea dentro de su lista de origen —
+  // schedule[dayKey].tasks para los días normales, sundayMonday.tasks para
+  // "domingo" (que agrupa domingo Y lunes bajo esa misma clave, igual que
+  // getDayActivities). Las listas que se muestran en pantalla (dayGroup.tasks,
+  // day.tasks de daysWithActivities) están filtradas por trabajador, así que
+  // el índice que se ve ahí NUNCA es el índice real — hay que volver a
+  // buscarlo por texto contra la lista completa antes de tocar el planning.
+  const resolveRealTaskIndex = (dayKey, taskText) => {
+    const list = dayKey === 'domingo'
+      ? (activeWeekData.sundayMonday?.tasks || [])
+      : (activeWeekData.schedule?.[dayKey]?.tasks || []);
+    const idx = list.findIndex(t => (typeof t === 'object' ? t.text : t) === taskText);
+    return idx !== -1 ? idx : null;
+  };
+
   // Build full activities per day
   const daysWithActivities = weekDays.map(day => {
     const act = getDayActivities(day.key);
@@ -173,18 +188,10 @@ export default function WorkerView({
           const timeFrame = typeof t === 'object' ? t.timeFrame : null;
           const location = typeof t === 'object' ? t.location : null;
           const mapsUrl = typeof t === 'object' ? t.mapsUrl : null;
-          // day.tasks está filtrado por trabajador — hay que resolver el
-          // índice real dentro de schedule[day.key].tasks (mismo criterio
-          // que ya usa el checkbox manual) para poder marcarla como hecha
-          // al fichar salida.
-          const dayObj = activeWeekData.schedule?.[day.key];
-          const realTaskIndex = dayObj?.tasks
-            ? dayObj.tasks.findIndex(dt => (typeof dt === 'object' ? dt.text : dt) === text)
-            : -1;
           return {
             isShiftActive: false,
             dayKey: day.key,
-            taskIndex: realTaskIndex !== -1 ? realTaskIndex : null,
+            taskIndex: resolveRealTaskIndex(day.key, text),
             dayTitle: day.title,
             dayBadge: day.badge,
             taskName: text,
@@ -609,11 +616,8 @@ export default function WorkerView({
                                   className="flex items-start space-x-2.5 cursor-pointer hover:text-white"
                                   onClick={() => {
                                     if (onToggleTask) {
-                                      const dayObj = activeWeekData.schedule?.[dayGroup.key];
-                                      if (dayObj && dayObj.tasks) {
-                                        const taskIdx = dayObj.tasks.findIndex(t => (typeof t === 'object' ? t.text : t) === taskText);
-                                        if (taskIdx !== -1) onToggleTask(dayGroup.key, taskIdx);
-                                      }
+                                      const taskIdx = resolveRealTaskIndex(dayGroup.key, taskText);
+                                      if (taskIdx !== null) onToggleTask(dayGroup.key, taskIdx);
                                     }
                                   }}
                                 >
@@ -657,15 +661,8 @@ export default function WorkerView({
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setPrefilledTask(taskLabel);
-                                      // dayGroup.tasks está filtrado por trabajador — resolver el
-                                      // índice real en schedule[dayGroup.key].tasks (mismo criterio
-                                      // que el toggle manual de arriba) para poder marcar la tarea
-                                      // como hecha automáticamente al fichar salida.
-                                      const dayObj = activeWeekData.schedule?.[dayGroup.key];
-                                      const realTaskIndex = dayObj && dayObj.tasks
-                                        ? dayObj.tasks.findIndex(t => (typeof t === 'object' ? t.text : t) === taskText)
-                                        : -1;
-                                      setTaskRef(realTaskIndex !== -1 ? { dayKey: dayGroup.key, taskIndex: realTaskIndex } : null);
+                                      const realTaskIndex = resolveRealTaskIndex(dayGroup.key, taskText);
+                                      setTaskRef(realTaskIndex !== null ? { dayKey: dayGroup.key, taskIndex: realTaskIndex } : null);
                                       setIsClockModalOpen(true);
                                     }}
                                     className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95"
