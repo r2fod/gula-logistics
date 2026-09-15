@@ -723,7 +723,9 @@ export default function PartnerDashboardView({
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                             <span className="text-slate-400 block text-[10px]">Condición Base:</span>
-                            <span className="font-semibold text-white">80h (700€ - 200€ Aloj.) = <b>500€ Neto</b></span>
+                            <span className="font-semibold text-white">
+                              {worker.purseInfo.totalHours}h ({worker.purseInfo.grossBase.toFixed(0)}€ - {worker.purseInfo.housingDeduction.toFixed(0)}€ Aloj.) = <b>{worker.purseInfo.netFixedAt80h.toFixed(0)}€ Neto</b>
+                            </span>
                           </div>
                           <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                             <span className="text-slate-400 block text-[10px]">Acumulado Septiembre:</span>
