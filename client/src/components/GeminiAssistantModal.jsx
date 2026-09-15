@@ -18,7 +18,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
   };
 
   const samplePrompts = [
-    "Genera la planificación de la Semana 4 para 3 bodas simultáneas el sábado con los 3 camiones (Gula, Covey, Albacar) y reparto de Persona1, Persona2, Jaime e Persona4.",
+    "Genera la planificación de la Semana 4 para 3 bodas simultáneas el sábado con los 3 camiones (Gula, Covey, Albacar) y reparto de Persona1, Persona2 y Persona3.",
     "Crea las tareas del martes y miércoles para pre-carga en almacén y recogida del Camión Albacar con 90 sillas extra.",
     "Genera la logística inversa de domingo y lunes para descarga de los 3 camiones y devolución de material a Empresa5."
   ];
@@ -65,7 +65,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
             viernes: {
               title: "Viernes", badge: "IA Cierre",
               tasks: [
-                { id: "ia5", text: "Carga final y precintado de los 3 camiones.", location: "Base Logística", timeFrame: "16:00 - 21:00", mapsUrl: "", assigned: ["Persona1", "Persona2", "Jaime"], completed: false }
+                { id: "ia5", text: "Carga final y precintado de los 3 camiones.", location: "Base Logística", timeFrame: "16:00 - 21:00", mapsUrl: "", assigned: ["Persona1", "Persona2", "Persona3"], completed: false }
               ]
             }
           },
@@ -74,7 +74,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
             weddings: [
               { location: "Lugar1 de Chera", truck: "Camión 1 (Gula)", details: "Conduce: Persona2 | Apoyo: Persona5.", assigned: ["Persona2", "Persona5"], timeFrame: "09:00 - 02:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Lugar1+de+Chera" },
               { location: "Mas dels Refranys", truck: "Camión 2 (Covey)", details: "Conduce: Persona1 | Apoyo: Persona3.", assigned: ["Persona1", "Persona3"], timeFrame: "11:00 - 01:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Mas+dels+Refranys" },
-              { location: "Evento Especial 3", truck: "Camión 3 (Albacar)", details: "Conduce: Jaime | Apoyo: Persona3.", assigned: ["Jaime", "Persona3"], timeFrame: "13:00 - 00:00", mapsUrl: "" }
+              { location: "Evento Especial 3", truck: "Camión 3 (Albacar)", details: "Conduce: Persona3.", assigned: ["Persona3"], timeFrame: "13:00 - 00:00", mapsUrl: "" }
             ]
           },
           sundayMonday: {
@@ -236,7 +236,7 @@ Genera una respuesta EXCLUSIVAMENTE en formato JSON válido sin texto previo ni 
               rows={3}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Escribe tu solicitud (ej: Planifica la Semana 4 para 2 bodas en Lugar1 de Chera y asigna los 3 camiones a Persona1, Persona2, Jaime e Persona4)..."
+              placeholder="Escribe tu solicitud (ej: Planifica la Semana 4 para 2 bodas en Lugar1 de Chera y asigna los 3 camiones a Persona1, Persona2 y Persona3)..."
               className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/60 transition-all"
             />
           </div>

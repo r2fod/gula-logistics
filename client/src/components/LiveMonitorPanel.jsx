@@ -72,7 +72,6 @@ export default function LiveMonitorPanel({
   const DEFAULT_TASK_BY_WORKER = {
     'Persona1': '🚚 Ruta Flota / Albacar & Fincas',
     'Persona2': '🚚 Ruta Flota / Albacar & Fincas',
-    'Jaime': '🚛 Camión 3 / Guiado Cliente15 y Cliente2',
     'Persona3': '🚚 Descarga Fincas / Backup Camión 2',
     'Persona4': '📦 Almacén Base / Checklist Pedidos & Frío',
     'Persona5': '📦 Pre-carga Almacén & Soporte Logística',
@@ -111,7 +110,14 @@ export default function LiveMonitorPanel({
       })
       .filter(Boolean);
 
-    const current = withRange.find(({ start, end }) => nowMinutes >= start && (end === null || nowMinutes <= end));
+    // Rangos que cruzan medianoche (ej. "22:00 - 00:00" en tareas nocturnas
+    // de boda) tienen end < start — sin este caso aparte, la comparación de
+    // rango simple nunca los marca como "en curso" durante la propia noche.
+    const isWithinRange = (start, end) => {
+      if (end === null) return nowMinutes >= start;
+      return end < start ? (nowMinutes >= start || nowMinutes <= end) : (nowMinutes >= start && nowMinutes <= end);
+    };
+    const current = withRange.find(({ start, end }) => isWithinRange(start, end));
     const upcoming = !current && withRange.filter(({ start }) => start >= nowMinutes).sort((a, b) => a.start - b.start)[0];
     const primary = current?.task || upcoming?.task || matches[0];
 
@@ -122,7 +128,7 @@ export default function LiveMonitorPanel({
   };
 
   const getWorkerLocation = (workerName) => {
-    if (workerName === 'Persona1' || workerName === 'Persona2' || workerName === 'Jaime' || workerName === 'Persona3') {
+    if (workerName === 'Persona1' || workerName === 'Persona2' || workerName === 'Persona3') {
       return '📍 En Ruta / Fincas Eventos';
     }
     if (workerName === 'Persona6' || workerName === 'Persona7') {
