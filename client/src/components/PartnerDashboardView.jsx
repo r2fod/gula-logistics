@@ -61,7 +61,8 @@ export default function PartnerDashboardView({
   onClockEntryCreated,
   onAddWorker,
   onOpenWorkerEditor,
-  onOpenTaskEditor
+  onOpenTaskEditor,
+  onToggleTask
 }) {
   const [activeTab, setActiveTab] = useState(() => {
     try {
@@ -69,13 +70,16 @@ export default function PartnerDashboardView({
       const tab = p.get('tab') || p.get('view');
       if (tab === 'balances' || tab === 'saldos' || tab === 'acuerdos') return 'balances';
       if (tab === 'financial' || tab === 'financiero' || tab === 'resumen') return 'financial';
-      if (tab === 'schedule' || tab === 'planning' || tab === 'lista') return 'schedule';
+      if (tab === 'schedule' || tab === 'planning' || tab === 'cuadrante') return 'schedule';
       if (tab === 'graph' || tab === 'grafo') return 'graph';
       if (tab === 'logistics' || tab === 'flota' || tab === 'bodas') return 'logistics';
-      if (tab === 'fichajes') return 'fichajes';
+      if (tab === 'fichajes' || tab === 'fichaje') return 'fichajes';
+      if (tab === 'live' || tab === 'directo') return 'live';
+      if (p.has('socias')) return 'balances';
     } catch (e) {}
-    return 'live';
+    return 'schedule';
   });
+  const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [expandedWorkerId, setExpandedWorkerId] = useState('jefferson');
   const [adminUnlocked, setAdminUnlocked] = useState(isAdmin);
@@ -84,6 +88,18 @@ export default function PartnerDashboardView({
   const [internalBalancesData, setInternalBalancesData] = useState(externalBalancesData || initialBalancesData);
   const balancesData = externalBalancesData || internalBalancesData;
   const [isAdminSettingsOpen, setIsAdminSettingsOpen] = useState(false);
+
+  const handleTabClick = (tabKey) => {
+    setActiveTab(tabKey);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tabKey);
+      if (url.searchParams.has('socias')) {
+        url.searchParams.delete('socias');
+      }
+      window.history.replaceState({}, '', url.toString());
+    } catch (e) {}
+  };
 
   useEffect(() => {
     setAdminUnlocked(isAdmin);
@@ -221,13 +237,13 @@ export default function PartnerDashboardView({
         <div className="flex items-center gap-2.5 min-w-0 max-w-full flex-wrap sm:flex-nowrap">
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 p-0.5 shadow-lg shadow-amber-500/20 shrink-0">
             <div className="w-full h-full bg-slate-950 rounded-[9px] flex items-center justify-center text-amber-400">
-              <ShieldCheck className="w-4 h-4" />
+              <Truck className="w-4 h-4" />
             </div>
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
               <h1 className="text-xs sm:text-base font-extrabold text-white tracking-tight font-['Outfit'] truncate">
-                Panel Ejecutivo de Socias &amp; Dirección
+                Panel de Control Gula Logística
               </h1>
               {adminUnlocked ? (
                 <>
@@ -248,13 +264,13 @@ export default function PartnerDashboardView({
                 </>
               ) : (
                 <button onClick={handleRequestAdminUnlock} className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center gap-1 transition-colors shrink-0">
-                  <Eye className="w-2.5 h-2.5 text-blue-400" />
-                  <span>SOCIAS → Admin</span>
+                  <KeyRound className="w-2.5 h-2.5 text-blue-400" />
+                  <span>Admin Login</span>
                 </button>
               )}
             </div>
             <p className="text-[10px] text-slate-500 truncate">
-              Gula Logística · {activeWeekData?.meta?.week || "Semana 3"} · {activeWeekData?.meta?.dateRange}
+              {activeWeekData?.meta?.week || "Semana 3"} · {activeWeekData?.meta?.dateRange}
             </p>
           </div>
         </div>
@@ -280,6 +296,11 @@ export default function PartnerDashboardView({
 
         {/* Right: Action buttons (Responsive grid on mobile, flex toolbar on desktop) */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:flex lg:flex-wrap items-center gap-1.5 w-full lg:w-auto">
+          <button onClick={onOpenClockIn} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            <span>⏱️ Fichar</span>
+          </button>
+
           {adminUnlocked && onOpenTaskEditor && (
             <button onClick={onOpenTaskEditor} className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-orange-500/30 transition-all">
               <Edit3 className="w-3.5 h-3.5 shrink-0" />
@@ -293,11 +314,6 @@ export default function PartnerDashboardView({
               <span className="truncate">➕ Trabajador</span>
             </button>
           )}
-
-          <button onClick={onOpenClockIn} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
-            <Clock className="w-3.5 h-3.5 shrink-0" />
-            <span>⏱️ Fichar</span>
-          </button>
 
           {adminUnlocked && (
             <button onClick={onOpenPayroll} className="bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-slate-800 transition-all">
@@ -328,14 +344,7 @@ export default function PartnerDashboardView({
           {onTogglePublicView && (
             <button onClick={() => onTogglePublicView(false)} className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-amber-500/30 transition-all" title="Vista Pública">
               <Eye className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">Pública</span>
-            </button>
-          )}
-
-          {onGoToDashboard && (
-            <button onClick={onGoToDashboard} className="bg-slate-900 hover:bg-slate-800 text-emerald-400 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-emerald-500/30 transition-all" title="Panel de Control">
-              <LayoutDashboard className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">Dashboard</span>
+              <span className="truncate">Vista Pública</span>
             </button>
           )}
         </div>
@@ -344,10 +353,22 @@ export default function PartnerDashboardView({
       {/* Primary View Navigation Tabs Bar */}
       <div className="flex items-center space-x-2 bg-slate-900/80 p-1.5 sm:p-2 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar w-full max-w-full">
         <button
-          onClick={() => setActiveTab('live')}
-          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+          onClick={() => handleTabClick('schedule')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'schedule'
+              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          <span>📅 Cuadrante Semanal</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('live')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'live'
-              ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20'
+              ? 'bg-emerald-500 text-slate-950 font-extrabold shadow-lg shadow-emerald-500/20'
               : 'text-slate-400 hover:bg-slate-800 hover:text-white'
           }`}
         >
@@ -356,58 +377,22 @@ export default function PartnerDashboardView({
         </button>
 
         <button
-          onClick={() => setActiveTab('balances')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'balances'
-              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <TrendingUp className="w-3.5 h-3.5" />
-          <span>📜 Control de Saldos & Acuerdos</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('financial')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'financial'
-              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <DollarSign className="w-3.5 h-3.5" />
-          <span>💶 Resumen Financiero & Extras</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('schedule')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'schedule'
-              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <Calendar className="w-3.5 h-3.5" />
-          <span>📋 Planificación (Lista)</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('graph')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+          onClick={() => handleTabClick('graph')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'graph'
-              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
               : 'text-slate-400 hover:bg-slate-800 hover:text-white'
           }`}
         >
           <Zap className="w-3.5 h-3.5 text-amber-400" />
-          <span>🕸️ Grafo de Tareas & Flujo</span>
+          <span>🕸️ Grafo & Flujo</span>
         </button>
 
         <button
-          onClick={() => setActiveTab('logistics')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+          onClick={() => handleTabClick('logistics')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'logistics'
-              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
               : 'text-slate-400 hover:bg-slate-800 hover:text-white'
           }`}
         >
@@ -416,15 +401,39 @@ export default function PartnerDashboardView({
         </button>
 
         <button
-          onClick={() => setActiveTab('fichajes')}
-          className={`flex items-center space-x-2 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+          onClick={() => handleTabClick('balances')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'balances'
+              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <TrendingUp className="w-3.5 h-3.5" />
+          <span>📜 Saldos & Acuerdos</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('financial')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'financial'
+              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <DollarSign className="w-3.5 h-3.5" />
+          <span>💶 Resumen Financiero</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('fichajes')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'fichajes'
-              ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
               : 'text-slate-400 hover:bg-slate-800 hover:text-white'
           }`}
         >
           <Lock className="w-3.5 h-3.5 text-amber-400" />
-          <span>⚙️ Fichajes ({clockEntries.length})</span>
+          <span>⚙️ Historial Fichajes ({clockEntries.length})</span>
         </button>
       </div>
 
@@ -896,32 +905,162 @@ export default function PartnerDashboardView({
         </div>
       )}
 
-      {/* TAB 6: Schedule Days */}
+      {/* TAB 6: Schedule Days (Rich Cuadrante Semanal) */}
       {activeTab === 'schedule' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fadeIn">
-          {Object.entries(activeWeekData?.schedule || {}).map(([key, day]) => (
-            <div key={key} className="bg-slate-900 rounded-3xl p-6 shadow-xl border border-slate-800 space-y-4">
+        <div className="space-y-6 animate-fadeIn">
+          {/* Team Members Grid - Full Widescreen Layout */}
+          <section className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+              <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                <Users className="text-amber-400 w-4 h-4" /> Equipo, Nóminas y Extras ({workersList.length} Miembros)
+              </h2>
+              {selectedWorkerFilter ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-amber-400 font-semibold bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">
+                    Filtrando: {selectedWorkerFilter}
+                  </span>
+                  <button
+                    onClick={() => setSelectedWorkerFilter(null)}
+                    className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-xl border border-slate-700 transition-colors"
+                  >
+                    Ver Todo el Equipo
+                  </button>
+                </div>
+              ) : (
+                <span className="text-xs text-slate-400 hidden sm:inline">
+                  Haz clic en un trabajador para filtrar sus tareas
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-9 gap-3 text-xs">
+              {workersList.map((w, idx) => {
+                const isSelected = selectedWorkerFilter === w.name;
+                return (
+                  <div 
+                    key={idx} 
+                    onClick={() => setSelectedWorkerFilter(isSelected ? null : w.name)}
+                    className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-2 ${
+                      isSelected 
+                        ? 'bg-amber-500/15 border-amber-500 ring-2 ring-amber-500/40 text-white shadow-lg shadow-amber-500/10' 
+                        : 'bg-slate-950/80 border-slate-800/80 hover:border-amber-500/40 text-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="text-2xl">{w.avatar}</div>
+                      {w.isPayroll ? (
+                        <span className="text-[9px] font-extrabold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Nómina</span>
+                      ) : (
+                        <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">10€/h</span>
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <span className="font-extrabold text-white truncate text-xs block font-['Outfit']">{w.name}</span>
+                      <span className="text-[10px] text-slate-400 block truncate mt-0.5">{w.role}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Schedule Days Grid - 4 Columns Across Widescreen */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+            {Object.entries(activeWeekData?.schedule || {}).map(([key, day]) => (
+              <div key={key} className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-5 shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800/80">
+                    <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
+                      <Calendar className="text-amber-400 w-4.5 h-4.5" /> {day.title}
+                    </h3>
+                    <span className="text-[10px] bg-slate-950 text-amber-300 font-bold px-2.5 py-1 rounded-xl border border-slate-800">
+                      {day.badge}
+                    </span>
+                  </div>
+
+                  <ul className="space-y-2.5 text-xs text-slate-300">
+                    {(day.tasks || []).map((task, idx) => {
+                      const taskText = typeof task === 'object' ? task.text : task;
+                      const isCompleted = typeof task === 'object' ? !!task.completed : false;
+                      const matchesFilter = !selectedWorkerFilter || taskText.toLowerCase().includes(selectedWorkerFilter.toLowerCase());
+
+                      return (
+                        <li 
+                          key={idx} 
+                          onClick={() => onToggleTask && onToggleTask(key, idx)}
+                          className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
+                            isCompleted 
+                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 line-through' 
+                              : matchesFilter && selectedWorkerFilter
+                                ? 'bg-amber-500/10 border-amber-500/60 ring-1 ring-amber-500/40 text-white font-medium shadow-sm'
+                                : !matchesFilter && selectedWorkerFilter
+                                  ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-850 text-slate-400'
+                                  : 'bg-slate-950/80 border-slate-800/80 hover:border-slate-700 text-slate-200'
+                          }`}
+                        >
+                          <div className="mt-0.5 shrink-0">
+                            {isCompleted ? (
+                              <div className="w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center">
+                                <Check className="w-2.5 h-2.5 text-emerald-400" />
+                              </div>
+                            ) : (
+                              <Clock className="text-amber-400 w-4 h-4" />
+                            )}
+                          </div>
+                          <div className="flex-1 leading-relaxed">{taskText}</div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Saturday Special Section */}
+          {activeWeekData?.saturdaySpecial && (
+            <section className="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 border border-amber-500/30 rounded-3xl p-6 shadow-2xl space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
-                  <Calendar className="text-amber-400 w-5 h-5" /> {day.title}
-                </h4>
-                <span className="text-xs bg-slate-950 text-amber-300 font-bold px-3 py-1 rounded-xl border border-slate-800">
-                  {day.badge}
+                <h3 className="font-extrabold text-base sm:text-lg flex items-center gap-2 font-['Outfit'] text-white">
+                  <Sparkles className="text-amber-400 w-5.5 h-5.5" /> {activeWeekData.saturdaySpecial.title}
+                </h3>
+                <span className="text-[11px] bg-amber-500/20 text-amber-300 font-bold px-3 py-1 rounded-xl border border-amber-500/30">
+                  Día Clave
                 </span>
               </div>
 
-              <ul className="space-y-2 text-xs sm:text-sm text-slate-300">
-                {(day.tasks || []).map((task, idx) => {
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
+                {(activeWeekData.saturdaySpecial.weddings || []).map((w, idx) => (
+                  <div key={idx} className="bg-slate-950/90 p-4.5 rounded-2xl border border-slate-800 space-y-2 hover:border-amber-500/30 transition-all">
+                    <span className="font-extrabold text-amber-300 block text-sm sm:text-base font-['Outfit']">🏔️ {w.location}</span>
+                    <span className="text-slate-200 block font-semibold">{w.truck}</span>
+                    <p className="text-xs text-slate-400 leading-relaxed">{w.details}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Sunday / Monday Section */}
+          {activeWeekData?.sundayMonday && (
+            <section className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 shadow-xl space-y-3.5">
+              <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
+                <Calendar className="text-amber-400 w-4.5 h-4.5" /> {activeWeekData.sundayMonday.title}
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs sm:text-sm text-slate-300">
+                {(activeWeekData.sundayMonday.tasks || []).map((task, idx) => {
                   const taskText = typeof task === 'object' ? task.text : task;
                   return (
-                    <li key={idx} className="p-3 rounded-xl bg-slate-950 border border-slate-800 leading-relaxed">
+                    <div key={idx} className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 leading-relaxed">
                       {taskText}
-                    </li>
+                    </div>
                   );
                 })}
-              </ul>
-            </div>
-          ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
 
