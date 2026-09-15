@@ -1005,13 +1005,27 @@ export default function PartnerDashboardView({
               <p className="text-sm font-semibold text-slate-300">No hay fichajes registrados en el sistema.</p>
               <p className="text-xs text-slate-500 mt-1">Los fichajes realizados por los trabajadores aparecerán aquí automáticamente.</p>
             </div>
-          ) : (
+          ) : (() => {
+            // Agrupado por trabajador (pedido por el usuario) — orden de
+            // grupo según el roster (workersList), y dentro de cada grupo se
+            // conserva el orden que ya trae clockEntries (más reciente primero).
+            const byWorker = {};
+            clockEntries.forEach(e => {
+              if (!byWorker[e.workerName]) byWorker[e.workerName] = [];
+              byWorker[e.workerName].push(e);
+            });
+            const orderedNames = [
+              ...workersList.map(w => w.name).filter(n => byWorker[n]),
+              ...Object.keys(byWorker).filter(n => !workersList.some(w => w.name === n))
+            ];
+            const groupedEntries = orderedNames.map(name => ({ name, entries: byWorker[name] }));
+
+            return (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
                     <th className="py-3.5 px-4">Fecha & Hora</th>
-                    <th className="py-3.5 px-4">Trabajador</th>
                     <th className="py-3.5 px-4">Tipo</th>
                     <th className="py-3.5 px-4">Tarea / Concepto</th>
                     <th className="py-3.5 px-4">Tarifa (€/h)</th>
@@ -1020,14 +1034,26 @@ export default function PartnerDashboardView({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
-                  {clockEntries.map((entry) => (
+                  {groupedEntries.map(({ name, entries }) => {
+                    const profile = workersList.find(w => w.name === name);
+                    return (
+                      <React.Fragment key={name}>
+                        <tr className="bg-slate-950/80">
+                          <td colSpan={adminUnlocked ? 6 : 5} className="py-2 px-4">
+                            <span className="inline-flex items-center gap-2 text-xs font-extrabold text-amber-300">
+                              <span className="text-base">{profile?.avatar || '👤'}</span>
+                              <span>{name}</span>
+                              <span className="text-[10px] font-semibold text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-800">
+                                {entries.length} {entries.length === 1 ? 'fichaje' : 'fichajes'}
+                              </span>
+                            </span>
+                          </td>
+                        </tr>
+                        {entries.map((entry) => (
                     <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
                       <td className="py-3.5 px-4 font-mono text-slate-200">
                         <div className="font-bold text-white">{entry.timeFormatted}</div>
                         <div className="text-[10px] text-slate-500">{entry.dateFormatted}</div>
-                      </td>
-                      <td className="py-3.5 px-4 font-extrabold text-white text-sm">
-                        {entry.workerName}
                       </td>
                       <td className="py-3.5 px-4">
                         {entry.type === 'entrada' ? (
@@ -1076,11 +1102,15 @@ export default function PartnerDashboardView({
                         </td>
                       )}
                     </tr>
-                  ))}
+                        ))}
+                      </React.Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
