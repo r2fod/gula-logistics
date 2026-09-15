@@ -236,7 +236,7 @@ export default function PayrollReportModal({
         </div>
 
         {/* Top Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
             <p className="text-xs text-slate-400 font-medium">Gasto Total Extras</p>
             <p className="text-2xl font-bold text-amber-400 mt-1 font-['Outfit']">
@@ -254,8 +254,16 @@ export default function PayrollReportModal({
           </div>
 
           <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
-            <p className="text-xs text-slate-400 font-medium">Trabajadores en Turno</p>
+            <p className="text-xs text-slate-400 font-medium">Valoración Interna Nóminas</p>
             <p className="text-2xl font-bold text-indigo-400 mt-1 font-['Outfit']">
+              {totalPayrollValuation.toFixed(2)} €
+            </p>
+            <p className="text-[10px] text-slate-500 mt-0.5">Irene + Raúl (control interno a 14,00 €/h)</p>
+          </div>
+
+          <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
+            <p className="text-xs text-slate-400 font-medium">Trabajadores en Turno</p>
+            <p className="text-2xl font-bold text-rose-400 mt-1 font-['Outfit']">
               {activeClockedInCount} activos
             </p>
             <p className="text-[10px] text-slate-500 mt-0.5">Fichaje de entrada abierto</p>

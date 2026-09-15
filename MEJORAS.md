@@ -1,5 +1,22 @@
 # Mejoras — hechas hoy y candidatas futuras
 
+## Limpieza — Datos Sensibles & Código (plan de 4 fases, Fases 1-2 hechas)
+
+**Fase 1 — Datos sensibles:** `client/src/data/balancesData.js`, `server/src/data/balancesData.js`, `client/src/data/logisticsData.js` y `server/src/data/logisticsData.js` tenían datos reales de personal (nombres, saldos, desgloses de horas con importes) y del planning real (bodas, clientes, ubicaciones) horneados como seed/fallback. Confirmado que son solo fallback — `PartnerDashboardView` y `App.jsx` siempre sobrescriben con `fetchBalancesFromAPI()`/`fetchWeeksFromAPI()` al montar, y el bootstrap de Mongo (`POST /seed`, `GET /weeks`) solo se dispara si la base de datos está vacía (ya no lo está). Sustituidos por plantillas esqueleto genéricas (`workers: []`, tareas de ejemplo sin nombres de clientes reales). **A partir de ahora estos 4 ficheros ya no se sincronizan con el planning real real** — los datos reales viven solo en Mongo.
+
+**No hecho todavía, a propósito:** `DEFAULT_WORKERS_LIST` en `App.jsx` (roster con nombres reales: Gonzalo, Ricardo...) se dejó sin tocar. A diferencia de saldos/planning, el roster de trabajadores **no tiene ningún fetch que lo sobrescriba** — solo vive en `localStorage` de cada navegador (ver el pendiente de "migrar roster a Mongo"). Genericizarlo ahora mismo rompería la app en cualquier dispositivo/navegador nuevo (sin ese localStorage ya guardado), mostrando nombres falsos "Trabajador 1/2/3" de forma permanente, sin autocorregirse. Hacerlo requiere primero esa migración a Mongo.
+
+**Fase 2 — Limpieza de código:**
+- Quitados ~20 imports de iconos de `lucide-react` sin usar en `App.jsx` (quedó reducido a ~700 líneas tras la unificación de paneles, pero los imports viejos no se habían limpiado).
+- Eliminado el state `showFullTeamView` en `App.jsx` — declarado pero nunca leído ni usado en ningún sitio.
+- Eliminado un bloque muerto `const params = new URLSearchParams(...)` + `workerParam` en `App.jsx` que se calculaba pero nunca se usaba después.
+- Eliminado el hack `window.handleUpdateClockEntryInternal`/`window.handleDeleteClockEntryInternal` en `WorkerView.jsx` — las funciones `onUpdateClockEntry`/`onDeleteClockEntry` ya estaban disponibles como props por closure directo, no hacía falta pasarlas por `window`.
+- Corregidas 3 clases Tailwind inválidas (`w-4.5 h-4.5`, `w-5.5 h-5.5`) en `PartnerDashboardView.jsx` — esos valores no existen en la escala por defecto de Tailwind, así que no generaban ningún CSS y los iconos quedaban sin el tamaño esperado. Redondeados a los tamaños válidos más cercanos (`w-4 h-4`, `w-5 h-5`) que ya se usan en iconos de cabecera equivalentes en el mismo archivo.
+
+Verificado con build limpio + prueba real en el navegador (no solo build — en la extracción de `shiftCalculations.js` de más abajo el build no detectó una regresión real que sí apareció al probarlo).
+
+**Fase 3 (Animaciones — fondo animado, micro-animaciones) queda fuera de esta pasada a petición del usuario**, por ser una función nueva decorativa y no limpieza. Ver `PENDIENTES.md`.
+
 ## Hechas en esta sesión (revisión de "Informe de Fichajes, Horas & Nóminas")
 
 Revisión visual + funcional pedida por el usuario sobre `PayrollReportModal.jsx`. Verificado end-to-end (fichaje público, login admin, fichaje/edición/borrado admin, cálculo de horas y coste, WhatsApp) contra un backend local en memoria (sin tocar Mongo Atlas de producción). Se confirmó primero contra la API real de Render que el estado "0 activos / sin fichajes" que vio el usuario es real (no hay ningún fichaje en la base de datos ahora mismo) — no es un bug de sincronización.

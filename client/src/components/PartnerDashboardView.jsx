@@ -970,7 +970,7 @@ export default function PartnerDashboardView({
                 <div>
                   <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800/80">
                     <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
-                      <Calendar className="text-amber-400 w-4.5 h-4.5" /> {day.title}
+                      <Calendar className="text-amber-400 w-4 h-4" /> {day.title}
                     </h3>
                     <span className="text-[10px] bg-slate-950 text-amber-300 font-bold px-2.5 py-1 rounded-xl border border-slate-800">
                       {day.badge}
@@ -1029,7 +1029,7 @@ export default function PartnerDashboardView({
             <section className="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 border border-amber-500/30 rounded-3xl p-6 shadow-2xl space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-extrabold text-base sm:text-lg flex items-center gap-2 font-['Outfit'] text-white">
-                  <Sparkles className="text-amber-400 w-5.5 h-5.5" /> {activeWeekData.saturdaySpecial.title}
+                  <Sparkles className="text-amber-400 w-5 h-5" /> {activeWeekData.saturdaySpecial.title}
                 </h3>
                 <span className="text-[11px] bg-amber-500/20 text-amber-300 font-bold px-3 py-1 rounded-xl border border-amber-500/30">
                   Día Clave
@@ -1060,7 +1060,7 @@ export default function PartnerDashboardView({
           {activeWeekData?.sundayMonday && (
             <section className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 shadow-xl space-y-3.5">
               <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
-                <Calendar className="text-amber-400 w-4.5 h-4.5" /> {activeWeekData.sundayMonday.title}
+                <Calendar className="text-amber-400 w-4 h-4" /> {activeWeekData.sundayMonday.title}
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs sm:text-sm text-slate-300">
