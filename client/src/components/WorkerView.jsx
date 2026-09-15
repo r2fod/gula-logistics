@@ -573,7 +573,7 @@ export default function WorkerView({
         </div>
 
         {viewModeType === 'graph' ? (
-          <TaskFlowGraphView activeWeekData={activeWeekData} onToggleTask={onToggleTask} />
+          <TaskFlowGraphView activeWeekData={activeWeekData} workersList={workersList} onToggleTask={onToggleTask} />
         ) : (
           <>
             {/* HORIZONTAL SCROLLABLE DAY PILLS BAR */}
