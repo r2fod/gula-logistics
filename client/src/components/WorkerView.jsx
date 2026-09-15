@@ -19,12 +19,14 @@ import {
   Filter,
   Zap,
   Target,
-  ArrowRight
+  ArrowRight,
+  Users,
+  Car
 } from 'lucide-react';
 import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
-import { getActiveShiftForWorker } from '../data/shiftCalculations';
+import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
 
 export default function WorkerView({
   workerName,
@@ -70,6 +72,17 @@ export default function WorkerView({
   // para siempre y nunca puede desfichar.
   const myEntries = clockEntries.filter(e => e.workerName.toLowerCase() === currentWorkerObj.name.toLowerCase());
   const activeShift = getActiveShiftForWorker(clockEntries, currentWorkerObj.name);
+
+  // Compañeros fichados ahora mismo (para saber a quién preguntar por si
+  // compartir coche a la base al cargar/descargar) — mismo cálculo que ya
+  // usa el panel en vivo del admin, reutilizado en vez de reimplementarlo.
+  const { activeShifts: coworkersOnShift } = pairShiftsFromEntries(clockEntries);
+  const otherWorkersOnShift = Object.keys(coworkersOnShift)
+    .filter(name => name.toLowerCase() !== currentWorkerObj.name.toLowerCase())
+    .map(name => ({
+      entry: coworkersOnShift[name],
+      profile: workersList.find(w => w.name.toLowerCase() === name.toLowerCase())
+    }));
 
   // Calculate elapsed time if in shift
   let elapsedTimeFormatted = '0h 00m 00s';
@@ -410,6 +423,36 @@ export default function WorkerView({
           )}
         </div>
       </div>
+
+      {/* Compañeros en turno ahora — para saber a quién preguntar por si
+          compartir coche a la base al cargar/descargar */}
+      {otherWorkersOnShift.length > 0 && (
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
+          <div className="flex items-center gap-2 text-emerald-400">
+            <Users className="w-4 h-4" />
+            <span className="text-[11px] font-black uppercase tracking-wider">
+              {otherWorkersOnShift.length} {otherWorkersOnShift.length === 1 ? 'compañero' : 'compañeros'} en turno ahora
+            </span>
+            <Car className="w-3.5 h-3.5 text-slate-500 ml-auto shrink-0" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {otherWorkersOnShift.map(({ entry, profile }) => (
+              <div
+                key={entry.workerName}
+                className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 min-w-0"
+              >
+                <span className="text-base shrink-0">{profile?.avatar || '👤'}</span>
+                <div className="min-w-0">
+                  <span className="text-xs font-bold text-white block truncate">{entry.workerName}</span>
+                  <span className="text-[10px] text-slate-400 block truncate max-w-[160px]">
+                    {entry.taskName || 'Turno activo'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 2. Clean Segmented Navigation Tabs (Mis Tareas vs Mis Fichajes) */}
       <div className="flex items-center space-x-2 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800">
