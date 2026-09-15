@@ -1,5 +1,9 @@
 # Mejoras — hechas hoy y candidatas futuras
 
+## Editar/añadir horas manualmente en Control de Saldos & Acuerdos
+
+Pedido por el usuario — antes esa pestaña era de solo visualización. Cada trabajador tiene ahora, en modo Admin, un botón "Añadir concepto / horas manual" (formulario inline: texto del concepto + importe, admite negativos) y un icono de papelera en cada línea del desglose para eliminarla. Al guardar/borrar se recalcula `currentBalance` como la suma del `breakdown` y se persiste vía `PUT /api/balances/:id` (endpoint ya existía, protegido con `requireAdmin`, pero no estaba conectado a ninguna UI). El estado local se actualiza al instante (optimista) sin esperar a un refetch. Verificado end-to-end contra el backend real de producción (añadido y borrado un concepto de prueba en el saldo de Johan, confirmado el recálculo correcto y la restauración limpia). Para una "socia" sin desbloquear Admin, la pestaña sigue siendo de solo lectura — ni el botón de añadir ni las papeletas de borrar aparecen.
+
 ## Limpieza — Datos Sensibles & Código (plan de 4 fases, Fases 1-2 hechas)
 
 **Fase 1 — Datos sensibles:** `client/src/data/balancesData.js`, `server/src/data/balancesData.js`, `client/src/data/logisticsData.js` y `server/src/data/logisticsData.js` tenían datos reales de personal (nombres, saldos, desgloses de horas con importes) y del planning real (bodas, clientes, ubicaciones) horneados como seed/fallback. Confirmado que son solo fallback — `PartnerDashboardView` y `App.jsx` siempre sobrescriben con `fetchBalancesFromAPI()`/`fetchWeeksFromAPI()` al montar, y el bootstrap de Mongo (`POST /seed`, `GET /weeks`) solo se dispara si la base de datos está vacía (ya no lo está). Sustituidos por plantillas esqueleto genéricas (`workers: []`, tareas de ejemplo sin nombres de clientes reales). **A partir de ahora estos 4 ficheros ya no se sincronizan con el planning real real** — los datos reales viven solo en Mongo.
