@@ -40,6 +40,7 @@ export default function WorkerView({
 }) {
   const [isClockModalOpen, setIsClockModalOpen] = useState(false);
   const [prefilledTask, setPrefilledTask] = useState(null); // for task-level clock-in
+  const [taskRef, setTaskRef] = useState(null); // { dayKey, taskIndex } — para marcar la tarea como hecha al fichar salida
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDayKey, setSelectedDayKey] = useState('all');
   const [viewModeType, setViewModeType] = useState('calendar'); // 'calendar' | 'graph'
@@ -172,9 +173,18 @@ export default function WorkerView({
           const timeFrame = typeof t === 'object' ? t.timeFrame : null;
           const location = typeof t === 'object' ? t.location : null;
           const mapsUrl = typeof t === 'object' ? t.mapsUrl : null;
+          // day.tasks está filtrado por trabajador — hay que resolver el
+          // índice real dentro de schedule[day.key].tasks (mismo criterio
+          // que ya usa el checkbox manual) para poder marcarla como hecha
+          // al fichar salida.
+          const dayObj = activeWeekData.schedule?.[day.key];
+          const realTaskIndex = dayObj?.tasks
+            ? dayObj.tasks.findIndex(dt => (typeof dt === 'object' ? dt.text : dt) === text)
+            : -1;
           return {
             isShiftActive: false,
             dayKey: day.key,
+            taskIndex: realTaskIndex !== -1 ? realTaskIndex : null,
             dayTitle: day.title,
             dayBadge: day.badge,
             taskName: text,
@@ -302,7 +312,7 @@ export default function WorkerView({
               </div>
 
               <button
-                onClick={() => { setPrefilledTask(null); setIsClockModalOpen(true); }}
+                onClick={() => { setPrefilledTask(null); setTaskRef(null); setIsClockModalOpen(true); }}
                 className="w-full py-3.5 px-4 rounded-xl text-sm font-extrabold bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center space-x-2 transition-all shadow-xl shadow-rose-600/30 active:scale-95"
               >
                 <Square className="w-4 h-4" />
@@ -348,6 +358,11 @@ export default function WorkerView({
               <button
                 onClick={() => {
                   setPrefilledTask(immediateTask.taskName);
+                  setTaskRef(
+                    !immediateTask.isWedding && immediateTask.dayKey && immediateTask.taskIndex != null
+                      ? { dayKey: immediateTask.dayKey, taskIndex: immediateTask.taskIndex }
+                      : null
+                  );
                   setIsClockModalOpen(true);
                 }}
                 className="w-full py-3.5 px-4 rounded-xl text-sm font-extrabold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 flex items-center justify-center space-x-2 transition-all shadow-xl shadow-emerald-500/25 active:scale-95"
@@ -360,6 +375,7 @@ export default function WorkerView({
                 <button
                   onClick={() => {
                     setPrefilledTask(null);
+                    setTaskRef(null);
                     setIsClockModalOpen(true);
                   }}
                   className="hover:text-amber-400 text-slate-300 underline decoration-slate-700 hover:decoration-amber-400 transition-colors"
@@ -378,7 +394,7 @@ export default function WorkerView({
                 🎉 ¡Estás al día! No tienes más tareas pendientes hoy.
               </span>
               <button
-                onClick={() => { setPrefilledTask(null); setIsClockModalOpen(true); }}
+                onClick={() => { setPrefilledTask(null); setTaskRef(null); setIsClockModalOpen(true); }}
                 className="w-full sm:w-auto py-2.5 px-5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-all shadow-md"
               >
                 🟢 Fichar Turno Extra o Libre
@@ -641,6 +657,15 @@ export default function WorkerView({
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setPrefilledTask(taskLabel);
+                                      // dayGroup.tasks está filtrado por trabajador — resolver el
+                                      // índice real en schedule[dayGroup.key].tasks (mismo criterio
+                                      // que el toggle manual de arriba) para poder marcar la tarea
+                                      // como hecha automáticamente al fichar salida.
+                                      const dayObj = activeWeekData.schedule?.[dayGroup.key];
+                                      const realTaskIndex = dayObj && dayObj.tasks
+                                        ? dayObj.tasks.findIndex(t => (typeof t === 'object' ? t.text : t) === taskText)
+                                        : -1;
+                                      setTaskRef(realTaskIndex !== -1 ? { dayKey: dayGroup.key, taskIndex: realTaskIndex } : null);
                                       setIsClockModalOpen(true);
                                     }}
                                     className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95"
@@ -692,6 +717,7 @@ export default function WorkerView({
                               <button
                                 onClick={() => {
                                   setPrefilledTask(`Boda: ${w.location} (${w.truck})`);
+                                  setTaskRef(null); // las bodas del sábado no tienen "completed" propio todavía
                                   setIsClockModalOpen(true);
                                 }}
                                 className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all active:scale-95"
@@ -852,10 +878,11 @@ export default function WorkerView({
       {/* Clock In Modal for worker */}
       <ClockInModal
         isOpen={isClockModalOpen}
-        onClose={() => { setIsClockModalOpen(false); setPrefilledTask(null); }}
+        onClose={() => { setIsClockModalOpen(false); setPrefilledTask(null); setTaskRef(null); }}
         workersList={workersList}
         initialWorkerName={currentWorkerObj.name}
         initialTaskName={prefilledTask}
+        taskRef={taskRef}
         clockEntries={clockEntries}
         onClockEntryCreated={onClockEntryCreated}
       />
