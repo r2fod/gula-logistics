@@ -315,8 +315,22 @@ export default function App() {
 
   const activeWeek = allWeeks[activeWeekId] || BASE_WEEK_3;
 
-  // Toggle tasks
+  // Toggle tasks. dayKey 'domingo' es especial: agrupa las tareas de
+  // domingo Y lunes bajo sundayMonday.tasks (no schedule.domingo, que ni
+  // existe) — mismo criterio que ya usa WorkerView para leerlas.
   const toggleTask = (dayKey, taskIdx) => {
+    if (dayKey === 'domingo') {
+      const sunTasks = [...(activeWeek.sundayMonday?.tasks || [])];
+      const taskItem = sunTasks[taskIdx];
+      if (taskItem === undefined) return;
+      if (typeof taskItem === 'object') {
+        taskItem.completed = !taskItem.completed;
+      } else {
+        sunTasks[taskIdx] = { text: taskItem, completed: true };
+      }
+      updateWeeks({ ...allWeeks, [activeWeekId]: { ...activeWeek, sundayMonday: { ...activeWeek.sundayMonday, tasks: sunTasks } } });
+      return;
+    }
     const currentSchedule = { ...activeWeek.schedule };
     if (currentSchedule[dayKey] && currentSchedule[dayKey].tasks) {
       const taskItem = currentSchedule[dayKey].tasks[taskIdx];
@@ -335,6 +349,19 @@ export default function App() {
   // Marca una tarea como hecha (nunca la desmarca) — usado al fichar salida
   // de una tarea concreta, para no tener que ir luego a tildarla a mano.
   const markTaskCompleted = (dayKey, taskIdx) => {
+    if (dayKey === 'domingo') {
+      const sunTasks = [...(activeWeek.sundayMonday?.tasks || [])];
+      const taskItem = sunTasks[taskIdx];
+      if (taskItem === undefined) return;
+      if (typeof taskItem === 'object') {
+        if (taskItem.completed) return;
+        taskItem.completed = true;
+      } else {
+        sunTasks[taskIdx] = { text: taskItem, completed: true };
+      }
+      updateWeeks({ ...allWeeks, [activeWeekId]: { ...activeWeek, sundayMonday: { ...activeWeek.sundayMonday, tasks: sunTasks } } });
+      return;
+    }
     const currentSchedule = { ...activeWeek.schedule };
     const taskItem = currentSchedule[dayKey]?.tasks?.[taskIdx];
     if (taskItem === undefined) return;
