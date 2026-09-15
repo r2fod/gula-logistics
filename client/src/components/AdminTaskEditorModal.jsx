@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Edit3, Save, Plus, Trash2, Calendar, ChevronUp, ChevronDown } from 'lucide-react';
 
+const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
+
 export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, workersList = [], onSaveWeekData }) {
   const [localWeek, setLocalWeek] = useState(null);
+  const [activeDayId, setActiveDayId] = useState('martes');
   const wasOpenRef = useRef(false);
+  const scrollContainerRef = useRef(null);
 
   useEffect(() => {
     // Solo recargar del servidor al ABRIR el modal (transición false→true) —
@@ -15,6 +19,52 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
     }
     wasOpenRef.current = isOpen;
   }, [isOpen, activeWeekData]);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !isOpen || !localWeek) return;
+
+    const availableDays = [
+      ...days.filter(d => localWeek.schedule && localWeek.schedule[d]),
+      ...(localWeek.saturdaySpecial ? ['sabado'] : []),
+      ...(localWeek.sundayMonday ? ['sundayMonday'] : [])
+    ];
+
+    if (availableDays.length > 0 && !availableDays.includes(activeDayId)) {
+      setActiveDayId(availableDays[0]);
+    }
+
+    const handleScroll = () => {
+      const containerRect = container.getBoundingClientRect();
+      const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 40;
+
+      if (isAtBottom && availableDays.length > 0) {
+        setActiveDayId(availableDays[availableDays.length - 1]);
+        return;
+      }
+
+      let currentActive = availableDays[0];
+      for (const dayKey of availableDays) {
+        const el = document.getElementById(`editor-day-${dayKey}`);
+        if (el) {
+          const elRect = el.getBoundingClientRect();
+          const relativeTop = elRect.top - containerRect.top;
+          if (relativeTop <= 60) {
+            currentActive = dayKey;
+          }
+        }
+      }
+
+      if (currentActive) {
+        setActiveDayId(currentActive);
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [localWeek, isOpen]);
 
   if (!isOpen || !localWeek) return null;
 
@@ -277,7 +327,13 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
     onClose();
   };
 
-  const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
+  const scrollToDay = (dayKey) => {
+    setActiveDayId(dayKey);
+    const el = document.getElementById(`editor-day-${dayKey}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
@@ -300,47 +356,74 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
           </button>
         </div>
 
-        {/* Quick Day Jump Ribbon */}
-        <div className="bg-slate-950/90 backdrop-blur-md px-4 sm:px-6 py-2 border-b border-slate-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
-          <span className="text-[10px] uppercase font-bold text-slate-400 whitespace-nowrap mr-1">Ir a:</span>
-          {days.filter(d => localWeek.schedule[d]).map(d => (
-            <button
-              key={d}
-              type="button"
-              onClick={() => {
-                document.getElementById(`editor-day-${d}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
-              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-slate-300 border border-slate-800 transition-all whitespace-nowrap capitalize shadow-sm active:scale-95"
-            >
-              {localWeek.schedule[d].title || d}
-            </button>
-          ))}
-          {localWeek.saturdaySpecial && (
-            <button
-              type="button"
-              onClick={() => {
-                document.getElementById('editor-day-sabado')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
-              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-950/40 hover:bg-rose-500 hover:text-white text-rose-300 border border-rose-900/40 transition-all whitespace-nowrap shadow-sm active:scale-95"
-            >
-              Sábado 👑
-            </button>
-          )}
-          {localWeek.sundayMonday && (
-            <button
-              type="button"
-              onClick={() => {
-                document.getElementById('editor-day-sundayMonday')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
-              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-950/40 hover:bg-emerald-500 hover:text-slate-950 text-emerald-300 border border-emerald-900/40 transition-all whitespace-nowrap shadow-sm active:scale-95"
-            >
-              Dom &amp; Lun
-            </button>
-          )}
+        {/* Quick Day Jump Ribbon with Illuminated Active Day */}
+        <div className="bg-slate-950/95 backdrop-blur-md px-3 sm:px-6 py-2.5 border-b border-slate-800 flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar shrink-0">
+          <span className="text-[10px] uppercase font-black text-amber-400 whitespace-nowrap mr-1 flex items-center gap-1">
+            <span>📍</span>
+            <span>Ir a:</span>
+          </span>
+          {days.filter(d => localWeek.schedule[d]).map(d => {
+            const isActive = activeDayId === d;
+            return (
+              <button
+                key={d}
+                type="button"
+                onClick={() => scrollToDay(d)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap capitalize flex items-center gap-1.5 border active:scale-95 ${
+                  isActive
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 border-amber-300 shadow-lg shadow-amber-500/30 ring-2 ring-amber-400/50 scale-105'
+                    : 'bg-slate-900/90 hover:bg-slate-800 text-slate-300 border-slate-800 hover:border-slate-700'
+                }`}
+              >
+                {isActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping"></span>
+                )}
+                <span>{localWeek.schedule[d].title || d}</span>
+              </button>
+            );
+          })}
+          {localWeek.saturdaySpecial && (() => {
+            const isActive = activeDayId === 'sabado';
+            return (
+              <button
+                type="button"
+                onClick={() => scrollToDay('sabado')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap flex items-center gap-1.5 border active:scale-95 ${
+                  isActive
+                    ? 'bg-gradient-to-r from-rose-500 to-rose-600 text-white border-rose-300 shadow-lg shadow-rose-500/30 ring-2 ring-rose-400/50 scale-105'
+                    : 'bg-rose-950/30 hover:bg-rose-950/60 text-rose-300 border-rose-900/40'
+                }`}
+              >
+                {isActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                )}
+                <span>Sábado 👑</span>
+              </button>
+            );
+          })()}
+          {localWeek.sundayMonday && (() => {
+            const isActive = activeDayId === 'sundayMonday';
+            return (
+              <button
+                type="button"
+                onClick={() => scrollToDay('sundayMonday')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap flex items-center gap-1.5 border active:scale-95 ${
+                  isActive
+                    ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-slate-950 border-emerald-300 shadow-lg shadow-emerald-500/30 ring-2 ring-emerald-400/50 scale-105'
+                    : 'bg-emerald-950/30 hover:bg-emerald-950/60 text-emerald-300 border-emerald-900/40'
+                }`}
+              >
+                {isActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping"></span>
+                )}
+                <span>Dom &amp; Lun</span>
+              </button>
+            );
+          })()}
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto px-4 sm:px-6 pb-6 pt-0 space-y-6 sm:space-y-8">
+        <div ref={scrollContainerRef} className="overflow-y-auto px-4 sm:px-6 pb-6 pt-0 space-y-6 sm:space-y-8">
           
           {/* Normal Days */}
           {days.map(dayKey => {
