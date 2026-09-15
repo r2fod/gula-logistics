@@ -33,7 +33,6 @@ import GeminiAssistantModal from './components/GeminiAssistantModal';
 import ClockInModal from './components/ClockInModal';
 import PayrollReportModal from './components/PayrollReportModal';
 import PartnerDashboardView from './components/PartnerDashboardView';
-import BalancesAgreementsModal from './components/BalancesAgreementsModal';
 import AdminWorkerEditorModal from './components/AdminWorkerEditorModal';
 import AdminTaskEditorModal from './components/AdminTaskEditorModal';
 
@@ -182,7 +181,6 @@ export default function App() {
   const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
   const [isClockInModalOpen, setIsClockInModalOpen] = useState(false);
   const [isPayrollModalOpen, setIsPayrollModalOpen] = useState(false);
-  const [isBalancesModalOpen, setIsBalancesModalOpen] = useState(false);
   const [isWorkerEditorModalOpen, setIsWorkerEditorModalOpen] = useState(false);
   const [isTaskEditorModalOpen, setIsTaskEditorModalOpen] = useState(false);
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
@@ -218,9 +216,9 @@ export default function App() {
       const matched = workersList.find(w => w.name.toLowerCase() === workerParam.toLowerCase());
       if (matched) setActiveWorker(matched.name);
     }
-    if (viewParam === 'saldos' || viewParam === 'acuerdos') {
-      setIsBalancesModalOpen(true);
-    }
+    // ?view=saldos/acuerdos ya lo entiende PartnerDashboardView directamente
+    // (lee ?tab=/?view= al montar y abre la pestaña 'balances' con datos
+    // reales de la API) — no hace falta un modal aparte con datos viejos.
 
     // A real, server-issued admin session token travelling in the link
     // (shared by an admin via "Copiar Link Socias") unlocks the same access
@@ -677,16 +675,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      <BalancesAgreementsModal
-        isOpen={isBalancesModalOpen}
-        onClose={() => setIsBalancesModalOpen(false)}
-        balancesData={balancesData}
-        setBalancesData={(newData) => {
-          setBalancesData(newData);
-          localStorage.setItem('gula_balances_v1', JSON.stringify(newData));
-        }}
-      />
 
       <AdminWorkerEditorModal 
         isOpen={isWorkerEditorModalOpen}
