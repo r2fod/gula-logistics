@@ -1,5 +1,13 @@
 # Mejoras — hechas hoy y candidatas futuras
 
+## Selector de hora en el Editor de Planning (antes texto libre)
+
+Pedido por el usuario tras ver que el horario de las tareas se escribía a mano como texto libre ("9:30 - 10:30", "10:00-14:00", "13:00-16:00"...) — de ahí salían la mayoría de las horas mal formateadas y los solapes de camión que costó tanto detectar en esta sesión (un simple espacio o cero de menos ya rompía el parseo en otros sitios de la app).
+
+`AdminTaskEditorModal.jsx` tiene ahora un componente `TimeRangeEditor` (dos `<input type="time">`, entrada y salida) que sustituye el campo de texto libre en los tres sitios donde existía: tareas normales de cada día, bodas del sábado y tareas de domingo/lunes. Lee y escribe el mismo campo `timeFrame` de siempre (string `"HH:MM - HH:MM"`), así que nada más en la app tiene que cambiar. Para tareas sin hora todavía (ej. "Recoger Fulanita", horario "pendiente") hay una casilla aparte "Sin horario fijo (pendiente)" que desactiva los selectores y guarda ese texto — no se pierde esa posibilidad.
+
+Verificado en el navegador contra el planning real: la tarea de Martes "Recoger Sillas Carvillo" (guardada como "9:30 - 10:30") se parsea correctamente a los selectores 09:30/10:30, y "Recoger Fulanita" (guardada como "pendiente") marca la casilla en vez de forzar una hora.
+
 ## Fichar salida de una tarea la marca como hecha sola
 
 Pedido por el usuario: al fichar la salida de una tarea concreta (botones "Fichar Esta Tarea" / "Fichar Entrada Ahora (1 Toque)" en `WorkerView.jsx`), la tarea del planning se marca como completada automáticamente — antes había que ir aparte a tildarla a mano en el Cuadrante.
