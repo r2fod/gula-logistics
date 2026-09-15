@@ -44,7 +44,7 @@ const getTaskCategory = (label) => {
   return rule || { icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-l-slate-700' };
 };
 
-export default function TaskFlowGraphView({ activeWeekData, workersList = [], onToggleTask }) {
+export default function TaskFlowGraphView({ activeWeekData, workersList = [], onToggleTask, restrictToWorkerName }) {
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [filterDay, setFilterDay] = useState('all');
   const [filterTruck, setFilterTruck] = useState('all');
@@ -204,8 +204,34 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
       linkAssignedWorkers(id, assigned);
     });
 
+    // Vista de un trabajador concreto (dentro de WorkerView): el Grafo
+    // completo enseña a todo el equipo y todas las tareas de la semana sin
+    // ningún filtro, incluida gente y tareas de otros — aquí se recorta a
+    // solo lo que de verdad está conectado a este trabajador (sus propias
+    // tareas, los días y camiones de esas tareas). Nunca al resto del equipo.
+    if (restrictToWorkerName) {
+      const selfWorkerId = workerIdByName[normalize(restrictToWorkerName)];
+      if (selfWorkerId) {
+        const truckNodeIds = new Set(nodes.filter(n => n.type === 'truck').map(n => n.id));
+        const keepTaskIds = new Set(links.filter(l => l.target === selfWorkerId).map(l => l.source));
+        const keepDayIds = new Set(links.filter(l => keepTaskIds.has(l.target)).map(l => l.source));
+        const keepTruckIds = new Set(links.filter(l => keepTaskIds.has(l.source) && truckNodeIds.has(l.target)).map(l => l.target));
+
+        const restrictedNodes = nodes.filter(n => {
+          if (n.type === 'worker') return n.id === selfWorkerId;
+          if (n.type === 'task') return keepTaskIds.has(n.id);
+          if (n.type === 'day') return keepDayIds.has(n.id);
+          if (n.type === 'truck') return keepTruckIds.has(n.id);
+          return true;
+        });
+        const restrictedIds = new Set(restrictedNodes.map(n => n.id));
+        const restrictedLinks = links.filter(l => restrictedIds.has(l.source) && restrictedIds.has(l.target));
+        return { nodes: restrictedNodes, links: restrictedLinks };
+      }
+    }
+
     return { nodes, links };
-  }, [activeWeekData, workersList]);
+  }, [activeWeekData, workersList, restrictToWorkerName]);
 
   // Connected node IDs calculation when a node is hovered/clicked.
   const connectedNodeIds = useMemo(() => {
