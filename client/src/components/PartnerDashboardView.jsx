@@ -160,6 +160,9 @@ export default function PartnerDashboardView({
   // Calcula horas + importe a partir de fecha/entrada/salida de un turno,
   // igual que se hace con los fichajes reales (pairShiftsFromEntries) —
   // aquí es manual porque es un turno que no se fichó desde el móvil.
+  // Si el trabajador tiene bolsa mensual especial (Jefferson), las horas se
+  // reparten primero a la tarifa de bolsa hasta agotar el cupo (80h) y el
+  // resto se paga a la tarifa extra — igual que se explica en sus acuerdos.
   const computeShiftPreview = (worker) => {
     const startMin = parseHM(newShiftStart);
     const endMin = parseHM(newShiftEnd);
@@ -169,17 +172,36 @@ export default function PartnerDashboardView({
     if (diffMin <= 0) diffMin += 24 * 60; // cruza medianoche (ej. bodas hasta la madrugada)
     const hours = diffMin / 60;
 
-    const rate = worker.hourlyRate || (worker.statusType === 'payroll' ? 14 : 10);
-    const amount = hours * rate;
-
     const dateObj = new Date(`${newShiftDate}T00:00:00`);
     const dateLabel = Number.isNaN(dateObj.getTime())
       ? newShiftDate
       : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
-    const hoursLabel = Number.isInteger(hours) ? `${hours}` : hours.toFixed(1);
-    const concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${hoursLabel}h a ${rate}€/h)`;
+    const fmtHours = (h) => (Number.isInteger(h) ? `${h}` : h.toFixed(1));
 
-    return { hours, rate, amount, concept };
+    if (worker.isSpecialPurse && worker.purseInfo) {
+      const p = worker.purseInfo;
+      const remaining = Math.max(0, p.totalHours - p.consumedHours);
+      const purseHours = Math.min(hours, remaining);
+      const extraHours = Math.max(0, hours - purseHours);
+      const amount = purseHours * p.hourlyRate + extraHours * p.extraRateAfter80h;
+
+      let concept;
+      if (extraHours === 0) {
+        concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(hours)}h a ${p.hourlyRate}€/h · Bolsa)`;
+      } else if (purseHours === 0) {
+        concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(hours)}h a ${p.extraRateAfter80h}€/h · Extra tras bolsa)`;
+      } else {
+        concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(purseHours)}h a ${p.hourlyRate}€/h + ${fmtHours(extraHours)}h a ${p.extraRateAfter80h}€/h)`;
+      }
+
+      return { hours, purseHours, extraHours, amount, concept, dateLabel, isPurse: true };
+    }
+
+    const rate = worker.hourlyRate || (worker.statusType === 'payroll' ? 14 : 10);
+    const amount = hours * rate;
+    const concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(hours)}h a ${rate}€/h)`;
+
+    return { hours, rate, amount, concept, dateLabel, isPurse: false };
   };
 
   const resetAddConceptForm = () => {
@@ -195,11 +217,58 @@ export default function PartnerDashboardView({
     const preview = computeShiftPreview(worker);
     if (!preview) return;
 
-    const newItem = { concept: preview.concept, amount: preview.amount, isPositive: true };
-    const newBreakdown = [...(worker.breakdown || []), newItem];
-    const newBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
+    if (!preview.isPurse) {
+      const newItem = { concept: preview.concept, amount: preview.amount, isPositive: true };
+      const newBreakdown = [...(worker.breakdown || []), newItem];
+      const newBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
 
-    await persistWorkerBalance(worker.id, { breakdown: newBreakdown, currentBalance: newBalance });
+      await persistWorkerBalance(worker.id, { breakdown: newBreakdown, currentBalance: newBalance });
+      resetAddConceptForm();
+      return;
+    }
+
+    // Trabajador con bolsa mensual (Jefferson): las horas dentro de cupo
+    // actualizan la bolsa (consumedHours/consumedValue/shifts) y la línea
+    // agregada "Valor Acumulado Horas Bolsa"; las horas que se pasan del
+    // cupo se añaden como una línea normal a la tarifa extra.
+    let newBreakdown = [...(worker.breakdown || [])];
+    const updates = {};
+    const p = worker.purseInfo;
+
+    if (preview.purseHours > 0) {
+      const newConsumedHours = p.consumedHours + preview.purseHours;
+      const newConsumedValue = newConsumedHours * p.hourlyRate;
+      updates.purseInfo = {
+        ...p,
+        consumedHours: newConsumedHours,
+        consumedValue: newConsumedValue,
+        remainingHoursForExtra: Math.max(0, p.totalHours - newConsumedHours),
+        shifts: [...(p.shifts || []), { date: preview.dateLabel, hours: preview.purseHours, range: `${newShiftStart} a ${newShiftEnd}` }]
+      };
+
+      const bolsaLine = {
+        concept: `Valor Acumulado Horas Bolsa (${newConsumedHours}h a ${p.hourlyRate}€/h)`,
+        amount: newConsumedValue,
+        isPositive: true
+      };
+      const bolsaLineIdx = newBreakdown.findIndex(it => it.concept.startsWith('Valor Acumulado Horas Bolsa'));
+      if (bolsaLineIdx !== -1) newBreakdown[bolsaLineIdx] = bolsaLine;
+      else newBreakdown = [bolsaLine, ...newBreakdown];
+    }
+
+    if (preview.extraHours > 0) {
+      const hoursLabel = Number.isInteger(preview.extraHours) ? `${preview.extraHours}` : preview.extraHours.toFixed(1);
+      newBreakdown.push({
+        concept: `🕒 ${preview.dateLabel} (${newShiftStart} a ${newShiftEnd} - ${hoursLabel}h a ${p.extraRateAfter80h}€/h · Extra tras bolsa)`,
+        amount: preview.extraHours * p.extraRateAfter80h,
+        isPositive: true
+      });
+    }
+
+    updates.breakdown = newBreakdown;
+    updates.currentBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
+
+    await persistWorkerBalance(worker.id, updates);
     resetAddConceptForm();
   };
 
@@ -666,7 +735,7 @@ export default function PartnerDashboardView({
                           onClick={() => setExpandedWorkerId(isExpanded ? null : worker.id)}
                           className="w-full py-1 text-center text-xs text-amber-400 font-semibold flex items-center justify-center space-x-1"
                         >
-                          <span>{isExpanded ? 'Ocultar turnos bolsa' : 'Ver turnos consumidos (45.5h)'}</span>
+                          <span>{isExpanded ? 'Ocultar turnos bolsa' : `Ver turnos consumidos (${worker.purseInfo.consumedHours}h)`}</span>
                           {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                         </button>
 
