@@ -14,16 +14,21 @@ const ShiftPurseSchema = new mongoose.Schema({
   range: { type: String }
 }, { _id: false });
 
+// Sin valores reales por defecto a propósito — las cifras del acuerdo
+// (horas, tarifas, importes) son datos sensibles de cada trabajador y
+// viven solo en su documento de Mongo, nunca en el código. Un trabajador
+// nuevo con isSpecialPurse debe traer su propio purseInfo completo al
+// crearse (ver Saldos & Acuerdos → Admin).
 const PurseInfoSchema = new mongoose.Schema({
-  totalHours: { type: Number, default: 80 },
-  hourlyRate: { type: Number, default: 8.75 },
-  grossBase: { type: Number, default: 700.00 },
-  housingDeduction: { type: Number, default: 200.00 },
-  netFixedAt80h: { type: Number, default: 500.00 },
-  extraRateAfter80h: { type: Number, default: 10.00 },
+  totalHours: { type: Number, default: 0 },
+  hourlyRate: { type: Number, default: 0 },
+  grossBase: { type: Number, default: 0 },
+  housingDeduction: { type: Number, default: 0 },
+  netFixedAt80h: { type: Number, default: 0 },
+  extraRateAfter80h: { type: Number, default: 0 },
   consumedHours: { type: Number, default: 0 },
   consumedValue: { type: Number, default: 0 },
-  remainingHoursForExtra: { type: Number, default: 80 },
+  remainingHoursForExtra: { type: Number, default: 0 },
   shifts: [ShiftPurseSchema]
 }, { _id: false });
 
