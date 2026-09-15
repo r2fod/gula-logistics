@@ -39,6 +39,7 @@ export default function WorkerView({
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedDayKey, setSelectedDayKey] = useState('all');
   const [viewModeType, setViewModeType] = useState('calendar'); // 'calendar' | 'graph'
+  const [workerTab, setWorkerTab] = useState('tasks'); // 'tasks' | 'history'
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -204,46 +205,47 @@ export default function WorkerView({
     ? daysWithActivities 
     : daysWithActivities.filter(d => d.key === selectedDayKey);
 
+  const todayIndex = new Date().getDay();
+  const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+  const todayKey = dayNames[todayIndex];
+
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fadeIn w-full max-w-full overflow-x-hidden">
+    <div className="space-y-4 sm:space-y-5 animate-fadeIn w-full max-w-full overflow-x-hidden">
       
       {/* 1. Worker Personal Profile Header Card - Compact & Clean */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           {/* Profile Details */}
-          <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-3xl sm:text-4xl shadow-inner shrink-0">
+          <div className="flex items-center space-x-3 min-w-0">
+            <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-3xl shadow-inner shrink-0">
               {currentWorkerObj.avatar}
             </div>
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <span className="text-[9px] sm:text-[10px] font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 uppercase tracking-wider">
-                  Mi Panel Personal
-                </span>
-                {currentWorkerObj.isPayroll ? (
-                  <span className="text-[9px] sm:text-[10px] font-extrabold text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">
-                    ⭐ Nómina Fija
+              <div className="flex flex-wrap items-center gap-1.5">
+                <h1 className="text-lg sm:text-xl font-extrabold text-white tracking-tight font-['Outfit'] truncate">
+                  Hola, {currentWorkerObj.name} 👋
+                </h1>
+                {activeShift ? (
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                    <span>EN TURNO</span>
                   </span>
                 ) : (
-                  <span className="text-[9px] sm:text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                    💶 10,00 €/h
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-400 border border-slate-700">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
+                    <span>Descanso</span>
                   </span>
                 )}
               </div>
 
-              <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight font-['Outfit'] mt-0.5 truncate">
-                Hola, {currentWorkerObj.name} 👋
-              </h1>
-
-              <div className="flex flex-wrap items-center gap-2 text-[11px] sm:text-xs text-slate-400 mt-0.5">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-0.5">
                 <span className="font-semibold text-slate-300">{currentWorkerObj.role}</span>
                 <span>•</span>
-                <span className="flex items-center space-x-1 text-amber-300 truncate">
-                  <Truck className="w-3 h-3 shrink-0" />
-                  <span className="truncate">{currentWorkerObj.truck}</span>
-                </span>
+                <span className="text-amber-300 truncate font-medium">{currentWorkerObj.truck}</span>
+                <span>•</span>
+                <span className="font-mono text-emerald-400 font-bold">{totalCompletedHours.toFixed(1)}h esta semana</span>
               </div>
             </div>
           </div>
@@ -252,18 +254,18 @@ export default function WorkerView({
           {(currentWorkerObj.name.toLowerCase() === 'raúl' || currentWorkerObj.name.toLowerCase() === 'raul') && onOpenAdminDashboard && (
             <button
               onClick={onOpenAdminDashboard}
-              className="w-full sm:w-auto py-2 px-3.5 rounded-xl text-xs font-extrabold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center space-x-1.5 transition-all shadow-md active:scale-95 border border-amber-400 shrink-0"
+              className="w-full sm:w-auto py-1.5 px-3 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center space-x-1.5 transition-all shadow-sm active:scale-95 shrink-0"
             >
-              <ShieldCheck className="w-4 h-4 text-slate-950" />
-              <span>👑 Panel Admin Completo</span>
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>👑 Panel Admin</span>
             </button>
           )}
         </div>
 
         {/* 🎯 HERO ACTION CARD: IMMEDIATE TASK (0 SCROLL REQUIRED!) */}
-        <div className={`rounded-2xl p-4 sm:p-5 border transition-all ${
+        <div className={`mt-3 rounded-2xl p-4 sm:p-5 border transition-all ${
           activeShift
-            ? 'bg-gradient-to-r from-rose-950/50 via-slate-950 to-rose-950/30 border-rose-500/50 shadow-xl shadow-rose-950/30'
+            ? 'bg-gradient-to-r from-rose-950/60 via-slate-950 to-rose-950/40 border-rose-500/50 shadow-xl shadow-rose-950/30'
             : immediateTask
             ? 'bg-gradient-to-br from-emerald-950/40 via-slate-950 to-amber-950/30 border-emerald-500/40 shadow-xl shadow-emerald-950/20'
             : 'bg-slate-950/80 border-slate-800'
@@ -271,34 +273,30 @@ export default function WorkerView({
           {activeShift ? (
             /* ACTIVE SHIFT: Live Clock-Out Button */
             <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rose-500/20 pb-2.5">
+              <div className="flex items-center justify-between gap-2 border-b border-rose-500/20 pb-2">
                 <div className="flex items-center space-x-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-rose-400">
-                    🔴 ESTÁS EN TURNO ACTIVO
+                  <span className="text-[11px] font-black uppercase tracking-wider text-rose-400">
+                    TURNO ACTIVO EN CURSO
                   </span>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs text-slate-400">Tiempo transcurrido:</span>
-                  <span className="text-base font-extrabold font-mono text-emerald-400 bg-slate-900 px-2.5 py-0.5 rounded-lg border border-slate-800">
-                    {elapsedTimeFormatted}
-                  </span>
-                </div>
+                <span className="text-sm sm:text-base font-extrabold font-mono text-emerald-400 bg-slate-900 px-2.5 py-0.5 rounded-lg border border-slate-800">
+                  ⏱️ {elapsedTimeFormatted}
+                </span>
               </div>
 
               <div>
-                <span className="text-xs text-slate-400 block">Tarea en curso:</span>
-                <p className="text-sm sm:text-base font-extrabold text-white font-['Outfit'] mt-0.5">
+                <p className="text-sm sm:text-base font-extrabold text-white font-['Outfit']">
                   📌 {activeShift.taskName || 'Turno Operativo General'}
                 </p>
               </div>
 
               <button
                 onClick={() => { setPrefilledTask(null); setIsClockModalOpen(true); }}
-                className="w-full py-3.5 px-6 rounded-xl text-sm font-extrabold bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center space-x-2 transition-all shadow-xl shadow-rose-600/30 active:scale-95"
+                className="w-full py-3.5 px-4 rounded-xl text-sm font-extrabold bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center space-x-2 transition-all shadow-xl shadow-rose-600/30 active:scale-95"
               >
                 <Square className="w-4 h-4" />
-                <span>🔴 Fichar Salida / Finalizar Tarea</span>
+                <span>🔴 Fichar Salida / Finalizar Turno</span>
               </button>
             </div>
           ) : immediateTask ? (
@@ -307,8 +305,8 @@ export default function WorkerView({
               <div className="flex items-center justify-between gap-2 border-b border-emerald-500/20 pb-2">
                 <div className="flex items-center space-x-1.5 text-emerald-400">
                   <Target className="w-4 h-4 animate-pulse" />
-                  <span className="text-[10px] font-black uppercase tracking-wider">
-                    TU PRIMERA TAREA ASIGNADA
+                  <span className="text-[11px] font-black uppercase tracking-wider">
+                    TU PRÓXIMA TAREA
                   </span>
                 </div>
                 <span className="text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-md">
@@ -342,24 +340,24 @@ export default function WorkerView({
                   setPrefilledTask(immediateTask.taskName);
                   setIsClockModalOpen(true);
                 }}
-                className="w-full py-3.5 px-6 rounded-xl text-xs sm:text-sm font-extrabold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 flex items-center justify-center space-x-2 transition-all shadow-xl shadow-emerald-500/25 active:scale-95"
+                className="w-full py-3.5 px-4 rounded-xl text-sm font-extrabold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 flex items-center justify-center space-x-2 transition-all shadow-xl shadow-emerald-500/25 active:scale-95"
               >
                 <Play className="w-4 h-4 fill-current" />
-                <span>⏱️ Fichar Esta Tarea Ahora (1 Toque)</span>
+                <span>🟢 Fichar Entrada Ahora (1 Toque)</span>
               </button>
 
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 pt-1.5 text-[11px] text-slate-400">
+              <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
                 <button
                   onClick={() => {
                     setPrefilledTask(null);
                     setIsClockModalOpen(true);
                   }}
-                  className="hover:text-amber-400 text-slate-300 underline decoration-slate-700 hover:decoration-amber-400 transition-colors py-0.5"
+                  className="hover:text-amber-400 text-slate-300 underline decoration-slate-700 hover:decoration-amber-400 transition-colors"
                 >
-                  ➕ O fichar otra tarea / fichaje libre
+                  ➕ O fichar otra tarea libre
                 </button>
-                <span className="text-[10px] text-slate-500 flex items-center gap-1">
-                  <span>🔒</span> Queda bloqueado tras enviar
+                <span className="text-[10px] text-slate-500">
+                  🔒 Registro seguro
                 </span>
               </div>
             </div>
@@ -373,61 +371,41 @@ export default function WorkerView({
                 onClick={() => { setPrefilledTask(null); setIsClockModalOpen(true); }}
                 className="w-full sm:w-auto py-2.5 px-5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-all shadow-md"
               >
-                🟢 Fichar Tarea Extra o Libre
+                🟢 Fichar Turno Extra o Libre
               </button>
             </div>
           )}
         </div>
-
-        {/* 2. Compact 2x2 on Mobile / 4-Col on Desktop Metrics Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 pt-2 border-t border-slate-800/80 text-xs">
-          <div className={`p-2.5 rounded-xl border ${
-            activeShift ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-slate-950/80 border-slate-800 text-slate-400'
-          }`}>
-            <span className="text-[9px] font-bold block uppercase tracking-wider">Estado</span>
-            <div className="flex items-center space-x-1.5 mt-0.5">
-              <span className={`w-2 h-2 rounded-full ${activeShift ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`}></span>
-              <span className="font-bold text-xs text-white truncate font-['Outfit']">
-                {activeShift ? 'En Turno' : 'Fuera de Turno'}
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-            <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Turno Actual</span>
-            <p className="text-xs sm:text-sm font-extrabold text-emerald-400 font-mono mt-0.5 truncate">
-              {activeShift ? elapsedTimeFormatted : '0h 00m'}
-            </p>
-          </div>
-
-          <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-            <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider font-mono">Horas Semana</span>
-            <p className="text-xs sm:text-sm font-extrabold text-amber-400 font-mono mt-0.5">
-              {totalCompletedHours.toFixed(1)}h
-            </p>
-          </div>
-
-          <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-            <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider">Tareas Semana</span>
-            <p className="text-xs sm:text-sm font-extrabold text-blue-400 mt-0.5 font-['Outfit']">
-              {totalAssignedTasks} <span className="text-[10px] text-slate-400 font-normal">({completedTasksCount} ok)</span>
-            </p>
-          </div>
-        </div>
-
-        {/* Lock Security Notice - Slim 1-line */}
-        <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-          <span className="flex items-center gap-1.5">
-            <Lock className="w-3 h-3 text-amber-400 shrink-0" />
-            <span>Fichajes bloqueados tras registro (solo Socias/Admin editan).</span>
-          </span>
-          <span className="text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded">
-            🔒 INMUTABLE
-          </span>
-        </div>
       </div>
 
-      {/* 📅 SECTION: 7-DAY VISUAL WEEKLY TIMELINE BAR */}
+      {/* 2. Clean Segmented Navigation Tabs (Mis Tareas vs Mis Fichajes) */}
+      <div className="flex items-center space-x-2 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800">
+        <button
+          onClick={() => setWorkerTab('tasks')}
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
+            workerTab === 'tasks'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          <span>📋 Mis Tareas ({totalAssignedTasks})</span>
+        </button>
+
+        <button
+          onClick={() => setWorkerTab('history')}
+          className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
+            workerTab === 'history'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800'
+          }`}
+        >
+          <Clock className="w-3.5 h-3.5" />
+          <span>⏱️ Mis Fichajes ({myEntries.length})</span>
+        </button>
+      </div>
+
+      {workerTab === 'tasks' && (
       <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
         
         {/* Header & View Mode Switcher */}
@@ -477,8 +455,19 @@ export default function WorkerView({
           <TaskFlowGraphView activeWeekData={activeWeekData} onToggleTask={onToggleTask} />
         ) : (
           <>
-            {/* HORIZONTAL SCROLLABLE DAY PILLS BAR (SLIDER INSTEAD OF 400PX STACK) */}
+            {/* HORIZONTAL SCROLLABLE DAY PILLS BAR */}
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 pt-1 -mx-1 px-1">
+              <button
+                onClick={() => setSelectedDayKey(todayKey)}
+                className={`px-3 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all shrink-0 flex items-center gap-1.5 border ${
+                  selectedDayKey === todayKey
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
+                    : 'bg-slate-950 text-slate-200 border-slate-800 hover:text-white'
+                }`}
+              >
+                <span>⚡ Hoy ({weekDays.find(d => d.key === todayKey)?.label || 'Hoy'})</span>
+              </button>
+
               <button
                 onClick={() => setSelectedDayKey('all')}
                 className={`px-3 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all shrink-0 border ${
@@ -494,6 +483,7 @@ export default function WorkerView({
                 const isSelected = selectedDayKey === day.key;
                 const hasActivity = day.totalCount > 0;
                 const isSaturday = day.key === 'sabado';
+                const isToday = day.key === todayKey;
 
                 return (
                   <button
@@ -510,6 +500,11 @@ export default function WorkerView({
                     }`}
                   >
                     <span>{day.label} {day.date}</span>
+                    {isToday && (
+                      <span className="text-[9px] px-1 py-0.2 rounded bg-blue-500/20 text-blue-300 font-extrabold">
+                        HOY
+                      </span>
+                    )}
                     {day.totalCount > 0 && (
                       <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                         isSelected ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-amber-300'
@@ -712,8 +707,10 @@ export default function WorkerView({
           </>
         )}
       </div>
+      )}
 
       {/* SECTION: REGISTERED CLOCK ENTRIES HISTORY */}
+      {workerTab === 'history' && (
       <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
           <h3 className="text-lg sm:text-xl font-extrabold text-white font-['Outfit'] flex items-center space-x-2">
@@ -810,6 +807,7 @@ export default function WorkerView({
           </>
         )}
       </div>
+      )}
 
       {/* Clock In Modal for worker */}
       <ClockInModal
