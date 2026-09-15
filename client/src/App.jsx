@@ -32,7 +32,6 @@ import GeminiAssistantModal from './components/GeminiAssistantModal';
 import ClockInModal from './components/ClockInModal';
 import PayrollReportModal from './components/PayrollReportModal';
 import PartnerDashboardView from './components/PartnerDashboardView';
-import BalancesAgreementsModal from './components/BalancesAgreementsModal';
 import AdminWorkerEditorModal from './components/AdminWorkerEditorModal';
 import AdminTaskEditorModal from './components/AdminTaskEditorModal';
 
@@ -175,7 +174,10 @@ export default function App() {
   const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
   const [isClockInModalOpen, setIsClockInModalOpen] = useState(false);
   const [isPayrollModalOpen, setIsPayrollModalOpen] = useState(false);
-  const [isBalancesModalOpen, setIsBalancesModalOpen] = useState(false);
+  // Qué pestaña de Panel Socias mostrar al entrar — permite que atajos como
+  // el botón "Saldos & Acuerdos" del Panel de Control salten directo a esa
+  // pestaña en vez de abrir su propio modal duplicado.
+  const [partnerInitialTab, setPartnerInitialTab] = useState('live');
   const [isWorkerEditorModalOpen, setIsWorkerEditorModalOpen] = useState(false);
   const [isTaskEditorModalOpen, setIsTaskEditorModalOpen] = useState(false);
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
@@ -202,7 +204,8 @@ export default function App() {
       if (matched) setActiveWorker(matched.name);
     }
     if (viewParam === 'saldos' || viewParam === 'acuerdos') {
-      setIsBalancesModalOpen(true);
+      setPartnerInitialTab('balances');
+      setIsPartnerMode(true);
     }
 
     // A real, server-issued admin session token travelling in the link
@@ -440,6 +443,8 @@ export default function App() {
           onOpenShareModal={() => setIsShareModalOpen(true)}
           onOpenAddWeek={() => setIsWeekModalOpen(true)}
           onTogglePublicView={() => { setIsPartnerMode(false); setIsPublicPreviewMode(true); }}
+          onGoToDashboard={() => setIsPartnerMode(false)}
+          initialTab={partnerInitialTab}
           onUpdateClockEntry={handleUpdateClockEntry}
           onDeleteClockEntry={handleDeleteClockEntry}
           onClockEntryCreated={handleClockEntryCreated}
@@ -591,17 +596,7 @@ export default function App() {
           </div>
         )}
 
-        <BalancesAgreementsModal
-          isOpen={isBalancesModalOpen}
-          onClose={() => setIsBalancesModalOpen(false)}
-          balancesData={balancesData}
-          setBalancesData={(newData) => {
-            setBalancesData(newData);
-            localStorage.setItem('gula_balances_v1', JSON.stringify(newData));
-          }}
-        />
-
-        <AdminWorkerEditorModal 
+        <AdminWorkerEditorModal
           isOpen={isWorkerEditorModalOpen}
           onClose={() => setIsWorkerEditorModalOpen(false)}
           onAddWorker={handleAddWorker}
@@ -744,17 +739,17 @@ export default function App() {
 
             {/* Partner Dashboard Button */}
             <button
-              onClick={() => setIsPartnerMode(true)}
+              onClick={() => { setPartnerInitialTab('live'); setIsPartnerMode(true); }}
               className="flex-1 lg:flex-none bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
             >
               <ShieldCheck className="w-4 h-4" />
               <span>👑 Panel Socias & Saldos</span>
             </button>
 
-            {/* Saldos & Acuerdos Button */}
+            {/* Saldos & Acuerdos Button — entra directo a esa pestaña de Panel Socias */}
             {isAdmin && (
               <button
-                onClick={() => setIsBalancesModalOpen(true)}
+                onClick={() => { setPartnerInitialTab('balances'); setIsPartnerMode(true); }}
                 className="flex-1 lg:flex-none bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-800 transition-all shadow-sm"
               >
                 <span>📜 Saldos & Acuerdos</span>
@@ -1113,16 +1108,6 @@ export default function App() {
         onClockEntryCreated={handleClockEntryCreated}
       />
 
-
-      <BalancesAgreementsModal
-        isOpen={isBalancesModalOpen}
-        onClose={() => setIsBalancesModalOpen(false)}
-        balancesData={balancesData}
-        setBalancesData={(newData) => {
-          setBalancesData(newData);
-          localStorage.setItem('gula_balances_v1', JSON.stringify(newData));
-        }}
-      />
 
       <WeekManagerModal
         isOpen={isWeekModalOpen}
