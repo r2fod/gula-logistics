@@ -2,6 +2,7 @@
 
 ## Abiertos, esperando decisión o dato del usuario
 
+- [ ] **Jaime (novato) va solo en la boda de María y Joaquín** (sábado, Semana 3): regla de negocio dice que Jaime debe ir siempre acompañado de Ricardo o Gonzalo por ser novato, pero las 3 bodas son simultáneas — Ricardo y Gonzalo están cada uno en su propia boda a la misma hora, así que no pueden acompañarlo ahí. Sin resolver: ¿se pasa a Johan (o a otra persona del roster) como apoyo en vez de Ricardo/Gonzalo, o se acepta como excepción inevitable dado que solo hay 2 veteranos para 3 bodas a la vez?
 - [ ] **Tarea "Recoger Generador 7K + Recoger Fulanita"** (viernes 18, Semana 3) sigue sin nadie asignado (`assigned: []`). Confirmado que "Fulanita" es tal cual como aparece en la hoja real, no es un error de transcripción.
 - [ ] Ricardo tiene dos recogidas la misma mañana del martes (Dealde + apoyo en Albacar con Johan) — posible solape de horario, sin confirmar si es intencional.
 - [ ] **`PayrollReportModal.jsx` no muestra la "Valoración Interna Nóminas"** (turnos de Irene/Raúl a 14€/h) como tarjeta — solo se calcula internamente y aparece en el texto de WhatsApp copiado. ¿Se quiere una 4ª tarjeta resumen en el modal para verla sin tener que copiar el WhatsApp? (ver detalle en `MEJORAS.md`).
