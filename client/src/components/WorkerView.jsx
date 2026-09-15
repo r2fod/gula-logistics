@@ -348,17 +348,19 @@ export default function WorkerView({
                 <span>⏱️ Fichar Esta Tarea Ahora (1 Toque)</span>
               </button>
 
-              <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 pt-1.5 text-[11px] text-slate-400">
                 <button
                   onClick={() => {
                     setPrefilledTask(null);
                     setIsClockModalOpen(true);
                   }}
-                  className="hover:text-amber-400 text-slate-400 underline decoration-slate-700 hover:decoration-amber-400 transition-colors"
+                  className="hover:text-amber-400 text-slate-300 underline decoration-slate-700 hover:decoration-amber-400 transition-colors py-0.5"
                 >
                   ➕ O fichar otra tarea / fichaje libre
                 </button>
-                <span className="text-[10px] text-slate-500">Queda bloqueado tras enviar</span>
+                <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                  <span>🔒</span> Queda bloqueado tras enviar
+                </span>
               </div>
             </div>
           ) : (
@@ -520,205 +522,205 @@ export default function WorkerView({
                 );
               })}
             </div>
-          </>
-        )}
 
-        {/* DETAILED TASKS & WEDDINGS BREAKDOWN ACCORDING TO SELECTED DAY */}
-        <div className="space-y-4 pt-4 border-t border-slate-800">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-extrabold text-white font-['Outfit'] flex items-center space-x-2">
-              <BarChart3 className="w-5 h-5 text-amber-400" />
-              <span>
-                {selectedDayKey === 'all' 
-                  ? 'Desglose Completo de tu Cuadrante Semanal' 
-                  : `Tareas Asignadas para ${weekDays.find(d => d.key === selectedDayKey)?.title}`}
-              </span>
-            </h3>
-            <span className="text-xs text-slate-400 font-semibold bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
-              {displayedDays.filter(d => d.totalCount > 0).length} días con asignación directa
-            </span>
-          </div>
+            {/* DETAILED TASKS & WEDDINGS BREAKDOWN ACCORDING TO SELECTED DAY */}
+            <div className="space-y-4 pt-4 border-t border-slate-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <h3 className="text-base sm:text-lg font-extrabold text-white font-['Outfit'] flex items-center space-x-2">
+                  <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
+                  <span>
+                    {selectedDayKey === 'all' 
+                      ? 'Desglose Completo de tu Cuadrante Semanal' 
+                      : `Tareas Asignadas para ${weekDays.find(d => d.key === selectedDayKey)?.title}`}
+                  </span>
+                </h3>
+                <span className="text-[11px] sm:text-xs text-slate-400 font-semibold bg-slate-950 px-3 py-1 rounded-xl border border-slate-800 self-start sm:self-auto">
+                  {displayedDays.filter(d => d.totalCount > 0).length} días con asignación directa
+                </span>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
-            {displayedDays.map((dayGroup) => {
-              if (dayGroup.totalCount === 0 && selectedDayKey === 'all') return null;
+              <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4">
+                {displayedDays.map((dayGroup) => {
+                  if (dayGroup.totalCount === 0 && selectedDayKey === 'all') return null;
 
-              return (
-                <div 
-                  key={dayGroup.key} 
-                  className={`bg-slate-950 border p-5 rounded-2xl space-y-4 transition-all ${
-                    dayGroup.weddings.length > 0
-                      ? 'border-amber-500/40 bg-gradient-to-br from-slate-950 via-slate-950 to-amber-950/20'
-                      : 'border-slate-800'
-                  }`}
-                >
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div>
-                      <h4 className="font-extrabold text-amber-300 text-base font-['Outfit']">
-                        📅 {dayGroup.title}
-                      </h4>
-                      <span className="text-[11px] text-slate-400 block mt-0.5">{dayGroup.badge}</span>
-                    </div>
+                  return (
+                    <div 
+                      key={dayGroup.key} 
+                      className={`bg-slate-950 border p-4 sm:p-5 rounded-2xl space-y-3 sm:space-y-4 transition-all ${
+                        dayGroup.weddings.length > 0
+                          ? 'border-amber-500/40 bg-gradient-to-br from-slate-950 via-slate-950 to-amber-950/20'
+                          : 'border-slate-800'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                        <div>
+                          <h4 className="font-extrabold text-amber-300 text-sm sm:text-base font-['Outfit']">
+                            📅 {dayGroup.title}
+                          </h4>
+                          <span className="text-[11px] text-slate-400 block mt-0.5">{dayGroup.badge}</span>
+                        </div>
 
-                    <span className="text-[10px] bg-slate-900 text-slate-300 font-bold px-2.5 py-1 rounded-lg border border-slate-800">
-                      {dayGroup.totalCount} {dayGroup.totalCount === 1 ? 'tarea' : 'tareas'}
-                    </span>
-                  </div>
+                        <span className="text-[10px] bg-slate-900 text-slate-300 font-bold px-2 py-0.5 rounded-lg border border-slate-800 shrink-0">
+                          {dayGroup.totalCount} {dayGroup.totalCount === 1 ? 'tarea' : 'tareas'}
+                        </span>
+                      </div>
 
-                  {/* Tasks List */}
-                  {dayGroup.tasks.length > 0 && (
-                    <ul className="space-y-2 text-xs text-slate-200">
-                      {dayGroup.tasks.map((task, idx) => {
-                        const taskText = typeof task === 'object' ? task.text : task;
-                        const isCompleted = typeof task === 'object' ? task.completed : false;
-                        const taskLabel = typeof task === 'object' && task.timeFrame
-                          ? `${taskText} (${task.timeFrame})`
-                          : taskText;
+                      {/* Tasks List */}
+                      {dayGroup.tasks.length > 0 && (
+                        <ul className="space-y-2 text-xs text-slate-200">
+                          {dayGroup.tasks.map((task, idx) => {
+                            const taskText = typeof task === 'object' ? task.text : task;
+                            const isCompleted = typeof task === 'object' ? task.completed : false;
+                            const taskLabel = typeof task === 'object' && task.timeFrame
+                              ? `${taskText} (${task.timeFrame})`
+                              : taskText;
 
-                        return (
-                          <li 
-                            key={idx}
-                            className={`p-3 rounded-xl border transition-all flex flex-col space-y-2.5 ${
-                              isCompleted
-                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                                : 'bg-slate-900 border-slate-800 text-slate-200'
-                            }`}
-                          >
-                            <div 
-                              className="flex items-start space-x-2.5 cursor-pointer hover:text-white"
-                              onClick={() => {
-                                if (onToggleTask) {
-                                  const dayObj = activeWeekData.schedule?.[dayGroup.key];
-                                  if (dayObj && dayObj.tasks) {
-                                    const taskIdx = dayObj.tasks.findIndex(t => (typeof t === 'object' ? t.text : t) === taskText);
-                                    if (taskIdx !== -1) onToggleTask(dayGroup.key, taskIdx);
-                                  }
-                                }
-                              }}
-                            >
-                              <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`} />
-                              <span className={`leading-relaxed font-medium ${isCompleted ? 'line-through' : ''}`}>
-                                {taskText}
-                              </span>
-                            </div>
+                            return (
+                              <li 
+                                key={idx}
+                                className={`p-3 rounded-xl border transition-all flex flex-col space-y-2 ${
+                                  isCompleted
+                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                                    : 'bg-slate-900 border-slate-800 text-slate-200'
+                                }`}
+                              >
+                                <div 
+                                  className="flex items-start space-x-2.5 cursor-pointer hover:text-white"
+                                  onClick={() => {
+                                    if (onToggleTask) {
+                                      const dayObj = activeWeekData.schedule?.[dayGroup.key];
+                                      if (dayObj && dayObj.tasks) {
+                                        const taskIdx = dayObj.tasks.findIndex(t => (typeof t === 'object' ? t.text : t) === taskText);
+                                        if (taskIdx !== -1) onToggleTask(dayGroup.key, taskIdx);
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`} />
+                                  <span className={`leading-relaxed font-medium ${isCompleted ? 'line-through' : ''}`}>
+                                    {taskText}
+                                  </span>
+                                </div>
 
-                            {/* Rich Metadata (Time & Location) */}
-                            {typeof task === 'object' && (task.timeFrame || task.mapsUrl || task.location) && (
-                              <div className="flex flex-wrap items-center gap-2 pl-6 mt-1">
-                                {task.timeFrame && (
+                                {/* Rich Metadata (Time & Location) */}
+                                {typeof task === 'object' && (task.timeFrame || task.mapsUrl || task.location) && (
+                                  <div className="flex flex-wrap items-center gap-1.5 pl-6 mt-0.5">
+                                    {task.timeFrame && (
+                                      <span className="text-[10px] font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded flex items-center gap-1">
+                                        <Clock className="w-3 h-3" />
+                                        {task.timeFrame}
+                                      </span>
+                                    )}
+                                    {task.mapsUrl ? (
+                                      <a 
+                                        href={task.mapsUrl} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-[10px] font-bold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 px-2 py-0.5 rounded flex items-center gap-1 transition-colors"
+                                      >
+                                        <MapPin className="w-3 h-3" />
+                                        {task.location || 'Abrir en Maps'}
+                                      </a>
+                                    ) : task.location ? (
+                                      <span className="text-[10px] font-bold bg-slate-800 text-slate-400 px-2 py-0.5 rounded flex items-center gap-1">
+                                        <MapPin className="w-3 h-3" />
+                                        {task.location}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                )}
+
+                                {/* Per-Task Clock-In Button */}
+                                {!isCompleted && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPrefilledTask(taskLabel);
+                                      setIsClockModalOpen(true);
+                                    }}
+                                    className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95"
+                                  >
+                                    <Play className="w-3 h-3" />
+                                    <span>⏱️ Fichar Esta Tarea</span>
+                                  </button>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+
+                      {/* Saturday Weddings assigned */}
+                      {dayGroup.weddings.length > 0 && (
+                        <div className="space-y-2 pt-2">
+                          <span className="text-[11px] font-extrabold text-amber-300 uppercase tracking-wider flex items-center space-x-1">
+                            <Award className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Boda Asignada Sábado</span>
+                          </span>
+                          {dayGroup.weddings.map((w, idx) => (
+                            <div key={idx} className="bg-slate-900 p-3 sm:p-3.5 rounded-xl border border-amber-500/30 space-y-1">
+                              <div className="flex justify-between items-start">
+                                <span className="font-extrabold text-white text-xs sm:text-sm block">🏔️ {w.location}</span>
+                                {w.timeFrame && (
                                   <span className="text-[10px] font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded flex items-center gap-1">
                                     <Clock className="w-3 h-3" />
-                                    {task.timeFrame}
+                                    {w.timeFrame}
                                   </span>
                                 )}
-                                {task.mapsUrl ? (
-                                  <a 
-                                    href={task.mapsUrl} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-[10px] font-bold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 px-2 py-0.5 rounded flex items-center gap-1 transition-colors"
-                                  >
-                                    <MapPin className="w-3 h-3" />
-                                    {task.location || 'Abrir en Maps'}
-                                  </a>
-                                ) : task.location ? (
-                                  <span className="text-[10px] font-bold bg-slate-800 text-slate-400 px-2 py-0.5 rounded flex items-center gap-1">
-                                    <MapPin className="w-3 h-3" />
-                                    {task.location}
-                                  </span>
-                                ) : null}
                               </div>
-                            )}
+                              
+                              <span className="text-amber-400 font-semibold text-xs block">{w.truck}</span>
+                              <p className="text-[11px] text-slate-300 leading-relaxed pb-1">{w.details}</p>
+                              
+                              {w.mapsUrl && (
+                                <a 
+                                  href={w.mapsUrl} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="inline-flex text-[10px] font-bold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 px-2 py-1 rounded items-center gap-1 mt-1 transition-colors"
+                                >
+                                  <MapPin className="w-3 h-3" />
+                                  Ruta a {w.location}
+                                </a>
+                              )}
 
-                            {/* ⏱️ Per-Task Clock-In Button */}
-                            {!isCompleted && (
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setPrefilledTask(taskLabel);
+                                onClick={() => {
+                                  setPrefilledTask(`Boda: ${w.location} (${w.truck})`);
                                   setIsClockModalOpen(true);
                                 }}
-                                className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95"
+                                className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all active:scale-95"
                               >
-                                <Play className="w-3 h-3" />
-                                <span>⏱️ Fichar Esta Tarea</span>
+                                <Play className="w-3 h-3 fill-current" />
+                                <span>⏱️ Fichar Boda Sábado</span>
                               </button>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-
-                  {/* Saturday Weddings assigned */}
-                  {dayGroup.weddings.length > 0 && (
-                    <div className="space-y-2 pt-2">
-                      <span className="text-[11px] font-extrabold text-amber-300 uppercase tracking-wider flex items-center space-x-1">
-                        <Award className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Boda Asignada Sábado</span>
-                      </span>
-                      {dayGroup.weddings.map((w, idx) => (
-                        <div key={idx} className="bg-slate-900 p-3.5 rounded-xl border border-amber-500/30 space-y-1">
-                          <div className="flex justify-between items-start">
-                            <span className="font-extrabold text-white block">🏔️ {w.location}</span>
-                            {w.timeFrame && (
-                              <span className="text-[10px] font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                {w.timeFrame}
-                              </span>
-                            )}
-                          </div>
-                          
-                          <span className="text-amber-400 font-semibold text-xs block">{w.truck}</span>
-                          <p className="text-[11px] text-slate-300 leading-relaxed pb-1">{w.details}</p>
-                          
-                          {w.mapsUrl && (
-                            <a 
-                              href={w.mapsUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="inline-flex text-[10px] font-bold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 px-2 py-1 rounded items-center gap-1 mt-1 transition-colors"
-                            >
-                              <MapPin className="w-3 h-3" />
-                              Ruta a {w.location}
-                            </a>
-                          )}
-
-                          <button
-                            onClick={() => {
-                              setPrefilledTask(`Boda: ${w.location} (${w.truck})`);
-                              setIsClockModalOpen(true);
-                            }}
-                            className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all active:scale-95"
-                          >
-                            <Play className="w-3 h-3 fill-current" />
-                            <span>⏱️ Fichar Boda Sábado</span>
-                          </button>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      )}
 
-                  {dayGroup.totalCount === 0 && (
-                    <p className="text-xs text-slate-500 italic text-center py-4">
-                      Sin tareas directas asignadas para este día. Estás en backup u operativa general de base.
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                      {dayGroup.totalCount === 0 && (
+                        <p className="text-xs text-slate-500 italic text-center py-4">
+                          Sin tareas directas asignadas para este día. Estás en backup u operativa general de base.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* SECTION: REGISTERED CLOCK ENTRIES HISTORY */}
-      <div className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 shadow-2xl backdrop-blur-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h3 className="text-xl font-extrabold text-white font-['Outfit'] flex items-center space-x-2">
-            <Clock className="w-5 h-5 text-emerald-400" />
+      <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <h3 className="text-lg sm:text-xl font-extrabold text-white font-['Outfit'] flex items-center space-x-2">
+            <Clock className="w-5 h-5 text-emerald-400 shrink-0" />
             <span>Mi Historial de Fichajes Registrados</span>
           </h3>
-          <span className="text-xs text-slate-400 font-semibold bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800">
+          <span className="text-xs text-slate-400 font-semibold bg-slate-950 px-3 py-1 rounded-xl border border-slate-800 self-start sm:self-auto">
             {myEntries.length} fichajes enviados
           </span>
         </div>
@@ -729,48 +731,83 @@ export default function WorkerView({
             <p className="text-xs text-slate-400">Aún no has registrado ningún fichaje de entrada o salida esta semana.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
-                  <th className="py-3 px-3">Fecha & Hora</th>
-                  <th className="py-3 px-3">Tipo</th>
-                  <th className="py-3 px-3">Tarea / Concepto</th>
-                  <th className="py-3 px-3">Estado</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {myEntries.map((entry) => (
-                  <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
-                    <td className="py-3 px-3 font-mono text-slate-200">
-                      <div className="font-bold text-white">{entry.timeFormatted}</div>
-                      <div className="text-[10px] text-slate-500">{entry.dateFormatted}</div>
-                    </td>
-                    <td className="py-3 px-3">
-                      {entry.type === 'entrada' ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">
-                          🟢 ENTRADA
-                        </span>
-                      ) : (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold">
-                          🔴 SALIDA
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 text-slate-300 font-medium">
-                      {entry.taskName || entry.note || '—'}
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 inline-flex items-center space-x-1">
-                        <Lock className="w-3 h-3 text-amber-400" />
-                        <span>🔒 Registrado</span>
+          <>
+            {/* Mobile Card Layout (sm:hidden) */}
+            <div className="block sm:hidden space-y-2.5">
+              {myEntries.map((entry) => (
+                <div key={entry.id} className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-white">
+                      {entry.timeFormatted} <span className="text-[10px] text-slate-400 font-normal">({entry.dateFormatted})</span>
+                    </span>
+                    {entry.type === 'entrada' ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">
+                        🟢 ENTRADA
                       </span>
-                    </td>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold">
+                        🔴 SALIDA
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-300 font-medium">
+                    📌 {entry.taskName || entry.note || 'Turno General'}
+                  </p>
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-[10px] text-slate-400">
+                    <span>{entry.durationHours ? `Duración: ${Number(entry.durationHours).toFixed(1)}h` : 'Turno registrado'}</span>
+                    <span className="text-amber-300 font-bold flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-amber-400" />
+                      Inmutable
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View (hidden sm:block) */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
+                    <th className="py-3 px-3">Fecha & Hora</th>
+                    <th className="py-3 px-3">Tipo</th>
+                    <th className="py-3 px-3">Tarea / Concepto</th>
+                    <th className="py-3 px-3">Estado</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {myEntries.map((entry) => (
+                    <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
+                      <td className="py-3 px-3 font-mono text-slate-200">
+                        <div className="font-bold text-white">{entry.timeFormatted}</div>
+                        <div className="text-[10px] text-slate-500">{entry.dateFormatted}</div>
+                      </td>
+                      <td className="py-3 px-3">
+                        {entry.type === 'entrada' ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">
+                            🟢 ENTRADA
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold">
+                            🔴 SALIDA
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-slate-300 font-medium">
+                        {entry.taskName || entry.note || '—'}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 inline-flex items-center space-x-1">
+                          <Lock className="w-3 h-3 text-amber-400" />
+                          <span>🔒 Registrado</span>
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
 
