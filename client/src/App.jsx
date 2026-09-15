@@ -202,9 +202,28 @@ export default function App() {
     if (weekParam && allWeeks[weekParam]) {
       setActiveWeekId(weekParam);
     }
+    // El icono de la app instalada (PWA) siempre abre start_url del
+    // manifest, SIN los parámetros de la URL original (?worker=...) — así
+    // que un trabajador que instale su propio enlace perdía su identidad
+    // en cada relanzamiento y caía al panel general. Se recuerda el
+    // último trabajador válido en localStorage y se restaura solo si
+    // sigue en el roster actual (si lo quitaste del equipo, no se
+    // restaura — sigue revocado).
     if (workerParam) {
       const matched = workersList.find(w => w.name.toLowerCase() === workerParam.toLowerCase());
-      if (matched) setActiveWorker(matched.name);
+      if (matched) {
+        setActiveWorker(matched.name);
+        try { localStorage.setItem('gula_last_worker_v1', matched.name); } catch (e) {}
+      }
+    } else {
+      try {
+        const lastWorker = localStorage.getItem('gula_last_worker_v1');
+        if (lastWorker) {
+          const stillValid = workersList.find(w => w.name.toLowerCase() === lastWorker.toLowerCase());
+          if (stillValid) setActiveWorker(stillValid.name);
+          else localStorage.removeItem('gula_last_worker_v1');
+        }
+      } catch (e) {}
     }
     // ?view=saldos/acuerdos ya lo entiende PartnerDashboardView directamente
     // (lee ?tab=/?view= al montar y abre la pestaña 'balances' con datos
@@ -481,6 +500,7 @@ export default function App() {
           onDeleteClockEntry={handleDeleteClockEntry}
           onOpenAdminDashboard={() => {
             setActiveWorker(null);
+            try { localStorage.removeItem('gula_last_worker_v1'); } catch (e) {}
             clearUrlParams();
             setIsAdminLoginOpen(true);
           }}
@@ -527,9 +547,55 @@ export default function App() {
     );
   }
 
+  // Nadie identificado (ni trabajador ni sesión de admin real): mostrar la
+  // vista pública segura, no el panel de socias. `isPartnerMode` ya se
+  // calculaba bien al montar (token de admin guardado, o algún flag
+  // ?socias/?admin en la URL), pero no se estaba usando para decidir qué
+  // se renderiza aquí — así que cualquiera sin sesión (incluido el icono
+  // de la app instalada, que pierde los parámetros de la URL original al
+  // abrirse) veía igualmente el Cuadrante/Saldos completos sin login.
+  if (!isPartnerMode && !isAdmin) {
+    return (
+      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans">
+        <div className="w-full space-y-4">
+          <PublicView
+            data={activeWeek}
+            workersList={workersList}
+            clockEntries={clockEntries}
+            onToggleTask={() => {}}
+            onOpenLogin={() => setIsAdminLoginOpen(true)}
+            onClockEntryCreated={handleClockEntryCreated}
+            onOpenClockModal={(workerName) => {
+              if (workerName) setActiveWorker(workerName);
+              setIsClockInModalOpen(true);
+            }}
+          />
+        </div>
+
+        <ClockInModal
+          isOpen={isClockInModalOpen}
+          onClose={() => setIsClockInModalOpen(false)}
+          workersList={workersList}
+          initialWorkerName={activeWorker}
+          clockEntries={clockEntries}
+          onClockEntryCreated={handleClockEntryCreated}
+        />
+
+        <AdminLoginModal
+          isOpen={isAdminLoginOpen}
+          onClose={() => setIsAdminLoginOpen(false)}
+          onSuccess={() => {
+            setIsAdminUnlocked(true);
+            setIsPartnerMode(true);
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="bg-slate-950 min-h-screen text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950">
-      <PartnerDashboardView 
+      <PartnerDashboardView
         activeWeekData={activeWeek}
         allWeeks={allWeeks}
         activeWeekId={activeWeekId}

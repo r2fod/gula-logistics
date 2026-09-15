@@ -116,6 +116,16 @@ export default function PublicView({
                 </>
               )}
             </button>
+
+            {onOpenLogin && (
+              <button
+                onClick={onOpenLogin}
+                className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-semibold transition-all shadow-md active:scale-95"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Acceso Admin / Socias</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
