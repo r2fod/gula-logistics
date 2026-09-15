@@ -1226,7 +1226,7 @@ export default function PartnerDashboardView({
               .map((t) => (
                 <div key={`jueves-${t.id}`} className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-2">
                   <span className="font-extrabold text-amber-300 block text-base font-['Outfit']">🏔️ {t.location}</span>
-                  <span className="text-slate-200 block font-semibold">Sin camión asignado</span>
+                  <span className="text-slate-200 block font-semibold">{t.truck || 'Sin camión asignado'}</span>
                   <p className="text-xs text-slate-400 leading-relaxed">{t.text}</p>
                 </div>
               ))}
