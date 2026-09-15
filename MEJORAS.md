@@ -2,7 +2,11 @@
 
 ## Editar/añadir horas manualmente en Control de Saldos & Acuerdos
 
-Pedido por el usuario — antes esa pestaña era de solo visualización. Cada trabajador tiene ahora, en modo Admin, un botón "Añadir concepto / horas manual" (formulario inline: texto del concepto + importe, admite negativos) y un icono de papelera en cada línea del desglose para eliminarla. Al guardar/borrar se recalcula `currentBalance` como la suma del `breakdown` y se persiste vía `PUT /api/balances/:id` (endpoint ya existía, protegido con `requireAdmin`, pero no estaba conectado a ninguna UI). El estado local se actualiza al instante (optimista) sin esperar a un refetch. Verificado end-to-end contra el backend real de producción (añadido y borrado un concepto de prueba en el saldo de Johan, confirmado el recálculo correcto y la restauración limpia). Para una "socia" sin desbloquear Admin, la pestaña sigue siendo de solo lectura — ni el botón de añadir ni las papeletas de borrar aparecen.
+Pedido por el usuario — antes esa pestaña era de solo visualización. Cada trabajador tiene ahora, en modo Admin, un botón "Añadir concepto / horas manual" con **dos modos**:
+- **🕒 Turno (calcula solo)**: fecha + hora entrada + hora salida → calcula horas y precio solo (tarifa del trabajador, `hourlyRate` o 10€/h Extra · 14€/h Nómina), con vista previa en vivo, y construye el texto del concepto en el mismo formato que ya usan las entradas reales (`🕒 15/09 (17:00 a 20:30 - 3.5h a 10€/h)`). Soporta turnos que cruzan medianoche.
+- **✏️ Ajuste manual**: concepto libre + importe directo (admite negativo), para cosas que no son horas trabajadas — roturas, saldos iniciales, etc.
+
+Además, icono de papelera en cada línea del desglose para eliminarla. Al guardar/borrar se recalcula `currentBalance` como la suma del `breakdown` y se persiste vía `PUT /api/balances/:id` (endpoint ya existía, protegido con `requireAdmin`, pero no estaba conectado a ninguna UI). El estado local se actualiza al instante (optimista) sin esperar a un refetch. Verificado end-to-end contra el backend real de producción — probados ambos modos (turno de 3.5h calculado correctamente a 35,00€, y el borrado), confirmado el recálculo correcto y la restauración limpia. Para una "socia" sin desbloquear Admin, la pestaña sigue siendo de solo lectura.
 
 ## Limpieza — Datos Sensibles & Código (plan de 4 fases, Fases 1-2 hechas)
 

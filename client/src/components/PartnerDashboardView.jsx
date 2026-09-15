@@ -93,8 +93,12 @@ export default function PartnerDashboardView({
   const [isAdminSettingsOpen, setIsAdminSettingsOpen] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [addingConceptFor, setAddingConceptFor] = useState(null); // worker.id en edición, o null
+  const [newConceptMode, setNewConceptMode] = useState('turno'); // 'turno' (fecha+horario, calcula solo) | 'manual' (concepto libre)
   const [newConceptText, setNewConceptText] = useState('');
   const [newConceptAmount, setNewConceptAmount] = useState('');
+  const [newShiftDate, setNewShiftDate] = useState('');
+  const [newShiftStart, setNewShiftStart] = useState('');
+  const [newShiftEnd, setNewShiftEnd] = useState('');
   const [savingBalanceId, setSavingBalanceId] = useState(null);
 
   const handleTabClick = (tabKey) => {
@@ -147,6 +151,58 @@ export default function PartnerDashboardView({
     }
   };
 
+  const parseHM = (hm) => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(hm || '');
+    if (!m) return null;
+    return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+  };
+
+  // Calcula horas + importe a partir de fecha/entrada/salida de un turno,
+  // igual que se hace con los fichajes reales (pairShiftsFromEntries) —
+  // aquí es manual porque es un turno que no se fichó desde el móvil.
+  const computeShiftPreview = (worker) => {
+    const startMin = parseHM(newShiftStart);
+    const endMin = parseHM(newShiftEnd);
+    if (startMin === null || endMin === null || !newShiftDate) return null;
+
+    let diffMin = endMin - startMin;
+    if (diffMin <= 0) diffMin += 24 * 60; // cruza medianoche (ej. bodas hasta la madrugada)
+    const hours = diffMin / 60;
+
+    const rate = worker.hourlyRate || (worker.statusType === 'payroll' ? 14 : 10);
+    const amount = hours * rate;
+
+    const dateObj = new Date(`${newShiftDate}T00:00:00`);
+    const dateLabel = Number.isNaN(dateObj.getTime())
+      ? newShiftDate
+      : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
+    const hoursLabel = Number.isInteger(hours) ? `${hours}` : hours.toFixed(1);
+    const concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${hoursLabel}h a ${rate}€/h)`;
+
+    return { hours, rate, amount, concept };
+  };
+
+  const resetAddConceptForm = () => {
+    setAddingConceptFor(null);
+    setNewConceptText('');
+    setNewConceptAmount('');
+    setNewShiftDate('');
+    setNewShiftStart('');
+    setNewShiftEnd('');
+  };
+
+  const handleAddShift = async (worker) => {
+    const preview = computeShiftPreview(worker);
+    if (!preview) return;
+
+    const newItem = { concept: preview.concept, amount: preview.amount, isPositive: true };
+    const newBreakdown = [...(worker.breakdown || []), newItem];
+    const newBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
+
+    await persistWorkerBalance(worker.id, { breakdown: newBreakdown, currentBalance: newBalance });
+    resetAddConceptForm();
+  };
+
   const handleAddConcept = async (worker) => {
     const amount = parseFloat(newConceptAmount.replace(',', '.'));
     if (!newConceptText.trim() || Number.isNaN(amount)) return;
@@ -156,9 +212,7 @@ export default function PartnerDashboardView({
     const newBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
 
     await persistWorkerBalance(worker.id, { breakdown: newBreakdown, currentBalance: newBalance });
-    setAddingConceptFor(null);
-    setNewConceptText('');
-    setNewConceptAmount('');
+    resetAddConceptForm();
   };
 
   const handleDeleteConcept = async (worker, idx) => {
@@ -683,41 +737,118 @@ export default function PartnerDashboardView({
 
                       {adminUnlocked && (
                         addingConceptFor === worker.id ? (
-                          <div className="p-3 rounded-xl border border-amber-500/30 bg-slate-950/80 space-y-2">
-                            <input
-                              type="text"
-                              value={newConceptText}
-                              onChange={(e) => setNewConceptText(e.target.value)}
-                              placeholder="Concepto (ej: 15/09 Turno extra 3h a 10€/h)"
-                              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500"
-                            />
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={newConceptAmount}
-                              onChange={(e) => setNewConceptAmount(e.target.value)}
-                              placeholder="Importe (usa - para restar, ej: -20.00)"
-                              className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500"
-                            />
-                            <div className="flex gap-2">
+                          <div className="p-3 rounded-xl border border-amber-500/30 bg-slate-950/80 space-y-2.5">
+                            {/* Modo: turno (calcula solo) vs ajuste manual */}
+                            <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
                               <button
-                                onClick={() => handleAddConcept(worker)}
-                                disabled={savingBalanceId === worker.id}
-                                className="flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all disabled:opacity-50"
+                                onClick={() => setNewConceptMode('turno')}
+                                className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all ${
+                                  newConceptMode === 'turno' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                                }`}
                               >
-                                {savingBalanceId === worker.id ? 'Guardando...' : 'Guardar'}
+                                🕒 Turno (calcula solo)
                               </button>
                               <button
-                                onClick={() => { setAddingConceptFor(null); setNewConceptText(''); setNewConceptAmount(''); }}
-                                className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all"
+                                onClick={() => setNewConceptMode('manual')}
+                                className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all ${
+                                  newConceptMode === 'manual' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                                }`}
                               >
-                                Cancelar
+                                ✏️ Ajuste manual
                               </button>
                             </div>
+
+                            {newConceptMode === 'turno' ? (
+                              (() => {
+                                const preview = computeShiftPreview(worker);
+                                return (
+                                  <>
+                                    <input
+                                      type="date"
+                                      value={newShiftDate}
+                                      onChange={(e) => setNewShiftDate(e.target.value)}
+                                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500 [color-scheme:dark]"
+                                    />
+                                    <div className="flex gap-2">
+                                      <input
+                                        type="time"
+                                        value={newShiftStart}
+                                        onChange={(e) => setNewShiftStart(e.target.value)}
+                                        placeholder="Entrada"
+                                        className="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500 [color-scheme:dark]"
+                                      />
+                                      <input
+                                        type="time"
+                                        value={newShiftEnd}
+                                        onChange={(e) => setNewShiftEnd(e.target.value)}
+                                        placeholder="Salida"
+                                        className="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500 [color-scheme:dark]"
+                                      />
+                                    </div>
+                                    {preview && (
+                                      <div className="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2 font-mono">
+                                        {preview.concept} → <b>+{preview.amount.toFixed(2)} €</b>
+                                      </div>
+                                    )}
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => handleAddShift(worker)}
+                                        disabled={savingBalanceId === worker.id || !preview}
+                                        className="flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all disabled:opacity-50"
+                                      >
+                                        {savingBalanceId === worker.id ? 'Guardando...' : 'Guardar'}
+                                      </button>
+                                      <button
+                                        onClick={resetAddConceptForm}
+                                        className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all"
+                                      >
+                                        Cancelar
+                                      </button>
+                                    </div>
+                                  </>
+                                );
+                              })()
+                            ) : (
+                              <>
+                                <input
+                                  type="text"
+                                  value={newConceptText}
+                                  onChange={(e) => setNewConceptText(e.target.value)}
+                                  placeholder="Concepto (ej: Roturas cristalería eventos)"
+                                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                                />
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={newConceptAmount}
+                                  onChange={(e) => setNewConceptAmount(e.target.value)}
+                                  placeholder="Importe (usa - para restar, ej: -20.00)"
+                                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleAddConcept(worker)}
+                                    disabled={savingBalanceId === worker.id}
+                                    className="flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all disabled:opacity-50"
+                                  >
+                                    {savingBalanceId === worker.id ? 'Guardando...' : 'Guardar'}
+                                  </button>
+                                  <button
+                                    onClick={resetAddConceptForm}
+                                    className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </>
+                            )}
                           </div>
                         ) : (
                           <button
-                            onClick={() => setAddingConceptFor(worker.id)}
+                            onClick={() => {
+                              setAddingConceptFor(worker.id);
+                              setNewShiftDate(new Date().toISOString().slice(0, 10));
+                            }}
                             className="w-full py-2 rounded-xl border border-dashed border-slate-700 hover:border-amber-500/50 text-slate-400 hover:text-amber-400 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
                           >
                             <Plus className="w-3.5 h-3.5" />
