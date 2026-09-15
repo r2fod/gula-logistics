@@ -700,6 +700,19 @@ export default function PartnerDashboardView({
                       </div>
                     </div>
 
+                    {/* Horas reales fichadas — mismo cálculo que Resumen
+                        Financiero (workerBalances/aggregateShiftsByWorker),
+                        solo que también se muestra aquí junto al saldo. */}
+                    {workerBalances[worker.name] && workerBalances[worker.name].completedShifts > 0 && (
+                      <div className="mt-3 flex items-center gap-2 text-xs bg-slate-950/70 border border-slate-800 rounded-xl px-3 py-2">
+                        <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span className="text-slate-300">
+                          <b className="text-emerald-400 font-mono">{workerBalances[worker.name].totalHours.toFixed(1)}h</b> fichadas
+                          {' '}({workerBalances[worker.name].totalCost.toFixed(2)} €)
+                        </span>
+                      </div>
+                    )}
+
                     {/* Special Jefferson Purse Box */}
                     {worker.isSpecialPurse && worker.purseInfo && (
                       <div className="mt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
