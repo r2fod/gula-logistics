@@ -47,7 +47,7 @@ _Actualizado tras la auditoría completa + tests unitarios + fixes de seguridad 
 - [ ] Claves de `localStorage` para saldos divergentes entre `App.jsx` (`gula_balances_v1`) y `apiService.js` (`gula_balances_data_v1`) — revisar si es intencional o un despiste, podría desincronizar la caché local.
 - [ ] `POST /api/auth/login` sin límite de intentos (rate-limiting) — fuerza bruta teórica sobre la contraseña de admin, riesgo bajo con el tráfico actual.
 - [ ] Vulnerabilidad moderada en `esbuild`/`vite` (solo dev, requiere bump de versión mayor de Vite) — no forzado.
-- [ ] Saldos & Acuerdos accesible sin login de admin si se entra directo a la URL.
+- ~~Saldos & Acuerdos accesible sin login de admin si se entra directo a la URL~~ — resuelto: sin sesión real de admin, ahora se muestra `PublicView` (sin saldos ni nóminas) en vez del panel completo. Reportado por el usuario a raíz de instalar la app desde un enlace compartido — el manifest de la PWA pierde los parámetros de la URL al instalarse, así que cualquier enlace acababa cayendo en la vista por defecto.
 - [ ] `PublicView.jsx` tiene una sección de Checklist muerta que lee `data.tasks` (campo inexistente).
 
 ## Funcionalidad pedida, no empezada todavía
