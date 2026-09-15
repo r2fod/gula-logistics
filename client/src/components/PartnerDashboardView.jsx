@@ -1343,7 +1343,14 @@ export default function PartnerDashboardView({
                     {(day.tasks || []).map((task, idx) => {
                       const taskText = typeof task === 'object' ? task.text : task;
                       const isCompleted = typeof task === 'object' ? !!task.completed : false;
-                      const matchesFilter = !selectedWorkerFilter || taskText.toLowerCase().includes(selectedWorkerFilter.toLowerCase());
+                      // Filtrar por el `assigned[]` real de la tarea, no por si
+                      // el nombre aparece mencionado en el texto — el texto
+                      // puede quedar desactualizado (p.ej. seguir diciendo
+                      // "Apoyo: Jeferson" aunque ya no esté en assigned[]) y
+                      // antes eso hacía que el filtro no coincidiera con lo
+                      // que de verdad se editó en el editor de tareas.
+                      const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
+                      const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
 
                       return (
                         <li 
