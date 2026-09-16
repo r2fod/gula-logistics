@@ -511,7 +511,17 @@ export default function App() {
             setActiveWorker(null);
             try { localStorage.removeItem('gula_last_worker_v1'); } catch (e) {}
             clearUrlParams();
-            setIsAdminLoginOpen(true);
+            // Si este dispositivo ya tiene sesión de admin real, ir
+            // directo al panel — pedir la contraseña otra vez sería
+            // absurdo. isPartnerMode se calculó en false al montar si se
+            // entró por un enlace de trabajador (?worker=...), así que
+            // hay que reactivarlo a mano aquí para no caer en la vista
+            // pública en vez de en el panel.
+            if (isAdmin) {
+              setIsPartnerMode(true);
+            } else {
+              setIsAdminLoginOpen(true);
+            }
           }}
         />
       </div>

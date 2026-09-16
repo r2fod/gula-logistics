@@ -314,18 +314,19 @@ export default function WorkerView({
             </div>
           </div>
 
-          {/* Volver al panel admin — antes solo se enseñaba si el trabajador
-              visto era literalmente "Raúl", así que un admin que probara el
-              enlace de CUALQUIER otro trabajador se quedaba sin forma de
-              volver. Ahora depende de si quien mira tiene sesión de admin
-              real, sea cual sea el trabajador que esté viendo. */}
-          {isAdmin && onOpenAdminDashboard && (
+          {/* Salida hacia Admin — SIEMPRE visible (antes solo si el
+              trabajador visto era literalmente "Raúl", o solo si el
+              dispositivo ya tenía sesión de admin — ambas versiones dejaban
+              sin salida a quien probara el enlace de otro trabajador desde
+              un móvil sin sesión guardada). onOpenAdminDashboard ya decide
+              si hace falta pedir contraseña o no según la sesión real. */}
+          {onOpenAdminDashboard && (
             <button
               onClick={onOpenAdminDashboard}
               className="w-full sm:w-auto py-1.5 px-3 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center space-x-1.5 transition-all shadow-sm active:scale-95 shrink-0"
             >
               <ShieldCheck className="w-3.5 h-3.5" />
-              <span>👑 Panel Admin</span>
+              <span>{isAdmin ? '👑 Panel Admin' : '🔑 Acceso Admin / Socias'}</span>
             </button>
           )}
         </div>
