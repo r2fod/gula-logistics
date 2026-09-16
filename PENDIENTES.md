@@ -13,6 +13,8 @@ _Actualizado tras la auditoría completa + tests unitarios + fixes de seguridad 
 - ~~Filtro "Trabajador" del Cuadrante resaltaba por texto mencionado, no por `assigned[]` real~~ — resuelto, ahora compara contra la asignación real de cada tarea.
 - ~~Bug de medianoche en Actividad en Tiempo Real~~ — resuelto: las tareas con horario que cruza medianoche (ej. "22:00 - 00:00") ahora sí se detectan como "en curso" durante la noche. Encontrado hoy al verificar un hallazgo de Gemini antes de darlo por bueno.
 - ~~Botones del Informe de Fichajes sin proporcionar / formato de hora mezclado~~ — resuelto, ver detalle en `MEJORAS.md`.
+- ~~Cualquiera sin sesión veía el panel completo (Cuadrante/Saldos) si instalaba la app o entraba directo a la URL base~~ — resuelto: sin sesión real de admin ni identidad de trabajador reconocida, ahora se muestra `PublicView` (sin saldos ni nóminas). Reportado por el usuario tras instalar la app desde un enlace compartido.
+- ~~Un trabajador podía ver el Grafo completo de TODO el equipo (todas las tareas, todos los camiones, todos los compañeros) desde su propia vista~~ — resuelto: `TaskFlowGraphView` dentro de `WorkerView` ahora se restringe solo a las tareas/días/camiones realmente conectados a ese trabajador, vía la prop `restrictToWorkerName`. El Grafo del panel de admin sigue mostrando todo, sin cambios. Reportado por el usuario ("puede ver cosas que no debería ver").
 - Nuevo: botones de Fichar deshabilitados si el día de la tarea aún no ha llegado.
 - Nuevo: horas reales fichadas visibles también en las tarjetas de Saldos & Acuerdos.
 - Nuevo: se puede quitar/añadir trabajadores del roster desde la propia app (antes solo se podía añadir) — **ojo, ver limitación real más abajo**.
