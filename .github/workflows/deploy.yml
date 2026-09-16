@@ -41,6 +41,8 @@ jobs:
         run: |
           cd client
           npm run build
+        env:
+          VITE_API_URL: https://gula-logistics.onrender.com/api
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
