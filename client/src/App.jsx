@@ -508,20 +508,36 @@ export default function App() {
           onUpdateClockEntry={handleUpdateClockEntry}
           onDeleteClockEntry={handleDeleteClockEntry}
           onOpenAdminDashboard={() => {
+            if (isAdmin) {
+              // Ya autenticado: ir directo al panel, sin pedir contraseña
+              // otra vez. isPartnerMode se calculó en false al montar si
+              // se entró por un enlace de trabajador (?worker=...), así
+              // que hay que reactivarlo a mano para no caer en la vista
+              // pública en vez de en el panel.
+              setActiveWorker(null);
+              try { localStorage.removeItem('gula_last_worker_v1'); } catch (e) {}
+              clearUrlParams();
+              setIsPartnerMode(true);
+            } else {
+              // Sin sesión: solo abrir el login, sin tocar la vista del
+              // trabajador todavía — si cancela sin escribir la
+              // contraseña, tiene que seguir viendo su propia vista tal
+              // cual, no quedarse sin ningún sitio al que volver.
+              setIsAdminLoginOpen(true);
+            }
+          }}
+        />
+
+        <AdminLoginModal
+          isOpen={isAdminLoginOpen}
+          onClose={() => setIsAdminLoginOpen(false)}
+          onSuccess={() => {
+            setIsAdminUnlocked(true);
+            setIsPartnerMode(true);
             setActiveWorker(null);
             try { localStorage.removeItem('gula_last_worker_v1'); } catch (e) {}
             clearUrlParams();
-            // Si este dispositivo ya tiene sesión de admin real, ir
-            // directo al panel — pedir la contraseña otra vez sería
-            // absurdo. isPartnerMode se calculó en false al montar si se
-            // entró por un enlace de trabajador (?worker=...), así que
-            // hay que reactivarlo a mano aquí para no caer en la vista
-            // pública en vez de en el panel.
-            if (isAdmin) {
-              setIsPartnerMode(true);
-            } else {
-              setIsAdminLoginOpen(true);
-            }
+            setIsAdminLoginOpen(false);
           }}
         />
       </div>
