@@ -31,7 +31,8 @@ import {
   logoutAdmin,
   fetchWeeksFromAPI,
   saveWeeksToAPI,
-  patchTaskCompletionInAPI
+  patchTaskCompletionInAPI,
+  saveWorkerBalanceToAPI
 } from './data/apiService';
 import { initialBalancesData } from './data/balancesData';
 import { getActiveShiftForWorker } from './data/shiftCalculations';
@@ -109,6 +110,11 @@ export default function App() {
     };
     setBalancesData(updatedBalances);
     localStorage.setItem('gula_balances_v1', JSON.stringify(updatedBalances));
+
+    // 3. Persist to API so it doesn't get wiped by fetchBalancesFromAPI
+    saveWorkerBalanceToAPI(newBalanceProfile.id, newBalanceProfile).catch(err => {
+      console.warn("Failed to persist new worker balance to API", err);
+    });
   };
 
   // Quita a alguien del roster operativo (selectores de fichaje/asignación).

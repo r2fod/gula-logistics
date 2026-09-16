@@ -25,7 +25,6 @@ export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = 
     onAddWorker(newWorker);
     setName('');
     setRole('Conductor Extra');
-    onClose();
   };
 
   return (
