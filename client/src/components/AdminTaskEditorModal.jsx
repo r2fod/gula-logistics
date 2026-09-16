@@ -9,14 +9,27 @@ const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 // HH:MM y evita esos despistes. Mantenemos "Pendiente" como estado aparte
 // para tareas que de verdad no tienen hora todavía.
 function parseTimeFrame(tf) {
-  const m = /^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/.exec((tf || '').trim());
-  if (!m) return { start: '', end: '', pending: !!(tf && tf.trim()) };
-  const pad = (n) => n.padStart(2, '0');
-  return { start: `${pad(m[1])}:${m[2]}`, end: `${pad(m[3])}:${m[4]}`, pending: false };
+  tf = (tf || '').trim();
+  if (!tf) return { start: '', end: '', pending: false };
+  if (tf.toLowerCase() === 'pendiente') return { start: '', end: '', pending: true };
+
+  // Separar por el guion si existe
+  const parts = tf.split('-');
+  if (parts.length >= 2) {
+    return { start: parts[0].trim(), end: parts[1].trim(), pending: false };
+  } else {
+    // Si no hay guion, podría ser una hora única válida o texto libre
+    if (/^\d{1,2}:\d{2}$/.test(tf)) {
+      return { start: tf, end: '', pending: false };
+    }
+    // Si es texto libre que no es hora, se considera pendiente
+    return { start: '', end: '', pending: true };
+  }
 }
 
 function formatTimeFrame(start, end) {
-  return (start && end) ? `${start} - ${end}` : (start || end || '');
+  if (!start && !end) return '';
+  return `${start || ''}-${end || ''}`;
 }
 
 function TimeRangeEditor({ value, onChange }) {
