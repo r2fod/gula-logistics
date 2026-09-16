@@ -209,13 +209,21 @@ export default function App() {
     // último trabajador válido en localStorage y se restaura solo si
     // sigue en el roster actual (si lo quitaste del equipo, no se
     // restaura — sigue revocado).
+    //
+    // Nunca en un dispositivo con sesión de admin real: si no, un admin que
+    // abra el enlace de un trabajador para probarlo queda "atrapado" en esa
+    // vista en cada carga siguiente sin parámetros, sin poder volver al
+    // panel — pasó de verdad con el enlace de un trabajador nuevo.
+    const hasAdminSession = !!getStoredAdminToken();
     if (workerParam) {
       const matched = workersList.find(w => w.name.toLowerCase() === workerParam.toLowerCase());
       if (matched) {
         setActiveWorker(matched.name);
-        try { localStorage.setItem('gula_last_worker_v1', matched.name); } catch (e) {}
+        if (!hasAdminSession) {
+          try { localStorage.setItem('gula_last_worker_v1', matched.name); } catch (e) {}
+        }
       }
-    } else {
+    } else if (!hasAdminSession) {
       try {
         const lastWorker = localStorage.getItem('gula_last_worker_v1');
         if (lastWorker) {
@@ -494,6 +502,7 @@ export default function App() {
           workersList={workersList}
           activeWeekData={activeWeek}
           clockEntries={clockEntries}
+          isAdmin={isAdmin}
           onToggleTask={(dayKey, taskIdx) => toggleTask(dayKey, taskIdx)}
           onClockEntryCreated={handleClockEntryCreated}
           onUpdateClockEntry={handleUpdateClockEntry}

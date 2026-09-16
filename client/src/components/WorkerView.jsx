@@ -34,6 +34,7 @@ export default function WorkerView({
   workersList = [],
   activeWeekData = {},
   clockEntries = [],
+  isAdmin = false,
   onToggleTask,
   onClockEntryCreated,
   onUpdateClockEntry,
@@ -313,8 +314,12 @@ export default function WorkerView({
             </div>
           </div>
 
-          {/* Admin Toggle if Raúl */}
-          {(currentWorkerObj.name.toLowerCase() === 'raúl' || currentWorkerObj.name.toLowerCase() === 'raul') && onOpenAdminDashboard && (
+          {/* Volver al panel admin — antes solo se enseñaba si el trabajador
+              visto era literalmente "Raúl", así que un admin que probara el
+              enlace de CUALQUIER otro trabajador se quedaba sin forma de
+              volver. Ahora depende de si quien mira tiene sesión de admin
+              real, sea cual sea el trabajador que esté viendo. */}
+          {isAdmin && onOpenAdminDashboard && (
             <button
               onClick={onOpenAdminDashboard}
               className="w-full sm:w-auto py-1.5 px-3 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center space-x-1.5 transition-all shadow-sm active:scale-95 shrink-0"
