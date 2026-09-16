@@ -314,20 +314,33 @@ export default function WorkerView({
             </div>
           </div>
 
-          {/* Salida hacia Admin — SIEMPRE visible (antes solo si el
+          {/* Salida hacia Admin — SIEMPRE presente (antes solo si el
               trabajador visto era literalmente "Raúl", o solo si el
               dispositivo ya tenía sesión de admin — ambas versiones dejaban
               sin salida a quien probara el enlace de otro trabajador desde
-              un móvil sin sesión guardada). onOpenAdminDashboard ya decide
-              si hace falta pedir contraseña o no según la sesión real. */}
+              un móvil sin sesión guardada). Con sesión real de admin se ve
+              como botón normal; sin ella, deliberadamente discreto (un
+              enlace de texto pequeño, no un botón) para no invitar a un
+              trabajador cualquiera a tocarlo — sigue funcionando igual,
+              solo que no compite visualmente con "Fichar". */}
           {onOpenAdminDashboard && (
-            <button
-              onClick={onOpenAdminDashboard}
-              className="w-full sm:w-auto py-1.5 px-3 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center space-x-1.5 transition-all shadow-sm active:scale-95 shrink-0"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>{isAdmin ? '👑 Panel Admin' : '🔑 Acceso Admin / Socias'}</span>
-            </button>
+            isAdmin ? (
+              <button
+                onClick={onOpenAdminDashboard}
+                className="w-full sm:w-auto py-1.5 px-3 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center space-x-1.5 transition-all shadow-sm active:scale-95 shrink-0"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>👑 Panel Admin</span>
+              </button>
+            ) : (
+              <button
+                onClick={onOpenAdminDashboard}
+                className="text-[10px] text-slate-500 hover:text-slate-300 flex items-center gap-1 transition-colors shrink-0 self-start sm:self-center"
+              >
+                <ShieldCheck className="w-3 h-3" />
+                <span>Acceso Admin / Socias</span>
+              </button>
+            )
           )}
         </div>
 
