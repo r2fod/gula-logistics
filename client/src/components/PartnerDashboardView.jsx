@@ -1634,6 +1634,17 @@ export default function PartnerDashboardView({
                       </button>
                     )}
 
+                    {adminUnlocked && (
+                      <button
+                        onClick={() => { handleOpenNotifyModal(); setIsMobileDrawerOpen(false); }}
+                        disabled={isPushLoading}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                      >
+                        <Bell className={`w-4 h-4 shrink-0 ${isPushLoading ? 'animate-pulse' : ''}`} />
+                        <span>{isPushLoading ? 'Avisando...' : '🔔 Avisar Cambios'}</span>
+                      </button>
+                    )}
+
                     {adminUnlocked && onOpenWorkerEditor && (
                       <button
                         onClick={() => { onOpenWorkerEditor(); setIsMobileDrawerOpen(false); }}
