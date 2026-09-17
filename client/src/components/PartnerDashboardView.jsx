@@ -506,7 +506,7 @@ export default function PartnerDashboardView({
         </div>
 
         {/* Right: Desktop Action buttons toolbar (hidden on mobile, flex on desktop) */}
-        <div className="hidden lg:flex items-center justify-start gap-1.5 w-full overflow-x-auto no-scrollbar pt-2 border-t border-slate-800/80">
+        <div className="hidden lg:flex items-center justify-center gap-1.5 w-full overflow-x-auto no-scrollbar pt-2 border-t border-slate-800/80">
           <button onClick={onOpenClockIn} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
             <Clock className="w-3.5 h-3.5 shrink-0" />
             <span className="whitespace-nowrap">⏱️ Fichar</span>
