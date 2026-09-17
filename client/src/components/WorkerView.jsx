@@ -374,7 +374,22 @@ export default function WorkerView({
               </div>
 
               <button
-                onClick={() => { setPrefilledTask(null); setTaskRef(null); setIsClockModalOpen(true); }}
+                onClick={() => { 
+                  const now = new Date();
+                  const entry = {
+                    id: Date.now().toString(),
+                    workerName: currentWorkerObj.name,
+                    role: currentWorkerObj.role,
+                    isPayroll: currentWorkerObj.isPayroll,
+                    rate: currentWorkerObj.rate || 10,
+                    type: 'salida',
+                    timestamp: now.toISOString(),
+                    timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
+                    dateFormatted: now.toLocaleDateString(),
+                    note: ''
+                  };
+                  onClockEntryCreated(entry);
+                }}
                 className="w-full py-3.5 px-4 rounded-xl text-sm font-extrabold bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center space-x-2 transition-all shadow-xl shadow-rose-600/30 active:scale-95"
               >
                 <Square className="w-4 h-4" />
@@ -425,13 +440,26 @@ export default function WorkerView({
                   <button
                     onClick={() => {
                       if (isLocked) return;
-                      setPrefilledTask(immediateTask.taskName);
-                      setTaskRef(
-                        !immediateTask.isWedding && immediateTask.dayKey && immediateTask.taskIndex != null
-                          ? { dayKey: immediateTask.dayKey, taskIndex: immediateTask.taskIndex }
-                          : null
-                      );
-                      setIsClockModalOpen(true);
+                      const now = new Date();
+                      const tRef = !immediateTask.isWedding && immediateTask.dayKey && immediateTask.taskIndex != null
+                        ? { dayKey: immediateTask.dayKey, taskIndex: immediateTask.taskIndex }
+                        : null;
+                        
+                      const entry = {
+                        id: Date.now().toString(),
+                        workerName: currentWorkerObj.name,
+                        role: currentWorkerObj.role,
+                        isPayroll: currentWorkerObj.isPayroll,
+                        rate: currentWorkerObj.rate || 10,
+                        type: 'entrada',
+                        timestamp: now.toISOString(),
+                        timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
+                        dateFormatted: now.toLocaleDateString(),
+                        taskName: immediateTask.taskName.trim(),
+                        note: immediateTask.taskName.trim(),
+                        taskRef: tRef
+                      };
+                      onClockEntryCreated(entry);
                     }}
                     disabled={isLocked}
                     className={`w-full py-3.5 px-4 rounded-xl text-sm font-extrabold flex items-center justify-center space-x-2 transition-all ${
