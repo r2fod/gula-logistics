@@ -41,7 +41,9 @@ export function pairShiftsFromEntries(entries = []) {
       const startDate = new Date(startEntry.timestamp);
       const endDate = new Date(timestamp);
       const diffMs = endDate - startDate;
-      const durationHours = Math.max(0, diffMs / (1000 * 60 * 60));
+      const rawDuration = Math.max(0, diffMs / (1000 * 60 * 60));
+      // Redondear a 2 decimales matemáticamente para que horas * tarifa cuadre siempre en pantalla
+      const durationHours = Math.round(rawDuration * 100) / 100;
 
       const hours = Math.floor(durationHours);
       const minutes = Math.floor((durationHours - hours) * 60);
