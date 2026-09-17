@@ -21,13 +21,17 @@ import {
   Target,
   ArrowRight,
   Users,
-  Car
+  Car,
+  AlertTriangle,
+  Bell,
+  Settings
 } from 'lucide-react';
 import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
 import { getTaskListForDay, resolveTaskIndexByText } from '../data/taskPlanning';
+import { subscribeToPush } from '../data/pushService';
 
 export default function WorkerView({
   workerName,
@@ -53,6 +57,23 @@ export default function WorkerView({
   // para editar/borrar uno ya enviado: eso está bloqueado y solo puede
   // hacerlo Administración (el servidor lo exige en clock.routes.js).
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const [pushStatus, setPushStatus] = useState(() => {
+    if (!('Notification' in window)) return 'unsupported';
+    if (Notification.permission === 'granted') return 'granted';
+    return 'idle';
+  });
+
+  const handleSubscribePush = async () => {
+    try {
+      setPushStatus('loading');
+      await subscribeToPush(currentWorkerObj.name);
+      setPushStatus('granted');
+    } catch (err) {
+      console.error(err);
+      setPushStatus('error');
+    }
+  };
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -281,7 +302,6 @@ export default function WorkerView({
         <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          {/* Profile Details */}
           <div className="flex items-center space-x-3 min-w-0">
             <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-3xl shadow-inner shrink-0">
               {currentWorkerObj.avatar}
@@ -313,37 +333,41 @@ export default function WorkerView({
               </div>
             </div>
           </div>
+          <div className="flex items-center space-x-2 shrink-0 self-end sm:self-auto w-full sm:w-auto justify-end mt-1 sm:mt-0">
+            {pushStatus !== 'granted' && pushStatus !== 'unsupported' && (
+              <button
+                onClick={handleSubscribePush}
+                disabled={pushStatus === 'loading'}
+                className="py-2 px-3 rounded-xl bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 border border-indigo-500/30 text-xs font-bold transition-colors flex items-center space-x-1.5"
+                title="Recibe alertas cuando se añadan o cambien tus turnos"
+              >
+                <Bell className={`w-3.5 h-3.5 ${pushStatus === 'loading' ? 'animate-pulse' : 'animate-bounce'}`} />
+                <span className="hidden sm:inline">{pushStatus === 'loading' ? 'Activando...' : 'Activar Alertas'}</span>
+                <span className="sm:hidden">{pushStatus === 'loading' ? '...' : 'Alertas'}</span>
+              </button>
+            )}
 
-          {/* Salida hacia Admin — SIEMPRE presente (antes solo si el
-              trabajador visto era literalmente "Raúl", o solo si el
-              dispositivo ya tenía sesión de admin — ambas versiones dejaban
-              sin salida a quien probara el enlace de otro trabajador desde
-              un móvil sin sesión guardada). Con sesión real de admin se ve
-              como botón normal; sin ella, deliberadamente discreto (un
-              enlace de texto pequeño, no un botón) para no invitar a un
-              trabajador cualquiera a tocarlo — sigue funcionando igual,
-              solo que no compite visualmente con "Fichar". */}
-          {onOpenAdminDashboard && (
-            isAdmin ? (
-              <button
-                onClick={onOpenAdminDashboard}
-                className="w-full sm:w-auto py-1.5 px-3 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center space-x-1.5 transition-all shadow-sm active:scale-95 shrink-0"
-              >
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>👑 Panel Admin</span>
-              </button>
-            ) : (
-              <button
-                onClick={onOpenAdminDashboard}
-                className="text-[10px] text-slate-500 hover:text-slate-300 flex items-center gap-1 transition-colors shrink-0 self-start sm:self-center"
-              >
-                <ShieldCheck className="w-3 h-3" />
-                <span>Acceso Admin / Socias</span>
-              </button>
-            )
-          )}
+            {onOpenAdminDashboard && (
+              isAdmin ? (
+                <button
+                  onClick={onOpenAdminDashboard}
+                  className="py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold transition-colors flex items-center space-x-1.5 shrink-0"
+                >
+                  <Settings className="w-4 h-4 hover:rotate-90 transition-transform duration-300" />
+                  <span className="hidden sm:inline">Administración</span>
+                </button>
+              ) : (
+                <button
+                  onClick={onOpenAdminDashboard}
+                  className="text-[10px] text-slate-600 hover:text-slate-400 transition-colors shrink-0 px-2 py-1"
+                  title="Acceso Admin (Oculto)"
+                >
+                  Admin
+                </button>
+              )
+            )}
+          </div>
         </div>
-
         {/* 🎯 HERO ACTION CARD: IMMEDIATE TASK (0 SCROLL REQUIRED!) */}
         <div className={`mt-3 rounded-2xl p-4 sm:p-5 border transition-all ${
           activeShift

@@ -19,6 +19,7 @@ import AdminTaskEditorModal from './components/AdminTaskEditorModal';
 
 import WorkerView from './components/WorkerView';
 import PublicView from './components/PublicView';
+import BackgroundAnimation from './components/BackgroundAnimation';
 import AdminLoginModal from './components/AdminLoginModal';
 import { logisticsData as BASE_DATA } from './data/logisticsData';
 import {
@@ -503,7 +504,8 @@ export default function App() {
 
   if (activeWorker) {
     return (
-      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans selection:bg-amber-500 selection:text-slate-950">
+      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans selection:bg-amber-500 selection:text-slate-950 relative">
+        <BackgroundAnimation viewMode="worker" />
         <WorkerView
           workerName={activeWorker}
           workersList={workersList}
@@ -555,8 +557,9 @@ export default function App() {
   // controls, regardless of whether this browser also has an admin session.
   if (isPublicPreviewMode && !activeWorker) {
     return (
-      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans">
-        <div className="w-full space-y-4">
+      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans relative">
+        <BackgroundAnimation viewMode="public" />
+        <div className="w-full space-y-4 relative z-10">
           <button
             onClick={() => { setIsPublicPreviewMode(false); clearUrlParams(); }}
             className="text-xs bg-slate-900 hover:bg-slate-800 text-slate-300 px-3.5 py-2 rounded-xl font-semibold transition-colors border border-slate-800 flex items-center gap-1.5"
@@ -598,8 +601,9 @@ export default function App() {
   // abrirse) veía igualmente el Cuadrante/Saldos completos sin login.
   if (!isPartnerMode && !isAdmin) {
     return (
-      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans">
-        <div className="w-full space-y-4">
+      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans relative">
+        <BackgroundAnimation viewMode="public" />
+        <div className="w-full space-y-4 relative z-10">
           <PublicView
             data={activeWeek}
             workersList={workersList}
@@ -636,7 +640,8 @@ export default function App() {
   }
 
   return (
-    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950">
+    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950 relative">
+      <BackgroundAnimation viewMode="partner_planning" />
       <PartnerDashboardView
         activeWeekData={activeWeek}
         allWeeks={allWeeks}
