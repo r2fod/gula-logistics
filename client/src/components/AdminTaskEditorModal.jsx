@@ -1,5 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Edit3, Save, Plus, Trash2, Calendar, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, Edit3, Save, Plus, Trash2, Calendar, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+function SortableTask({ id, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 'auto', opacity: isDragging ? 0.7 : 1 };
+  return (
+    <div ref={setNodeRef} style={style} className="flex gap-1.5 items-start bg-slate-900 border border-slate-700/90 rounded-xl p-2 sm:p-3 transition-all relative">
+      <div {...attributes} {...listeners} className="flex flex-col items-center gap-1 shrink-0 pt-0.5 cursor-grab active:cursor-grabbing">
+         <div className="w-6 h-6 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 transition-colors">
+            <GripVertical className="w-4 h-4" />
+         </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 
 const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 
@@ -67,6 +86,40 @@ function TimeRangeEditor({ value, onChange }) {
 }
 
 export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, workersList = [], onSaveWeekData }) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEndDnd = (event, dayKey) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = parseInt(active.id.split('-').pop(), 10);
+    const newIndex = parseInt(over.id.split('-').pop(), 10);
+
+    setLocalWeek(prev => {
+      const updated = { ...prev };
+      if (dayKey === 'sabado') {
+        const weddings = [...(updated.saturdaySpecial?.weddings || [])];
+        const [moved] = weddings.splice(oldIndex, 1);
+        weddings.splice(newIndex, 0, moved);
+        updated.saturdaySpecial.weddings = weddings;
+      } else if (dayKey === 'sundayMonday') {
+        const tasks = [...(updated.sundayMonday?.tasks || [])];
+        const [moved] = tasks.splice(oldIndex, 1);
+        tasks.splice(newIndex, 0, moved);
+        updated.sundayMonday.tasks = tasks;
+      } else {
+        const tasks = [...(updated.schedule[dayKey]?.tasks || [])];
+        const [moved] = tasks.splice(oldIndex, 1);
+        tasks.splice(newIndex, 0, moved);
+        updated.schedule[dayKey].tasks = tasks;
+      }
+      return updated;
+    });
+  };
+
   const [localWeek, setLocalWeek] = useState(null);
   const [activeDayId, setActiveDayId] = useState('martes');
   const wasOpenRef = useRef(false);
