@@ -29,10 +29,13 @@ import {
   KeyRound,
   Zap,
   Menu,
-  X
+  X,
+  Save,
+  Bell
 } from 'lucide-react';
 import { initialBalancesData } from '../data/balancesData';
 import { fetchBalancesFromAPI, saveWorkerBalanceToAPI } from '../data/apiService';
+import { sendPushNotification } from '../data/pushService';
 import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../data/shiftCalculations';
 import LiveMonitorPanel from './LiveMonitorPanel';
 import AdminClockEditModal from './AdminClockEditModal';
@@ -80,7 +83,7 @@ export default function PartnerDashboardView({
       if (tab === 'live' || tab === 'directo') return 'live';
       if (p.has('socias')) return 'balances';
     } catch (e) {}
-    return 'schedule';
+    return 'live';
   });
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -92,6 +95,24 @@ export default function PartnerDashboardView({
   const balancesData = externalBalancesData || internalBalancesData;
   const [isAdminSettingsOpen, setIsAdminSettingsOpen] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [isPushLoading, setIsPushLoading] = useState(false);
+
+  const handleNotifyWorkers = async () => {
+    if (!window.confirm("¿Seguro que quieres avisar a los trabajadores de que hay nuevos turnos?")) return;
+    try {
+      setIsPushLoading(true);
+      await sendPushNotification(
+        "¡Nuevos turnos asignados!", 
+        "Revisa tu panel de trabajador, se han añadido o modificado tus turnos."
+      );
+      alert("Aviso enviado a los dispositivos de los trabajadores.");
+    } catch (error) {
+      alert("Hubo un error al enviar las notificaciones.");
+    } finally {
+      setIsPushLoading(false);
+    }
+  };
+
   const [addingConceptFor, setAddingConceptFor] = useState(null); // worker.id en edición, o null
   const [newConceptMode, setNewConceptMode] = useState('turno'); // 'turno' (fecha+horario, calcula solo) | 'manual' (concepto libre)
   const [newConceptText, setNewConceptText] = useState('');
@@ -478,6 +499,17 @@ export default function PartnerDashboardView({
             <span>⏱️ Fichar</span>
           </button>
 
+          {adminUnlocked && (
+            <button 
+              onClick={handleNotifyWorkers} 
+              disabled={isPushLoading}
+              className="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-indigo-500/30 transition-all"
+            >
+              <Bell className={`w-3.5 h-3.5 shrink-0 ${isPushLoading ? 'animate-pulse' : 'animate-bounce'}`} />
+              <span className="truncate">{isPushLoading ? 'Avisando...' : 'Avisar Cambios'}</span>
+            </button>
+          )}
+
           {adminUnlocked && onOpenTaskEditor && (
             <button onClick={onOpenTaskEditor} className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-orange-500/30 transition-all">
               <Edit3 className="w-3.5 h-3.5 shrink-0" />
@@ -530,18 +562,6 @@ export default function PartnerDashboardView({
       {/* Primary View Navigation Tabs Bar */}
       <div className="flex items-center space-x-2 bg-slate-900/80 p-1.5 sm:p-2 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar w-full max-w-full">
         <button
-          onClick={() => handleTabClick('schedule')}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'schedule'
-              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <Calendar className="w-3.5 h-3.5" />
-          <span>📅 Cuadrante Semanal</span>
-        </button>
-
-        <button
           onClick={() => handleTabClick('live')}
           className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
             activeTab === 'live'
@@ -551,6 +571,18 @@ export default function PartnerDashboardView({
         >
           <Radio className="w-3.5 h-3.5 animate-pulse text-rose-400" />
           <span>🔴 Actividad en Tiempo Real</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('schedule')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'schedule'
+              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          <span>📅 Cuadrante Semanal</span>
         </button>
 
         <button
@@ -840,7 +872,7 @@ export default function PartnerDashboardView({
                       <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                         Desglose de Conceptos & Turnos
                       </span>
-                      <div className={`space-y-1.5 pr-1 ${(worker.breakdown || []).length + dynamicShifts.length > 5 ? 'max-h-48 overflow-y-auto' : ''}`}>
+                      <div className={`space-y-1.5 pr-1 ${(worker.breakdown || []).length + dynamicShifts.length > 5 ? 'max-h-[32rem] overflow-y-auto custom-scrollbar' : ''}`}>
                         {[...dynamicShifts, ...(worker.breakdown || [])].map((item, idx) => (
                           <div
                             key={idx}
@@ -1696,18 +1728,6 @@ export default function PartnerDashboardView({
       {/* Mobile Floating Bottom Navigation Bar (Thumb-Accessible) */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 px-3 py-1.5 flex items-center justify-around shadow-2xl safe-bottom">
         <button
-          onClick={() => handleTabClick('schedule')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
-            activeTab === 'schedule'
-              ? 'text-amber-400 font-extrabold scale-105'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Calendar className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Cuadrante</span>
-        </button>
-
-        <button
           onClick={() => handleTabClick('live')}
           className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all relative ${
             activeTab === 'live'
@@ -1717,6 +1737,18 @@ export default function PartnerDashboardView({
         >
           <Radio className="w-5 h-5 mb-0.5 text-rose-400 animate-pulse" />
           <span className="text-[10px]">En Vivo</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('schedule')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'schedule'
+              ? 'text-amber-400 font-extrabold scale-105'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Calendar className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Cuadrante</span>
         </button>
 
         <button
