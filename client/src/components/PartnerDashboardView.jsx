@@ -406,9 +406,11 @@ export default function PartnerDashboardView({
     <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-2.5 sm:p-4 md:p-5 font-sans space-y-3 w-full max-w-full overflow-x-hidden pb-32 lg:pb-16">
       
       {/* Top Page Navigation Bar - Compact & Responsive */}
-      <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-3 sm:px-4 sm:py-3 rounded-2xl shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2.5 w-full max-w-full overflow-hidden">
+      <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-3 sm:px-4 sm:py-3 rounded-2xl shadow-xl flex flex-col gap-3 w-full max-w-full overflow-hidden">
         
-        {/* Title & Selector (compact) */}
+        {/* Top Row: Title & Week Selector */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 w-full">
+          {/* Title (compact) */}
         <div className="flex items-center gap-2.5 min-w-0 max-w-full flex-wrap sm:flex-nowrap">
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 p-0.5 shadow-lg shadow-amber-500/20 shrink-0">
             <div className="w-full h-full bg-slate-950 rounded-[9px] flex items-center justify-center text-amber-400">
@@ -469,6 +471,8 @@ export default function PartnerDashboardView({
           )}
         </div>
 
+        </div>
+
         {/* Mobile Quick Action & Menu Bar (visible on mobile / tablet) */}
         <div className="flex lg:hidden items-center justify-between w-full pt-2 border-t border-slate-800/80 mt-1">
           <div className="flex items-center gap-2">
@@ -502,10 +506,10 @@ export default function PartnerDashboardView({
         </div>
 
         {/* Right: Desktop Action buttons toolbar (hidden on mobile, flex on desktop) */}
-        <div className="hidden lg:flex items-center gap-1.5 ml-auto max-w-full overflow-x-auto no-scrollbar pb-0.5">
+        <div className="hidden lg:flex items-center justify-start gap-1.5 w-full overflow-x-auto no-scrollbar pt-2 border-t border-slate-800/80">
           <button onClick={onOpenClockIn} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
             <Clock className="w-3.5 h-3.5 shrink-0" />
-            <span>⏱️ Fichar</span>
+            <span className="whitespace-nowrap">⏱️ Fichar</span>
           </button>
 
           {adminUnlocked && (
@@ -536,14 +540,14 @@ export default function PartnerDashboardView({
           {adminUnlocked && (
             <button onClick={onOpenPayroll} className="bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-slate-800 transition-all">
               <DollarSign className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>Nóminas</span>
+              <span className="whitespace-nowrap">Nóminas</span>
             </button>
           )}
 
           {adminUnlocked && (
             <button onClick={onOpenGemini} className="bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
               <Wand2 className="w-3.5 h-3.5 shrink-0" />
-              <span>Gemini AI</span>
+              <span className="whitespace-nowrap">Gemini AI</span>
             </button>
           )}
 
@@ -579,7 +583,7 @@ export default function PartnerDashboardView({
           }`}
         >
           <Radio className="w-3.5 h-3.5 animate-pulse text-rose-400" />
-          <span>🔴 Actividad en Tiempo Real</span>
+          <span className="whitespace-nowrap">🔴 Actividad en Tiempo Real</span>
         </button>
 
         <button
@@ -591,7 +595,7 @@ export default function PartnerDashboardView({
           }`}
         >
           <Calendar className="w-3.5 h-3.5" />
-          <span>📅 Cuadrante Semanal</span>
+          <span className="whitespace-nowrap">📅 Cuadrante Semanal</span>
         </button>
 
         <button
@@ -603,7 +607,7 @@ export default function PartnerDashboardView({
           }`}
         >
           <Zap className="w-3.5 h-3.5 text-amber-400" />
-          <span>🕸️ Grafo & Flujo</span>
+          <span className="whitespace-nowrap">🕸️ Grafo & Flujo</span>
         </button>
 
         <button
@@ -615,7 +619,7 @@ export default function PartnerDashboardView({
           }`}
         >
           <Truck className="w-3.5 h-3.5" />
-          <span>🚚 Flota & Bodas</span>
+          <span className="whitespace-nowrap">🚚 Flota & Bodas</span>
         </button>
 
         <button
@@ -627,7 +631,7 @@ export default function PartnerDashboardView({
           }`}
         >
           <TrendingUp className="w-3.5 h-3.5" />
-          <span>📜 Saldos & Acuerdos</span>
+          <span className="whitespace-nowrap">📜 Saldos & Acuerdos</span>
         </button>
 
         <button
@@ -639,7 +643,7 @@ export default function PartnerDashboardView({
           }`}
         >
           <DollarSign className="w-3.5 h-3.5" />
-          <span>💶 Resumen Financiero</span>
+          <span className="whitespace-nowrap">💶 Resumen Financiero</span>
         </button>
 
         <button
@@ -651,7 +655,7 @@ export default function PartnerDashboardView({
           }`}
         >
           <Lock className="w-3.5 h-3.5 text-amber-400" />
-          <span>⚙️ Historial Fichajes ({clockEntries.length})</span>
+          <span className="whitespace-nowrap">⚙️ Historial Fichajes ({clockEntries.length})</span>
         </button>
       </div>
 
@@ -662,7 +666,7 @@ export default function PartnerDashboardView({
             <div>
               <h3 className="text-xl font-extrabold text-white font-['Outfit'] flex items-center space-x-2">
                 <TrendingUp className="w-5 h-5 text-amber-400" />
-                <span>Control de Saldos & Acuerdos de Personal</span>
+                <span className="whitespace-nowrap">Control de Saldos & Acuerdos de Personal</span>
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 Desglose individual de turnos, bolsas de horas, roturas de vajilla y botones de WhatsApp.
@@ -675,10 +679,10 @@ export default function PartnerDashboardView({
                 className="py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs flex items-center space-x-2 shadow-lg shadow-blue-600/30 transition-all active:scale-95"
               >
                 <Share2 className="w-4 h-4" />
-                <span>🔗 Generar Enlaces (WhatsApp)</span>
+                <span className="whitespace-nowrap">🔗 Generar Enlaces (WhatsApp)</span>
               </button>
 
-              <span className="text-xs text-slate-400 font-semibold bg-slate-900 px-3 py-2 rounded-xl border border-slate-800 hidden md:inline">
+              <span className="text-xs text-slate-400 font-semibold bg-slate-900 px-3 py-2 rounded-xl border border-slate-800 hidden md:inline whitespace-nowrap">
                 Actualizado: {balancesData.lastUpdated || '—'}
               </span>
             </div>
@@ -751,29 +755,29 @@ export default function PartnerDashboardView({
                           <div className="flex flex-wrap items-center gap-2">
                             <h4 className="font-extrabold text-white text-lg font-['Outfit']">{worker.name}</h4>
                             {worker.statusType === 'success' && (
-                              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
                                 🟢 A favor
                               </span>
                             )}
                             {worker.statusType === 'danger' && (
-                              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 whitespace-nowrap">
                                 🔴 Deuda Pendiente
                               </span>
                             )}
                             {worker.statusType === 'payroll' && (
-                              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 whitespace-nowrap">
                                 ⭐ Nómina Fija
                               </span>
                             )}
                             {worker.statusType === 'neutral' && (
-                              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 whitespace-nowrap">
                                 ⚪ Sin Saldo
                               </span>
                             )}
                             {worker.hasTransportBonus && (
                               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center space-x-1">
                                 <Bus className="w-3 h-3" />
-                                <span>+10€ transport/día</span>
+                                <span className="whitespace-nowrap">+10€ transport/día</span>
                               </span>
                             )}
                           </div>
@@ -782,11 +786,11 @@ export default function PartnerDashboardView({
                       </div>
 
                       <div className="text-right shrink-0">
-                        <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider">
+                        <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider whitespace-nowrap">
                           {worker.statusType === 'payroll' ? 'Coste Extra' : 'Saldo Actual'}
                         </span>
                         {worker.statusType === 'payroll' ? (
-                          <span className="text-xl font-extrabold text-amber-400 font-mono">0,00 €</span>
+                          <span className="text-xl font-extrabold text-amber-400 font-mono whitespace-nowrap">0,00 €</span>
                         ) : (
                           <span className={`text-2xl sm:text-3xl font-extrabold font-mono ${
                             displayBalance > 0 ? 'text-emerald-400' : displayBalance < 0 ? 'text-rose-400' : 'text-slate-400'
@@ -813,9 +817,9 @@ export default function PartnerDashboardView({
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-extrabold text-amber-300 flex items-center space-x-1">
                             <Clock className="w-4 h-4 text-amber-400" />
-                            <span>Bolsa Mensual (80h)</span>
+                            <span className="whitespace-nowrap">Bolsa Mensual (80h)</span>
                           </span>
-                          <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded">
+                          <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded whitespace-nowrap">
                             {Math.round((worker.purseInfo.consumedHours / worker.purseInfo.totalHours) * 100)}% Consumido
                           </span>
                         </div>
@@ -829,14 +833,14 @@ export default function PartnerDashboardView({
 
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                            <span className="text-slate-400 block text-[10px]">Condición Base:</span>
+                            <span className="text-slate-400 block text-[10px] whitespace-nowrap">Condición Base:</span>
                             <span className="font-semibold text-white">
                               {worker.purseInfo.totalHours}h ({worker.purseInfo.grossBase.toFixed(0)}€ - {worker.purseInfo.housingDeduction.toFixed(0)}€ Aloj.) = <b>{worker.purseInfo.netFixedAt80h.toFixed(0)}€ Neto</b>
                             </span>
                           </div>
                           <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                            <span className="text-slate-400 block text-[10px]">Acumulado Septiembre:</span>
-                            <span className="font-bold text-emerald-400">{worker.purseInfo.consumedHours}h ({worker.purseInfo.consumedValue.toFixed(2)}€)</span>
+                            <span className="text-slate-400 block text-[10px] whitespace-nowrap">Acumulado Septiembre:</span>
+                            <span className="font-bold text-emerald-400 whitespace-nowrap">{worker.purseInfo.consumedHours}h ({worker.purseInfo.consumedValue.toFixed(2)}€)</span>
                           </div>
                         </div>
 
@@ -844,7 +848,7 @@ export default function PartnerDashboardView({
                           onClick={() => setExpandedWorkerId(isExpanded ? null : worker.id)}
                           className="w-full py-1 text-center text-xs text-amber-400 font-semibold flex items-center justify-center space-x-1"
                         >
-                          <span>{isExpanded ? 'Ocultar turnos bolsa' : `Ver turnos consumidos (${worker.purseInfo.consumedHours}h)`}</span>
+                          <span className="whitespace-nowrap">{isExpanded ? 'Ocultar turnos bolsa' : `Ver turnos consumidos (${worker.purseInfo.consumedHours}h)`}</span>
                           {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                         </button>
 
@@ -853,7 +857,7 @@ export default function PartnerDashboardView({
                             {worker.purseInfo.shifts.map((s, idx) => (
                               <div key={idx} className="flex justify-between items-center bg-slate-950 p-2 rounded-lg">
                                   <span className="break-words min-w-0 flex-1 pr-2">📅 <b>{s.date}</b> ({s.range})</span>
-                                  <span className="font-bold text-amber-400 shrink-0">{s.hours}h</span>
+                                  <span className="font-bold text-amber-400 shrink-0 whitespace-nowrap">{s.hours}h</span>
                               </div>
                             ))}
                           </div>
@@ -864,13 +868,13 @@ export default function PartnerDashboardView({
                     {/* Agreements */}
                     {worker.agreements && worker.agreements.length > 0 && (
                       <div className="mt-3.5 p-3 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1">
-                        <span className="text-[10px] font-bold text-amber-400/90 uppercase tracking-wider block">
+                        <span className="text-[10px] font-bold text-amber-400/90 uppercase tracking-wider block whitespace-nowrap">
                           📜 Acuerdos & Condiciones
                         </span>
                         {worker.agreements.map((agr, aIdx) => (
                           <p key={aIdx} className="text-xs text-slate-300 flex items-start gap-1.5 leading-snug">
-                            <span className="text-amber-400 text-xs leading-4">•</span>
-                            <span>{agr}</span>
+                            <span className="text-amber-400 text-xs leading-4 whitespace-nowrap">•</span>
+                            <span className="whitespace-nowrap">{agr}</span>
                           </p>
                         ))}
                       </div>
@@ -878,7 +882,7 @@ export default function PartnerDashboardView({
 
                     {/* Breakdown */}
                     <div className="mt-4 space-y-2">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block whitespace-nowrap">
                         Desglose de Conceptos & Turnos
                       </span>
                       <div className={`space-y-1.5 pr-1 ${(worker.breakdown || []).length + dynamicShifts.length > 5 ? 'max-h-[32rem] overflow-y-auto custom-scrollbar' : ''}`}>
@@ -893,7 +897,7 @@ export default function PartnerDashboardView({
                                 : 'bg-slate-950/80 border-slate-800 text-slate-200'
                             }`}
                           >
-                            <span className="font-medium break-words min-w-0 flex-1 pr-2">{item.concept}</span>
+                            <span className="font-medium break-words min-w-0 flex-1 pr-2 whitespace-nowrap">{item.concept}</span>
                             <div className="flex items-center gap-2 shrink-0">
                               <span className={`font-bold font-mono ${
                                 item.amount > 0 ? 'text-emerald-400' : item.amount < 0 ? 'text-rose-400' : 'text-slate-400'
@@ -1032,7 +1036,7 @@ export default function PartnerDashboardView({
                             className="w-full py-2 rounded-xl border border-dashed border-slate-700 hover:border-amber-500/50 text-slate-400 hover:text-amber-400 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
                           >
                             <Plus className="w-3.5 h-3.5" />
-                            <span>Añadir concepto / horas manual</span>
+                            <span className="whitespace-nowrap">Añadir concepto / horas manual</span>
                           </button>
                         )
                       )}
@@ -1054,7 +1058,7 @@ export default function PartnerDashboardView({
                       className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center justify-center space-x-2 shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
                     >
                       <MessageCircle className="w-4 h-4" />
-                      <span>Redactar WhatsApp</span>
+                      <span className="whitespace-nowrap">Redactar WhatsApp</span>
                     </button>
                   </div>
                 </div>
@@ -1075,13 +1079,13 @@ export default function PartnerDashboardView({
                   Historial de Fichajes Registrados
                 </h3>
                 {adminUnlocked ? (
-                  <span className="px-2.5 py-0.5 text-[10px] font-extrabold bg-amber-500 text-slate-950 rounded-full">
+                  <span className="px-2.5 py-0.5 text-[10px] font-extrabold bg-amber-500 text-slate-950 rounded-full whitespace-nowrap">
                     CONTROL ADMINISTRATIVO
                   </span>
                 ) : (
                   <span className="px-2.5 py-0.5 text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full flex items-center gap-1">
                     <Eye className="w-3 h-3 text-blue-400" />
-                    <span>MODO SOLO LECTURA (SOCIAS)</span>
+                    <span className="whitespace-nowrap">MODO SOLO LECTURA (SOCIAS)</span>
                   </span>
                 )}
               </div>
@@ -1098,12 +1102,12 @@ export default function PartnerDashboardView({
                 className="py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center space-x-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Añadir Fichaje Manual (Admin)</span>
+                <span className="whitespace-nowrap">+ Añadir Fichaje Manual (Admin)</span>
               </button>
             ) : (
               <span className="text-xs text-slate-400 font-semibold bg-slate-950 px-3.5 py-2 rounded-xl border border-slate-800 flex items-center space-x-1.5">
                 <Lock className="w-3.5 h-3.5 text-amber-400" />
-                <span>Fichajes Inmutables (Protegidos)</span>
+                <span className="whitespace-nowrap">Fichajes Inmutables (Protegidos)</span>
               </span>
             )}
           </div>
@@ -1150,9 +1154,9 @@ export default function PartnerDashboardView({
                         <tr className="bg-slate-950/80">
                           <td colSpan={adminUnlocked ? 6 : 5} className="py-2 px-4">
                             <span className="inline-flex items-center gap-2 text-xs font-extrabold text-amber-300">
-                              <span className="text-base">{profile?.avatar || '👤'}</span>
-                              <span>{name}</span>
-                              <span className="text-[10px] font-semibold text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-800">
+                              <span className="text-base whitespace-nowrap">{profile?.avatar || '👤'}</span>
+                              <span className="whitespace-nowrap">{name}</span>
+                              <span className="text-[10px] font-semibold text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-800 whitespace-nowrap">
                                 {entries.length} {entries.length === 1 ? 'fichaje' : 'fichajes'}
                               </span>
                             </span>
@@ -1167,11 +1171,11 @@ export default function PartnerDashboardView({
                       <td className="py-3.5 px-4">
                         {entry.type === 'entrada' ? (
                           <span className="px-2.5 py-1 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold inline-flex items-center space-x-1">
-                            <span>🟢 ENTRADA</span>
+                            <span className="whitespace-nowrap">🟢 ENTRADA</span>
                           </span>
                         ) : (
                           <span className="px-2.5 py-1 rounded-full text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold inline-flex items-center space-x-1">
-                            <span>🔴 SALIDA</span>
+                            <span className="whitespace-nowrap">🔴 SALIDA</span>
                           </span>
                         )}
                       </td>
@@ -1184,7 +1188,7 @@ export default function PartnerDashboardView({
                       <td className="py-3.5 px-4">
                         <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 inline-flex items-center space-x-1">
                           <Lock className="w-3 h-3 text-amber-400" />
-                          <span>🔒 Registrado & Verificado</span>
+                          <span className="whitespace-nowrap">🔒 Registrado & Verificado</span>
                         </span>
                       </td>
                       {adminUnlocked && (
@@ -1195,7 +1199,7 @@ export default function PartnerDashboardView({
                               className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold flex items-center space-x-1.5 transition-all"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
-                              <span>Editar</span>
+                              <span className="whitespace-nowrap">Editar</span>
                             </button>
 
                             <button
@@ -1242,7 +1246,7 @@ export default function PartnerDashboardView({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400 font-semibold uppercase">Presupuesto Extras a Pagar</span>
+                <span className="text-xs text-slate-400 font-semibold uppercase whitespace-nowrap">Presupuesto Extras a Pagar</span>
                 <DollarSign className="w-5 h-5 text-amber-400" />
               </div>
               <p className="text-3xl font-extrabold text-amber-400 mt-2 font-['Outfit'] font-mono">
@@ -1253,7 +1257,7 @@ export default function PartnerDashboardView({
 
             <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400 font-semibold uppercase">Valoración Control Nóminas</span>
+                <span className="text-xs text-slate-400 font-semibold uppercase whitespace-nowrap">Valoración Control Nóminas</span>
                 <Users className="w-5 h-5 text-indigo-400" />
               </div>
               <p className="text-3xl font-extrabold text-indigo-400 mt-2 font-['Outfit'] font-mono">
@@ -1264,7 +1268,7 @@ export default function PartnerDashboardView({
 
             <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400 font-semibold uppercase">Horas Registradas</span>
+                <span className="text-xs text-slate-400 font-semibold uppercase whitespace-nowrap">Horas Registradas</span>
                 <Clock className="w-5 h-5 text-emerald-400" />
               </div>
               <p className="text-3xl font-extrabold text-emerald-400 mt-2 font-['Outfit'] font-mono">
@@ -1277,20 +1281,20 @@ export default function PartnerDashboardView({
           <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
             <h4 className="font-bold text-white text-base flex items-center space-x-2">
               <TrendingUp className="w-5 h-5 text-amber-400" />
-              <span>Resumen de Horas Fichadas por Trabajador</span>
+              <span className="whitespace-nowrap">Resumen de Horas Fichadas por Trabajador</span>
             </h4>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {balancesList.map((w, idx) => (
                 <div key={idx} className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex flex-col justify-between">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-2xl">{w.avatar}</span>
+                    <span className="text-2xl whitespace-nowrap">{w.avatar}</span>
                     {w.isPayroll ? (
-                      <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                      <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 whitespace-nowrap">
                         Nómina (14€/h)
                       </span>
                     ) : (
-                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 whitespace-nowrap">
                         Extra (10€/h)
                       </span>
                     )}
@@ -1302,8 +1306,8 @@ export default function PartnerDashboardView({
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-mono">
-                    <span className="text-slate-400">{parseFloat(w.totalHours.toFixed(2))}h fichadas</span>
-                    <span className="font-extrabold text-amber-400 text-sm">
+                    <span className="text-slate-400 whitespace-nowrap">{parseFloat(w.totalHours.toFixed(2))}h fichadas</span>
+                    <span className="font-extrabold text-amber-400 text-sm whitespace-nowrap">
                       {w.totalCost.toFixed(2)} €
                     </span>
                   </div>
@@ -1319,14 +1323,14 @@ export default function PartnerDashboardView({
         <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4 animate-fadeIn">
           <h4 className="font-bold text-white text-lg flex items-center space-x-2 font-['Outfit']">
             <Truck className="w-6 h-6 text-amber-400" />
-            <span>Estado de la Flota & Eventos Clave ({activeWeekData?.meta?.week || "Semana 3"})</span>
+            <span className="whitespace-nowrap">Estado de la Flota & Eventos Clave ({activeWeekData?.meta?.week || "Semana 3"})</span>
           </h4>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
             {(activeWeekData?.saturdaySpecial?.weddings || []).map((w, idx) => (
               <div key={`boda-${idx}`} className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-2">
-                <span className="font-extrabold text-amber-300 block text-base font-['Outfit']">🏔️ {w.location}</span>
-                <span className="text-slate-200 block font-semibold">{w.truck}</span>
+                <span className="font-extrabold text-amber-300 block text-base font-['Outfit'] whitespace-nowrap">🏔️ {w.location}</span>
+                <span className="text-slate-200 block font-semibold whitespace-nowrap">{w.truck}</span>
                 <p className="text-xs text-slate-400 leading-relaxed">{w.details}</p>
               </div>
             ))}
@@ -1334,8 +1338,8 @@ export default function PartnerDashboardView({
               .filter((t) => ['j1', 'j2'].includes(t.id))
               .map((t) => (
                 <div key={`jueves-${t.id}`} className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-2">
-                  <span className="font-extrabold text-amber-300 block text-base font-['Outfit']">🏔️ {t.location}</span>
-                  <span className="text-slate-200 block font-semibold">{t.truck || 'Sin camión asignado'}</span>
+                  <span className="font-extrabold text-amber-300 block text-base font-['Outfit'] whitespace-nowrap">🏔️ {t.location}</span>
+                  <span className="text-slate-200 block font-semibold whitespace-nowrap">{t.truck || 'Sin camión asignado'}</span>
                   <p className="text-xs text-slate-400 leading-relaxed">{t.text}</p>
                 </div>
               ))}
@@ -1354,7 +1358,7 @@ export default function PartnerDashboardView({
               </h2>
               {selectedWorkerFilter ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-amber-400 font-semibold bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">
+                  <span className="text-xs text-amber-400 font-semibold bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20 whitespace-nowrap">
                     Filtrando: {selectedWorkerFilter}
                   </span>
                   <button
@@ -1365,7 +1369,7 @@ export default function PartnerDashboardView({
                   </button>
                 </div>
               ) : (
-                <span className="text-xs text-slate-400 hidden sm:inline">
+                <span className="text-xs text-slate-400 hidden sm:inline whitespace-nowrap">
                   Haz clic en un trabajador para filtrar sus tareas
                 </span>
               )}
@@ -1387,9 +1391,9 @@ export default function PartnerDashboardView({
                     <div className="flex items-center justify-between">
                       <div className="text-2xl">{w.avatar}</div>
                       {w.isPayroll ? (
-                        <span className="text-[9px] font-extrabold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Nómina</span>
+                        <span className="text-[9px] font-extrabold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 whitespace-nowrap">Nómina</span>
                       ) : (
-                        <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">10€/h</span>
+                        <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 whitespace-nowrap">10€/h</span>
                       )}
                     </div>
 
@@ -1412,7 +1416,7 @@ export default function PartnerDashboardView({
                     <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
                       <Calendar className="text-amber-400 w-4 h-4" /> {day.title}
                     </h3>
-                    <span className="text-[10px] bg-slate-950 text-amber-300 font-bold px-2.5 py-1 rounded-xl border border-slate-800">
+                    <span className="text-[10px] bg-slate-950 text-amber-300 font-bold px-2.5 py-1 rounded-xl border border-slate-800 whitespace-nowrap">
                       {day.badge}
                     </span>
                   </div>
@@ -1454,7 +1458,7 @@ export default function PartnerDashboardView({
                             )}
                           </div>
                           <div className="flex-1 leading-relaxed">
-                            <span className={isCompleted ? 'line-through' : ''}>{taskText}</span>
+                            <span className={`${isCompleted ? 'line-through' : ''} whitespace-nowrap`}>{taskText}</span>
                             {typeof task === 'object' && task.timeFrame && (
                               <span className="ml-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 align-middle whitespace-nowrap">
                                 <Clock className="w-3 h-3" />
@@ -1478,7 +1482,7 @@ export default function PartnerDashboardView({
                 <h3 className="font-extrabold text-base sm:text-lg flex items-center gap-2 font-['Outfit'] text-white">
                   <Sparkles className="text-amber-400 w-5 h-5" /> {activeWeekData.saturdaySpecial.title}
                 </h3>
-                <span className="text-[11px] bg-amber-500/20 text-amber-300 font-bold px-3 py-1 rounded-xl border border-amber-500/30">
+                <span className="text-[11px] bg-amber-500/20 text-amber-300 font-bold px-3 py-1 rounded-xl border border-amber-500/30 whitespace-nowrap">
                   Día Clave
                 </span>
               </div>
@@ -1487,7 +1491,7 @@ export default function PartnerDashboardView({
                 {(activeWeekData.saturdaySpecial.weddings || []).map((w, idx) => (
                   <div key={idx} className="bg-slate-950/90 p-5 rounded-2xl border border-slate-800 space-y-3 hover:border-amber-500/30 transition-all">
                     <div className="flex items-start justify-between">
-                      <span className="font-extrabold text-amber-300 block text-sm sm:text-base font-['Outfit']">🏔️ {w.location}</span>
+                      <span className="font-extrabold text-amber-300 block text-sm sm:text-base font-['Outfit'] whitespace-nowrap">🏔️ {w.location}</span>
                       {w.timeFrame && (
                         <span className="text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1">
                           <Clock className="w-3 h-3" />
@@ -1495,7 +1499,7 @@ export default function PartnerDashboardView({
                         </span>
                       )}
                     </div>
-                    <span className="text-slate-200 block font-semibold">{w.truck}</span>
+                    <span className="text-slate-200 block font-semibold whitespace-nowrap">{w.truck}</span>
                     <p className="text-xs text-slate-400 leading-relaxed">{w.details}</p>
                   </div>
                 ))}
@@ -1515,7 +1519,7 @@ export default function PartnerDashboardView({
                   const taskText = typeof task === 'object' ? task.text : task;
                   return (
                     <div key={idx} className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 leading-relaxed">
-                      <span>{taskText}</span>
+                      <span className="whitespace-nowrap">{taskText}</span>
                       {typeof task === 'object' && task.timeFrame && (
                         <span className="ml-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 align-middle whitespace-nowrap">
                           <Clock className="w-3 h-3" />
@@ -1587,8 +1591,8 @@ export default function PartnerDashboardView({
               {/* Status / Role Card */}
               <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] text-slate-400 block font-medium">Modo de Acceso</span>
-                  <span className="text-xs font-bold text-white flex items-center gap-1 mt-0.5">
+                  <span className="text-[10px] text-slate-400 block font-medium whitespace-nowrap">Modo de Acceso</span>
+                  <span className="text-xs font-bold text-white flex items-center gap-1 mt-0.5 whitespace-nowrap">
                     {adminUnlocked ? '👑 Administrador' : '👥 Socias / Lectura'}
                   </span>
                 </div>
@@ -1621,7 +1625,7 @@ export default function PartnerDashboardView({
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-emerald-500 to-emerald-600 text-slate-950 shadow-md"
                     >
                       <Clock className="w-4 h-4 shrink-0" />
-                      <span>⏱️ Registrar Fichaje</span>
+                      <span className="whitespace-nowrap">⏱️ Registrar Fichaje</span>
                     </button>
 
                     {adminUnlocked && onOpenTaskEditor && (
@@ -1630,7 +1634,7 @@ export default function PartnerDashboardView({
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-orange-400 border border-slate-800"
                       >
                         <Edit3 className="w-4 h-4 shrink-0" />
-                        <span>✏️ Editor de Planning Semanal</span>
+                        <span className="whitespace-nowrap">✏️ Editor de Planning Semanal</span>
                       </button>
                     )}
 
@@ -1641,7 +1645,7 @@ export default function PartnerDashboardView({
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
                       >
                         <Bell className={`w-4 h-4 shrink-0 ${isPushLoading ? 'animate-pulse' : ''}`} />
-                        <span>{isPushLoading ? 'Avisando...' : '🔔 Avisar Cambios'}</span>
+                        <span className="whitespace-nowrap">{isPushLoading ? 'Avisando...' : '🔔 Avisar Cambios'}</span>
                       </button>
                     )}
 
@@ -1651,7 +1655,7 @@ export default function PartnerDashboardView({
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-indigo-300 border border-slate-800"
                       >
                         <Users className="w-4 h-4 shrink-0" />
-                        <span>➕ Gestión de Trabajadores</span>
+                        <span className="whitespace-nowrap">➕ Gestión de Trabajadores</span>
                       </button>
                     )}
 
@@ -1661,7 +1665,7 @@ export default function PartnerDashboardView({
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-800"
                       >
                         <DollarSign className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>💵 Nóminas y Horas Extra</span>
+                        <span className="whitespace-nowrap">💵 Nóminas y Horas Extra</span>
                       </button>
                     )}
 
@@ -1671,7 +1675,7 @@ export default function PartnerDashboardView({
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-500/20 to-indigo-500/20 hover:from-amber-500/30 text-amber-300 border border-amber-500/30"
                       >
                         <Wand2 className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>✨ Asistente IA Gemini</span>
+                        <span className="whitespace-nowrap">✨ Asistente IA Gemini</span>
                       </button>
                     )}
                   </div>
@@ -1688,7 +1692,7 @@ export default function PartnerDashboardView({
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30"
                       >
                         <Share2 className="w-4 h-4 text-blue-400 shrink-0" />
-                        <span>💬 Compartir por WhatsApp</span>
+                        <span className="whitespace-nowrap">💬 Compartir por WhatsApp</span>
                       </button>
                     )}
 
@@ -1697,7 +1701,7 @@ export default function PartnerDashboardView({
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-amber-300 border border-slate-800"
                     >
                       {copiedLink ? <Check className="w-4 h-4 text-emerald-400 shrink-0" /> : <Copy className="w-4 h-4 text-amber-400 shrink-0" />}
-                      <span>{copiedLink ? '¡Enlace Copiado!' : '📋 Copiar Link de Socias'}</span>
+                      <span className="whitespace-nowrap">{copiedLink ? '¡Enlace Copiado!' : '📋 Copiar Link de Socias'}</span>
                     </button>
 
                     {onTogglePublicView && (
@@ -1706,7 +1710,7 @@ export default function PartnerDashboardView({
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800"
                       >
                         <Eye className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>👁️ Vista Pública de Operativa</span>
+                        <span className="whitespace-nowrap">👁️ Vista Pública de Operativa</span>
                       </button>
                     )}
                   </div>
@@ -1723,14 +1727,14 @@ export default function PartnerDashboardView({
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800"
                       >
                         <KeyRound className="w-4 h-4 text-slate-400 shrink-0" />
-                        <span>⚙️ Claves & Configuración</span>
+                        <span className="whitespace-nowrap">⚙️ Claves & Configuración</span>
                       </button>
                       <button
                         onClick={() => { onOpenAddWeek(); setIsMobileDrawerOpen(false); }}
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800"
                       >
                         <Plus className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>📅 Añadir Nueva Semana</span>
+                        <span className="whitespace-nowrap">📅 Añadir Nueva Semana</span>
                       </button>
                     </div>
                   </div>
@@ -1739,7 +1743,7 @@ export default function PartnerDashboardView({
             </div>
 
             <div className="pt-4 border-t border-slate-800 text-center">
-              <span className="text-[10px] text-slate-500 block">Gula Logística · v2.5 Mobile</span>
+              <span className="text-[10px] text-slate-500 block whitespace-nowrap">Gula Logística · v2.5 Mobile</span>
             </div>
           </div>
         </div>
@@ -1756,7 +1760,7 @@ export default function PartnerDashboardView({
           }`}
         >
           <Radio className="w-5 h-5 mb-0.5 text-rose-400 animate-pulse" />
-          <span className="text-[10px]">En Vivo</span>
+          <span className="text-[10px] whitespace-nowrap">En Vivo</span>
         </button>
 
         <button
@@ -1768,7 +1772,7 @@ export default function PartnerDashboardView({
           }`}
         >
           <Calendar className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Cuadrante</span>
+          <span className="text-[10px] whitespace-nowrap">Cuadrante</span>
         </button>
 
         <button
@@ -1780,7 +1784,7 @@ export default function PartnerDashboardView({
           }`}
         >
           <TrendingUp className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Saldos</span>
+          <span className="text-[10px] whitespace-nowrap">Saldos</span>
         </button>
 
         <button
@@ -1792,7 +1796,7 @@ export default function PartnerDashboardView({
           }`}
         >
           <Zap className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Grafo</span>
+          <span className="text-[10px] whitespace-nowrap">Grafo</span>
         </button>
 
         <button
@@ -1800,7 +1804,7 @@ export default function PartnerDashboardView({
           className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-400 hover:text-amber-400 transition-all"
         >
           <Menu className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Menú</span>
+          <span className="text-[10px] whitespace-nowrap">Menú</span>
         </button>
       </nav>
       {/* Modales y Drawers (existentes arriba, pero este es el de Avisar Cambios) */}
