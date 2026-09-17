@@ -11,11 +11,19 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 const router = express.Router();
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT || 'mailto:info@gulalogistics.com',
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-);
+try {
+  if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT || 'mailto:info@gulalogistics.com',
+      process.env.VAPID_PUBLIC_KEY,
+      process.env.VAPID_PRIVATE_KEY
+    );
+  } else {
+    console.warn('⚠️ VAPID keys missing. Push notifications will be disabled.');
+  }
+} catch (e) {
+  console.warn('⚠️ Error setting VAPID details:', e.message);
+}
 
 // Helper middleware (can be moved later)
 const requireAdmin = (req, res, next) => {
