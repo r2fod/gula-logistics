@@ -748,10 +748,10 @@ export default function App() {
                 />
               </div>
 
-              <div className="flex items-center space-x-2 pt-1">
+              <div className="flex flex-col sm:flex-row gap-2 pt-1 w-full">
                 <button
                   onClick={copyPartnerSecureLink}
-                  className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center justify-center space-x-1.5 transition-colors border border-slate-700 whitespace-nowrap"
+                  className="w-full sm:flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-colors border border-slate-700 whitespace-nowrap"
                 >
                   {copiedPartnerLink ? (
                     <>
@@ -768,7 +768,7 @@ export default function App() {
 
                 <button
                   onClick={sharePartnerLinkWhatsApp}
-                  className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20 whitespace-nowrap"
+                  className="w-full sm:flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-emerald-600/20 whitespace-nowrap"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                   <span>WhatsApp Socias</span>
@@ -777,11 +777,11 @@ export default function App() {
             </div>
 
             {/* Workers List */}
-            <div className="space-y-3 max-h-[50vh] overflow-y-auto overflow-x-hidden pr-1">
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto overflow-x-hidden pr-1 no-scrollbar">
               <span className="text-xs font-semibold text-slate-400 block uppercase tracking-wider">Enlaces de Trabajadores</span>
               {workersList.map((w, idx) => (
                 <div key={idx} className="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 overflow-hidden">
-                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                  <div className="flex items-center space-x-3 min-w-0 flex-1 w-full">
                     <span className="text-2xl shrink-0">{w.avatar}</span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center space-x-2">
@@ -796,10 +796,10 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2 w-full sm:w-auto shrink-0">
+                  <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full sm:w-auto shrink-0">
                     <button
                       onClick={() => copyWorkerLink(w.name)}
-                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center space-x-1.5 transition-colors whitespace-nowrap shrink-0"
+                      className="col-span-2 sm:col-span-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
                     >
                       {copiedWorker === w.name ? (
                         <>
@@ -816,7 +816,7 @@ export default function App() {
 
                     <button
                       onClick={() => shareViaWhatsApp(w.name)}
-                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20 whitespace-nowrap shrink-0"
+                      className="col-span-1 sm:col-span-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-emerald-600/20 whitespace-nowrap shrink-0"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
                       <span>WhatsApp</span>
@@ -824,7 +824,7 @@ export default function App() {
 
                     <button
                       onClick={() => window.open(getWorkerLink(w.name), '_blank')}
-                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-blue-600/20 whitespace-nowrap shrink-0"
+                      className="col-span-1 sm:col-span-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-blue-600/20 whitespace-nowrap shrink-0"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                       <span>Abrir</span>
