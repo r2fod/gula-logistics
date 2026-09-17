@@ -554,10 +554,11 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
 
                         <div className="flex-1 min-w-0 space-y-2">
                           <textarea
+                            rows={3}
                             value={textValue}
                             onChange={(e) => handleTaskChange(dayKey, idx, e.target.value)}
                             placeholder="Descripción de la tarea..."
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500 resize-y min-h-[40px]"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500 resize-y min-h-[80px]"
                           />
                           <div className="flex flex-col sm:flex-row gap-2">
                             <TimeRangeEditor
@@ -837,10 +838,11 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
 
                       <div className="flex-1 min-w-0 space-y-2">
                         <textarea
+                          rows={3}
                           value={textValue}
                           onChange={(e) => handleTaskChange('sundayMonday', idx, e.target.value)}
                           placeholder="Descripción de la tarea..."
-                          className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 resize-y min-h-[40px]"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 resize-y min-h-[80px]"
                         />
                         <div className="flex flex-col sm:flex-row gap-2">
                           <TimeRangeEditor
