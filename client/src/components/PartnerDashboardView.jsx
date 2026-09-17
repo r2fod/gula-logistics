@@ -364,10 +364,10 @@ export default function PartnerDashboardView({
   // Busca por prefijo de palabra completa para tolerar ese sufijo.
   const findWorkerHours = (balanceWorkerName) => {
     if (!balanceWorkerName) return null;
-    const normalized = balanceWorkerName.trim().toLowerCase();
+    const normalized = balanceWorkerName.trim().toLowerCase().replace(/ff/g, 'f');
     const rosterKey = Object.keys(workerBalances).find(rosterName => {
-      const rn = rosterName.toLowerCase();
-      return normalized === rn || normalized.startsWith(`${rn} `);
+      const rn = rosterName.toLowerCase().replace(/ff/g, 'f');
+      return normalized === rn || normalized.startsWith(`${rn} `) || normalized.includes(rn);
     });
     return rosterKey ? workerBalances[rosterKey] : null;
   };
