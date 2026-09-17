@@ -5,7 +5,8 @@ import {
   Copy,
   X,
   MessageCircle,
-  ShieldCheck
+  ShieldCheck,
+  ExternalLink
 } from 'lucide-react';
 
 import WeekManagerModal from './components/WeekManagerModal';
@@ -814,6 +815,14 @@ export default function App() {
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
                       <span>WhatsApp</span>
+                    </button>
+
+                    <button
+                      onClick={() => window.open(getWorkerLink(w.name), '_blank')}
+                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-blue-600/20 whitespace-nowrap shrink-0"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Abrir</span>
                     </button>
                   </div>
                 </div>
