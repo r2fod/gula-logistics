@@ -406,7 +406,7 @@ export default function PartnerDashboardView({
     <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-2.5 sm:p-4 md:p-5 font-sans space-y-3 w-full max-w-full overflow-x-hidden pb-32 lg:pb-16">
       
       {/* Top Page Navigation Bar - Compact & Responsive */}
-      <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-3 sm:px-4 sm:py-3 rounded-2xl shadow-xl flex flex-col lg:flex-row lg:flex-wrap justify-between items-start lg:items-center gap-2.5 w-full max-w-full overflow-hidden">
+      <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-3 sm:px-4 sm:py-3 rounded-2xl shadow-xl flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2.5 w-full max-w-full overflow-hidden">
         
         {/* Title & Selector (compact) */}
         <div className="flex items-center gap-2.5 min-w-0 max-w-full flex-wrap sm:flex-nowrap">
