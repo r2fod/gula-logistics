@@ -373,7 +373,7 @@ export default function PartnerDashboardView({
   };
 
   return (
-    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-2.5 sm:p-4 md:p-5 font-sans space-y-3 w-full max-w-full overflow-x-hidden pb-24 lg:pb-6">
+    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-2.5 sm:p-4 md:p-5 font-sans space-y-3 w-full max-w-full overflow-x-hidden pb-32 lg:pb-16">
       
       {/* Top Page Navigation Bar - Compact & Responsive */}
       <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-3 sm:px-4 sm:py-3 rounded-2xl shadow-xl flex flex-col lg:flex-row lg:flex-wrap justify-between items-start lg:items-center gap-2.5 w-full max-w-full overflow-hidden">
@@ -811,8 +811,8 @@ export default function PartnerDashboardView({
                           <div className="pt-2 border-t border-amber-500/20 space-y-1 text-xs text-slate-300">
                             {worker.purseInfo.shifts.map((s, idx) => (
                               <div key={idx} className="flex justify-between items-center bg-slate-950 p-2 rounded-lg">
-                                <span>📅 <b>{s.date}</b> ({s.range})</span>
-                                <span className="font-bold text-amber-300">{s.hours}h</span>
+                                  <span className="break-words min-w-0 flex-1 pr-2">📅 <b>{s.date}</b> ({s.range})</span>
+                                  <span className="font-bold text-amber-400 shrink-0">{s.hours}h</span>
                               </div>
                             ))}
                           </div>
@@ -852,7 +852,7 @@ export default function PartnerDashboardView({
                                 : 'bg-slate-950/80 border-slate-800 text-slate-200'
                             }`}
                           >
-                            <span className="font-medium">{item.concept}</span>
+                            <span className="font-medium break-words min-w-0 flex-1 pr-2">{item.concept}</span>
                             <div className="flex items-center gap-2 shrink-0">
                               <span className={`font-bold font-mono ${
                                 item.amount > 0 ? 'text-emerald-400' : item.amount < 0 ? 'text-rose-400' : 'text-slate-400'
