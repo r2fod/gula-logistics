@@ -176,7 +176,7 @@ export default function PartnerDashboardView({
     const dateLabel = Number.isNaN(dateObj.getTime())
       ? newShiftDate
       : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
-    const fmtHours = (h) => (Number.isInteger(h) ? `${h}` : h.toFixed(1));
+    const fmtHours = (h) => (Number.isInteger(h) ? `${h}` : parseFloat(h.toFixed(2)).toString());
 
     if (worker.isSpecialPurse && worker.purseInfo) {
       const p = worker.purseInfo;
@@ -257,7 +257,7 @@ export default function PartnerDashboardView({
     }
 
     if (preview.extraHours > 0) {
-      const hoursLabel = Number.isInteger(preview.extraHours) ? `${preview.extraHours}` : preview.extraHours.toFixed(1);
+      const hoursLabel = Number.isInteger(preview.extraHours) ? `${preview.extraHours}` : parseFloat(preview.extraHours.toFixed(2)).toString();
       newBreakdown.push({
         concept: `🕒 ${preview.dateLabel} (${newShiftStart} a ${newShiftEnd} - ${hoursLabel}h a ${p.extraRateAfter80h}€/h · Extra tras bolsa)`,
         amount: preview.extraHours * p.extraRateAfter80h,
@@ -656,7 +656,7 @@ export default function PartnerDashboardView({
                 hours.shifts.forEach(s => {
                   let computedCost = 0;
                   let computedConcept = '';
-                  const fmtHours = (h) => (Number.isInteger(h) ? `${h}` : h.toFixed(1));
+                  const fmtHours = (h) => (Number.isInteger(h) ? `${h}` : parseFloat(h.toFixed(2)).toString());
 
                   if (worker.isSpecialPurse && worker.purseInfo) {
                     const p = worker.purseInfo;
@@ -761,7 +761,7 @@ export default function PartnerDashboardView({
                       <div className="mt-3 flex items-center gap-2 text-xs bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">
                         <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                         <span className="text-emerald-100">
-                          <b className="text-emerald-400 font-mono">{hours.totalHours.toFixed(1)}h</b> fichadas automáticamente y sumadas al saldo
+                          <b className="text-emerald-400 font-mono">{parseFloat(hours.totalHours.toFixed(2))}h</b> fichadas automáticamente y sumadas al saldo
                         </span>
                       </div>
                     )}
@@ -1227,7 +1227,7 @@ export default function PartnerDashboardView({
                 <Clock className="w-5 h-5 text-emerald-400" />
               </div>
               <p className="text-3xl font-extrabold text-emerald-400 mt-2 font-['Outfit'] font-mono">
-                {totalExtraHours.toFixed(1)} h
+                {parseFloat(totalExtraHours.toFixed(2))} h
               </p>
               <p className="text-xs text-slate-500 mt-1">Acumulado de jornadas en fichaje</p>
             </div>
@@ -1261,7 +1261,7 @@ export default function PartnerDashboardView({
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-mono">
-                    <span className="text-slate-400">{w.totalHours.toFixed(1)}h fichadas</span>
+                    <span className="text-slate-400">{parseFloat(w.totalHours.toFixed(2))}h fichadas</span>
                     <span className="font-extrabold text-amber-400 text-sm">
                       {w.totalCost.toFixed(2)} €
                     </span>
