@@ -86,7 +86,8 @@ export function aggregateShiftsByWorker(shifts, workersList = []) {
       rate: w.rate || (w.isPayroll ? 14 : 10),
       totalHours: 0,
       totalCost: 0,
-      completedShifts: 0
+      completedShifts: 0,
+      shifts: []
     };
   });
 
@@ -96,6 +97,7 @@ export function aggregateShiftsByWorker(shifts, workersList = []) {
     bucket.totalHours += shift.durationHours;
     bucket.totalCost += shift.cost;
     bucket.completedShifts += 1;
+    bucket.shifts.push(shift);
   });
 
   return workerBalances;

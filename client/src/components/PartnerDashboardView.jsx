@@ -647,6 +647,48 @@ export default function PartnerDashboardView({
             {(balancesData.workers || []).map((worker) => {
               const isExpanded = expandedWorkerId === worker.id;
 
+              const hours = findWorkerHours(worker.name);
+              let dynamicCost = 0;
+              let dynamicShifts = [];
+              let consumedBolsa = 0;
+
+              if (hours && hours.shifts && hours.shifts.length > 0) {
+                hours.shifts.forEach(s => {
+                  let computedCost = 0;
+                  let computedConcept = '';
+                  const fmtHours = (h) => (Number.isInteger(h) ? `${h}` : h.toFixed(1));
+
+                  if (worker.isSpecialPurse && worker.purseInfo) {
+                    const p = worker.purseInfo;
+                    const remaining = Math.max(0, p.totalHours - consumedBolsa);
+                    const purseHours = Math.min(s.durationHours, remaining);
+                    const extraHours = Math.max(0, s.durationHours - purseHours);
+                    computedCost = purseHours * p.hourlyRate + extraHours * p.extraRateAfter80h;
+                    
+                    if (extraHours === 0) {
+                      computedConcept = `🕒 ${s.startDate} [${s.startTime} a ${s.endTime}] - ${fmtHours(s.durationHours)}h a ${p.hourlyRate}€/h (Bolsa)`;
+                    } else if (purseHours === 0) {
+                      computedConcept = `🕒 ${s.startDate} [${s.startTime} a ${s.endTime}] - ${fmtHours(s.durationHours)}h a ${p.extraRateAfter80h}€/h (Extra)`;
+                    } else {
+                      computedConcept = `🕒 ${s.startDate} [${s.startTime} a ${s.endTime}] - ${fmtHours(purseHours)}h a ${p.hourlyRate}€/h + ${fmtHours(extraHours)}h a ${p.extraRateAfter80h}€/h`;
+                    }
+                    consumedBolsa += s.durationHours;
+                  } else {
+                    computedCost = s.cost;
+                    computedConcept = `🕒 ${s.startDate} [${s.startTime} a ${s.endTime}] - ${fmtHours(s.durationHours)}h a ${s.rate}€/h`;
+                  }
+
+                  dynamicCost += computedCost;
+                  dynamicShifts.push({
+                    concept: computedConcept,
+                    amount: computedCost,
+                    isDynamic: true
+                  });
+                });
+              }
+              
+              const displayBalance = worker.currentBalance + dynamicCost;
+
               return (
                 <div 
                   key={worker.id}
@@ -706,30 +748,23 @@ export default function PartnerDashboardView({
                           <span className="text-xl font-extrabold text-amber-400 font-mono">0,00 €</span>
                         ) : (
                           <span className={`text-2xl sm:text-3xl font-extrabold font-mono ${
-                            worker.currentBalance > 0 ? 'text-emerald-400' : worker.currentBalance < 0 ? 'text-rose-400' : 'text-slate-400'
+                            displayBalance > 0 ? 'text-emerald-400' : displayBalance < 0 ? 'text-rose-400' : 'text-slate-400'
                           }`}>
-                            {worker.currentBalance >= 0 ? `+${worker.currentBalance.toFixed(2)} €` : `${worker.currentBalance.toFixed(2)} €`}
+                            {displayBalance >= 0 ? `+${displayBalance.toFixed(2)} €` : `${displayBalance.toFixed(2)} €`}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Horas reales fichadas — mismo cálculo que Resumen
-                        Financiero (workerBalances/aggregateShiftsByWorker),
-                        solo que también se muestra aquí junto al saldo. */}
-                    {(() => {
-                      const hours = findWorkerHours(worker.name);
-                      if (!hours || hours.completedShifts === 0) return null;
-                      return (
-                        <div className="mt-3 flex items-center gap-2 text-xs bg-slate-950/70 border border-slate-800 rounded-xl px-3 py-2">
-                          <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                          <span className="text-slate-300">
-                            <b className="text-emerald-400 font-mono">{hours.totalHours.toFixed(1)}h</b> fichadas
-                            {' '}({hours.totalCost.toFixed(2)} €)
-                          </span>
-                        </div>
-                      );
-                    })()}
+                    {/* Horas reales fichadas sumadas al balance */}
+                    {hours && hours.completedShifts > 0 && (
+                      <div className="mt-3 flex items-center gap-2 text-xs bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">
+                        <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span className="text-emerald-100">
+                          <b className="text-emerald-400 font-mono">{hours.totalHours.toFixed(1)}h</b> fichadas automáticamente y sumadas al saldo
+                        </span>
+                      </div>
+                    )}
 
                     {/* Special Jefferson Purse Box */}
                     {worker.isSpecialPurse && worker.purseInfo && (
@@ -805,13 +840,15 @@ export default function PartnerDashboardView({
                       <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                         Desglose de Conceptos & Turnos
                       </span>
-                      <div className={`space-y-1.5 pr-1 ${(worker.breakdown || []).length > 5 ? 'max-h-48 overflow-y-auto' : ''}`}>
-                        {(worker.breakdown || []).map((item, idx) => (
+                      <div className={`space-y-1.5 pr-1 ${(worker.breakdown || []).length + dynamicShifts.length > 5 ? 'max-h-48 overflow-y-auto' : ''}`}>
+                        {[...dynamicShifts, ...(worker.breakdown || [])].map((item, idx) => (
                           <div
                             key={idx}
                             className={`p-2.5 rounded-xl border text-xs flex items-center justify-between gap-2 ${
                               item.amount < 0
                                 ? 'bg-rose-500/10 border-rose-500/20 text-rose-200'
+                                : item.isDynamic
+                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-100'
                                 : 'bg-slate-950/80 border-slate-800 text-slate-200'
                             }`}
                           >
@@ -822,9 +859,9 @@ export default function PartnerDashboardView({
                               }`}>
                                 {item.amount > 0 ? `+${item.amount.toFixed(2)} €` : item.amount < 0 ? `${item.amount.toFixed(2)} €` : '0,00 €'}
                               </span>
-                              {adminUnlocked && (
+                              {adminUnlocked && !item.isDynamic && (
                                 <button
-                                  onClick={() => handleDeleteConcept(worker, idx)}
+                                  onClick={() => handleDeleteConcept(worker, idx - dynamicShifts.length)}
                                   disabled={savingBalanceId === worker.id}
                                   className="text-slate-500 hover:text-rose-400 transition-colors disabled:opacity-40"
                                   title="Eliminar concepto"
