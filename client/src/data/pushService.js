@@ -42,7 +42,7 @@ export async function subscribeToPush(workerName) {
   return true;
 }
 
-export async function sendPushNotification(title, body) {
+export async function sendPushNotification(title, body, targetWorkers = []) {
   const { getStoredAdminToken } = await import('./apiService');
   const adminToken = getStoredAdminToken();
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -52,7 +52,7 @@ export async function sendPushNotification(title, body) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${adminToken}`
     },
-    body: JSON.stringify({ title, body })
+    body: JSON.stringify({ title, body, targetWorkers })
   });
   if (!res.ok) {
     throw new Error('Error al enviar notificaciones');

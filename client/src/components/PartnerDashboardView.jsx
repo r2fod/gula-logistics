@@ -97,15 +97,24 @@ export default function PartnerDashboardView({
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [isPushLoading, setIsPushLoading] = useState(false);
 
-  const handleNotifyWorkers = async () => {
-    if (!window.confirm("¿Seguro que quieres avisar a los trabajadores de que hay nuevos turnos?")) return;
+  const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
+  const [selectedWorkersToNotify, setSelectedWorkersToNotify] = useState([]);
+
+  const handleOpenNotifyModal = () => {
+    setSelectedWorkersToNotify([]);
+    setIsNotifyModalOpen(true);
+  };
+
+  const handleSendNotification = async () => {
     try {
       setIsPushLoading(true);
       await sendPushNotification(
         "¡Nuevos turnos asignados!", 
-        "Revisa tu panel de trabajador, se han añadido o modificado tus turnos."
+        "Revisa tu panel de trabajador, se han añadido o modificado tus turnos.",
+        selectedWorkersToNotify
       );
-      alert("Aviso enviado a los dispositivos de los trabajadores.");
+      alert(`Aviso enviado correctamente a ${selectedWorkersToNotify.length === 0 ? 'todos' : selectedWorkersToNotify.length + ' trabajador(es)'}.`);
+      setIsNotifyModalOpen(false);
     } catch (error) {
       alert("Hubo un error al enviar las notificaciones.");
     } finally {
@@ -501,7 +510,7 @@ export default function PartnerDashboardView({
 
           {adminUnlocked && (
             <button 
-              onClick={handleNotifyWorkers} 
+              onClick={handleOpenNotifyModal} 
               disabled={isPushLoading}
               className="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-indigo-500/30 transition-all"
             >
@@ -1783,6 +1792,73 @@ export default function PartnerDashboardView({
           <span className="text-[10px]">Menú</span>
         </button>
       </nav>
+      {/* Modales y Drawers (existentes arriba, pero este es el de Avisar Cambios) */}
+      {isNotifyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900">
+              <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                <Bell className="w-4 h-4 text-indigo-400" />
+                ¿A quién quieres avisar?
+              </h2>
+              <button onClick={() => setIsNotifyModalOpen(false)} className="text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-800 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="p-4 overflow-y-auto max-h-[60vh] space-y-2">
+              <p className="text-xs text-slate-400 mb-3">
+                Selecciona a los trabajadores que recibirán la notificación de cambios en su planning. Si no seleccionas a ninguno, se enviará a <strong>todos</strong>.
+              </p>
+              
+              <button 
+                onClick={() => setSelectedWorkersToNotify([])}
+                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-colors ${selectedWorkersToNotify.length === 0 ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300 font-bold' : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'}`}
+              >
+                <span>Avisar a Todos</span>
+                {selectedWorkersToNotify.length === 0 && <Check className="w-4 h-4" />}
+              </button>
+
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                {workersList.map(w => {
+                  const isSelected = selectedWorkersToNotify.includes(w.name);
+                  return (
+                    <button
+                      key={w.name}
+                      onClick={() => {
+                        setSelectedWorkersToNotify(prev => 
+                          prev.includes(w.name) ? prev.filter(n => n !== w.name) : [...prev, w.name]
+                        );
+                      }}
+                      className={`flex items-center justify-center gap-1.5 p-2 rounded-xl border text-[11px] font-bold transition-all ${isSelected ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300 shadow-md shadow-indigo-500/10' : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'}`}
+                    >
+                      <span>{w.avatar}</span>
+                      <span className="truncate">{w.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex gap-2">
+              <button 
+                onClick={() => setIsNotifyModalOpen(false)}
+                className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleSendNotification}
+                disabled={isPushLoading}
+                className="flex-1 px-4 py-2 bg-indigo-500 hover:bg-indigo-400 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 disabled:opacity-50 transition-colors"
+              >
+                <Bell className={`w-3.5 h-3.5 ${isPushLoading ? 'animate-pulse' : ''}`} />
+                {isPushLoading ? 'Enviando...' : 'Enviar Aviso'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

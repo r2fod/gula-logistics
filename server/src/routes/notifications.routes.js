@@ -60,14 +60,19 @@ router.post('/subscribe', async (req, res) => {
 // POST /api/notifications/notify - Manually trigger notifications
 router.post('/notify', requireAdmin, async (req, res) => {
   try {
-    const { title, body } = req.body;
+    const { title, body, targetWorkers } = req.body;
     if (!title || !body) {
       return res.status(400).json({ error: 'Falta título o cuerpo del mensaje' });
     }
 
-    const subscriptions = await PushSubscription.find({});
+    let query = {};
+    if (Array.isArray(targetWorkers) && targetWorkers.length > 0) {
+      query = { workerName: { $in: targetWorkers } };
+    }
+
+    const subscriptions = await PushSubscription.find(query);
     if (subscriptions.length === 0) {
-      return res.status(200).json({ message: 'No hay usuarios suscritos a las notificaciones' });
+      return res.status(200).json({ message: 'No hay usuarios suscritos que coincidan' });
     }
 
     const payload = JSON.stringify({ title, body });
