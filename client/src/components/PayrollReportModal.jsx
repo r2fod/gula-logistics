@@ -186,29 +186,29 @@ export default function PayrollReportModal({
             </div>
           </div>
 
-          <div className="flex items-center space-x-2 w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             {isAdmin && (
               <button
                 onClick={handleOpenCreateNew}
-                className="py-2.5 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 text-xs font-bold flex items-center space-x-1.5 transition-all"
+                className="py-2.5 px-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 text-xs font-bold flex items-center justify-center gap-1.5 transition-all whitespace-nowrap shrink-0"
               >
-                <Plus className="w-4 h-4 text-amber-400" />
-                <span>+ Fichaje Admin</span>
+                <Plus className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>Fichaje Admin</span>
               </button>
             )}
 
             <button
               onClick={handleCopySummary}
-              className="flex-1 sm:flex-none py-2.5 px-4 rounded-xl bg-amber-500 text-slate-950 text-xs font-bold hover:bg-amber-400 flex items-center justify-center space-x-1.5 shadow-md shadow-amber-500/20 transition-all"
+              className="flex-1 sm:flex-none py-2.5 px-4 rounded-xl bg-amber-500 text-slate-950 text-xs font-bold hover:bg-amber-400 flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 transition-all whitespace-nowrap shrink-0"
             >
               {copied ? (
                 <>
-                  <Check className="w-4 h-4" />
+                  <Check className="w-4 h-4 shrink-0" />
                   <span>¡Resumen Copiado!</span>
                 </>
               ) : (
                 <>
-                  <Copy className="w-4 h-4" />
+                  <Copy className="w-4 h-4 shrink-0" />
                   <span>Copiar WhatsApp</span>
                 </>
               )}
