@@ -755,6 +755,14 @@ export default function PayrollReportModal({
         isOpen={isAdminModalOpen}
         onClose={() => setIsAdminModalOpen(false)}
         entry={editingEntry}
+        pairedEntry={(() => {
+          if (!editingEntry) return null;
+          for (const shift of shifts) {
+            if (shift.startEntry.id === editingEntry.id) return shift.endEntry;
+            if (shift.endEntry.id === editingEntry.id) return shift.startEntry;
+          }
+          return null;
+        })()}
         workersList={workersList}
         onUpdateEntry={onUpdateEntry}
         onDeleteEntry={onDeleteEntry}
