@@ -508,7 +508,14 @@ export default function PayrollReportModal({
                   {filteredRawEntries.map((entry) => (
                     <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
                       <td className="py-3 px-3 text-slate-200 font-mono">
-                        <div>{entry.timeFormatted}</div>
+                        <div>
+                          {entry.timestamp ? (() => {
+                            const d = new Date(entry.timestamp);
+                            if (isNaN(d)) return entry.timeFormatted;
+                            const pad = n => String(n).padStart(2, '0');
+                            return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                          })() : entry.timeFormatted}
+                        </div>
                         <div className="text-[10px] text-slate-500">{entry.dateFormatted}</div>
                       </td>
                       <td className="py-3 px-3 font-bold text-white">
