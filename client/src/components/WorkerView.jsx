@@ -419,6 +419,20 @@ export default function WorkerView({
                 <Square className="w-4 h-4" />
                 <span>🔴 Fichar Salida / Finalizar Turno</span>
               </button>
+
+              {/* BOTÓN DESHACER: Disponible solo durante los primeros 15 min */}
+              {activeShift && (new Date() - new Date(activeShift.timestamp) < 15 * 60 * 1000) && (
+                <button
+                  onClick={() => {
+                    if (window.confirm('¿Seguro que quieres anular este fichaje de entrada? Hazlo solo si le diste por error.')) {
+                      onDeleteClockEntry(activeShift.id);
+                    }
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors border border-slate-700"
+                >
+                  Deshacer Entrada (Me he equivocado)
+                </button>
+              )}
             </div>
           ) : immediateTask ? (
             /* PENDING TASK: 1-Click Clock-In Button */

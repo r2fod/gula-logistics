@@ -41,7 +41,17 @@ export function pairShiftsFromEntries(entries = []) {
       const startDate = new Date(startEntry.timestamp);
       const endDate = new Date(timestamp);
       const diffMs = endDate - startDate;
-      const rawDuration = Math.max(0, diffMs / (1000 * 60 * 60));
+      let rawDuration = Math.max(0, diffMs / (1000 * 60 * 60));
+      let isAnomalous = false;
+
+      // Límite automático de seguridad: si un turno dura más de 14h seguidas
+      // (por despiste de desfichar), se capa a 14h y se marca como anómalo
+      // para que el admin lo revise.
+      if (rawDuration > 14) {
+        rawDuration = 14;
+        isAnomalous = true;
+      }
+
       // Redondear a 2 decimales matemáticamente para que horas * tarifa cuadre siempre en pantalla
       const durationHours = Math.round(rawDuration * 100) / 100;
 
@@ -66,6 +76,7 @@ export function pairShiftsFromEntries(entries = []) {
         durationHours,
         durationFormatted: `${hours}h ${minutes}m`,
         cost,
+        isAnomalous,
         note: startEntry.note || note
       });
     }
