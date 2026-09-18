@@ -12,29 +12,38 @@ export default function PayrollReportModal({
   isAdmin = true,
   onUpdateEntry,
   onDeleteEntry,
+  onRestoreEntry,
   onClockEntryCreated,
   activeWeekData = null
 }) {
   const [copied, setCopied] = useState(false);
   const [filterWorker, setFilterWorker] = useState('all');
-  const [viewTab, setViewTab] = useState('shifts'); // 'shifts' | 'raw_entries' | 'estimated'
+  const [viewTab, setViewTab] = useState('shifts'); // 'shifts' | 'raw_entries' | 'estimated' | 'trash'
   const [editingEntry, setEditingEntry] = useState(null);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
 
   if (!isOpen) return null;
 
+  const activeEntries = entries.filter(e => !e.deleted);
+  const deletedEntries = entries.filter(e => e.deleted);
+
   // Process shift pairs (Entrada -> Salida)
-  const { shifts, activeShifts: activeWorkerShifts } = pairShiftsFromEntries(entries);
+  const { shifts, activeShifts: activeWorkerShifts } = pairShiftsFromEntries(activeEntries);
 
   // Filtered shifts
   const filteredShifts = filterWorker === 'all' 
     ? shifts 
     : shifts.filter(s => s.workerName === filterWorker);
 
-  // Filtered raw entries
+  // Filtered raw entries (active only)
   const filteredRawEntries = filterWorker === 'all'
-    ? entries
-    : entries.filter(e => e.workerName === filterWorker);
+    ? activeEntries
+    : activeEntries.filter(e => e.workerName === filterWorker);
+
+  // Filtered trash entries
+  const filteredTrashEntries = filterWorker === 'all'
+    ? deletedEntries
+    : deletedEntries.filter(e => e.workerName === filterWorker);
 
   // Summary Metrics
   const totalExtraCost = shifts.reduce((acc, curr) => acc + (curr.isSalaried ? 0 : curr.cost), 0);
@@ -298,6 +307,16 @@ export default function PayrollReportModal({
             >
               📅 Estimado (Planning)
             </button>
+            {isAdmin && (
+              <button
+                onClick={() => setViewTab('trash')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                  viewTab === 'trash' ? 'bg-rose-500 text-slate-950' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                🗑️ Papelera ({deletedEntries.length})
+              </button>
+            )}
           </div>
 
           {/* Filter Bar */}
@@ -442,8 +461,15 @@ export default function PayrollReportModal({
                           <div>{s.endTime}</div>
                           <div className="text-[10px] text-slate-500">{s.endDate}</div>
                         </td>
-                        <td className="py-3 px-3 font-semibold text-emerald-400">
-                          {s.durationFormatted}
+                        <td className="py-3 px-3">
+                          <div className={`font-semibold ${s.isAnomalous ? 'text-rose-400' : 'text-emerald-400'}`}>
+                            {s.durationFormatted}
+                          </div>
+                          {s.isAnomalous && (
+                            <div className="text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1 py-0.5 rounded mt-1 inline-flex items-center gap-1" title="El sistema ha capado este turno a 14h automáticamente por seguridad. Revisa las horas reales.">
+                              ⚠️ Capado 14h
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 px-3 text-right font-bold text-amber-400 font-mono text-sm">
                           {s.isSalaried ? '0,00 €' : `${s.cost.toFixed(2)} €`}
@@ -634,6 +660,90 @@ export default function PayrollReportModal({
                     </li>
                   ))}
                 </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 4: Papelera (Solo Admin) */}
+        {viewTab === 'trash' && isAdmin && (
+          <div className="space-y-4">
+            <div className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-2xl flex items-start space-x-2.5 text-xs text-rose-300">
+              <Trash2 className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+              <span>
+                <b>Fichajes Borrados:</b> Estos fichajes fueron eliminados y ya no se contabilizan en los saldos. Puedes restaurarlos si fue un error.
+              </span>
+            </div>
+
+            {filteredTrashEntries.length === 0 ? (
+              <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800">
+                <Trash2 className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                <p className="text-xs text-slate-400">La papelera está vacía.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
+                      <th className="py-3 px-3">Hora / Fecha</th>
+                      <th className="py-3 px-3">Trabajador</th>
+                      <th className="py-3 px-3">Tipo</th>
+                      <th className="py-3 px-3">Tarea / Nota</th>
+                      <th className="py-3 px-3 text-center">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60">
+                    {filteredTrashEntries.map((entry) => (
+                      <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors opacity-70">
+                        <td className="py-3 px-3 text-slate-200 font-mono">
+                          <div>
+                            {entry.timestamp ? (() => {
+                              const d = new Date(entry.timestamp);
+                              if (isNaN(d)) return entry.timeFormatted;
+                              const pad = n => String(n).padStart(2, '0');
+                              return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                            })() : entry.timeFormatted}
+                          </div>
+                          <div className="text-[10px] text-slate-500">{entry.dateFormatted}</div>
+                        </td>
+                        <td className="py-3 px-3 font-bold text-white">
+                          {entry.workerName}
+                        </td>
+                        <td className="py-3 px-3">
+                          {entry.type === 'entrada' ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">
+                              🟢 ENTRADA
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold">
+                              🔴 SALIDA
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-slate-300">
+                          <div className="font-medium text-white">{entry.taskName}</div>
+                          {entry.note && (
+                            <div className="text-[10px] text-amber-300/80 mt-0.5 italic flex items-center gap-1">
+                              <span>💬</span> {entry.note}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <button
+                            onClick={() => {
+                              if (window.confirm('¿Restaurar este fichaje a los saldos activos?')) {
+                                onRestoreEntry && onRestoreEntry(entry.id);
+                              }
+                            }}
+                            className="flex items-center gap-1 px-3 h-8 mx-auto rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-colors font-bold text-[10px]"
+                          >
+                            Restaurar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

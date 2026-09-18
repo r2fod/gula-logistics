@@ -75,20 +75,64 @@ router.put('/:id', requireAdmin, async (req, res) => {
   }
 });
 
-// DELETE /api/clock/:id - Delete single entry (Admin only)
-router.delete('/:id', requireAdmin, async (req, res) => {
+// DELETE /api/clock/:id - Soft Delete (Admin OR Worker if < 15 mins)
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const authHeader = req.headers.authorization;
+    const isAdmin = authHeader && authHeader === `Bearer ${process.env.ADMIN_SECRET}`;
+
+    if (mongoose.connection.readyState === 1) {
+      const entry = await ClockEntry.findOne({ id });
+      if (!entry) return res.status(404).json({ error: 'Fichaje no encontrado' });
+
+      // Verificación de seguridad
+      const ageMs = Date.now() - new Date(entry.timestamp).getTime();
+      if (!isAdmin && ageMs > 15 * 60 * 1000) {
+        return res.status(401).json({ error: 'No autorizado para borrar fichajes antiguos' });
+      }
+
+      await ClockEntry.findOneAndUpdate({ id }, { deleted: true });
+      return res.json({ success: true, message: 'Fichaje movido a papelera en Mongo' });
+    }
+
+    const idx = memoryClockEntries.findIndex(e => e.id === id);
+    if (idx !== -1) {
+      const entry = memoryClockEntries[idx];
+      const ageMs = Date.now() - new Date(entry.timestamp).getTime();
+      if (!isAdmin && ageMs > 15 * 60 * 1000) {
+        return res.status(401).json({ error: 'No autorizado para borrar fichajes antiguos' });
+      }
+      memoryClockEntries[idx] = { ...entry, deleted: true };
+      return res.json({ success: true, message: 'Fichaje movido a papelera en local' });
+    }
+    
+    return res.status(404).json({ error: 'Fichaje no encontrado' });
+  } catch (error) {
+    console.error('Error al borrar fichaje:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/clock/:id/restore - Restore soft deleted entry (Admin only)
+router.put('/:id/restore', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
     if (mongoose.connection.readyState === 1) {
-      await ClockEntry.deleteOne({ id });
-      return res.json({ success: true, message: 'Fichaje eliminado de Mongo Atlas' });
+      const updated = await ClockEntry.findOneAndUpdate({ id }, { deleted: false }, { new: true });
+      if (!updated) return res.status(404).json({ error: 'Fichaje no encontrado' });
+      return res.json(updated);
     }
 
-    memoryClockEntries = memoryClockEntries.filter(e => e.id !== id);
-    return res.json({ success: true, message: 'Fichaje eliminado de memoria local' });
+    const idx = memoryClockEntries.findIndex(e => e.id === id);
+    if (idx !== -1) {
+      memoryClockEntries[idx] = { ...memoryClockEntries[idx], deleted: false };
+      return res.json(memoryClockEntries[idx]);
+    }
+    return res.status(404).json({ error: 'Fichaje no encontrado en memoria' });
   } catch (error) {
-    console.error('Error al borrar fichaje:', error);
+    console.error('Error al restaurar fichaje:', error);
     return res.status(500).json({ error: error.message });
   }
 });

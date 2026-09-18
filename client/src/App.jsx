@@ -362,7 +362,7 @@ export default function App() {
   };
 
   const handleDeleteClockEntry = (entryId) => {
-    const updated = clockEntries.filter(e => e.id !== entryId);
+    const updated = clockEntries.map(e => e.id === entryId ? { ...e, deleted: true } : e);
     setClockEntries(updated);
     try {
       localStorage.setItem('gula_clock_entries_v1', JSON.stringify(updated));
@@ -370,6 +370,23 @@ export default function App() {
       console.error(e);
     }
     deleteClockEntryInAPI(entryId);
+  };
+
+  const handleRestoreClockEntry = (entryId) => {
+    const updated = clockEntries.map(e => e.id === entryId ? { ...e, deleted: false } : e);
+    setClockEntries(updated);
+    try {
+      localStorage.setItem('gula_clock_entries_v1', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+    
+    // API Call
+    const adminToken = localStorage.getItem('gula_admin_token');
+    fetch(`${API_URL}/clock/${entryId}/restore`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    }).catch(err => console.error(err));
   };
 
   const handleClearClockEntries = () => {
@@ -502,6 +519,9 @@ export default function App() {
     setIsAdminUnlocked(false);
   };
 
+  const activeClockEntries = clockEntries.filter(e => !e.deleted);
+  const deletedClockEntries = clockEntries.filter(e => e.deleted);
+
   if (activeWorker) {
     return (
       <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans selection:bg-amber-500 selection:text-slate-950 relative">
@@ -510,12 +530,14 @@ export default function App() {
           workerName={activeWorker}
           workersList={workersList}
           activeWeekData={activeWeek}
-          clockEntries={clockEntries}
+          clockEntries={activeClockEntries}
           isAdmin={isAdmin}
           onToggleTask={(dayKey, taskIdx) => toggleTask(dayKey, taskIdx)}
           onClockEntryCreated={handleClockEntryCreated}
           onUpdateClockEntry={handleUpdateClockEntry}
           onDeleteClockEntry={handleDeleteClockEntry}
+          onRestoreClockEntry={handleRestoreClockEntry}
+          deletedClockEntries={deletedClockEntries}
           onOpenAdminDashboard={() => {
             if (isAdmin) {
               // Ya autenticado: ir directo al panel, sin pedir contraseña
@@ -570,7 +592,7 @@ export default function App() {
           <PublicView
             data={activeWeek}
             workersList={workersList}
-            clockEntries={clockEntries}
+            clockEntries={activeClockEntries}
             onToggleTask={() => {}}
             onClockEntryCreated={handleClockEntryCreated}
             onOpenClockModal={(workerName) => {
@@ -585,7 +607,7 @@ export default function App() {
           onClose={() => setIsClockInModalOpen(false)}
           workersList={workersList}
           initialWorkerName={activeWorker}
-          clockEntries={clockEntries}
+          clockEntries={activeClockEntries}
           onClockEntryCreated={handleClockEntryCreated}
         />
       </div>
@@ -607,7 +629,7 @@ export default function App() {
           <PublicView
             data={activeWeek}
             workersList={workersList}
-            clockEntries={clockEntries}
+            clockEntries={activeClockEntries}
             onToggleTask={() => {}}
             onOpenLogin={() => setIsAdminLoginOpen(true)}
             onClockEntryCreated={handleClockEntryCreated}
@@ -623,7 +645,7 @@ export default function App() {
           onClose={() => setIsClockInModalOpen(false)}
           workersList={workersList}
           initialWorkerName={activeWorker}
-          clockEntries={clockEntries}
+          clockEntries={activeClockEntries}
           onClockEntryCreated={handleClockEntryCreated}
         />
 
@@ -648,7 +670,7 @@ export default function App() {
         activeWeekId={activeWeekId}
         onSelectWeek={setActiveWeekId}
         workersList={workersList}
-        clockEntries={clockEntries}
+        clockEntries={activeClockEntries}
         isAdmin={isAdmin}
         balancesData={balancesData}
         setBalancesData={setBalancesData}
@@ -677,7 +699,7 @@ export default function App() {
         onClose={() => setIsClockInModalOpen(false)}
         workersList={workersList}
         initialWorkerName={activeWorker}
-        clockEntries={clockEntries}
+        clockEntries={activeClockEntries}
         onClockEntryCreated={handleClockEntryCreated}
       />
 
@@ -690,6 +712,7 @@ export default function App() {
         isAdmin={isAdmin}
         onUpdateEntry={handleUpdateClockEntry}
         onDeleteEntry={handleDeleteClockEntry}
+        onRestoreEntry={handleRestoreClockEntry}
         onClockEntryCreated={handleClockEntryCreated}
         activeWeekData={activeWeek}
       />

@@ -23,6 +23,7 @@ const ClockEntrySchema = new mongoose.Schema({
   durationHours: { type: Number, default: 0 },
   earnings: { type: Number, default: 0 },
   status: { type: String, default: 'completado' },
+  deleted: { type: Boolean, default: false },
   taskRef: TaskRefSchema
 }, {
   timestamps: true
