@@ -393,9 +393,81 @@ export default function WorkerView({
 
               <div>
                 <p className="text-sm sm:text-base font-extrabold text-white font-['Outfit']">
-                  📌 {activeShift.taskName || 'Turno Operativo General'}
+                  📌 {activeShift.taskName === 'JORNADA' ? 'Jornada Laboral Iniciada' : (activeShift.taskName || 'Turno Operativo General')}
                 </p>
               </div>
+
+              {/* Sub-tareas V2 */}
+              {activeShift.taskName === 'JORNADA' && (
+                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 mt-2">
+                  <div className="flex items-center justify-between gap-2 border-b border-emerald-500/20 pb-2 mb-2">
+                    <div className="flex items-center space-x-1.5 text-emerald-400">
+                      <Target className="w-4 h-4" />
+                      <span className="text-[11px] font-black uppercase tracking-wider">TAREA EN CURSO</span>
+                    </div>
+                  </div>
+                  
+                  {immediateTask ? (
+                    <>
+                      <p className="text-xs font-bold text-white mb-3">{immediateTask.taskName}</p>
+                      {(() => {
+                        const isLocked = immediateTask.dayKey && isDayInFuture(immediateTask.dayKey);
+                        return (
+                          <button
+                            onClick={() => {
+                              if (isLocked) return;
+                              const now = new Date();
+                              const tRef = !immediateTask.isWedding && immediateTask.dayKey && immediateTask.taskIndex != null
+                                ? { dayKey: immediateTask.dayKey, taskIndex: immediateTask.taskIndex }
+                                : null;
+                                
+                              const entry = {
+                                id: Date.now().toString(),
+                                workerName: currentWorkerObj.name,
+                                role: currentWorkerObj.role,
+                                isPayroll: currentWorkerObj.isPayroll,
+                                rate: currentWorkerObj.rate || 10,
+                                type: 'fichaje',
+                                timestamp: now.toISOString(),
+                                timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
+                                dateFormatted: now.toLocaleDateString(),
+                                taskName: immediateTask.taskName.trim(),
+                                note: '',
+                                taskRef: tRef
+                              };
+                              onClockEntryCreated(entry);
+                            }}
+                            disabled={isLocked}
+                            className={`w-full py-2.5 px-3 rounded-lg text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
+                              isLocked
+                                ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none'
+                                : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 active:scale-95'
+                            }`}
+                          >
+                            {isLocked ? (
+                              <>
+                                <Lock className="w-3.5 h-3.5" />
+                                <span>🔒 Esperando día...</span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckSquare className="w-3.5 h-3.5" />
+                                <span>☑️ Marcar Tarea como COMPLETADA</span>
+                              </>
+                            )}
+                          </button>
+                        );
+                      })()}
+                    </>
+                  ) : (
+                    <div className="text-center py-2">
+                      <span className="text-xs font-bold text-slate-400 block">
+                        🎉 ¡Estás al día! No tienes tareas pendientes hoy.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <button
                 onClick={() => { 
@@ -417,7 +489,7 @@ export default function WorkerView({
                 className="w-full py-3.5 px-4 rounded-xl text-sm font-extrabold bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center space-x-2 transition-all shadow-xl shadow-rose-600/30 active:scale-95"
               >
                 <Square className="w-4 h-4" />
-                <span>🔴 Fichar Salida / Finalizar Turno</span>
+                <span>{activeShift.taskName === 'JORNADA' ? '🔴 FINALIZAR JORNADA' : '🔴 Fichar Salida / Finalizar Turno'}</span>
               </button>
 
               {/* BOTÓN DESHACER: Disponible solo durante los primeros 15 min */}
@@ -434,123 +506,69 @@ export default function WorkerView({
                 </button>
               )}
             </div>
-          ) : immediateTask ? (
-            /* PENDING TASK: 1-Click Clock-In Button */
+          ) : (
+            /* INICIAR JORNADA BUTTON (No active shift) */
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2 border-b border-emerald-500/20 pb-2">
                 <div className="flex items-center space-x-1.5 text-emerald-400">
-                  <Target className="w-4 h-4 animate-pulse" />
+                  <Clock className="w-4 h-4 animate-pulse" />
                   <span className="text-[11px] font-black uppercase tracking-wider">
-                    TU PRÓXIMA TAREA
+                    FUERA DE TURNO
                   </span>
                 </div>
-                <span className="text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-md">
-                  📅 {immediateTask.dayTitle}
-                </span>
               </div>
 
               <div>
                 <h2 className="text-sm sm:text-base font-extrabold text-white font-['Outfit'] leading-snug">
-                  {immediateTask.taskName}
+                  ¿Listo para empezar el día?
                 </h2>
-                {immediateTask.timeFrame && (
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-amber-300 mt-1">
-                    <span className="flex items-center gap-1 font-semibold">
-                      <Clock className="w-3 h-3" />
-                      {immediateTask.timeFrame}
-                    </span>
-                    {immediateTask.location && (
-                      <span className="text-slate-400 flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-rose-400" />
-                        {immediateTask.location}
-                      </span>
-                    )}
-                  </div>
-                )}
+                <p className="text-xs text-slate-400 mt-1">
+                  Inicia tu jornada general. Luego podrás ir marcando las tareas que termines.
+                </p>
               </div>
 
-              {/* PRIMARY 1-CLICK CLOCK-IN BUTTON — deshabilitado si el día de
-                  esta tarea todavía no ha llegado, para no fichar por error
-                  una tarea de dentro de varios días. */}
-              {(() => {
-                const isLocked = immediateTask.dayKey && isDayInFuture(immediateTask.dayKey);
-                return (
-                  <button
-                    onClick={() => {
-                      if (isLocked) return;
-                      const now = new Date();
-                      const tRef = !immediateTask.isWedding && immediateTask.dayKey && immediateTask.taskIndex != null
-                        ? { dayKey: immediateTask.dayKey, taskIndex: immediateTask.taskIndex }
-                        : null;
-                        
-                      const entry = {
-                        id: Date.now().toString(),
-                        workerName: currentWorkerObj.name,
-                        role: currentWorkerObj.role,
-                        isPayroll: currentWorkerObj.isPayroll,
-                        rate: currentWorkerObj.rate || 10,
-                        type: 'entrada',
-                        timestamp: now.toISOString(),
-                        timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
-                        dateFormatted: now.toLocaleDateString(),
-                        taskName: immediateTask.taskName.trim(),
-                        note: immediateTask.taskName.trim(),
-                        taskRef: tRef
-                      };
-                      onClockEntryCreated(entry);
-                    }}
-                    disabled={isLocked}
-                    className={`w-full py-3.5 px-4 rounded-xl text-sm font-extrabold flex items-center justify-center space-x-2 transition-all ${
-                      isLocked
-                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none'
-                        : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 shadow-xl shadow-emerald-500/25 active:scale-95'
-                    }`}
-                  >
-                    {isLocked ? (
-                      <>
-                        <Lock className="w-4 h-4" />
-                        <span>🔒 Disponible el {immediateTask.dayTitle}</span>
-                      </>
-                    ) : (
-                      <>
-                        <Play className="w-4 h-4 fill-current" />
-                        <span>🟢 Fichar Entrada Ahora (1 Toque)</span>
-                      </>
-                    )}
-                  </button>
-                );
-              })()}
-
-              <div className="flex items-center justify-between pt-1 text-[11px] text-slate-400">
-                <button
-                  onClick={() => {
-                    setPrefilledTask(null);
-                    setTaskRef(null);
-                    setIsClockModalOpen(true);
-                  }}
-                  className="hover:text-amber-400 text-slate-300 underline decoration-slate-700 hover:decoration-amber-400 transition-colors"
-                >
-                  ➕ O fichar otra tarea libre
-                </button>
-                <span className="text-[10px] text-slate-500">
-                  🔒 Registro seguro
-                </span>
-              </div>
-            </div>
-          ) : (
-            /* NO PENDING TASKS */
-            <div className="space-y-2.5 text-center py-2">
-              <span className="text-sm font-bold text-slate-200 block">
-                🎉 ¡Estás al día! No tienes más tareas pendientes hoy.
-              </span>
               <button
-                onClick={() => { setPrefilledTask(null); setTaskRef(null); setIsClockModalOpen(true); }}
-                className="w-full sm:w-auto py-2.5 px-5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-all shadow-md"
+                onClick={() => {
+                  const now = new Date();
+                  const entry = {
+                    id: Date.now().toString(),
+                    workerName: currentWorkerObj.name,
+                    role: currentWorkerObj.role,
+                    isPayroll: currentWorkerObj.isPayroll,
+                    rate: currentWorkerObj.rate || 10,
+                    type: 'entrada',
+                    timestamp: now.toISOString(),
+                    timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
+                    dateFormatted: now.toLocaleDateString(),
+                    taskName: 'JORNADA',
+                    note: 'Inicio de Jornada',
+                    taskRef: null
+                  };
+                  onClockEntryCreated(entry);
+                }}
+                className="w-full py-3.5 px-4 rounded-xl text-sm font-extrabold flex items-center justify-center space-x-2 transition-all bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 shadow-xl shadow-emerald-500/25 active:scale-95"
               >
-                🟢 Fichar Turno Extra o Libre
+                <Play className="w-4 h-4 fill-current" />
+                <span>🟢 INICIAR JORNADA AHORA</span>
               </button>
             </div>
           )}
+
+          <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-800 text-[11px] text-slate-400">
+            <button
+              onClick={() => {
+                setPrefilledTask(null);
+                setTaskRef(null);
+                setIsClockModalOpen(true);
+              }}
+              className="hover:text-amber-400 text-slate-300 underline decoration-slate-700 hover:decoration-amber-400 transition-colors"
+            >
+              ➕ O fichar otra tarea libre
+            </button>
+            <span className="text-[10px] text-slate-500">
+              🔒 Registro seguro
+            </span>
+          </div>
         </div>
       </div>
 
