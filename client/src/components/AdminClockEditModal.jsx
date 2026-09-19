@@ -77,7 +77,7 @@ export default function AdminClockEditModal({
       // Locale y hour12 fijos: sin esto, el formato (24h o 12h AM/PM)
       // dependía del idioma/región del navegador de quien editaba.
       timeFormatted: dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
-      dateFormatted: dateObj.toLocaleDateString(),
+      dateFormatted: dateObj.toLocaleDateString('es-ES'),
       taskName: note.trim() || (type === 'entrada' ? 'Inicio de Jornada Operativa' : 'Cierre de Jornada'),
       note: note.trim(),
       editedByAdmin: isAdmin,

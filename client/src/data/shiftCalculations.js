@@ -12,10 +12,16 @@ export function sortEntriesByTimestamp(entries = []) {
 // fichado ahora mismo), calculado en orden cronológico real.
 export function getActiveShiftForWorker(entries = [], workerName) {
   if (!workerName) return null;
-  const mine = entries.filter(e => e.workerName?.toLowerCase() === workerName.toLowerCase());
-  const sorted = sortEntriesByTimestamp(mine);
-  const lastEntry = sorted[sorted.length - 1];
-  return (lastEntry && lastEntry.type === 'entrada') ? lastEntry : null;
+  const { activeShifts } = pairShiftsFromEntries(entries);
+  
+  // Buscar usando case-insensitive para que coincida robustamente
+  const lowerName = workerName.toLowerCase();
+  for (const [wName, activeShift] of Object.entries(activeShifts)) {
+    if (wName.toLowerCase() === lowerName) {
+      return activeShift;
+    }
+  }
+  return null;
 }
 
 // Empareja fichajes de entrada/salida en turnos con duración y coste —
@@ -68,7 +74,7 @@ export function pairShiftsFromEntries(entries = []) {
         isAnomalous = true;
       }
 
-      const durationHours = Math.round(rawDuration * 100) / 100;
+      const durationHours = Math.round(rawDuration);
       const hours = Math.floor(durationHours);
       const minutes = Math.floor((durationHours - hours) * 60);
 
@@ -88,10 +94,11 @@ export function pairShiftsFromEntries(entries = []) {
           let eventName = t.taskName || 'Sin Asignar';
           let specificTaskName = 'Tarea General';
           
-          if (eventName.includes(' - ')) {
-            const parts = eventName.split(' - ');
+          const dashMatch = eventName.match(/\s+[-–—]\s+/);
+          if (dashMatch) {
+            const parts = eventName.split(dashMatch[0]);
             eventName = parts[0].trim();
-            specificTaskName = parts.slice(1).join(' - ').trim();
+            specificTaskName = parts.slice(1).join(dashMatch[0]).trim();
           }
           
           finalTasks.push({
@@ -122,10 +129,11 @@ export function pairShiftsFromEntries(entries = []) {
         let eventName = startEntry.taskName || 'Sin Asignar';
         let specificTaskName = 'Tarea General';
         
-        if (eventName.includes(' - ')) {
-          const parts = eventName.split(' - ');
+        const dashMatch = eventName.match(/\s+[-–—]\s+/);
+        if (dashMatch) {
+          const parts = eventName.split(dashMatch[0]);
           eventName = parts[0].trim();
-          specificTaskName = parts.slice(1).join(' - ').trim();
+          specificTaskName = parts.slice(1).join(dashMatch[0]).trim();
         }
 
         finalTasks.push({
@@ -145,10 +153,10 @@ export function pairShiftsFromEntries(entries = []) {
         workerName,
         isSalaried,
         rate: hourlyRate,
-        startDate: startEntry.dateFormatted,
-        startTime: startEntry.timeFormatted,
-        endDate: dateFormatted,
-        endTime: timeFormatted,
+        startDate: startEntry.timestamp ? new Date(startEntry.timestamp).toLocaleDateString('es-ES') : startEntry.dateFormatted,
+        startTime: startEntry.timestamp ? new Date(startEntry.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : startEntry.timeFormatted,
+        endDate: timestamp ? new Date(timestamp).toLocaleDateString('es-ES') : dateFormatted,
+        endTime: timestamp ? new Date(timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : timeFormatted,
         durationHours,
         durationFormatted: `${hours}h ${minutes}m`,
         cost,
@@ -162,7 +170,15 @@ export function pairShiftsFromEntries(entries = []) {
   // Return active shifts (just map the active object back to its startEntry for UI compatibility)
   const activeShiftsOut = {};
   for (const [wName, active] of Object.entries(activeWorkerShifts)) {
-    activeShiftsOut[wName] = active.startEntry;
+    let currentTaskName = active.startEntry.taskName;
+    if (active.tasks && active.tasks.length > 0) {
+      currentTaskName = active.tasks[active.tasks.length - 1].taskName;
+    }
+    
+    activeShiftsOut[wName] = {
+      ...active.startEntry,
+      taskName: currentTaskName
+    };
   }
 
   return { shifts, activeShifts: activeShiftsOut };
@@ -192,8 +208,28 @@ export function aggregateShiftsByWorker(shifts, workersList = []) {
     if (!bucket) return;
     bucket.totalHours += shift.durationHours;
     bucket.totalCost += shift.cost;
-    bucket.completedShifts += 1;
-    bucket.shifts.push(shift);
+    
+    // Group by Date for Jornada Partida (Split Shifts)
+    const existingDay = bucket.shifts.find(s => s.startDate === shift.startDate);
+    if (existingDay) {
+      existingDay.durationHours += shift.durationHours;
+      existingDay.cost += shift.cost;
+      existingDay.endTime = shift.endTime; // Update end time to the latest one
+      existingDay.ranges.push(`${shift.startTime} a ${shift.endTime}`);
+      if (shift.subTasks) {
+        existingDay.subTasks = existingDay.subTasks ? [...existingDay.subTasks, ...shift.subTasks] : [...shift.subTasks];
+      }
+      existingDay.entryIds = existingDay.entryIds || [existingDay.startEntry?.id, existingDay.endEntry?.id].filter(Boolean);
+      if (shift.startEntry?.id) existingDay.entryIds.push(shift.startEntry.id);
+      if (shift.endEntry?.id) existingDay.entryIds.push(shift.endEntry.id);
+    } else {
+      bucket.completedShifts += 1;
+      bucket.shifts.push({
+        ...shift,
+        entryIds: [shift.startEntry?.id, shift.endEntry?.id].filter(Boolean),
+        ranges: [`${shift.startTime} a ${shift.endTime}`]
+      });
+    }
   });
 
   return workerBalances;
