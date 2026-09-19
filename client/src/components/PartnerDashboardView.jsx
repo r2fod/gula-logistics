@@ -33,6 +33,7 @@ import {
   Save,
   Bell
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { initialBalancesData } from '../data/balancesData';
 import { fetchBalancesFromAPI, saveWorkerBalanceToAPI } from '../data/apiService';
 import { sendPushNotification } from '../data/pushService';
@@ -388,50 +389,107 @@ export default function PartnerDashboardView({
   const totalPayrollValuation = balancesList.reduce((acc, curr) => acc + (curr.isPayroll ? curr.totalCost : 0), 0);
   const totalExtraHours = balancesList.reduce((acc, curr) => acc + curr.totalHours, 0);
 
-  // Group shifts by Event (taskName)
+  // Group shifts by Event (taskName) using V2 subTasks
   const summaryByEvent = paidShifts.reduce((acc, shift) => {
-    let eventName = shift.startEntry?.taskName?.trim();
-    if (!eventName) eventName = 'Sin Asignar / Extra';
+    // Para cada shift, iteramos por sus subTasks (las fracciones de jornada V2, o la tarea única V1)
+    const subTasks = shift.subTasks || [];
     
-    // Normalize event name (first letter uppercase, rest lower)
-    const normalizedEventName = eventName.charAt(0).toUpperCase() + eventName.slice(1).toLowerCase();
+    subTasks.forEach(subTask => {
+      let eventName = subTask.eventName || 'Sin Asignar / Extra';
+      
+      // Normalize event name (first letter uppercase, rest lower)
+      const normalizedEventName = eventName.charAt(0).toUpperCase() + eventName.slice(1).toLowerCase();
 
-    if (!acc[normalizedEventName]) {
-      acc[normalizedEventName] = {
-        eventName: normalizedEventName,
-        totalCost: 0,
-        totalHours: 0,
-        workers: {}
-      };
-    }
+      if (!acc[normalizedEventName]) {
+        acc[normalizedEventName] = {
+          eventName: normalizedEventName,
+          totalCost: 0,
+          totalHours: 0,
+          workers: {}
+        };
+      }
 
-    // El worker status (Nómina o Extra) para valorar la hora
-    const workerRoster = workersList.find(w => w.name?.toLowerCase().includes(shift.startEntry?.workerName?.toLowerCase() || ''));
-    const isPayroll = workerRoster?.statusType === 'payroll';
-    const rate = isPayroll ? 14 : 10;
-    const shiftCost = (shift.durationHours || 0) * rate;
+      // Cost and hours are already calculated precisely for this subTask in pairShiftsFromEntries
+      const shiftCost = subTask.cost || 0;
+      const hours = subTask.durationHours || 0;
 
-    acc[normalizedEventName].totalCost += shiftCost;
-    acc[normalizedEventName].totalHours += shift.durationHours || 0;
+      acc[normalizedEventName].totalCost += shiftCost;
+      acc[normalizedEventName].totalHours += hours;
 
-    const workerName = shift.startEntry?.workerName || 'Desconocido';
-    if (!acc[normalizedEventName].workers[workerName]) {
-      const avatar = workerRoster?.avatar || '👤';
-      acc[normalizedEventName].workers[workerName] = {
-        name: workerName,
-        avatar,
-        cost: 0,
-        hours: 0,
-      };
-    }
-    acc[normalizedEventName].workers[workerName].cost += shiftCost;
-    acc[normalizedEventName].workers[workerName].hours += shift.durationHours || 0;
+      const workerName = shift.workerName || 'Desconocido';
+      if (!acc[normalizedEventName].workers[workerName]) {
+        // Encontrar su avatar
+        const workerRoster = workersList.find(w => w.name?.toLowerCase().includes(workerName.toLowerCase() || ''));
+        const avatar = workerRoster?.avatar || '👤';
+        
+        acc[normalizedEventName].workers[workerName] = {
+          name: workerName,
+          avatar,
+          cost: 0,
+          hours: 0,
+        };
+      }
+      acc[normalizedEventName].workers[workerName].cost += shiftCost;
+      acc[normalizedEventName].workers[workerName].hours += hours;
+    });
 
     return acc;
   }, {});
 
   // Convert to array and sort by total cost descending
   const eventsList = Object.values(summaryByEvent).sort((a, b) => b.totalCost - a.totalCost);
+
+  // Generate Master Table Rows (Operativa Logística)
+  const masterTableRows = [];
+  if (activeTab === 'schedule' && activeWeekData?.schedule) {
+    Object.entries(activeWeekData.schedule).forEach(([dayKey, dayData]) => {
+      const dateString = dayData.title || dayKey; 
+
+      (dayData.tasks || []).forEach(task => {
+        const taskText = typeof task === 'object' ? task.text : task;
+        const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
+        
+        let eventName = taskText || 'Sin Asignar';
+        let specificTaskName = 'Tarea General';
+        if (eventName.includes(' - ')) {
+          const parts = eventName.split(' - ');
+          eventName = parts[0].trim();
+          specificTaskName = parts.slice(1).join(' - ').trim();
+        }
+
+        taskAssigned.forEach(workerName => {
+          let matchSubTask = null;
+          let matchShift = null;
+
+          paidShifts.forEach(shift => {
+            if (shift.workerName === workerName && shift.subTasks) {
+              const st = shift.subTasks.find(s => s.taskName === taskText);
+              if (st) {
+                matchSubTask = st;
+                matchShift = shift;
+              }
+            }
+          });
+
+          const profile = workersList.find(w => w.name === workerName) || { isPayroll: false, role: 'Extra' };
+
+          masterTableRows.push({
+            date: dateString,
+            eventName,
+            specificTaskName,
+            workerName,
+            isPayroll: profile.isPayroll,
+            role: profile.role,
+            startTime: matchShift ? matchShift.startTime : '—',
+            endTime: matchShift ? matchShift.endTime : '—',
+            hours: matchSubTask ? matchSubTask.durationHours : null,
+            cost: matchSubTask ? matchSubTask.cost : null,
+            status: matchSubTask ? 'Completado' : 'Pendiente'
+          });
+        });
+      });
+    });
+  }
 
   // workerBalances viene indexado por el nombre "de pila" tal cual está en
   // workersList (ej. "Ricardo"), pero balancesData.workers usa "Nombre
@@ -1238,6 +1296,7 @@ export default function PartnerDashboardView({
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
                     <th className="py-3.5 px-4">Fecha & Hora</th>
+                    <th className="py-3.5 px-4">Trabajador</th>
                     <th className="py-3.5 px-4">Tipo</th>
                     <th className="py-3.5 px-4">Tarea / Concepto</th>
                     <th className="py-3.5 px-4">Tarifa (€/h)</th>
@@ -1247,13 +1306,12 @@ export default function PartnerDashboardView({
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
                   {groupedEntries.map(({ name, entries }) => {
-                    const profile = workersList.find(w => w.name === name);
                     return (
                       <React.Fragment key={name}>
                         <tr className="bg-slate-950/80">
-                          <td colSpan={adminUnlocked ? 6 : 5} className="py-2 px-4">
+                          <td colSpan={adminUnlocked ? 7 : 6} className="py-2 px-4">
                             <span className="inline-flex items-center gap-2 text-xs font-extrabold text-amber-300">
-                              <span className="text-base">{profile?.avatar || '👤'}</span>
+                              <span className="text-base">📅</span>
                               <span>{name}</span>
                               <span className="text-[10px] font-semibold text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-800">
                                 {entries.length} {entries.length === 1 ? 'fichaje' : 'fichajes'}
@@ -1261,16 +1319,28 @@ export default function PartnerDashboardView({
                             </span>
                           </td>
                         </tr>
-                        {entries.map((entry) => (
+                        {entries.map((entry) => {
+                          const profile = workersList.find(w => w.name === entry.workerName);
+                          return (
                     <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
                       <td className="py-3.5 px-4 font-mono text-slate-200">
                         <div className="font-bold text-white">{entry.timeFormatted}</div>
                         <div className="text-[10px] text-slate-500">{entry.dateFormatted}</div>
                       </td>
                       <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{profile?.avatar || '👤'}</span>
+                          <span className="font-bold text-slate-200">{entry.workerName}</span>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
                         {entry.type === 'entrada' ? (
                           <span className="px-2.5 py-1 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold inline-flex items-center space-x-1">
                             <span>🟢 ENTRADA</span>
+                          </span>
+                        ) : entry.type === 'fichaje' ? (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/30 font-bold inline-flex items-center space-x-1">
+                            <span>☑️ CHECK</span>
                           </span>
                         ) : (
                           <span className="px-2.5 py-1 rounded-full text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold inline-flex items-center space-x-1">
@@ -1287,7 +1357,7 @@ export default function PartnerDashboardView({
                       <td className="py-3.5 px-4">
                         <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 inline-flex items-center space-x-1">
                           <Lock className="w-3 h-3 text-amber-400" />
-                          <span>🔒 Registrado & Verificado</span>
+                          <span>🔒 Registrado</span>
                         </span>
                       </td>
                       {adminUnlocked && (
@@ -1314,7 +1384,8 @@ export default function PartnerDashboardView({
                         </td>
                       )}
                     </tr>
-                        ))}
+                          );
+                        })}
                       </React.Fragment>
                     );
                   })}
@@ -1377,92 +1448,156 @@ export default function PartnerDashboardView({
             </div>
           </div>
 
-          <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
-            <h4 className="font-bold text-white text-base flex items-center space-x-2">
-              <TrendingUp className="w-5 h-5 text-amber-400" />
-              <span>Resumen de Horas Fichadas por Trabajador</span>
-            </h4>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {balancesList.map((w, idx) => (
-                <div key={idx} className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-2xl">{w.avatar}</span>
-                    {w.isPayroll ? (
-                      <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                        Nómina (14€/h)
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                        Extra (10€/h)
-                      </span>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Columna Izquierda: Tablas */}
+            <div className="space-y-8">
+              {/* Tabla Eventos */}
+              <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+                <div className="bg-[#1e3a8a]/50 px-6 py-4 border-b border-slate-800 flex items-center space-x-2">
+                  <TrendingUp className="w-5 h-5 text-indigo-400" />
+                  <h4 className="font-extrabold text-white text-base tracking-wider uppercase">
+                    DASHBOARDS GULA
+                  </h4>
+                </div>
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#1e3a8a] text-white">
+                    <tr>
+                      <th className="px-6 py-3 font-bold uppercase">Evento</th>
+                      <th className="px-6 py-3 font-bold uppercase text-right">Horas</th>
+                      <th className="px-6 py-3 font-bold uppercase text-right">Coste</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {eventsList.map((evt, idx) => (
+                      <tr key={idx} className={idx % 2 === 0 ? "bg-slate-800/20" : "bg-transparent"}>
+                        <td className="px-6 py-3 font-bold text-slate-200">{evt.eventName}</td>
+                        <td className="px-6 py-3 text-right text-slate-300">{parseFloat(evt.totalHours.toFixed(2))}</td>
+                        <td className="px-6 py-3 text-right font-bold text-amber-400">{evt.totalCost.toFixed(2)} €</td>
+                      </tr>
+                    ))}
+                    {eventsList.length === 0 && (
+                      <tr>
+                        <td colSpan="3" className="px-6 py-8 text-center text-slate-500">No hay eventos registrados.</td>
+                      </tr>
                     )}
-                  </div>
+                  </tbody>
+                </table>
+              </div>
 
-                  <div>
-                    <h5 className="font-bold text-white text-base">{w.name}</h5>
-                    <p className="text-xs text-slate-400 mt-0.5">{w.role}</p>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-mono">
-                    <span className="text-slate-400">{parseFloat(w.totalHours.toFixed(2))}h fichadas</span>
-                    <span className="font-extrabold text-amber-400 text-sm">
-                      {w.totalCost.toFixed(2)} €
-                    </span>
-                  </div>
-                </div>
-              ))}
+              {/* Tabla Personal */}
+              <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#1e3a8a] text-white">
+                    <tr>
+                      <th className="px-6 py-3 font-bold uppercase">Personal</th>
+                      <th className="px-6 py-3 font-bold uppercase text-right">Horas</th>
+                      <th className="px-6 py-3 font-bold uppercase text-right">Coste</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {balancesList.filter(w => w.totalHours > 0).map((w, idx) => (
+                      <tr key={idx} className={idx % 2 === 0 ? "bg-slate-800/20" : "bg-transparent"}>
+                        <td className="px-6 py-3 font-bold text-slate-200 flex items-center space-x-2">
+                          <span>{w.avatar}</span>
+                          <span>{w.name}</span>
+                        </td>
+                        <td className="px-6 py-3 text-right text-slate-300">{parseFloat(w.totalHours.toFixed(2))}</td>
+                        <td className="px-6 py-3 text-right font-bold text-amber-400">{w.totalCost.toFixed(2)} €</td>
+                      </tr>
+                    ))}
+                    {balancesList.filter(w => w.totalHours > 0).length === 0 && (
+                      <tr>
+                        <td colSpan="3" className="px-6 py-8 text-center text-slate-500">No hay horas de personal.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
 
-          <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
-            <h4 className="font-bold text-white text-base flex items-center space-x-2">
-              <Calendar className="w-5 h-5 text-indigo-400" />
-              <span>Resumen de Costes por Evento / Tarea</span>
-            </h4>
+            {/* Columna Derecha: Gráficas */}
+            <div className="space-y-8">
+              {/* Gráfica Barras */}
+              <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
+                <h4 className="font-bold text-slate-400 text-center text-lg mb-6">Coste por Evento</h4>
+                <div className="h-64 w-full">
+                  {eventsList.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={eventsList} margin={{ top: 10, right: 10, left: -20, bottom: 40 }}>
+                        <XAxis 
+                          dataKey="eventName" 
+                          tick={{ fill: '#94a3b8', fontSize: 9 }}
+                          tickLine={false}
+                          axisLine={false}
+                          angle={-35}
+                          textAnchor="end"
+                          height={50}
+                        />
+                        <YAxis 
+                          tick={{ fill: '#94a3b8', fontSize: 10 }}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(value) => `${value}€`}
+                        />
+                        <Tooltip 
+                          cursor={{ fill: '#334155', opacity: 0.2 }}
+                          contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', padding: '12px' }}
+                          itemStyle={{ color: '#fbbf24', fontWeight: 'bold' }}
+                          formatter={(value) => [`${value.toFixed(2)}€`, 'Coste']}
+                        />
+                        <Bar dataKey="totalCost" radius={[4, 4, 0, 0]}>
+                          {eventsList.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill="#3b82f6" />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-slate-600 text-sm">
+                      Sin datos suficientes
+                    </div>
+                  )}
+                </div>
+              </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {eventsList.map((evt, idx) => (
-                <div key={idx} className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-4 flex flex-col justify-between">
-                  <div>
-                    <h5 className="font-extrabold text-white text-lg tracking-tight font-['Outfit'] break-words">
-                      {evt.eventName}
-                    </h5>
-                    <div className="flex items-center space-x-4 mt-2">
-                      <span className="text-xs text-slate-400 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">
-                        <Clock className="w-3.5 h-3.5 inline mr-1" />
-                        {parseFloat(evt.totalHours.toFixed(2))}h
-                      </span>
-                      <span className="text-sm font-extrabold text-amber-400">
-                        {evt.totalCost.toFixed(2)} €
-                      </span>
+              {/* Gráfica Donut */}
+              <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
+                <h4 className="font-bold text-slate-400 text-center text-lg mb-2">Distribución de Horas</h4>
+                <div className="h-64 w-full relative">
+                  {balancesList.filter(w => w.totalHours > 0).length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={balancesList.filter(w => w.totalHours > 0)}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={90}
+                          paddingAngle={3}
+                          dataKey="totalHours"
+                          nameKey="name"
+                          label={({ percent }) => `${(percent * 100).toFixed(1)}%`}
+                          labelLine={false}
+                        >
+                          {balancesList.filter(w => w.totalHours > 0).map((entry, index) => {
+                            const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#8b5cf6', '#06b6d4', '#f59e0b', '#64748b', '#ec4899'];
+                            return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
+                          })}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', padding: '12px' }}
+                          itemStyle={{ color: '#fbbf24', fontWeight: 'bold' }}
+                          formatter={(value) => [`${parseFloat(value.toFixed(2))}h`, 'Horas']}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-slate-600 text-sm">
+                      Sin datos suficientes
                     </div>
-                  </div>
-                  
-                  <div className="pt-4 border-t border-slate-800/80">
-                    <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Involucrados</p>
-                    <div className="space-y-2">
-                      {Object.values(evt.workers).map((worker, wIdx) => (
-                        <div key={wIdx} className="flex items-center justify-between text-xs">
-                          <div className="flex items-center space-x-2">
-                            <span>{worker.avatar}</span>
-                            <span className="text-slate-300 truncate max-w-[100px]">{worker.name}</span>
-                          </div>
-                          <span className="text-slate-500 font-mono">
-                            {parseFloat(worker.hours.toFixed(2))}h
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  )}
                 </div>
-              ))}
-              {eventsList.length === 0 && (
-                <div className="col-span-full py-8 text-center text-slate-500 flex flex-col items-center">
-                  <FileText className="w-10 h-10 mb-2 opacity-20" />
-                  <p>No hay eventos registrados en este periodo.</p>
-                </div>
-              )}
+              </div>
             </div>
           </div>
         </div>

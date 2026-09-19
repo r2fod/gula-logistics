@@ -30,37 +30,113 @@ export function pairShiftsFromEntries(entries = []) {
   const activeWorkerShifts = {};
 
   sortEntriesByTimestamp(entries).forEach(entry => {
-    const { workerName, type, timestamp, timeFormatted, dateFormatted, isPayroll, rate, note } = entry;
+    const { workerName, type, timestamp, timeFormatted, dateFormatted, isPayroll, rate, note, taskName } = entry;
 
     if (type === 'entrada') {
-      activeWorkerShifts[workerName] = entry;
+      activeWorkerShifts[workerName] = {
+        startEntry: entry,
+        tasks: [],
+        lastTime: new Date(timestamp).getTime()
+      };
+    } else if (type === 'fichaje' && activeWorkerShifts[workerName]) {
+      // Subtask completed in V2
+      const active = activeWorkerShifts[workerName];
+      const currentTime = new Date(timestamp).getTime();
+      const diffMs = currentTime - active.lastTime;
+      const durationHours = diffMs / (1000 * 60 * 60);
+
+      active.tasks.push({
+        taskName: taskName,
+        durationHours,
+        note
+      });
+      active.lastTime = currentTime;
+      
     } else if (type === 'salida' && activeWorkerShifts[workerName]) {
-      const startEntry = activeWorkerShifts[workerName];
+      const active = activeWorkerShifts[workerName];
+      const startEntry = active.startEntry;
       delete activeWorkerShifts[workerName];
 
       const startDate = new Date(startEntry.timestamp);
       const endDate = new Date(timestamp);
-      const diffMs = endDate - startDate;
-      let rawDuration = Math.max(0, diffMs / (1000 * 60 * 60));
+      const totalDiffMs = endDate - startDate;
+      let rawDuration = Math.max(0, totalDiffMs / (1000 * 60 * 60));
       let isAnomalous = false;
 
-      // Límite automático de seguridad: si un turno dura más de 14h seguidas
-      // (por despiste de desfichar), se capa a 14h y se marca como anómalo
-      // para que el admin lo revise.
       if (rawDuration > 14) {
         rawDuration = 14;
         isAnomalous = true;
       }
 
-      // Redondear a 2 decimales matemáticamente para que horas * tarifa cuadre siempre en pantalla
       const durationHours = Math.round(rawDuration * 100) / 100;
-
       const hours = Math.floor(durationHours);
       const minutes = Math.floor((durationHours - hours) * 60);
 
       const isSalaried = isPayroll || workerName === 'Irene' || workerName === 'Raúl';
       const hourlyRate = rate || (isSalaried ? 14 : 10);
       const cost = durationHours * hourlyRate;
+
+      // Finalize subtasks for V2
+      const finalTasks = [];
+      if (startEntry.taskName === 'JORNADA') {
+        // V2 Shift
+        active.tasks.forEach(t => {
+          // Normalize subtask duration so it doesn't exceed total (in case of anomalous cap)
+          const ratio = rawDuration > 0 ? (t.durationHours / (totalDiffMs / (1000 * 60 * 60))) : 0;
+          const adjustedDuration = durationHours * ratio;
+          
+          let eventName = t.taskName || 'Sin Asignar';
+          let specificTaskName = 'Tarea General';
+          
+          if (eventName.includes(' - ')) {
+            const parts = eventName.split(' - ');
+            eventName = parts[0].trim();
+            specificTaskName = parts.slice(1).join(' - ').trim();
+          }
+          
+          finalTasks.push({
+            taskName: t.taskName,
+            eventName: eventName,
+            specificTaskName: specificTaskName,
+            durationHours: adjustedDuration,
+            cost: adjustedDuration * hourlyRate,
+            note: t.note
+          });
+        });
+        
+        // Any remaining time goes to "Sin Asignar"
+        const assignedHours = finalTasks.reduce((acc, t) => acc + t.durationHours, 0);
+        const remainingHours = Math.max(0, durationHours - assignedHours);
+        if (remainingHours > 0.01) {
+          finalTasks.push({
+            taskName: 'Sin Asignar / General',
+            eventName: 'Tareas Internas',
+            specificTaskName: 'Tiempo no asignado',
+            durationHours: remainingHours,
+            cost: remainingHours * hourlyRate,
+            note: 'Tiempo de jornada no asignado a tareas específicas'
+          });
+        }
+      } else {
+        // V1 Shift
+        let eventName = startEntry.taskName || 'Sin Asignar';
+        let specificTaskName = 'Tarea General';
+        
+        if (eventName.includes(' - ')) {
+          const parts = eventName.split(' - ');
+          eventName = parts[0].trim();
+          specificTaskName = parts.slice(1).join(' - ').trim();
+        }
+
+        finalTasks.push({
+          taskName: startEntry.taskName || 'Sin Asignar',
+          eventName: eventName,
+          specificTaskName: specificTaskName,
+          durationHours,
+          cost,
+          note: startEntry.note || note
+        });
+      }
 
       shifts.push({
         id: `${startEntry.id}-${entry.id}`,
@@ -77,12 +153,19 @@ export function pairShiftsFromEntries(entries = []) {
         durationFormatted: `${hours}h ${minutes}m`,
         cost,
         isAnomalous,
-        note: startEntry.note || note
+        note: startEntry.note || note,
+        subTasks: finalTasks // For the events summary
       });
     }
   });
 
-  return { shifts, activeShifts: activeWorkerShifts };
+  // Return active shifts (just map the active object back to its startEntry for UI compatibility)
+  const activeShiftsOut = {};
+  for (const [wName, active] of Object.entries(activeWorkerShifts)) {
+    activeShiftsOut[wName] = active.startEntry;
+  }
+
+  return { shifts, activeShifts: activeShiftsOut };
 }
 
 // Agrega los turnos ya emparejados en totales por trabajador (horas, coste,

@@ -606,13 +606,46 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                         </div>
 
                         <div className="flex-1 min-w-0 space-y-2">
-                          <textarea
-                            rows={3}
-                            value={textValue}
-                            onChange={(e) => handleTaskChange(dayKey, idx, e.target.value)}
-                            placeholder="Descripción de la tarea..."
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500 resize-y min-h-[80px]"
-                          />
+                          {/* Event / Task Split Inputs */}
+                          {(() => {
+                            let eventName = '';
+                            let specificTask = textValue;
+                            if (textValue && textValue.includes(' - ')) {
+                              const parts = textValue.split(' - ');
+                              eventName = parts[0];
+                              specificTask = parts.slice(1).join(' - ');
+                            }
+
+                            const handleSplitChange = (newEv, newTk) => {
+                              const combined = newEv.trim() ? `${newEv} - ${newTk}` : newTk;
+                              handleTaskChange(dayKey, idx, combined);
+                            };
+
+                            return (
+                              <div className="flex flex-col gap-2">
+                                <div>
+                                  <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Nombre del Evento (Ej: Boda Soto)</label>
+                                  <input
+                                    type="text"
+                                    value={eventName}
+                                    onChange={(e) => handleSplitChange(e.target.value, specificTask)}
+                                    placeholder="Dejar vacío si es una Tarea General"
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-amber-300 font-bold focus:outline-none focus:border-amber-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Descripción de la Tarea Específica</label>
+                                  <textarea
+                                    rows={2}
+                                    value={specificTask}
+                                    onChange={(e) => handleSplitChange(eventName, e.target.value)}
+                                    placeholder="Ej: Carga de camión y montaje de carpas..."
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500 resize-y min-h-[60px]"
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })()}
                           <div className="flex flex-col sm:flex-row gap-2">
                             <TimeRangeEditor
                               value={timeValue}
