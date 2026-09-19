@@ -2,11 +2,103 @@ import React, { useState } from 'react';
 import { Users, Calendar, Clock, Check, Sparkles } from 'lucide-react';
 import { isTaskChronologicallyPast } from '../../data/taskPlanning';
 
-export default function ScheduleTab({ activeWeekData, workersList, onToggleTask }) {
+export default function ScheduleTab({ activeWeekData, workersList, onToggleTask, onUpdateWeek }) {
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
 
   // Auto-completion logic based on time
   const currentTime = new Date();
+
+  // Dynamic Fleet Tasks Injection
+  const trucks = activeWeekData?.trucks || [];
+  const dynamicTasksByDay = {
+    martes: [], miercoles: [], jueves: [], viernes: [], sabado: [], domingo: [], lunes: []
+  };
+
+  const normalizeDay = (dayStr) => {
+    if (!dayStr) return null;
+    const d = dayStr.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return d;
+  };
+
+  trucks.forEach((truck, tIdx) => {
+    if (truck.tag === 'ALQUILER') {
+      const pDay = normalizeDay(truck.pickupDay);
+      if (pDay && dynamicTasksByDay[pDay]) {
+        dynamicTasksByDay[pDay].push({
+          isDynamic: true, type: 'pickup', truckIndex: tIdx,
+          text: `🚚 Recogida: ${truck.name}`,
+          timeFrame: truck.pickupTime,
+          completed: !!truck.pickupCompleted,
+          pdfUrl: truck.pdfUrl
+        });
+      }
+      
+      const rDay = normalizeDay(truck.returnDay);
+      if (rDay && dynamicTasksByDay[rDay]) {
+        dynamicTasksByDay[rDay].push({
+          isDynamic: true, type: 'return', truckIndex: tIdx,
+          text: `🔙 Devolución: ${truck.name}`,
+          timeFrame: truck.returnTime,
+          completed: !!truck.returnCompleted,
+          pdfUrl: truck.pdfUrl
+        });
+      }
+    }
+  });
+
+  const handleDynamicToggle = (task) => {
+    if (!onUpdateWeek) return;
+    const newTrucks = [...trucks];
+    const field = task.type === 'pickup' ? 'pickupCompleted' : 'returnCompleted';
+    newTrucks[task.truckIndex] = { ...newTrucks[task.truckIndex], [field]: !newTrucks[task.truckIndex][field] };
+    onUpdateWeek(activeWeekData.id, { trucks: newTrucks });
+  };
+
+  const renderDynamicTask = (task, idx, dayKey) => {
+    const isCompleted = task.completed || isTaskChronologicallyPast(dayKey, task.timeFrame, currentTime);
+    
+    return (
+      <li 
+        key={`dyn-${idx}`} 
+        onClick={() => handleDynamicToggle(task)}
+        className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
+          isCompleted 
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 line-through opacity-60' 
+            : 'bg-amber-500/5 border-amber-500/40 hover:border-amber-400 text-amber-200 shadow-sm shadow-amber-500/5'
+        }`}
+      >
+        <div className="mt-0.5 shrink-0">
+          {isCompleted ? (
+            <div className="w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center">
+              <Check className="w-2.5 h-2.5 text-emerald-400" />
+            </div>
+          ) : (
+            <Clock className="text-amber-400 w-4 h-4" />
+          )}
+        </div>
+        <div className="flex-1 leading-relaxed">
+          <span className={isCompleted ? 'line-through' : 'font-semibold'}>{task.text}</span>
+          {task.timeFrame && (
+            <span className="ml-2 text-[10px] font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-lg inline-flex items-center gap-1 align-middle whitespace-nowrap border border-amber-500/30">
+              <Clock className="w-3 h-3" />
+              {task.timeFrame}
+            </span>
+          )}
+          {task.pdfUrl && (
+            <a 
+              href={task.pdfUrl}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="ml-2 text-[10px] font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded-lg border border-slate-700 inline-flex items-center gap-1 align-middle no-underline"
+            >
+              PDF
+            </a>
+          )}
+        </div>
+      </li>
+    );
+  };
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -127,6 +219,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask 
                     </li>
                   );
                 })}
+                {dynamicTasksByDay[key]?.map((task, idx) => renderDynamicTask(task, idx, key))}
               </ul>
             </div>
           </div>
@@ -178,6 +271,15 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask 
               );
             })}
           </div>
+
+          {dynamicTasksByDay['sabado']?.length > 0 && (
+            <div className="pt-4 mt-2 border-t border-amber-500/20">
+              <h4 className="text-xs font-semibold text-amber-400/80 mb-3 uppercase tracking-wider">Logística de Flota</h4>
+              <ul className="space-y-2.5 text-xs text-slate-300 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {dynamicTasksByDay['sabado'].map((task, idx) => renderDynamicTask(task, idx, 'sabado'))}
+              </ul>
+            </div>
+          )}
         </section>
       )}
 
@@ -233,6 +335,35 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask 
                       {timeFrame}
                     </span>
                   )}
+                </div>
+              );
+            })}
+
+            {dynamicTasksByDay['domingo']?.map((task, idx) => {
+              // Hack the renderer a bit to add the targetDay label so it matches the UI
+              const renderedLi = renderDynamicTask(task, idx, 'domingo');
+              return (
+                <div key={`dom-${idx}`} className="p-4 rounded-2xl border bg-amber-500/5 border-amber-500/20 hover:border-amber-400/50 transition-all">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg whitespace-nowrap shrink-0 border bg-amber-500/10 text-amber-400 border-amber-500/20">
+                      DOMINGO
+                    </span>
+                  </div>
+                  <ul className="m-0 p-0 list-none">{renderedLi}</ul>
+                </div>
+              );
+            })}
+
+            {dynamicTasksByDay['lunes']?.map((task, idx) => {
+              const renderedLi = renderDynamicTask(task, idx, 'lunes');
+              return (
+                <div key={`lun-${idx}`} className="p-4 rounded-2xl border bg-amber-500/5 border-amber-500/20 hover:border-amber-400/50 transition-all">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg whitespace-nowrap shrink-0 border bg-indigo-500/10 text-indigo-300 border-indigo-500/20">
+                      LUNES
+                    </span>
+                  </div>
+                  <ul className="m-0 p-0 list-none">{renderedLi}</ul>
                 </div>
               );
             })}

@@ -1,13 +1,34 @@
-import React from 'react';
-import { Truck } from 'lucide-react';
+import React, { useState } from 'react';
+import { Truck, Settings } from 'lucide-react';
+import FleetManagerModal from '../FleetManagerModal';
 
-export default function LogisticsTab({ activeWeekData }) {
+export default function LogisticsTab({ activeWeekData, adminUnlocked, onUpdateWeek }) {
+  const [isFleetManagerOpen, setIsFleetManagerOpen] = useState(false);
+
   return (
     <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4 animate-fadeIn">
-      <h4 className="font-bold text-white text-lg flex items-center space-x-2 font-['Outfit']">
-        <Truck className="w-6 h-6 text-amber-400" />
-        <span>Estado de la Flota & Eventos Clave ({activeWeekData?.meta?.week || "Semana 3"})</span>
-      </h4>
+      <div className="flex justify-between items-center flex-wrap gap-4">
+        <h4 className="font-bold text-white text-lg flex items-center space-x-2 font-['Outfit']">
+          <Truck className="w-6 h-6 text-amber-400" />
+          <span>Estado de la Flota & Eventos Clave ({activeWeekData?.meta?.week || "Semana 3"})</span>
+        </h4>
+        {adminUnlocked && (
+          <button 
+            onClick={() => setIsFleetManagerOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-950 border border-slate-800 hover:border-amber-500/50 rounded-xl text-sm font-semibold text-slate-300 hover:text-amber-400 transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+            Gestionar Flota
+          </button>
+        )}
+      </div>
+
+      <FleetManagerModal 
+        isOpen={isFleetManagerOpen} 
+        onClose={() => setIsFleetManagerOpen(false)} 
+        activeWeekData={activeWeekData}
+        onUpdateWeek={onUpdateWeek}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
         {(activeWeekData?.saturdaySpecial?.weddings || []).map((w, idx) => (

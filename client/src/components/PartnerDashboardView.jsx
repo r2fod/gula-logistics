@@ -53,6 +53,7 @@ export default function PartnerDashboardView({
   allWeeks = {}, 
   activeWeekId, 
   onSelectWeek, 
+  onUpdateWeek,
   workersList = [], 
   clockEntries = [], 
   isAdmin = false,
@@ -651,7 +652,13 @@ export default function PartnerDashboardView({
 
       {/* TAB 5: Logistics & Weddings */}
       {activeTab === 'logistics' && (
-        <LogisticsTab activeWeekData={activeWeekData} />
+        <LogisticsTab 
+          activeWeekData={activeWeekData} 
+          adminUnlocked={adminUnlocked}
+          onUpdateWeek={(weekId, partialUpdate) => {
+            if (onUpdateWeek) onUpdateWeek({ ...activeWeekData, ...partialUpdate });
+          }}
+        />
       )}
 
       {/* TAB 6: Schedule Days (Rich Cuadrante Semanal) */}
@@ -660,6 +667,9 @@ export default function PartnerDashboardView({
           activeWeekData={activeWeekData}
           workersList={workersList}
           onToggleTask={onToggleTask}
+          onUpdateWeek={(weekId, partialUpdate) => {
+            if (onUpdateWeek) onUpdateWeek({ ...activeWeekData, ...partialUpdate });
+          }}
         />
       )}
 

@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.routes.js';
 import clockRoutes from './routes/clock.routes.js';
 import logisticsRoutes from './routes/logistics.routes.js';
@@ -10,11 +12,15 @@ import notificationsRoutes from './routes/notifications.routes.js';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Conexión a MongoDB Atlas mediante variable de entorno MONGODB_URI
 if (process.env.MONGODB_URI) {

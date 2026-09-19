@@ -441,6 +441,7 @@ export default function App() {
         allWeeks={allWeeks}
         activeWeekId={activeWeekId}
         onSelectWeek={setActiveWeekId}
+        onUpdateWeek={handleUpdateActiveWeek}
         workersList={workersList}
         clockEntries={activeClockEntries}
         isAdmin={isAdmin}
