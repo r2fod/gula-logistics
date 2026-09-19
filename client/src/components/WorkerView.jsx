@@ -884,11 +884,26 @@ export default function WorkerView({
                             <span>Boda Asignada Sábado</span>
                           </span>
                           {dayGroup.weddings.map((w, idx) => (
-                            <div key={idx} className="bg-slate-900 p-3 sm:p-3.5 rounded-xl border border-amber-500/30 space-y-1">
-                              <div className="flex justify-between items-start">
-                                <span className="font-extrabold text-white text-xs sm:text-sm block">🏔️ {w.location}</span>
+                            <div key={idx} className={`p-3 sm:p-3.5 rounded-xl border space-y-1 transition-all ${
+                              w.completed
+                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                                : 'bg-slate-900 border-amber-500/30'
+                            }`}>
+                              <div 
+                                className="flex justify-between items-start cursor-pointer hover:text-white"
+                                onClick={() => {
+                                  if (onToggleTask) {
+                                    const realIdx = resolveRealTaskIndex('sabado', `Boda: ${w.location} (${w.truck})`);
+                                    if (realIdx !== null) onToggleTask('sabado', realIdx);
+                                  }
+                                }}
+                              >
+                                <div className="flex items-start space-x-2.5">
+                                  <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${w.completed ? 'text-emerald-400' : 'text-slate-500'}`} />
+                                  <span className={`font-extrabold text-white text-xs sm:text-sm block ${w.completed ? 'line-through text-emerald-100' : ''}`}>🏔️ {w.location}</span>
+                                </div>
                                 {w.timeFrame && (
-                                  <span className="text-[10px] font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded flex items-center gap-1">
+                                  <span className="text-[10px] font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
                                     <Clock className="w-3 h-3" />
                                     {w.timeFrame}
                                   </span>
@@ -910,23 +925,27 @@ export default function WorkerView({
                                 </a>
                               )}
 
-                              {isDayInFuture('sabado') ? (
-                                <span className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed w-fit">
-                                  <Lock className="w-3 h-3" />
-                                  <span>Aún no ha llegado este día</span>
-                                </span>
-                              ) : (
-                                <button
-                                  onClick={() => {
-                                    setPrefilledTask(`Boda: ${w.location} (${w.truck})`);
-                                    setTaskRef(null); // las bodas del sábado no tienen "completed" propio todavía
-                                    setIsClockModalOpen(true);
-                                  }}
-                                  className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all active:scale-95"
-                                >
-                                  <Play className="w-3 h-3 fill-current" />
-                                  <span>⏱️ Fichar Boda Sábado</span>
-                                </button>
+                              {!w.completed && (
+                                isDayInFuture('sabado') ? (
+                                  <span className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed w-fit">
+                                    <Lock className="w-3 h-3" />
+                                    <span>Aún no ha llegado este día</span>
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPrefilledTask(`Boda: ${w.location} (${w.truck})`);
+                                      const realIdx = resolveRealTaskIndex('sabado', `Boda: ${w.location} (${w.truck})`);
+                                      setTaskRef(realIdx !== null ? { dayKey: 'sabado', taskIndex: realIdx } : null);
+                                      setIsClockModalOpen(true);
+                                    }}
+                                    className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95"
+                                  >
+                                    <Play className="w-3 h-3 fill-current" />
+                                    <span>⏱️ Fichar Boda Sábado</span>
+                                  </button>
+                                )
                               )}
                             </div>
                           ))}
