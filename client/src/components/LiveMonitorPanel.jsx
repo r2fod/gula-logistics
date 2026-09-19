@@ -16,11 +16,12 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { pairShiftsFromEntries } from '../data/shiftCalculations';
+import { getTaskListForDay, isTaskChronologicallyPast } from '../data/taskPlanning';
 
 export default function LiveMonitorPanel({
   workersList = [],
   clockEntries = [],
-  activeSchedule = {},
+  activeWeekData = {},
   onClockEntryCreated,
   onOpenClockModal
 }) {
@@ -33,9 +34,7 @@ export default function LiveMonitorPanel({
     return () => clearInterval(timer);
   }, []);
 
-  // Map active clock entries per worker — misma función compartida que ya
-  // usa PayrollReportModal/PartnerDashboardView, en vez de reimplementar
-  // aquí el mismo cálculo por tercera vez.
+  // Map active clock entries per worker
   const { activeShifts } = pairShiftsFromEntries(clockEntries);
 
   const parseTimeToMinutes = (str) => {
@@ -44,21 +43,13 @@ export default function LiveMonitorPanel({
     return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
   };
 
-  // Schedule lookup helper for current day tasks. A worker can have several
-  // tasks the same day (e.g. Ricardo: recogida + carga + otra recogida el
-  // martes) — devolvemos todas y dejamos que el caller elija cuál mostrar
-  // como "actual", en vez de quedarnos con la primera que encuentre find().
   const getAssignedTasksForWorker = (workerName) => {
     const days = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const todayIndex = currentTime.getDay();
-    const dayKey = days[todayIndex] || 'martes';
+    const dayKey = days[todayIndex];
 
-    const daySchedule = activeSchedule[dayKey] || activeSchedule['martes'] || {};
-    const tasks = daySchedule.tasks || [];
+    const tasks = getTaskListForDay(activeWeekData, dayKey);
 
-    // Prefer the task's own `assigned` list — the task text doesn't always
-    // spell out the worker's name (e.g. "Recoger Generador SOS."), so
-    // text-scanning alone silently misses real assignments.
     const nameLower = workerName.toLowerCase();
     return tasks.filter(t => {
       if (typeof t === 'object' && Array.isArray(t.assigned) && t.assigned.length > 0) {
@@ -87,10 +78,16 @@ export default function LiveMonitorPanel({
       return { text: DEFAULT_TASK_BY_WORKER[workerName] || '📋 Asignado en Operativa Activa', extraCount: 0 };
     }
 
-    // Las tareas ya completadas no deben aparecer aquí como "actual" — este
-    // panel es para ver de un vistazo qué toca ahora, no un historial. Si ya
-    // están todas hechas, se avisa en vez de mostrar la última completada.
-    const matches = allMatches.filter(t => !(typeof t === 'object' && t.completed));
+    const days = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+    const dayKey = days[currentTime.getDay()];
+
+    const matches = allMatches.filter(t => {
+      if (typeof t !== 'object') return true; // Simple strings are assumed incomplete unless mapped to obj
+      if (t.completed) return false; // Explicitly marked as done
+      if (isTaskChronologicallyPast(dayKey, t.timeFrame, currentTime)) return false; // Chronologically done
+      return true;
+    });
+
     if (matches.length === 0) {
       return { text: '✅ Todas las tareas de hoy completadas', extraCount: 0 };
     }

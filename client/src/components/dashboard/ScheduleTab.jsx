@@ -1,45 +1,12 @@
 import React, { useState } from 'react';
 import { Users, Calendar, Clock, Check, Sparkles } from 'lucide-react';
+import { isTaskChronologicallyPast } from '../../data/taskPlanning';
 
 export default function ScheduleTab({ activeWeekData, workersList, onToggleTask }) {
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
 
   // Auto-completion logic based on time
   const currentTime = new Date();
-  const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-  const todayKey = dayNames[currentTime.getDay()];
-  const weekDayOrder = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
-  const todayOrdinal = weekDayOrder.indexOf(todayKey);
-
-  const isTaskChronologicallyPast = (dayKey, timeFrame) => {
-    const ordinal = weekDayOrder.indexOf(dayKey);
-    if (ordinal < 0 || todayOrdinal < 0) return false;
-    if (ordinal < todayOrdinal) return true; // Past day
-    if (ordinal > todayOrdinal) return false; // Future day
-    
-    if (!timeFrame) return false;
-    
-    const parts = timeFrame.split('-');
-    if (parts.length === 2) {
-      const endTimeStr = parts[1].trim();
-      const timeParts = endTimeStr.split(':');
-      if (timeParts.length === 2) {
-        let endHours = parseInt(timeParts[0], 10);
-        const endMinutes = parseInt(timeParts[1], 10);
-        if (endHours < 5) endHours += 24; // Handle past midnight
-        
-        let currentHours = currentTime.getHours();
-        const currentMinutes = currentTime.getMinutes();
-        if (currentHours < 5) currentHours += 24;
-        
-        const endTotal = endHours * 60 + endMinutes;
-        const currentTotal = currentHours * 60 + currentMinutes;
-        
-        return currentTotal > endTotal;
-      }
-    }
-    return false;
-  };
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -120,7 +87,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask 
                   const timeFrame = typeof task === 'object' ? task.timeFrame : null;
                   const manuallyCompleted = typeof task === 'object' ? !!task.completed : false;
                   
-                  const isCompleted = manuallyCompleted || isTaskChronologicallyPast(key, timeFrame);
+                  const isCompleted = manuallyCompleted || isTaskChronologicallyPast(key, timeFrame, currentTime);
                   
                   const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
                   const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
@@ -181,7 +148,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
             {(activeWeekData.saturdaySpecial.weddings || []).map((w, idx) => {
               const manuallyCompleted = !!w.completed;
-              const isCompleted = manuallyCompleted || isTaskChronologicallyPast('sabado', w.timeFrame);
+              const isCompleted = manuallyCompleted || isTaskChronologicallyPast('sabado', w.timeFrame, currentTime);
               const wAssigned = w.assigned || [];
               const matchesFilter = !selectedWorkerFilter || wAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
 
@@ -232,7 +199,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask 
                 : 'domingo';
                 
               const manuallyCompleted = typeof task === 'object' ? !!task.completed : false;
-              const isCompleted = manuallyCompleted || isTaskChronologicallyPast(taskDayKey, timeFrame);
+              const isCompleted = manuallyCompleted || isTaskChronologicallyPast(taskDayKey, timeFrame, currentTime);
               
               const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
               const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());

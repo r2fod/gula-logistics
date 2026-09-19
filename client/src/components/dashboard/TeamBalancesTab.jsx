@@ -294,12 +294,12 @@ export default function TeamBalancesTab({
               return (
                 <div 
                   key={worker.id}
-                  className={`bg-slate-900 border rounded-3xl p-6 transition-all shadow-xl flex flex-col justify-between space-y-4 ${
+                  className={`border rounded-3xl p-6 transition-all shadow-xl flex flex-col justify-between space-y-4 ${
                     derivedStatusType === 'danger'
-                      ? 'border-rose-500/40 bg-gradient-to-br from-slate-900 via-slate-900 to-rose-950/20'
+                      ? 'border-rose-500/40 bg-gradient-to-br from-slate-800 via-slate-800 to-rose-900/30'
                       : derivedStatusType === 'payroll'
-                      ? 'border-indigo-500/30 bg-slate-900'
-                      : 'border-slate-800 hover:border-slate-700'
+                      ? 'border-indigo-500/40 bg-slate-800'
+                      : 'border-slate-700 bg-slate-800 hover:border-slate-600'
                   }`}
                 >
                   <div>
@@ -448,10 +448,10 @@ export default function TeamBalancesTab({
                             key={idx}
                             className={`p-2.5 rounded-xl border text-xs flex items-center justify-between gap-2 ${
                               item.amount < 0
-                                ? 'bg-rose-500/10 border-rose-500/20 text-rose-200'
+                                ? 'bg-rose-500/10 border-rose-500/30 text-rose-200'
                                 : item.isDynamic
                                 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-100'
-                                : 'bg-slate-950/80 border-slate-800 text-slate-200'
+                                : 'bg-slate-800/80 border-slate-700 text-slate-200'
                             }`}
                           >
                             <span className="font-medium break-words min-w-0 flex-1 pr-2">{item.concept}</span>
