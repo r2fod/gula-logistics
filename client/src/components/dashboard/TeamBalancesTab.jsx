@@ -244,7 +244,13 @@ export default function TeamBalancesTab({
               const hours = findWorkerHours(worker.name);
               let dynamicCost = 0;
               let dynamicShifts = [];
-              let consumedBolsa = 0;
+              // Arranca desde lo YA consumido de la bolsa (turnos metidos a
+              // mano, persistido en purseInfo.consumedHours) — si empezara
+              // siempre en 0, un trabajador con la bolsa ya agotada por
+              // turnos manuales seguiría pagando sus fichajes automáticos a
+              // la tarifa base de bolsa en vez de a la tarifa extra que le
+              // corresponde una vez superadas las horas de la bolsa.
+              let consumedBolsa = worker.purseInfo?.consumedHours || 0;
 
               if (hours && hours.shifts && hours.shifts.length > 0) {
                 hours.shifts.forEach(s => {
