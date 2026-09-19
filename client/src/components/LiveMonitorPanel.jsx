@@ -16,11 +16,12 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { pairShiftsFromEntries } from '../data/shiftCalculations';
+import { getTaskListForDay, isTaskChronologicallyPast } from '../data/taskPlanning';
 
 export default function LiveMonitorPanel({
   workersList = [],
   clockEntries = [],
-  activeSchedule = {},
+  activeWeekData = {},
   onClockEntryCreated,
   onOpenClockModal
 }) {
@@ -33,9 +34,7 @@ export default function LiveMonitorPanel({
     return () => clearInterval(timer);
   }, []);
 
-  // Map active clock entries per worker — misma función compartida que ya
-  // usa PayrollReportModal/PartnerDashboardView, en vez de reimplementar
-  // aquí el mismo cálculo por tercera vez.
+  // Map active clock entries per worker
   const { activeShifts } = pairShiftsFromEntries(clockEntries);
 
   const parseTimeToMinutes = (str) => {
@@ -44,21 +43,13 @@ export default function LiveMonitorPanel({
     return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
   };
 
-  // Schedule lookup helper for current day tasks. A worker can have several
-  // tasks the same day (e.g. Ricardo: recogida + carga + otra recogida el
-  // martes) — devolvemos todas y dejamos que el caller elija cuál mostrar
-  // como "actual", en vez de quedarnos con la primera que encuentre find().
   const getAssignedTasksForWorker = (workerName) => {
     const days = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const todayIndex = currentTime.getDay();
-    const dayKey = days[todayIndex] || 'martes';
+    const dayKey = days[todayIndex];
 
-    const daySchedule = activeSchedule[dayKey] || activeSchedule['martes'] || {};
-    const tasks = daySchedule.tasks || [];
+    const tasks = getTaskListForDay(activeWeekData, dayKey);
 
-    // Prefer the task's own `assigned` list — the task text doesn't always
-    // spell out the worker's name (e.g. "Recoger Generador SOS."), so
-    // text-scanning alone silently misses real assignments.
     const nameLower = workerName.toLowerCase();
     return tasks.filter(t => {
       if (typeof t === 'object' && Array.isArray(t.assigned) && t.assigned.length > 0) {
@@ -87,10 +78,16 @@ export default function LiveMonitorPanel({
       return { text: DEFAULT_TASK_BY_WORKER[workerName] || '📋 Asignado en Operativa Activa', extraCount: 0 };
     }
 
-    // Las tareas ya completadas no deben aparecer aquí como "actual" — este
-    // panel es para ver de un vistazo qué toca ahora, no un historial. Si ya
-    // están todas hechas, se avisa en vez de mostrar la última completada.
-    const matches = allMatches.filter(t => !(typeof t === 'object' && t.completed));
+    const days = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+    const dayKey = days[currentTime.getDay()];
+
+    const matches = allMatches.filter(t => {
+      if (typeof t !== 'object') return true; // Simple strings are assumed incomplete unless mapped to obj
+      if (t.completed) return false; // Explicitly marked as done
+      if (isTaskChronologicallyPast(dayKey, t.timeFrame, currentTime)) return false; // Chronologically done
+      return true;
+    });
+
     if (matches.length === 0) {
       return { text: '✅ Todas las tareas de hoy completadas', extraCount: 0 };
     }
@@ -155,16 +152,25 @@ export default function LiveMonitorPanel({
 
     // Prefer the task the worker actually clocked into (fichar por tarea)
     // over the day-of-week guess, so this reflects real, live control.
-    const realTaskName = clockEntry?.taskName || clockEntry?.note;
+    const rawTaskName = clockEntry?.taskName || clockEntry?.note;
     const taskInfo = getWorkerTaskInfo(w.name);
+    
+    // If the task name is a generic clock-in label like "JORNADA" or "Inicio de Jornada Operativa",
+    // intelligently fall back to the assigned task from the schedule instead of showing the generic text.
+    const isGenericTaskName = rawTaskName && (
+      rawTaskName.toUpperCase() === 'JORNADA' || 
+      rawTaskName.toUpperCase().includes('INICIO DE JORNADA')
+    );
+    
+    const currentTaskToDisplay = (rawTaskName && !isGenericTaskName) ? rawTaskName : taskInfo.text;
 
     return {
       ...w,
       isClockedIn,
       clockEntry,
       elapsedTimeFormatted,
-      currentTask: realTaskName || taskInfo.text,
-      extraTasksCount: realTaskName ? 0 : taskInfo.extraCount,
+      currentTask: currentTaskToDisplay,
+      extraTasksCount: (rawTaskName && !isGenericTaskName) ? 0 : taskInfo.extraCount,
       location: getWorkerLocation(w.name)
     };
   });
@@ -222,7 +228,7 @@ export default function LiveMonitorPanel({
             <div className="bg-slate-950/80 px-3 sm:px-4 py-2 rounded-xl sm:rounded-2xl border border-slate-800 text-center font-mono">
               <span className="text-[9px] sm:text-[10px] text-slate-400 font-semibold block uppercase tracking-wider">Hora Oficial</span>
               <span className="text-xs sm:text-sm font-bold text-amber-400">
-                {currentTime.toLocaleTimeString()}
+                {currentTime.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
               </span>
             </div>
           </div>
@@ -425,7 +431,7 @@ export default function LiveMonitorPanel({
                         timestamp: now.toISOString(),
                         // Locale y hour12 fijos: mismo criterio que ClockInModal/AdminClockEditModal.
                         timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false }),
-                        dateFormatted: now.toLocaleDateString(),
+                        dateFormatted: now.toLocaleDateString('es-ES'),
                         note: `Finalizada tarea: ${worker.currentTask}`
                       };
                       if (onClockEntryCreated) onClockEntryCreated(entry);

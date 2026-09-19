@@ -39,3 +39,37 @@ export function buildTaskListPatch(weekData, dayKey, updatedList) {
     ? { sundayMonday: { ...weekData.sundayMonday, tasks: updatedList } }
     : { schedule: { ...weekData.schedule, [dayKey]: { ...weekData.schedule?.[dayKey], tasks: updatedList } } };
 }
+
+export function isTaskChronologicallyPast(dayKey, timeFrame, overrideTime = new Date()) {
+  const weekDayOrder = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+  const todayKey = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'][overrideTime.getDay()];
+  const todayOrdinal = weekDayOrder.indexOf(todayKey);
+  const ordinal = weekDayOrder.indexOf(dayKey);
+  
+  if (ordinal < 0 || todayOrdinal < 0) return false;
+  if (ordinal < todayOrdinal) return true; // Past day
+  if (ordinal > todayOrdinal) return false; // Future day
+  
+  if (!timeFrame) return false;
+  
+  const parts = timeFrame.split('-');
+  if (parts.length === 2) {
+    const endTimeStr = parts[1].trim();
+    const timeParts = endTimeStr.split(':');
+    if (timeParts.length === 2) {
+      let endHours = parseInt(timeParts[0], 10);
+      const endMinutes = parseInt(timeParts[1], 10);
+      if (endHours < 5) endHours += 24; // Handle past midnight
+      
+      let currentHours = overrideTime.getHours();
+      const currentMinutes = overrideTime.getMinutes();
+      if (currentHours < 5) currentHours += 24;
+      
+      const endTotal = endHours * 60 + endMinutes;
+      const currentTotal = currentHours * 60 + currentMinutes;
+      
+      return currentTotal > endTotal;
+    }
+  }
+  return false;
+}
