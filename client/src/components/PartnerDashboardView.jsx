@@ -189,12 +189,11 @@ export default function PartnerDashboardView({
     setInternalBalancesData(newBalancesData);
     if (externalSetBalancesData) externalSetBalancesData(newBalancesData);
 
-    setSavingBalanceId(workerId);
-    try {
-      await saveWorkerBalanceToAPI(workerId, updatedFields);
-    } finally {
-      setSavingBalanceId(null);
-    }
+    // El estado "guardando..." (savingBalanceId) ya lo gestiona el propio
+    // TeamBalancesTab.jsx alrededor de cada llamada a esta función — no
+    // duplicarlo aquí (esta función no tiene ese estado, y llamarlo
+    // rompía el guardado de cualquier cambio con un ReferenceError).
+    await saveWorkerBalanceToAPI(workerId, updatedFields);
   };
 
   const handleRequestAdminUnlock = () => {
@@ -619,7 +618,6 @@ export default function PartnerDashboardView({
           adminUnlocked={adminUnlocked}
           onDeleteClockEntry={onDeleteClockEntry}
           persistWorkerBalance={persistWorkerBalance}
-          onSendWhatsApp={handleSendWhatsApp}
           findWorkerHours={findWorkerHours}
         />
       )}

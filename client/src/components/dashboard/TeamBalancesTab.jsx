@@ -7,7 +7,6 @@ export default function TeamBalancesTab({
   adminUnlocked,
   onDeleteClockEntry,
   persistWorkerBalance,
-  onSendWhatsApp,
   findWorkerHours
 }) {
   const [expandedWorkerId, setExpandedWorkerId] = useState('jefferson');
