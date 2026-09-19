@@ -91,7 +91,7 @@ export default function App() {
     handleClearClockEntries
   } = useClockings(markTaskCompleted);
 
-  const [activeWeekId, setActiveWeekId] = useState('week_3');
+
   const [activeWorker, setActiveWorker] = useState(null);
   const [isPublicPreviewMode, setIsPublicPreviewMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -292,8 +292,7 @@ export default function App() {
     setIsAdminUnlocked(false);
   };
 
-  const activeClockEntries = clockEntries.filter(e => !e.deleted);
-  const deletedClockEntries = clockEntries.filter(e => e.deleted);
+
 
   if (activeWorker) {
     return (
