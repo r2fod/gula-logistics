@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Activity, 
   Clock, 
@@ -34,8 +34,11 @@ export default function LiveMonitorPanel({
     return () => clearInterval(timer);
   }, []);
 
-  // Map active clock entries per worker
-  const { activeShifts } = pairShiftsFromEntries(clockEntries);
+  // Map active clock entries per worker. Memoizado por `clockEntries`: el
+  // timer de arriba fuerza un re-render cada segundo (currentTime), y sin
+  // esto se reordenaban y emparejaban TODOS los fichajes 60 veces por
+  // minuto aunque no hubiera ni un fichaje nuevo.
+  const { activeShifts } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
 
   const parseTimeToMinutes = (str) => {
     const m = /(\d{1,2}):(\d{2})/.exec(str || '');

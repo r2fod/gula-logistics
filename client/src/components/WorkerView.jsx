@@ -260,7 +260,9 @@ export default function WorkerView({
     return null;
   })();
 
-  const { activeShifts: clockedInNow } = pairShiftsFromEntries(clockEntries);
+  // Memoizado por clockEntries: este componente también tiene un timer de
+  // 1s (currentTime) que fuerza re-render, igual que en LiveMonitorPanel.
+  const { activeShifts: clockedInNow } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
   const taskCoworkers = (referenceTaskAssigned || [])
     .filter(name => name.toLowerCase() !== currentWorkerObj.name.toLowerCase())
     .map(name => ({
