@@ -706,7 +706,7 @@ export default function App() {
       <PayrollReportModal
         isOpen={isPayrollModalOpen}
         onClose={() => setIsPayrollModalOpen(false)}
-        entries={clockEntries}
+        entries={activeClockEntries}
         workersList={workersList}
         onClearEntries={handleClearClockEntries}
         isAdmin={isAdmin}

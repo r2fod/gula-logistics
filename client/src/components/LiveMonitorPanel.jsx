@@ -222,7 +222,7 @@ export default function LiveMonitorPanel({
             <div className="bg-slate-950/80 px-3 sm:px-4 py-2 rounded-xl sm:rounded-2xl border border-slate-800 text-center font-mono">
               <span className="text-[9px] sm:text-[10px] text-slate-400 font-semibold block uppercase tracking-wider">Hora Oficial</span>
               <span className="text-xs sm:text-sm font-bold text-amber-400">
-                {currentTime.toLocaleTimeString()}
+                {currentTime.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
               </span>
             </div>
           </div>
@@ -425,7 +425,7 @@ export default function LiveMonitorPanel({
                         timestamp: now.toISOString(),
                         // Locale y hour12 fijos: mismo criterio que ClockInModal/AdminClockEditModal.
                         timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false }),
-                        dateFormatted: now.toLocaleDateString(),
+                        dateFormatted: now.toLocaleDateString('es-ES'),
                         note: `Finalizada tarea: ${worker.currentTask}`
                       };
                       if (onClockEntryCreated) onClockEntryCreated(entry);

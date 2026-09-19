@@ -57,7 +57,7 @@ export default function ClockInModal({
       // Locale y hour12 fijos: sin esto, el formato (24h o 12h AM/PM)
       // dependía del idioma/región del navegador de quien fichaba.
       timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
-      dateFormatted: now.toLocaleDateString(),
+      dateFormatted: now.toLocaleDateString('es-ES'),
       taskName: note.trim() || 'Inicio de Jornada Operativa',
       note: note.trim(),
       // Referencia a la tarea real del planning (día + índice) para poder
@@ -80,7 +80,7 @@ export default function ClockInModal({
       type: 'salida',
       timestamp: now.toISOString(),
       timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
-      dateFormatted: now.toLocaleDateString(),
+      dateFormatted: now.toLocaleDateString('es-ES'),
       note: note.trim()
     };
     onClockEntryCreated(entry);
@@ -111,7 +111,7 @@ export default function ClockInModal({
         {/* Live Clock Display */}
         <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-center mb-5">
           <span className="text-3xl font-extrabold font-mono text-emerald-400 tracking-wider">
-            {currentTime.toLocaleTimeString()}
+            {currentTime.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
           </span>
           <p className="text-xs text-slate-400 mt-1 capitalize">
             {currentTime.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}

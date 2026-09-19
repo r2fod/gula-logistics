@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { DollarSign, Clock, Users, X, Copy, Check, Trash2, Calendar, FileText, Lock, Edit3, Plus, ShieldCheck } from 'lucide-react';
 import AdminClockEditModal from './AdminClockEditModal';
-import { pairShiftsFromEntries } from '../data/shiftCalculations';
+import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../data/shiftCalculations';
 
 export default function PayrollReportModal({
   isOpen,
@@ -29,11 +29,17 @@ export default function PayrollReportModal({
 
   // Process shift pairs (Entrada -> Salida)
   const { shifts, activeShifts: activeWorkerShifts } = pairShiftsFromEntries(activeEntries);
+  const workerBalances = aggregateShiftsByWorker(shifts, workersList);
 
-  // Filtered shifts
+  // Extract all aggregated daily shifts from balances
+  const allAggregatedShifts = Object.values(workerBalances)
+    .flatMap(bucket => bucket.shifts)
+    .sort((a, b) => new Date(a.startDate) - new Date(b.startDate) || a.workerName.localeCompare(b.workerName));
+
+  // Filtered daily shifts
   const filteredShifts = filterWorker === 'all' 
-    ? shifts 
-    : shifts.filter(s => s.workerName === filterWorker);
+    ? allAggregatedShifts 
+    : allAggregatedShifts.filter(s => s.workerName === filterWorker);
 
   // Filtered raw entries (active only)
   const filteredRawEntries = filterWorker === 'all'
@@ -45,10 +51,22 @@ export default function PayrollReportModal({
     ? deletedEntries
     : deletedEntries.filter(e => e.workerName === filterWorker);
 
-  // Summary Metrics
-  const totalExtraCost = shifts.reduce((acc, curr) => acc + (curr.isSalaried ? 0 : curr.cost), 0);
-  const totalPayrollValuation = shifts.reduce((acc, curr) => acc + (curr.isSalaried ? curr.cost : 0), 0);
-  const totalExtraHours = shifts.reduce((acc, curr) => acc + (curr.isSalaried ? 0 : curr.durationHours), 0);
+  // Summary Metrics (using aggregated logic to respect bolsa and totals)
+  let totalExtraCost = 0;
+  let totalPayrollValuation = 0;
+  let totalExtraHours = 0;
+
+  Object.values(workerBalances).forEach(bucket => {
+    // If they have purse info (isSpecialPurse), the cost is calculated differently, but PayrollReportModal
+    // typically doesn't have purseInfo unless we pass it, but wait! The aggregate logic inside Dashboard did it!
+    // For simplicity, we stick to the basic calculation here unless we want to replicate it.
+    if (bucket.isPayroll) {
+      totalPayrollValuation += bucket.totalCost;
+    } else {
+      totalExtraCost += bucket.totalCost;
+      totalExtraHours += bucket.totalHours;
+    }
+  });
   const activeClockedInCount = Object.keys(activeWorkerShifts).length;
 
   // Estimación a partir del planning (horario de las tareas), NO de fichajes
@@ -373,21 +391,20 @@ export default function PayrollReportModal({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="bg-slate-900/60 rounded-lg p-2">
-                        <span className="block text-[10px] text-slate-500 uppercase tracking-wide">🟢 Entrada</span>
-                        <span className="text-slate-200 font-mono">{s.startTime}</span>
-                        <span className="block text-[10px] text-slate-500">{s.startDate}</span>
-                      </div>
-                      <div className="bg-slate-900/60 rounded-lg p-2">
-                        <span className="block text-[10px] text-slate-500 uppercase tracking-wide">🔴 Salida</span>
-                        <span className="text-slate-200 font-mono">{s.endTime}</span>
-                        <span className="block text-[10px] text-slate-500">{s.endDate}</span>
+                    <div className="grid grid-cols-1 gap-2 text-xs">
+                      <div className="bg-slate-900/60 rounded-lg p-2.5">
+                        <span className="block text-[10px] text-slate-500 uppercase tracking-wide mb-1">📅 {s.startDate}</span>
+                        {s.ranges && s.ranges.map((r, i) => (
+                          <div key={i} className="text-slate-200 font-mono text-xs flex items-center gap-1.5 mb-0.5">
+                            <Clock className="w-3 h-3 text-emerald-400" />
+                            {r}
+                          </div>
+                        ))}
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between pt-1.5 border-t border-slate-800/60">
-                      <span className="font-semibold text-emerald-400">{s.durationFormatted}</span>
+                      <span className="font-semibold text-emerald-400">{Number.isInteger(s.durationHours) ? s.durationHours : parseFloat(s.durationHours.toFixed(2))}h totales</span>
                       <span className="font-bold text-amber-400 font-mono text-sm">
                         {s.isSalaried ? '0,00 €' : `${s.cost.toFixed(2)} €`}
                       </span>
@@ -429,9 +446,9 @@ export default function PayrollReportModal({
                     <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
                       <th className="py-3 px-3">Trabajador</th>
                       <th className="py-3 px-3">Tipo / Tarifa</th>
-                      <th className="py-3 px-3">Entrada</th>
-                      <th className="py-3 px-3">Salida</th>
-                      <th className="py-3 px-3">Horas</th>
+                      <th className="py-3 px-3">Fecha</th>
+                      <th className="py-3 px-3">Tramos / Horarios</th>
+                      <th className="py-3 px-3">Horas Totales</th>
                       <th className="py-3 px-3 text-right">Coste (€)</th>
                       <th className="py-3 px-3 text-center">Estado / Admin</th>
                     </tr>
@@ -453,17 +470,17 @@ export default function PayrollReportModal({
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-slate-300">
-                          <div>{s.startTime}</div>
-                          <div className="text-[10px] text-slate-500">{s.startDate}</div>
+                        <td className="py-3 px-3 text-slate-300 font-medium">
+                          {s.startDate}
                         </td>
-                        <td className="py-3 px-3 text-slate-300">
-                          <div>{s.endTime}</div>
-                          <div className="text-[10px] text-slate-500">{s.endDate}</div>
+                        <td className="py-3 px-3 font-mono text-slate-300 space-y-1">
+                          {s.ranges && s.ranges.map((r, i) => (
+                            <div key={i}>{r}</div>
+                          ))}
                         </td>
                         <td className="py-3 px-3">
                           <div className={`font-semibold ${s.isAnomalous ? 'text-rose-400' : 'text-emerald-400'}`}>
-                            {s.durationFormatted}
+                            {Number.isInteger(s.durationHours) ? s.durationHours : parseFloat(s.durationHours.toFixed(2))}h totales
                           </div>
                           {s.isAnomalous && (
                             <div className="text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1 py-0.5 rounded mt-1 inline-flex items-center gap-1" title="El sistema ha capado este turno a 14h automáticamente por seguridad. Revisa las horas reales.">
@@ -542,7 +559,9 @@ export default function PayrollReportModal({
                             return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
                           })() : entry.timeFormatted}
                         </div>
-                        <div className="text-[10px] text-slate-500">{entry.dateFormatted}</div>
+                        <div className="text-[10px] text-slate-500">
+                          {entry.timestamp ? new Date(entry.timestamp).toLocaleDateString('es-ES') : entry.dateFormatted}
+                        </div>
                       </td>
                       <td className="py-3 px-3 font-bold text-white">
                         {entry.workerName}
@@ -719,7 +738,9 @@ export default function PayrollReportModal({
                               return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
                             })() : entry.timeFormatted}
                           </div>
-                          <div className="text-[10px] text-slate-500">{entry.dateFormatted}</div>
+                          <div className="text-[10px] text-slate-500">
+                            {entry.timestamp ? new Date(entry.timestamp).toLocaleDateString('es-ES') : entry.dateFormatted}
+                          </div>
                         </td>
                         <td className="py-3 px-3 font-bold text-white">
                           {entry.workerName}

@@ -14,6 +14,7 @@ import {
   Sparkles,
   DollarSign,
   ChevronRight,
+  CheckSquare,
   BarChart3,
   Award,
   Filter,
@@ -430,7 +431,7 @@ export default function WorkerView({
                                 type: 'fichaje',
                                 timestamp: now.toISOString(),
                                 timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
-                                dateFormatted: now.toLocaleDateString(),
+                                dateFormatted: now.toLocaleDateString('es-ES'),
                                 taskName: immediateTask.taskName.trim(),
                                 note: '',
                                 taskRef: tRef
@@ -481,7 +482,7 @@ export default function WorkerView({
                     type: 'salida',
                     timestamp: now.toISOString(),
                     timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
-                    dateFormatted: now.toLocaleDateString(),
+                    dateFormatted: now.toLocaleDateString('es-ES'),
                     note: ''
                   };
                   onClockEntryCreated(entry);
@@ -527,30 +528,67 @@ export default function WorkerView({
                 </p>
               </div>
 
-              <button
-                onClick={() => {
-                  const now = new Date();
-                  const entry = {
-                    id: Date.now().toString(),
-                    workerName: currentWorkerObj.name,
-                    role: currentWorkerObj.role,
-                    isPayroll: currentWorkerObj.isPayroll,
-                    rate: currentWorkerObj.rate || 10,
-                    type: 'entrada',
-                    timestamp: now.toISOString(),
-                    timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
-                    dateFormatted: now.toLocaleDateString(),
-                    taskName: 'JORNADA',
-                    note: 'Inicio de Jornada',
-                    taskRef: null
-                  };
-                  onClockEntryCreated(entry);
-                }}
-                className="w-full py-3.5 px-4 rounded-xl text-sm font-extrabold flex items-center justify-center space-x-2 transition-all bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 shadow-xl shadow-emerald-500/25 active:scale-95"
-              >
-                <Play className="w-4 h-4 fill-current" />
-                <span>🟢 INICIAR JORNADA AHORA</span>
-              </button>
+              {(() => {
+                let isReady = true;
+                let minutesLeft = 0;
+                if (immediateTask?.timeFrame) {
+                  const parts = immediateTask.timeFrame.split('-');
+                  if (parts.length > 0) {
+                    const match = parts[0].trim().match(/^(\d{1,2}):(\d{2})$/);
+                    if (match) {
+                      const now = new Date();
+                      const taskTime = new Date();
+                      taskTime.setHours(parseInt(match[1], 10), parseInt(match[2], 10), 0, 0);
+                      const diffMins = (taskTime.getTime() - now.getTime()) / (1000 * 60);
+                      if (diffMins > 5) {
+                        isReady = false;
+                        minutesLeft = Math.ceil(diffMins - 5);
+                      }
+                    }
+                  }
+                }
+
+                return (
+                  <button
+                    disabled={!isReady}
+                    onClick={() => {
+                      const now = new Date();
+                      const entry = {
+                        id: Date.now().toString(),
+                        workerName: currentWorkerObj.name,
+                        role: currentWorkerObj.role,
+                        isPayroll: currentWorkerObj.isPayroll,
+                        rate: currentWorkerObj.rate || 10,
+                        type: 'entrada',
+                        timestamp: now.toISOString(),
+                        timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
+                        dateFormatted: now.toLocaleDateString('es-ES'),
+                        taskName: 'JORNADA',
+                        note: 'Inicio de Jornada',
+                        taskRef: null
+                      };
+                      onClockEntryCreated(entry);
+                    }}
+                    className={`w-full py-3.5 px-4 rounded-xl text-sm font-extrabold flex items-center justify-center space-x-2 transition-all ${
+                      isReady 
+                        ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 shadow-xl shadow-emerald-500/25 active:scale-95' 
+                        : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                    }`}
+                  >
+                    {isReady ? (
+                      <>
+                        <Play className="w-4 h-4 fill-current" />
+                        <span>🟢 INICIAR JORNADA AHORA</span>
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="w-4 h-4" />
+                        <span>Espera {minutesLeft} min para fichar</span>
+                      </>
+                    )}
+                  </button>
+                );
+              })()}
             </div>
           )}
 
@@ -818,9 +856,19 @@ export default function WorkerView({
                                   </span>
                                 </div>
 
-                                {/* Rich Metadata (Time & Location) */}
-                                {typeof task === 'object' && (task.timeFrame || task.mapsUrl || task.location) && (
+                                {/* Rich Metadata (Time & Location & TargetDay) */}
+                                {typeof task === 'object' && (task.timeFrame || task.mapsUrl || task.location || task.targetDay) && (
                                   <div className="flex flex-wrap items-center gap-1.5 pl-6 mt-0.5">
+                                    {task.targetDay && (
+                                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border flex items-center gap-1 ${
+                                        task.targetDay === 'Domingo' 
+                                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
+                                          : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
+                                      }`}>
+                                        <Calendar className="w-3 h-3" />
+                                        {task.targetDay.toUpperCase()}
+                                      </span>
+                                    )}
                                     {task.timeFrame && (
                                       <span className="text-[10px] font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded flex items-center gap-1">
                                         <Clock className="w-3 h-3" />
@@ -1001,7 +1049,7 @@ export default function WorkerView({
                 <div key={entry.id} className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-xs font-bold text-white">
-                      {entry.timeFormatted} <span className="text-[10px] text-slate-400 font-normal">({entry.dateFormatted})</span>
+                      {entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : entry.timeFormatted} <span className="text-[10px] text-slate-400 font-normal">({entry.timestamp ? new Date(entry.timestamp).toLocaleDateString('es-ES') : entry.dateFormatted})</span>
                     </span>
                     {entry.type === 'entrada' ? (
                       <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">
@@ -1044,8 +1092,8 @@ export default function WorkerView({
                   {myEntries.map((entry) => (
                     <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
                       <td className="py-3 px-3 font-mono text-slate-200">
-                        <div className="font-bold text-white">{entry.timeFormatted}</div>
-                        <div className="text-[10px] text-slate-500">{entry.dateFormatted}</div>
+                        <div className="font-bold text-white">{entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : entry.timeFormatted}</div>
+                        <div className="text-[10px] text-slate-500">{entry.timestamp ? new Date(entry.timestamp).toLocaleDateString('es-ES') : entry.dateFormatted}</div>
                       </td>
                       <td className="py-3 px-3">
                         {entry.type === 'entrada' ? (
