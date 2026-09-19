@@ -9,7 +9,8 @@ export default function AdminClockEditModal({
   onUpdateEntry,
   onDeleteEntry,
   onClockEntryCreated,
-  isAdmin = true
+  isAdmin = true,
+  pairedEntry = null
 }) {
   const [workerName, setWorkerName] = useState('');
   const [type, setType] = useState('entrada');
@@ -228,24 +229,32 @@ export default function AdminClockEditModal({
           </div>
         </div>
 
-        {/* Modal Actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+        {/* Action Buttons */}
+        <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 mt-8">
           {entry ? (
             confirmDelete ? (
-              <div className="flex items-center space-x-2 w-full sm:w-auto">
-                <button
-                  onClick={handleDelete}
-                  className="px-3.5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-extrabold flex items-center space-x-1 shadow-md shadow-rose-600/20"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Sí, Eliminar</span>
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="px-3 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium"
-                >
-                  Cancelar
-                </button>
+              <div className="flex-1 w-full bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl animate-fadeIn">
+                <p className="text-xs text-rose-300 font-bold mb-2">¿Seguro que quieres borrar este fichaje?</p>
+                {pairedEntry && (
+                  <p className="text-[10px] text-rose-400 mb-3 bg-rose-500/20 p-2 rounded">
+                    ⚠️ <b>¡Ojo!</b> Este fichaje está emparejado con una <b>{pairedEntry.type.toUpperCase()}</b> a las <b>{pairedEntry.timeFormatted}</b>. 
+                    Si borras esto, el turno quedará descuadrado. Deberías borrar también su pareja.
+                  </p>
+                )}
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    className="flex-1 px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-lg shadow-md shadow-rose-600/20"
+                  >
+                    Sí, Eliminar
+                  </button>
+                </div>
               </div>
             ) : (
               <button
