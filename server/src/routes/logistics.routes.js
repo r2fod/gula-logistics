@@ -4,6 +4,30 @@ import { Logistics } from '../models/Logistics.model.js';
 import { LogisticsWeek } from '../models/LogisticsWeek.model.js';
 import mongoose from 'mongoose';
 import { requireAdmin } from '../middleware/requireAdmin.js';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Configurar multer
+const uploadDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'rental-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage: storage });
 
 const router = express.Router();
 
@@ -132,13 +156,13 @@ router.patch('/weeks/:weekId/tasks', async (req, res) => {
 
     // Mismo caso especial que taskPlanning.js en el cliente: domingo y
     // lunes comparten sundayMonday.tasks, no schedule.domingo (que ni existe).
-    const isDomingo = dayKey === 'domingo';
-    const list = (isDomingo ? week.sundayMonday?.tasks : week.schedule?.[dayKey]?.tasks) || [];
+    const isDomingoOLunes = dayKey === 'domingo' || dayKey === 'lunes';
+    const list = (isDomingoOLunes ? week.sundayMonday?.tasks : week.schedule?.[dayKey]?.tasks) || [];
     const current = list[taskIndex];
     if (current === undefined) return res.status(404).json({ error: 'Tarea no encontrada en ese día' });
 
     const updatedTask = (current && typeof current === 'object') ? { ...current, completed } : { text: current, completed };
-    const fieldPath = isDomingo ? `sundayMonday.tasks.${taskIndex}` : `schedule.${dayKey}.tasks.${taskIndex}`;
+    const fieldPath = isDomingoOLunes ? `sundayMonday.tasks.${taskIndex}` : `schedule.${dayKey}.tasks.${taskIndex}`;
 
     const updated = await LogisticsWeek.findOneAndUpdate(
       { weekId },
@@ -150,6 +174,45 @@ router.patch('/weeks/:weekId/tasks', async (req, res) => {
   } catch (error) {
     console.error('Error al actualizar tarea de la semana:', error);
     return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// POST /api/logistics/upload-rental
+router.post('/upload-rental', requireAdmin, upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'No file uploaded' });
+  }
+  const fileUrl = `/uploads/${req.file.filename}`;
+  res.json({ success: true, url: fileUrl });
+});
+
+// POST /api/logistics/optimize
+router.post('/optimize', requireAdmin, async (req, res) => {
+  try {
+    let deletedCount = 0;
+    
+    // Solo optimizamos si estamos conectados a MongoDB
+    if (mongoose.connection.readyState === 1) {
+      // Importar modelo de fichajes
+      const { ClockEntry } = await import('../models/ClockEntry.model.js');
+      // Borrar fichajes marcados como isDeleted: true
+      const result = await ClockEntry.deleteMany({ isDeleted: true });
+      deletedCount = result.deletedCount;
+      
+      // Opcional: borrar semanas viejas si hay más de 10
+      const weeksCount = await LogisticsWeek.countDocuments();
+      if (weeksCount > 10) {
+        // ... en el futuro
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Base de datos optimizada. Se han purgado ${deletedCount} registros antiguos o eliminados permanentemente.` 
+    });
+  } catch (error) {
+    console.error('Error optimizando DB:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

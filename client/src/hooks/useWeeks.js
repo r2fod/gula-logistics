@@ -50,7 +50,7 @@ export function useWeeks() {
     if (taskItem === undefined) return;
     const newCompleted = typeof taskItem === 'object' ? !taskItem.completed : true;
     if (typeof taskItem === 'object') {
-      taskItem.completed = newCompleted;
+      list[taskIdx] = { ...taskItem, completed: newCompleted };
     } else {
       list[taskIdx] = { text: taskItem, completed: newCompleted };
     }
@@ -64,7 +64,7 @@ export function useWeeks() {
     if (taskItem === undefined) return;
     if (typeof taskItem === 'object') {
       if (taskItem.completed) return;
-      taskItem.completed = true;
+      list[taskIdx] = { ...taskItem, completed: true };
     } else {
       list[taskIdx] = { text: taskItem, completed: true };
     }

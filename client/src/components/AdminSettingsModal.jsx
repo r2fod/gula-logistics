@@ -132,6 +132,28 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
             </div>
           )}
 
+          <div className="pt-2 border-t border-slate-800">
+            <h4 className="text-xs font-bold text-amber-500 mb-3">Mantenimiento de Sistema</h4>
+            <button
+              type="button"
+              onClick={async () => {
+                if (window.confirm("¿Seguro que quieres optimizar la Base de Datos? Se purgarán los fichajes borrados.")) {
+                  try {
+                    const { optimizeDatabase } = await import('../data/apiService');
+                    const res = await optimizeDatabase();
+                    alert(res.message || 'Optimizado con éxito');
+                  } catch(e) {
+                    alert('Error: ' + e.message);
+                  }
+                }
+              }}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-xs font-bold transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Optimizar y Limpiar Base de Datos
+            </button>
+          </div>
+
           <div className="flex items-center space-x-3 pt-2">
             <button
               type="button"

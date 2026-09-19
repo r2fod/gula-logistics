@@ -317,3 +317,35 @@ export async function patchTaskCompletionInAPI(weekId, dayKey, taskIndex, comple
   }
   return null;
 }
+
+export async function uploadRentalPdf(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const res = await fetch(`${API_BASE}/logistics/upload-rental`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${getStoredAdminToken()}`
+    },
+    body: formData
+  });
+  
+  if (!res.ok) {
+    throw new Error('Error al subir el archivo');
+  }
+  return await res.json();
+}
+
+export async function optimizeDatabase() {
+  const res = await fetch(`${API_BASE}/logistics/optimize`, {
+    method: 'POST',
+    headers: {
+      ...authHeaders()
+    }
+  });
+  
+  if (!res.ok) {
+    throw new Error('Error al optimizar la base de datos');
+  }
+  return await res.json();
+}
