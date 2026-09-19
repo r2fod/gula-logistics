@@ -613,7 +613,7 @@ export default function PartnerDashboardView({
           <LiveMonitorPanel
             workersList={workersList}
             clockEntries={clockEntries}
-            activeSchedule={activeWeekData?.schedule || {}}
+            activeWeekData={activeWeekData}
             onClockEntryCreated={onClockEntryCreated}
             onOpenClockModal={onOpenClockIn}
           />
