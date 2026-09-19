@@ -76,7 +76,8 @@ export default function App() {
     toggleTask,
     markTaskCompleted,
     handleCreateWeek,
-    handleApplyGeminiSchedule
+    handleApplyGeminiSchedule,
+    lastLocalEditRef
   } = useWeeks();
 
   const {
@@ -231,9 +232,14 @@ export default function App() {
           setClockEntries(remoteEntries);
         }
       });
-      fetchWeeksFromAPI().then(remoteWeeks => {
-        if (remoteWeeks) setAllWeeks(remoteWeeks);
-      });
+      // No sobreescribir semanas si el usuario ha tocado algo en los últimos 5s
+      // (el PATCH puede tardar un poco en llegar al servidor y reflejarse en el GET)
+      const msSinceLastEdit = Date.now() - (lastLocalEditRef?.current || 0);
+      if (msSinceLastEdit > 5000) {
+        fetchWeeksFromAPI().then(remoteWeeks => {
+          if (remoteWeeks) setAllWeeks(remoteWeeks);
+        });
+      }
     }, 20000);
     return () => clearInterval(interval);
   }, []);

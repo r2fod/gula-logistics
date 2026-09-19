@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { logisticsData as BASE_DATA } from '../data/logisticsData';
 import { saveWeeksToAPI, patchTaskCompletionInAPI } from '../data/apiService';
 import { getTaskListForDay, buildTaskListPatch } from '../data/taskPlanning';
@@ -21,6 +21,10 @@ export function useWeeks() {
 
   const [activeWeekId, setActiveWeekId] = useState('week_3');
   const activeWeek = allWeeks[activeWeekId] || BASE_WEEK_3;
+
+  // Timestamp del último cambio local (toggle, etc.) para que el polling
+  // no sobreescriba un cambio que el usuario acaba de hacer.
+  const lastLocalEditRef = useRef(0);
 
   const applyLocalWeeksState = (newWeeks) => {
     setAllWeeks(newWeeks);
@@ -55,6 +59,7 @@ export function useWeeks() {
       list[taskIdx] = { text: taskItem, completed: newCompleted };
     }
     applyLocalWeeksState({ ...allWeeks, [activeWeekId]: { ...activeWeek, ...buildTaskListPatch(activeWeek, dayKey, list) } });
+    lastLocalEditRef.current = Date.now();
     patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, newCompleted);
   };
 
@@ -114,6 +119,7 @@ export function useWeeks() {
     toggleTask,
     markTaskCompleted,
     handleCreateWeek,
-    handleApplyGeminiSchedule
+    handleApplyGeminiSchedule,
+    lastLocalEditRef
   };
 }
