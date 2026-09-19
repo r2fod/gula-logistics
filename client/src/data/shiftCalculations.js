@@ -74,7 +74,12 @@ export function pairShiftsFromEntries(entries = []) {
         isAnomalous = true;
       }
 
-      const durationHours = Math.round(rawDuration);
+      // Se paga a la media hora más cercana (para cerrar en billetes de 5€
+      // o 10€ a la tarifa base, no en céntimos): *2 desplaza cada media
+      // hora a un entero, se redondea al entero más cercano y /2 vuelve a
+      // la escala de horas. 2h31m está más cerca de 2.5h que de 3h -> 2.5h;
+      // 2h45m está justo en el punto medio entre 2.5h y 3h -> sube a 3h.
+      const durationHours = Math.round(rawDuration * 2) / 2;
       const hours = Math.floor(durationHours);
       const minutes = Math.floor((durationHours - hours) * 60);
 
