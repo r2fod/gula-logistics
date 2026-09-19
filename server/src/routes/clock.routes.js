@@ -79,8 +79,19 @@ router.put('/:id', requireAdmin, async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const authHeader = req.headers.authorization;
-    const isAdmin = authHeader && authHeader === `Bearer ${process.env.ADMIN_SECRET}`;
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    let isAdmin = false;
+    
+    if (token) {
+      try {
+        const { verifyToken } = await import('../utils/authToken.js');
+        const payload = verifyToken(token);
+        if (payload && payload.role === 'admin') isAdmin = true;
+      } catch (e) {
+        console.error('Invalid token on delete', e);
+      }
+    }
 
     if (mongoose.connection.readyState === 1) {
       const entry = await ClockEntry.findOne({ id });

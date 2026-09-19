@@ -388,6 +388,51 @@ export default function PartnerDashboardView({
   const totalPayrollValuation = balancesList.reduce((acc, curr) => acc + (curr.isPayroll ? curr.totalCost : 0), 0);
   const totalExtraHours = balancesList.reduce((acc, curr) => acc + curr.totalHours, 0);
 
+  // Group shifts by Event (taskName)
+  const summaryByEvent = paidShifts.reduce((acc, shift) => {
+    let eventName = shift.startEntry?.taskName?.trim();
+    if (!eventName) eventName = 'Sin Asignar / Extra';
+    
+    // Normalize event name (first letter uppercase, rest lower)
+    const normalizedEventName = eventName.charAt(0).toUpperCase() + eventName.slice(1).toLowerCase();
+
+    if (!acc[normalizedEventName]) {
+      acc[normalizedEventName] = {
+        eventName: normalizedEventName,
+        totalCost: 0,
+        totalHours: 0,
+        workers: {}
+      };
+    }
+
+    // El worker status (Nómina o Extra) para valorar la hora
+    const workerRoster = workersList.find(w => w.name?.toLowerCase().includes(shift.startEntry?.workerName?.toLowerCase() || ''));
+    const isPayroll = workerRoster?.statusType === 'payroll';
+    const rate = isPayroll ? 14 : 10;
+    const shiftCost = (shift.durationHours || 0) * rate;
+
+    acc[normalizedEventName].totalCost += shiftCost;
+    acc[normalizedEventName].totalHours += shift.durationHours || 0;
+
+    const workerName = shift.startEntry?.workerName || 'Desconocido';
+    if (!acc[normalizedEventName].workers[workerName]) {
+      const avatar = workerRoster?.avatar || '👤';
+      acc[normalizedEventName].workers[workerName] = {
+        name: workerName,
+        avatar,
+        cost: 0,
+        hours: 0,
+      };
+    }
+    acc[normalizedEventName].workers[workerName].cost += shiftCost;
+    acc[normalizedEventName].workers[workerName].hours += shift.durationHours || 0;
+
+    return acc;
+  }, {});
+
+  // Convert to array and sort by total cost descending
+  const eventsList = Object.values(summaryByEvent).sort((a, b) => b.totalCost - a.totalCost);
+
   // workerBalances viene indexado por el nombre "de pila" tal cual está en
   // workersList (ej. "Ricardo"), pero balancesData.workers usa "Nombre
   // Apellido" (ej. "Ricardo Gula") — coincidencia exacta nunca los cruza.
@@ -1165,19 +1210,27 @@ export default function PartnerDashboardView({
               <p className="text-xs text-slate-500 mt-1">Los fichajes realizados por los trabajadores aparecerán aquí automáticamente.</p>
             </div>
           ) : (() => {
-            // Agrupado por trabajador (pedido por el usuario) — orden de
-            // grupo según el roster (workersList), y dentro de cada grupo se
-            // conserva el orden que ya trae clockEntries (más reciente primero).
-            const byWorker = {};
-            clockEntries.forEach(e => {
-              if (!byWorker[e.workerName]) byWorker[e.workerName] = [];
-              byWorker[e.workerName].push(e);
+            // Agrupado por día (dateFormatted)
+            const byDay = {};
+            // Primero ordenamos todos los fichajes de más antiguo a más reciente
+            // para que dentro de un mismo día salgan en orden cronológico real.
+            const sortedEntries = [...clockEntries].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            
+            sortedEntries.forEach(e => {
+              const day = e.dateFormatted || 'Sin Fecha';
+              if (!byDay[day]) byDay[day] = [];
+              byDay[day].push(e);
             });
-            const orderedNames = [
-              ...workersList.map(w => w.name).filter(n => byWorker[n]),
-              ...Object.keys(byWorker).filter(n => !workersList.some(w => w.name === n))
-            ];
-            const groupedEntries = orderedNames.map(name => ({ name, entries: byWorker[name] }));
+
+            // Queremos que los días más recientes salgan primero en la lista general
+            const orderedDays = Object.keys(byDay).sort((a, b) => {
+              // Convertir DD/MM/YYYY a Date para ordenar correctamente
+              const dateA = new Date(a.split('/').reverse().join('-'));
+              const dateB = new Date(b.split('/').reverse().join('-'));
+              return dateB - dateA; // Descendente (más reciente primero)
+            });
+
+            const groupedEntries = orderedDays.map(day => ({ name: day, entries: byDay[day] }));
 
             return (
             <div className="overflow-x-auto">
@@ -1359,6 +1412,57 @@ export default function PartnerDashboardView({
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
+            <h4 className="font-bold text-white text-base flex items-center space-x-2">
+              <Calendar className="w-5 h-5 text-indigo-400" />
+              <span>Resumen de Costes por Evento / Tarea</span>
+            </h4>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {eventsList.map((evt, idx) => (
+                <div key={idx} className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-4 flex flex-col justify-between">
+                  <div>
+                    <h5 className="font-extrabold text-white text-lg tracking-tight font-['Outfit'] break-words">
+                      {evt.eventName}
+                    </h5>
+                    <div className="flex items-center space-x-4 mt-2">
+                      <span className="text-xs text-slate-400 bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800">
+                        <Clock className="w-3.5 h-3.5 inline mr-1" />
+                        {parseFloat(evt.totalHours.toFixed(2))}h
+                      </span>
+                      <span className="text-sm font-extrabold text-amber-400">
+                        {evt.totalCost.toFixed(2)} €
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-4 border-t border-slate-800/80">
+                    <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-2">Involucrados</p>
+                    <div className="space-y-2">
+                      {Object.values(evt.workers).map((worker, wIdx) => (
+                        <div key={wIdx} className="flex items-center justify-between text-xs">
+                          <div className="flex items-center space-x-2">
+                            <span>{worker.avatar}</span>
+                            <span className="text-slate-300 truncate max-w-[100px]">{worker.name}</span>
+                          </div>
+                          <span className="text-slate-500 font-mono">
+                            {parseFloat(worker.hours.toFixed(2))}h
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {eventsList.length === 0 && (
+                <div className="col-span-full py-8 text-center text-slate-500 flex flex-col items-center">
+                  <FileText className="w-10 h-10 mb-2 opacity-20" />
+                  <p>No hay eventos registrados en este periodo.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

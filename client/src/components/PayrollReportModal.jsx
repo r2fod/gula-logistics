@@ -564,21 +564,36 @@ export default function PayrollReportModal({
                       <td className="py-3 px-3 font-bold text-amber-400">
                         {entry.rate || 10} €/h
                       </td>
-                      <td className="py-3 px-3 text-center">
-                        {isAdmin ? (
-                          <button
-                            onClick={() => handleOpenEdit(entry)}
-                            className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[11px] font-bold flex items-center space-x-1 mx-auto"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            <span>Editar</span>
-                          </button>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 font-medium flex items-center justify-center space-x-1">
-                            <Lock className="w-3 h-3 text-slate-400" />
-                            <span>Bloqueado</span>
-                          </span>
-                        )}
+                      <td className="py-3 px-3">
+                        <div className="flex items-center justify-center space-x-2">
+                          {isAdmin ? (
+                            <>
+                              <button
+                                onClick={() => handleOpenEdit(entry)}
+                                className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[11px] font-bold flex items-center space-x-1"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                <span>Editar</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm('¿Seguro que quieres borrar este fichaje? Irá a la papelera.')) {
+                                    if (onDeleteEntry) onDeleteEntry(entry.id);
+                                  }
+                                }}
+                                className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all"
+                                title="Enviar a la Papelera"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 font-medium flex items-center justify-center space-x-1">
+                              <Lock className="w-3 h-3 text-slate-400" />
+                              <span>Bloqueado</span>
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
