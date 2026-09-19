@@ -1,6 +1,14 @@
 # Pendientes
 
-_Actualizado tras dos sesiones de trabajo en paralelo (Gemini/Antigravity + Claude), verificando en vivo lo que hizo cada uno (19/09/2026)._
+_Actualizado tras dos sesiones de trabajo en paralelo (Gemini/Antigravity + Claude), verificando en vivo lo que hizo cada uno (19-20/09/2026)._
+
+## Resuelto el 20/09/2026
+
+- ~~Las tareas pasadas no se guardaban como completadas de verdad, solo se veían tachadas en pantalla~~ — pedido por el usuario. Nueva función `autoCompletePastTasks` en `useWeeks.js`: recorre todas las tareas de la semana activa (días normales, domingo/lunes, bodas de sábado) y marca como completada de verdad en Mongo cualquiera que ya pasó su horario con margen de sobra. Se dispara desde una sesión de admin real, al abrir la app y en cada tick del polling de 20s ya existente — nunca desde el móvil de un trabajador, para no disparar la misma comprobación 8 veces a la vez.
+  - **Margen de 45 min** (`TASK_COMPLETION_GRACE_MINUTES`, compartido entre el guardado y "Actividad en Tiempo Real"): confirmado con el usuario tras un caso real (Johan marcado "completado" 9 min después de la hora prevista de fin de una boda, mientras seguía trabajando). Sin margen, cualquier evento que se alargue un poco de lo estimado se marcaría como terminado antes de tiempo.
+  - Arreglado también el caso de turnos que cruzan medianoche (ej. boda 20:30-00:30): antes de este cambio, en cuanto pasaba la medianoche se daba por pasada la tarea del día anterior sin mirar si su horario real seguía vigente. Ahora se compara en la misma línea de tiempo continua.
+  - `markTaskCompleted` no actualizaba `lastLocalEditRef` como sí hace `toggleTask` — el polling de 20s podía traer de vuelta datos del servidor de antes de que el guardado llegara y desmarcar la tarea recién completada. Corregido (el usuario lo preguntó explícitamente antes de que se desplegara).
+  - El endpoint `PATCH /weeks/:weekId/tasks` del servidor no soportaba `dayKey === 'sabado'` (las bodas viven en `saturdaySpecial.weddings`, no en `schedule.sabado`) — marcar una boda como completada devolvía 404 en silencio. Corregido con test de cobertura.
 
 ## Resuelto el 19/09/2026 (sesión de Gemini + verificación/fixes de Claude)
 

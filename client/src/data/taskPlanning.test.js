@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getTaskListForDay, resolveTaskIndexByText, buildTaskListPatch } from './taskPlanning';
+import { getTaskListForDay, resolveTaskIndexByText, buildTaskListPatch, isTaskChronologicallyPast } from './taskPlanning';
 
 const weekData = {
   schedule: {
@@ -63,5 +63,45 @@ describe('buildTaskListPatch', () => {
     const nuevaLista = [{ text: 'Devolver Dealde', completed: true }];
     const patch = buildTaskListPatch(weekData, 'sundayMonday', nuevaLista);
     expect(patch).toEqual({ sundayMonday: { title: 'Domingo 20 & Lunes 21', tasks: nuevaLista } });
+  });
+});
+
+// Sábado 19/09/2026 y domingo 20/09/2026 (fechas reales de este caso).
+describe('isTaskChronologicallyPast', () => {
+  it('sin margen (comportamiento de siempre): pasada en cuanto se supera la hora exacta', () => {
+    const horaFin = new Date(2026, 8, 19, 23, 39); // 9min después de las 23:30
+    expect(isTaskChronologicallyPast('sabado', '20:00-23:30', horaFin)).toBe(true);
+  });
+
+  it('con margen: NO se da por pasada todavía a los 9min de retraso (caso real de Johan)', () => {
+    const horaFin = new Date(2026, 8, 19, 23, 39);
+    expect(isTaskChronologicallyPast('sabado', '20:00-23:30', horaFin, 45)).toBe(false);
+  });
+
+  it('con margen: SÍ se da por pasada una vez superado el margen (mismo día)', () => {
+    const masTarde = new Date(2026, 8, 19, 23, 30 + 46); // 46min después de las 23:30
+    expect(isTaskChronologicallyPast('sabado', '20:00-23:30', masTarde, 45)).toBe(true);
+  });
+
+  it('turno que cruza medianoche: sigue "en curso" pasada la medianoche si no se ha superado su hora real de fin + margen (caso real de Gonzalo)', () => {
+    // Boda 20:30-00:30 del sábado, comprobada el domingo a las 00:35 —
+    // solo 5min después de las 00:30 reales, muy por debajo del margen de 45.
+    const domingo0035 = new Date(2026, 8, 20, 0, 35);
+    expect(isTaskChronologicallyPast('sabado', '20:30-00:30', domingo0035, 45)).toBe(false);
+  });
+
+  it('turno que cruza medianoche: sí se da por pasada una vez superado el margen tras su hora real de fin', () => {
+    const masTarde = new Date(2026, 8, 20, 1, 22); // domingo 01:22 = 52min después de las 00:30 reales
+    expect(isTaskChronologicallyPast('sabado', '20:30-00:30', masTarde, 45)).toBe(true);
+  });
+
+  it('dos o más días atrás: pasada sin ambigüedad, con o sin margen', () => {
+    const jueves = new Date(2026, 8, 24); // jueves, con 'martes' como dayKey (2+ días atrás)
+    expect(isTaskChronologicallyPast('martes', '09:00-16:00', jueves, 45)).toBe(true);
+  });
+
+  it('día futuro: nunca pasada, con o sin margen', () => {
+    const martes = new Date(2026, 8, 15); // martes, con 'viernes' como dayKey (día futuro)
+    expect(isTaskChronologicallyPast('viernes', '09:00-16:00', martes, 45)).toBe(false);
   });
 });

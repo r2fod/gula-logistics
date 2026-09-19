@@ -106,6 +106,26 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
     );
   });
 
+  it('resuelve "sabado" contra saturdaySpecial.weddings, no schedule.sabado (que ni existe)', async () => {
+    LogisticsWeek.findOne.mockResolvedValue({
+      weekId: 'week_3',
+      saturdaySpecial: { weddings: [{ location: 'Sot de Chera', truck: 'Camión Gula', completed: false }] },
+    });
+    LogisticsWeek.findOneAndUpdate.mockResolvedValue({ weekId: 'week_3' });
+
+    const app = buildApp();
+    const res = await request(app)
+      .patch('/api/logistics/weeks/week_3/tasks')
+      .send({ dayKey: 'sabado', taskIndex: 0, completed: true });
+
+    expect(res.status).toBe(200);
+    expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
+      { weekId: 'week_3' },
+      { $set: { 'saturdaySpecial.weddings.0': { location: 'Sot de Chera', truck: 'Camión Gula', completed: true } } },
+      { new: true }
+    );
+  });
+
   it('convierte una tarea guardada como texto plano al formato objeto al completarla', async () => {
     LogisticsWeek.findOne.mockResolvedValue({
       weekId: 'week_3',
