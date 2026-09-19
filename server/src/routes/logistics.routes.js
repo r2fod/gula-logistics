@@ -168,14 +168,21 @@ router.patch('/weeks/:weekId/tasks', async (req, res) => {
     if (!week) return res.status(404).json({ error: 'Semana no encontrada' });
 
     // Mismo caso especial que taskPlanning.js en el cliente: domingo y
-    // lunes comparten sundayMonday.tasks, no schedule.domingo (que ni existe).
+    // lunes comparten sundayMonday.tasks (no schedule.domingo, que ni
+    // existe), y sábado vive en saturdaySpecial.weddings, no en
+    // schedule.sabado. Sin este tercer caso, marcar una boda de sábado como
+    // completada devolvía 404 (list quedaba vacío) aunque el cliente ya la
+    // mostrara marcada en local — se revertía sola en el siguiente refresco.
     const isDomingoOLunes = dayKey === 'domingo' || dayKey === 'lunes';
-    const list = (isDomingoOLunes ? week.sundayMonday?.tasks : week.schedule?.[dayKey]?.tasks) || [];
+    const isSabado = dayKey === 'sabado';
+    const list = (isSabado ? week.saturdaySpecial?.weddings : isDomingoOLunes ? week.sundayMonday?.tasks : week.schedule?.[dayKey]?.tasks) || [];
     const current = list[taskIndex];
     if (current === undefined) return res.status(404).json({ error: 'Tarea no encontrada en ese día' });
 
     const updatedTask = (current && typeof current === 'object') ? { ...current, completed } : { text: current, completed };
-    const fieldPath = isDomingoOLunes ? `sundayMonday.tasks.${taskIndex}` : `schedule.${dayKey}.tasks.${taskIndex}`;
+    const fieldPath = isSabado
+      ? `saturdaySpecial.weddings.${taskIndex}`
+      : isDomingoOLunes ? `sundayMonday.tasks.${taskIndex}` : `schedule.${dayKey}.tasks.${taskIndex}`;
 
     const updated = await LogisticsWeek.findOneAndUpdate(
       { weekId },

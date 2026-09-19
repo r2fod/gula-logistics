@@ -75,6 +75,7 @@ export default function App() {
     handleUpdateActiveWeek,
     toggleTask,
     markTaskCompleted,
+    autoCompletePastTasks,
     handleCreateWeek,
     handleApplyGeminiSchedule,
     lastLocalEditRef
@@ -226,6 +227,12 @@ export default function App() {
   // Poll for fresh clock entries so the Live Monitor reflects fichajes made
   // from other workers' own links (their phones) without a manual refresh.
   useEffect(() => {
+    // Pasada inicial al montar, para ponerse al día con tareas que ya
+    // pasaron mientras la app estaba cerrada — no solo esperar al primer
+    // tick del intervalo de 20s.
+    if (getStoredAdminToken()) {
+      autoCompletePastTasks();
+    }
     const interval = setInterval(() => {
       fetchClockEntriesFromAPI().then(remoteEntries => {
         if (remoteEntries && Array.isArray(remoteEntries)) {
@@ -239,6 +246,14 @@ export default function App() {
         fetchWeeksFromAPI().then(remoteWeeks => {
           if (remoteWeeks) setAllWeeks(remoteWeeks);
         });
+      }
+      // Auto-completar tareas pasadas (con margen) solo desde una sesión de
+      // admin real — leído fresco en cada tick (no de un estado capturado
+      // por el efecto, que quedaría desactualizado si el admin inicia
+      // sesión después de montar la app) para que no lo dispare cada
+      // trabajador desde su propio móvil a la vez.
+      if (getStoredAdminToken()) {
+        autoCompletePastTasks();
       }
     }, 20000);
     return () => clearInterval(interval);

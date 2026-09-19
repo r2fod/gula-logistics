@@ -1,7 +1,9 @@
 import { useState, useRef } from 'react';
 import { logisticsData as BASE_DATA } from '../data/logisticsData';
 import { saveWeeksToAPI, patchTaskCompletionInAPI } from '../data/apiService';
-import { getTaskListForDay, buildTaskListPatch } from '../data/taskPlanning';
+import { getTaskListForDay, buildTaskListPatch, isTaskChronologicallyPast, TASK_COMPLETION_GRACE_MINUTES } from '../data/taskPlanning';
+
+const ALL_DAY_KEYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'domingo', 'sabado'];
 
 const BASE_WEEK_3 = {
   id: "week_3",
@@ -74,7 +76,33 @@ export function useWeeks() {
       list[taskIdx] = { text: taskItem, completed: true };
     }
     applyLocalWeeksState({ ...allWeeks, [activeWeekId]: { ...activeWeek, ...buildTaskListPatch(activeWeek, dayKey, list) } });
+    // Igual que toggleTask: sin esto, el polling de 20s podía traer de
+    // vuelta datos del servidor de antes de que este PATCH llegara y
+    // desmarcar la tarea que se acaba de completar (el mismo bug que ya
+    // se arregló para el toggle manual, pero aquí faltaba).
+    lastLocalEditRef.current = Date.now();
     patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, true);
+  };
+
+  // Recorre TODAS las tareas de la semana activa (días normales, domingo/
+  // lunes, y bodas de sábado) y marca como completadas de verdad en Mongo
+  // las que ya pasaron su horario con margen de sobra (TASK_COMPLETION_
+  // GRACE_MINUTES) y todavía no lo estaban. markTaskCompleted ya es idempotente
+  // (no hace nada si una tarea ya estaba completada), así que llamar a esto
+  // varias veces seguidas es seguro — no vuelve a desmarcar nada.
+  const autoCompletePastTasks = () => {
+    const now = new Date();
+    ALL_DAY_KEYS.forEach(dayKey => {
+      const list = getTaskListForDay(activeWeek, dayKey);
+      list.forEach((task, idx) => {
+        const isObj = typeof task === 'object' && task !== null;
+        if (isObj && task.completed) return;
+        const timeFrame = isObj ? task.timeFrame : null;
+        if (isTaskChronologicallyPast(dayKey, timeFrame, now, TASK_COMPLETION_GRACE_MINUTES)) {
+          markTaskCompleted(dayKey, idx);
+        }
+      });
+    });
   };
 
   const handleCreateWeek = ({ name, dateRange, cloneCurrent }) => {
@@ -118,6 +146,7 @@ export function useWeeks() {
     handleUpdateActiveWeek,
     toggleTask,
     markTaskCompleted,
+    autoCompletePastTasks,
     handleCreateWeek,
     handleApplyGeminiSchedule,
     lastLocalEditRef

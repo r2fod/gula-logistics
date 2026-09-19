@@ -44,36 +44,69 @@ export function buildTaskListPatch(weekData, dayKey, updatedList) {
     : { schedule: { ...weekData.schedule, [dayKey]: { ...weekData.schedule?.[dayKey], tasks: updatedList } } };
 }
 
-export function isTaskChronologicallyPast(dayKey, timeFrame, overrideTime = new Date()) {
+// Margen compartido: cuánto esperar después de la hora prevista de fin
+// antes de dar una tarea por pasada de verdad, tanto para mostrarla como
+// "completada" en Actividad en Tiempo Real como para guardarlo en Mongo
+// (autoCompletePastTasks en useWeeks.js). Un solo número para no tener que
+// mantener dos criterios de "cuánto es razonable de retraso" por separado.
+export const TASK_COMPLETION_GRACE_MINUTES = 45;
+
+// `graceMinutes` (por defecto 0, igual que siempre) es el margen que hay
+// que dejar pasar DESPUÉS de la hora prevista de fin antes de dar la tarea
+// por pasada. Existe porque los horarios del planning son una estimación —
+// una boda real que se alarga 10-15min de lo previsto no debería marcarse
+// como terminada al segundo exacto. Con grace=0 (el valor que usan todas
+// las llamadas existentes, solo para mostrarla tachada en pantalla) el
+// comportamiento es exactamente el de siempre; un grace>0 es para
+// decisiones que SÍ se guardan (auto-completar de verdad en Mongo, ver
+// autoCompletePastTasks en useWeeks.js), donde una falsa alarma pesa más.
+export function isTaskChronologicallyPast(dayKey, timeFrame, overrideTime = new Date(), graceMinutes = 0) {
   const weekDayOrder = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
   const todayKey = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'][overrideTime.getDay()];
   const todayOrdinal = weekDayOrder.indexOf(todayKey);
   const ordinal = weekDayOrder.indexOf(dayKey);
-  
+
   if (ordinal < 0 || todayOrdinal < 0) return false;
-  if (ordinal < todayOrdinal) return true; // Past day
   if (ordinal > todayOrdinal) return false; // Future day
-  
-  if (!timeFrame) return false;
-  
-  const parts = timeFrame.split('-');
-  if (parts.length === 2) {
-    const endTimeStr = parts[1].trim();
-    const timeParts = endTimeStr.split(':');
-    if (timeParts.length === 2) {
-      let endHours = parseInt(timeParts[0], 10);
-      const endMinutes = parseInt(timeParts[1], 10);
-      if (endHours < 5) endHours += 24; // Handle past midnight
-      
-      let currentHours = overrideTime.getHours();
-      const currentMinutes = overrideTime.getMinutes();
-      if (currentHours < 5) currentHours += 24;
-      
-      const endTotal = endHours * 60 + endMinutes;
-      const currentTotal = currentHours * 60 + currentMinutes;
-      
-      return currentTotal > endTotal;
+
+  // "Ayer exactamente" (con wraparound: lunes es "el día después" de
+  // domingo) es el único caso ambiguo con margen — un turno de ayer que
+  // cruza medianoche (ej. una boda 20:30-00:30) puede seguir vigente ya
+  // entrado el día siguiente. Dos o más días atrás no tiene ambigüedad
+  // posible, se da por pasada sin más (igual que siempre).
+  const isExactlyYesterday = ((todayOrdinal - ordinal + 7) % 7) === 1;
+  if (ordinal < todayOrdinal && !isExactlyYesterday) return true;
+
+  if (!timeFrame) {
+    if (isExactlyYesterday && graceMinutes > 0) {
+      const minutesSinceMidnight = overrideTime.getHours() * 60 + overrideTime.getMinutes();
+      return minutesSinceMidnight >= graceMinutes;
     }
+    return isExactlyYesterday; // Mismo comportamiento de siempre en los demás casos
   }
-  return false;
+
+  const parts = timeFrame.split('-');
+  if (parts.length !== 2) return isExactlyYesterday;
+  const timeParts = parts[1].trim().split(':');
+  if (timeParts.length !== 2) return isExactlyYesterday;
+
+  let endHours = parseInt(timeParts[0], 10);
+  const endMinutes = parseInt(timeParts[1], 10);
+  if (endHours < 5) endHours += 24; // "00:30" -> "24:30" (cruza medianoche)
+  const endTotal = endHours * 60 + endMinutes;
+
+  // currentTotal en la misma escala que endTotal (minutos desde la
+  // medianoche de INICIO del día de la tarea): si ya estamos en el día
+  // siguiente, se suman 24h para seguir comparando en la misma línea de
+  // tiempo continua que un turno que cruza medianoche.
+  let currentHours = overrideTime.getHours();
+  const currentMinutes = overrideTime.getMinutes();
+  if (isExactlyYesterday) {
+    currentHours += 24;
+  } else if (currentHours < 5) {
+    currentHours += 24;
+  }
+  const currentTotal = currentHours * 60 + currentMinutes;
+
+  return currentTotal > endTotal + graceMinutes;
 }

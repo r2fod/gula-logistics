@@ -16,7 +16,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { pairShiftsFromEntries } from '../data/shiftCalculations';
-import { getTaskListForDay, isTaskChronologicallyPast } from '../data/taskPlanning';
+import { getTaskListForDay, isTaskChronologicallyPast, TASK_COMPLETION_GRACE_MINUTES } from '../data/taskPlanning';
 
 export default function LiveMonitorPanel({
   workersList = [],
@@ -100,7 +100,7 @@ export default function LiveMonitorPanel({
     const matches = allMatches.filter(t => {
       if (typeof t !== 'object') return true; // Simple strings are assumed incomplete unless mapped to obj
       if (t.completed) return false; // Explicitly marked as done
-      if (isTaskChronologicallyPast(dayKey, t.timeFrame, currentTime)) return false; // Chronologically done
+      if (isTaskChronologicallyPast(dayKey, t.timeFrame, currentTime, TASK_COMPLETION_GRACE_MINUTES)) return false; // Chronologically done (con margen)
       return true;
     });
 
