@@ -24,6 +24,10 @@ describe('getTaskListForDay', () => {
     expect(getTaskListForDay(weekData, 'miercoles')).toEqual([]);
     expect(getTaskListForDay(null, 'martes')).toEqual([]);
   });
+
+  it('"sundayMonday" es alias de "domingo" (es el nombre real del campo en Mongo, usado por AdminTaskEditorModal)', () => {
+    expect(getTaskListForDay(weekData, 'sundayMonday')).toBe(weekData.sundayMonday.tasks);
+  });
 });
 
 describe('resolveTaskIndexByText', () => {
@@ -53,5 +57,11 @@ describe('buildTaskListPatch', () => {
     expect(patch.schedule.martes.tasks).toEqual(nuevaLista);
     // No debe perder otros días que pudiera haber en schedule (aquí solo hay martes, pero la key debe conservarse).
     expect(Object.keys(patch.schedule)).toEqual(['martes']);
+  });
+
+  it('"sundayMonday" como dayKey también actualiza sundayMonday.tasks (mismo alias que "domingo")', () => {
+    const nuevaLista = [{ text: 'Devolver Dealde', completed: true }];
+    const patch = buildTaskListPatch(weekData, 'sundayMonday', nuevaLista);
+    expect(patch).toEqual({ sundayMonday: { title: 'Domingo 20 & Lunes 21', tasks: nuevaLista } });
   });
 });

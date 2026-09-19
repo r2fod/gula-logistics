@@ -6,10 +6,14 @@
 // completarse. A partir de ahora esta es la ÚNICA fuente de verdad sobre
 // dónde vive la lista de tareas de un día — todo el mundo debe usar esto en
 // vez de repetir el `dayKey === 'domingo'` a mano.
+// `'sundayMonday'` es alias de `'domingo'`: mismo dato (weekData.sundayMonday
+// .tasks), pero es el nombre del propio campo en Mongo y el que usa el editor
+// de admin (AdminTaskEditorModal) como su dayKey interno, al no separar
+// domingo/lunes en pestañas distintas como sí hace el resto de la app.
 export function getTaskListForDay(weekData, dayKey) {
   if (!weekData) return [];
   if (dayKey === 'sabado') return weekData.saturdaySpecial?.weddings || [];
-  return dayKey === 'domingo'
+  return (dayKey === 'domingo' || dayKey === 'sundayMonday')
     ? (weekData.sundayMonday?.tasks || [])
     : (weekData.schedule?.[dayKey]?.tasks || []);
 }
@@ -35,7 +39,7 @@ export function buildTaskListPatch(weekData, dayKey, updatedList) {
   if (dayKey === 'sabado') {
     return { saturdaySpecial: { ...weekData.saturdaySpecial, weddings: updatedList } };
   }
-  return dayKey === 'domingo'
+  return (dayKey === 'domingo' || dayKey === 'sundayMonday')
     ? { sundayMonday: { ...weekData.sundayMonday, tasks: updatedList } }
     : { schedule: { ...weekData.schedule, [dayKey]: { ...weekData.schedule?.[dayKey], tasks: updatedList } } };
 }
