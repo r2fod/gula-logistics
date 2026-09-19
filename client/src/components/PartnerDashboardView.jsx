@@ -1324,13 +1324,17 @@ export default function PartnerDashboardView({
                           return (
                     <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
                       <td className="py-3.5 px-4 font-mono text-slate-200">
-                        <div className="font-bold text-white">{entry.timeFormatted}</div>
-                        <div className="text-[10px] text-slate-500">{entry.dateFormatted}</div>
+                        <div className="font-bold text-white">
+                          {entry.timeFormatted || new Date(entry.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          {entry.dateFormatted || new Date(entry.timestamp).toLocaleDateString('es-ES')}
+                        </div>
                       </td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2">
                           <span className="text-base">{profile?.avatar || '👤'}</span>
-                          <span className="font-bold text-slate-200">{entry.workerName}</span>
+                          <span className="font-bold text-slate-200">{entry.workerName || entry.worker || entry.name || 'Desconocido'}</span>
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
