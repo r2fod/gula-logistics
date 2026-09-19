@@ -364,12 +364,30 @@ export default function PartnerDashboardView({
   // Busca por prefijo de palabra completa para tolerar ese sufijo.
   const findWorkerHours = (balanceWorkerName) => {
     if (!balanceWorkerName) return null;
+    const rosterKey = findRosterName(balanceWorkerName);
+    return rosterKey ? workerBalances[rosterKey] : null;
+  };
+
+  // Mismo cruce de nombres, devuelto como nombre del roster para poder
+  // filtrar también los turnos individuales (no solo los totales).
+  function findRosterName(balanceWorkerName) {
+    if (!balanceWorkerName) return null;
     const normalized = balanceWorkerName.trim().toLowerCase();
-    const rosterKey = Object.keys(workerBalances).find(rosterName => {
+    return Object.keys(workerBalances).find(rosterName => {
       const rn = rosterName.toLowerCase();
       return normalized === rn || normalized.startsWith(`${rn} `);
-    });
-    return rosterKey ? workerBalances[rosterKey] : null;
+    }) || null;
+  }
+
+  // Turnos reales (entrada + salida emparejadas) de un trabajador, para
+  // enseñarlos con el mismo formato que el Informe de Fichajes: hora de
+  // entrada, hora de salida, duración e importe calculado.
+  const findWorkerShifts = (balanceWorkerName) => {
+    const rosterKey = findRosterName(balanceWorkerName);
+    if (!rosterKey) return [];
+    return paidShifts
+      .filter(s => s.workerName === rosterKey)
+      .sort((a, b) => new Date(b.startEntry.timestamp) - new Date(a.startEntry.timestamp));
   };
 
   return (
