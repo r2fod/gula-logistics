@@ -29,10 +29,14 @@ import {
   KeyRound,
   Zap,
   Menu,
-  X
+  X,
+  Save,
+  Bell
 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { initialBalancesData } from '../data/balancesData';
 import { fetchBalancesFromAPI, saveWorkerBalanceToAPI } from '../data/apiService';
+import { sendPushNotification } from '../data/pushService';
 import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../data/shiftCalculations';
 import LiveMonitorPanel from './LiveMonitorPanel';
 import AdminClockEditModal from './AdminClockEditModal';
@@ -80,7 +84,7 @@ export default function PartnerDashboardView({
       if (tab === 'live' || tab === 'directo') return 'live';
       if (p.has('socias')) return 'balances';
     } catch (e) {}
-    return 'schedule';
+    return 'live';
   });
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -92,8 +96,35 @@ export default function PartnerDashboardView({
   const balancesData = externalBalancesData || internalBalancesData;
   const [isAdminSettingsOpen, setIsAdminSettingsOpen] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [isPushLoading, setIsPushLoading] = useState(false);
+
+  const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
+  const [selectedWorkersToNotify, setSelectedWorkersToNotify] = useState([]);
+
+  const handleOpenNotifyModal = () => {
+    setSelectedWorkersToNotify([]);
+    setIsNotifyModalOpen(true);
+  };
+
+  const handleSendNotification = async () => {
+    try {
+      setIsPushLoading(true);
+      await sendPushNotification(
+        "¡Nuevos turnos asignados!", 
+        "Revisa tu panel de trabajador, se han añadido o modificado tus turnos.",
+        selectedWorkersToNotify
+      );
+      alert(`Aviso enviado correctamente a ${selectedWorkersToNotify.length === 0 ? 'todos' : selectedWorkersToNotify.length + ' trabajador(es)'}.`);
+      setIsNotifyModalOpen(false);
+    } catch (error) {
+      alert("Hubo un error al enviar las notificaciones.");
+    } finally {
+      setIsPushLoading(false);
+    }
+  };
+
   const [addingConceptFor, setAddingConceptFor] = useState(null); // worker.id en edición, o null
-  const [newConceptMode, setNewConceptMode] = useState('turno'); // 'turno' (fecha+horario, calcula solo) | 'manual' (concepto libre)
+  const [newConceptMode, setNewConceptMode] = useState('turno'); // 'turno' | 'manual' | 'pago'
   const [newConceptText, setNewConceptText] = useState('');
   const [newConceptAmount, setNewConceptAmount] = useState('');
   const [newShiftDate, setNewShiftDate] = useState('');
@@ -176,7 +207,7 @@ export default function PartnerDashboardView({
     const dateLabel = Number.isNaN(dateObj.getTime())
       ? newShiftDate
       : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
-    const fmtHours = (h) => (Number.isInteger(h) ? `${h}` : h.toFixed(1));
+    const fmtHours = (h) => (Number.isInteger(h) ? `${h}` : parseFloat(h.toFixed(2)).toString());
 
     if (worker.isSpecialPurse && worker.purseInfo) {
       const p = worker.purseInfo;
@@ -257,7 +288,7 @@ export default function PartnerDashboardView({
     }
 
     if (preview.extraHours > 0) {
-      const hoursLabel = Number.isInteger(preview.extraHours) ? `${preview.extraHours}` : preview.extraHours.toFixed(1);
+      const hoursLabel = Number.isInteger(preview.extraHours) ? `${preview.extraHours}` : parseFloat(preview.extraHours.toFixed(2)).toString();
       newBreakdown.push({
         concept: `🕒 ${preview.dateLabel} (${newShiftStart} a ${newShiftEnd} - ${hoursLabel}h a ${p.extraRateAfter80h}€/h · Extra tras bolsa)`,
         amount: preview.extraHours * p.extraRateAfter80h,
@@ -272,8 +303,8 @@ export default function PartnerDashboardView({
     resetAddConceptForm();
   };
 
-  const handleAddConcept = async (worker) => {
-    const amount = parseFloat(newConceptAmount.replace(',', '.'));
+  const handleAddConcept = async (worker, overrideAmount = null) => {
+    const amount = overrideAmount !== null ? overrideAmount : parseFloat(newConceptAmount.replace(',', '.'));
     if (!newConceptText.trim() || Number.isNaN(amount)) return;
 
     const newItem = { concept: newConceptText.trim(), amount, isPositive: amount >= 0 };
@@ -358,103 +389,197 @@ export default function PartnerDashboardView({
   const totalPayrollValuation = balancesList.reduce((acc, curr) => acc + (curr.isPayroll ? curr.totalCost : 0), 0);
   const totalExtraHours = balancesList.reduce((acc, curr) => acc + curr.totalHours, 0);
 
+  // Group shifts by Event (taskName) using V2 subTasks
+  const summaryByEvent = paidShifts.reduce((acc, shift) => {
+    // Para cada shift, iteramos por sus subTasks (las fracciones de jornada V2, o la tarea única V1)
+    const subTasks = shift.subTasks || [];
+    
+    subTasks.forEach(subTask => {
+      let eventName = subTask.eventName || 'Sin Asignar / Extra';
+      
+      // Normalize event name (first letter uppercase, rest lower)
+      const normalizedEventName = eventName.charAt(0).toUpperCase() + eventName.slice(1).toLowerCase();
+
+      if (!acc[normalizedEventName]) {
+        acc[normalizedEventName] = {
+          eventName: normalizedEventName,
+          totalCost: 0,
+          totalHours: 0,
+          workers: {}
+        };
+      }
+
+      // Cost and hours are already calculated precisely for this subTask in pairShiftsFromEntries
+      const shiftCost = subTask.cost || 0;
+      const hours = subTask.durationHours || 0;
+
+      acc[normalizedEventName].totalCost += shiftCost;
+      acc[normalizedEventName].totalHours += hours;
+
+      const workerName = shift.workerName || 'Desconocido';
+      if (!acc[normalizedEventName].workers[workerName]) {
+        // Encontrar su avatar
+        const workerRoster = workersList.find(w => w.name?.toLowerCase().includes(workerName.toLowerCase() || ''));
+        const avatar = workerRoster?.avatar || '👤';
+        
+        acc[normalizedEventName].workers[workerName] = {
+          name: workerName,
+          avatar,
+          cost: 0,
+          hours: 0,
+        };
+      }
+      acc[normalizedEventName].workers[workerName].cost += shiftCost;
+      acc[normalizedEventName].workers[workerName].hours += hours;
+    });
+
+    return acc;
+  }, {});
+
+  // Convert to array and sort by total cost descending
+  const eventsList = Object.values(summaryByEvent).sort((a, b) => b.totalCost - a.totalCost);
+
+  // Generate Master Table Rows (Operativa Logística)
+  const masterTableRows = [];
+  if (activeTab === 'schedule' && activeWeekData?.schedule) {
+    Object.entries(activeWeekData.schedule).forEach(([dayKey, dayData]) => {
+      const dateString = dayData.title || dayKey; 
+
+      (dayData.tasks || []).forEach(task => {
+        const taskText = typeof task === 'object' ? task.text : task;
+        const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
+        
+        let eventName = taskText || 'Sin Asignar';
+        let specificTaskName = 'Tarea General';
+        if (eventName.includes(' - ')) {
+          const parts = eventName.split(' - ');
+          eventName = parts[0].trim();
+          specificTaskName = parts.slice(1).join(' - ').trim();
+        }
+
+        taskAssigned.forEach(workerName => {
+          let matchSubTask = null;
+          let matchShift = null;
+
+          paidShifts.forEach(shift => {
+            if (shift.workerName === workerName && shift.subTasks) {
+              const st = shift.subTasks.find(s => s.taskName === taskText);
+              if (st) {
+                matchSubTask = st;
+                matchShift = shift;
+              }
+            }
+          });
+
+          const profile = workersList.find(w => w.name === workerName) || { isPayroll: false, role: 'Extra' };
+
+          masterTableRows.push({
+            date: dateString,
+            eventName,
+            specificTaskName,
+            workerName,
+            isPayroll: profile.isPayroll,
+            role: profile.role,
+            startTime: matchShift ? matchShift.startTime : '—',
+            endTime: matchShift ? matchShift.endTime : '—',
+            hours: matchSubTask ? matchSubTask.durationHours : null,
+            cost: matchSubTask ? matchSubTask.cost : null,
+            status: matchSubTask ? 'Completado' : 'Pendiente'
+          });
+        });
+      });
+    });
+  }
+
   // workerBalances viene indexado por el nombre "de pila" tal cual está en
   // workersList (ej. "Ricardo"), pero balancesData.workers usa "Nombre
   // Apellido" (ej. "Ricardo Gula") — coincidencia exacta nunca los cruza.
   // Busca por prefijo de palabra completa para tolerar ese sufijo.
+  // La normalización de "ff"→"f" es lo que permite cruzar "Jefferson Gula"
+  // (ficha de Saldos) con "Jeferson" (roster), que antes no coincidían.
   const findWorkerHours = (balanceWorkerName) => {
     if (!balanceWorkerName) return null;
-    const rosterKey = findRosterName(balanceWorkerName);
+    const normalized = balanceWorkerName.trim().toLowerCase().replace(/ff/g, 'f');
+    const rosterKey = Object.keys(workerBalances).find(rosterName => {
+      const rn = rosterName.toLowerCase().replace(/ff/g, 'f');
+      return normalized === rn || normalized.startsWith(`${rn} `) || normalized.includes(rn);
+    });
     return rosterKey ? workerBalances[rosterKey] : null;
   };
 
-  // Mismo cruce de nombres, devuelto como nombre del roster para poder
-  // filtrar también los turnos individuales (no solo los totales).
-  function findRosterName(balanceWorkerName) {
-    if (!balanceWorkerName) return null;
-    const normalized = balanceWorkerName.trim().toLowerCase();
-    return Object.keys(workerBalances).find(rosterName => {
-      const rn = rosterName.toLowerCase();
-      return normalized === rn || normalized.startsWith(`${rn} `);
-    }) || null;
-  }
-
-  // Turnos reales (entrada + salida emparejadas) de un trabajador, para
-  // enseñarlos con el mismo formato que el Informe de Fichajes: hora de
-  // entrada, hora de salida, duración e importe calculado.
-  const findWorkerShifts = (balanceWorkerName) => {
-    const rosterKey = findRosterName(balanceWorkerName);
-    if (!rosterKey) return [];
-    return paidShifts
-      .filter(s => s.workerName === rosterKey)
-      .sort((a, b) => new Date(b.startEntry.timestamp) - new Date(a.startEntry.timestamp));
-  };
+  // Turnos reales de un trabajador, ya agrupados por día (con sus rangos
+  // de entrada/salida) por aggregateShiftsByWorker en shiftCalculations.js
+  // — se reutiliza ese cálculo en vez de volver a emparejar aquí.
+  const findWorkerShifts = (balanceWorkerName) => findWorkerHours(balanceWorkerName)?.shifts || [];
 
   return (
-    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-2.5 sm:p-4 md:p-5 font-sans space-y-3 w-full max-w-full overflow-x-hidden pb-24 lg:pb-6">
+    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-2.5 sm:p-4 md:p-5 font-sans space-y-3 w-full max-w-full overflow-x-hidden pb-32 lg:pb-16">
       
       {/* Top Page Navigation Bar - Compact & Responsive */}
-      <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-3 sm:px-4 sm:py-3 rounded-2xl shadow-xl flex flex-col lg:flex-row lg:flex-wrap justify-between items-start lg:items-center gap-2.5 w-full max-w-full overflow-hidden">
+      <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-3 sm:px-4 sm:py-3 rounded-2xl shadow-xl flex flex-col gap-3 w-full max-w-full overflow-hidden">
         
-        {/* Title & Selector (compact) */}
-        <div className="flex items-center gap-2.5 min-w-0 max-w-full flex-wrap sm:flex-nowrap">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 p-0.5 shadow-lg shadow-amber-500/20 shrink-0">
-            <div className="w-full h-full bg-slate-950 rounded-[9px] flex items-center justify-center text-amber-400">
-              <Truck className="w-4 h-4" />
+        {/* Top Row: Title & Week Selector */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 w-full">
+          {/* Title & Selector (compact) */}
+          <div className="flex items-center gap-2.5 min-w-0 max-w-full flex-wrap sm:flex-nowrap">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 p-0.5 shadow-lg shadow-amber-500/20 shrink-0">
+              <div className="w-full h-full bg-slate-950 rounded-[9px] flex items-center justify-center text-amber-400">
+                <Truck className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <h1 className="text-xs sm:text-base font-extrabold text-white tracking-tight font-['Outfit'] truncate">
+                  Panel de Control Gula Logística
+                </h1>
+                {adminUnlocked ? (
+                  <>
+                    <span className="px-2 py-0.5 text-[9px] font-extrabold rounded-full bg-amber-500 text-slate-950 flex items-center gap-1 shrink-0">
+                      <ShieldCheck className="w-2.5 h-2.5" />
+                      <span>👑 ADMIN</span>
+                    </span>
+                    <button onClick={() => setIsAdminSettingsOpen(true)} className="px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 flex items-center gap-1 transition-colors shrink-0">
+                      <KeyRound className="w-2.5 h-2.5" />
+                      <span>Clave</span>
+                    </button>
+                    <button 
+                      onClick={() => { if (onLogoutAdmin) onLogoutAdmin(); setAdminUnlocked(false); }} 
+                      className="px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1 transition-colors shrink-0"
+                    >
+                      <span>Salir</span>
+                    </button>
+                  </>
+                ) : (
+                  <button onClick={handleRequestAdminUnlock} className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center gap-1 transition-colors shrink-0">
+                    <KeyRound className="w-2.5 h-2.5 text-blue-400" />
+                    <span>Admin Login</span>
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] text-slate-500 truncate">
+                {activeWeekData?.meta?.week || "Semana 3"} · {activeWeekData?.meta?.dateRange}
+              </p>
             </div>
           </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <h1 className="text-xs sm:text-base font-extrabold text-white tracking-tight font-['Outfit'] truncate">
-                Panel de Control Gula Logística
-              </h1>
-              {adminUnlocked ? (
-                <>
-                  <span className="px-2 py-0.5 text-[9px] font-extrabold rounded-full bg-amber-500 text-slate-950 flex items-center gap-1 shrink-0">
-                    <ShieldCheck className="w-2.5 h-2.5" />
-                    <span>👑 ADMIN</span>
-                  </span>
-                  <button onClick={() => setIsAdminSettingsOpen(true)} className="px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 flex items-center gap-1 transition-colors shrink-0">
-                    <KeyRound className="w-2.5 h-2.5" />
-                    <span>Clave</span>
-                  </button>
-                  <button 
-                    onClick={() => { if (onLogoutAdmin) onLogoutAdmin(); setAdminUnlocked(false); }} 
-                    className="px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1 transition-colors shrink-0"
-                  >
-                    <span>Salir</span>
-                  </button>
-                </>
-              ) : (
-                <button onClick={handleRequestAdminUnlock} className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center gap-1 transition-colors shrink-0">
-                  <KeyRound className="w-2.5 h-2.5 text-blue-400" />
-                  <span>Admin Login</span>
-                </button>
-              )}
-            </div>
-            <p className="text-[10px] text-slate-500 truncate">
-              {activeWeekData?.meta?.week || "Semana 3"} · {activeWeekData?.meta?.dateRange}
-            </p>
-          </div>
-        </div>
 
-        {/* Center: Week selector */}
-        <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
-          <select
-            value={activeWeekId}
-            onChange={(e) => onSelectWeek(e.target.value)}
-            className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs focus:outline-none min-w-0 max-w-full flex-1 sm:flex-none sm:max-w-xs truncate"
-          >
-            {Object.values(allWeeks).map((w) => (
-              <option key={w.id} value={w.id}>{w.name} ({w.meta?.dateRange})</option>
-            ))}
-          </select>
-          {adminUnlocked && (
-            <button onClick={onOpenAddWeek} className="bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 border border-slate-800 transition-all shrink-0">
-              <Plus className="w-3 h-3 text-amber-400" />
-              <span>+ Semana</span>
-            </button>
-          )}
+          {/* Center: Week selector */}
+          <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
+            <select
+              value={activeWeekId}
+              onChange={(e) => onSelectWeek(e.target.value)}
+              className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs focus:outline-none min-w-0 max-w-full flex-1 sm:flex-none sm:max-w-xs truncate"
+            >
+              {Object.values(allWeeks).map((w) => (
+                <option key={w.id} value={w.id}>{w.name} ({w.meta?.dateRange})</option>
+              ))}
+            </select>
+            {adminUnlocked && (
+              <button onClick={onOpenAddWeek} className="bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 border border-slate-800 transition-all shrink-0">
+                <Plus className="w-3 h-3 text-amber-400" />
+                <span className="whitespace-nowrap">+ Semana</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Mobile Quick Action & Menu Bar (visible on mobile / tablet) */}
@@ -462,84 +587,95 @@ export default function PartnerDashboardView({
           <div className="flex items-center gap-2">
             <button 
               onClick={onOpenClockIn} 
-              className="bg-gradient-to-r from-emerald-500 to-emerald-600 active:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
+              className="bg-gradient-to-r from-emerald-500 to-emerald-600 active:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all shrink-0"
             >
               <Clock className="w-3.5 h-3.5 shrink-0" />
-              <span>⏱️ Fichar</span>
+              <span className="whitespace-nowrap">⏱️ Fichar</span>
             </button>
 
             {onOpenShareModal && (
               <button 
                 onClick={onOpenShareModal} 
-                className="bg-blue-600/20 active:bg-blue-600/40 text-blue-300 border border-blue-500/30 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all"
+                className="bg-blue-600/20 active:bg-blue-600/40 text-blue-300 border border-blue-500/30 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all shrink-0"
               >
                 <Share2 className="w-3.5 h-3.5" />
-                <span>WhatsApp</span>
+                <span className="whitespace-nowrap">WhatsApp</span>
               </button>
             )}
           </div>
 
           <button 
             onClick={() => setIsMobileDrawerOpen(true)}
-            className="bg-slate-800 hover:bg-slate-700 text-white font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-slate-700 shadow-md active:scale-95 transition-all"
+            className="bg-slate-800 hover:bg-slate-700 text-white font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 border border-slate-700 shadow-md active:scale-95 transition-all shrink-0"
             aria-label="Abrir Menú"
           >
             <Menu className="w-4 h-4 text-amber-400" />
-            <span>Menú</span>
+            <span className="whitespace-nowrap">Menú</span>
           </button>
         </div>
 
         {/* Right: Desktop Action buttons toolbar (hidden on mobile, flex on desktop) */}
-        <div className="hidden lg:flex lg:flex-wrap items-center gap-1.5 w-full lg:w-auto">
-          <button onClick={onOpenClockIn} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">
+        <div className="hidden lg:flex items-center justify-center gap-1.5 w-full overflow-x-auto no-scrollbar pt-2 border-t border-slate-800/80">
+          <button onClick={onOpenClockIn} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all shrink-0">
             <Clock className="w-3.5 h-3.5 shrink-0" />
-            <span>⏱️ Fichar</span>
+            <span className="whitespace-nowrap">⏱️ Fichar</span>
           </button>
 
+          {adminUnlocked && (
+            <button 
+              onClick={handleOpenNotifyModal} 
+              disabled={isPushLoading}
+              className="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-indigo-500/30 transition-all shrink-0"
+            >
+              <Bell className={`w-3.5 h-3.5 shrink-0 ${isPushLoading ? 'animate-pulse' : 'animate-bounce'}`} />
+              <span className="whitespace-nowrap truncate max-w-[120px]">{isPushLoading ? 'Avisando...' : 'Avisar Cambios'}</span>
+            </button>
+          )}
+
           {adminUnlocked && onOpenTaskEditor && (
-            <button onClick={onOpenTaskEditor} className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-orange-500/30 transition-all">
+            <button onClick={onOpenTaskEditor} className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-orange-500/30 transition-all shrink-0">
               <Edit3 className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">✏️ Planning</span>
+              <span className="whitespace-nowrap truncate max-w-[100px]">✏️ Planning</span>
             </button>
           )}
 
           {adminUnlocked && onOpenWorkerEditor && (
-            <button onClick={onOpenWorkerEditor} className="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-indigo-500/30 transition-all">
+            <button onClick={onOpenWorkerEditor} className="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-indigo-500/30 transition-all shrink-0">
               <Users className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">➕ Trabajador</span>
+              <span className="whitespace-nowrap truncate max-w-[100px]">➕ Trabajador</span>
             </button>
           )}
 
           {adminUnlocked && (
-            <button onClick={onOpenPayroll} className="bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-slate-800 transition-all">
+            <button onClick={onOpenPayroll} className="bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-slate-800 transition-all shrink-0">
               <DollarSign className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span>Nóminas</span>
+              <span className="whitespace-nowrap">Nóminas</span>
             </button>
           )}
 
           {adminUnlocked && (
-            <button onClick={onOpenGemini} className="bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
+            <button onClick={onOpenGemini} className="bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all shrink-0">
               <Wand2 className="w-3.5 h-3.5 shrink-0" />
-              <span>Gemini AI</span>
+              <span className="whitespace-nowrap">Gemini AI</span>
             </button>
           )}
 
           {onOpenShareModal && (
-            <button onClick={onOpenShareModal} className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/30 active:scale-95 transition-all" title="Enlaces de WhatsApp (Trabajadores y Socias)">
+            <button onClick={onOpenShareModal} className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/30 active:scale-95 transition-all shrink-0" title="Enlaces de WhatsApp (Trabajadores y Socias)">
               <Share2 className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">WhatsApp</span>
+              <span className="whitespace-nowrap truncate max-w-[100px]">WhatsApp</span>
             </button>
           )}
 
-          <button onClick={handleCopySecureLink} className="bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-amber-500/30 transition-all" title="Copiar enlace directo al Panel de Socias">
+          <button onClick={handleCopySecureLink} className="bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-amber-500/30 transition-all shrink-0" title="Copiar enlace directo al Panel de Socias">
             {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <Copy className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
-            <span className="truncate">{copiedLink ? '¡Copiado!' : 'Link Socias'}</span>
+            <span className="whitespace-nowrap truncate max-w-[100px]">{copiedLink ? '¡Copiado!' : 'Link Socias'}</span>
           </button>
 
           {onTogglePublicView && (
-            <button onClick={() => onTogglePublicView(false)} className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-amber-500/30 transition-all" title="Vista Pública">
+            <button onClick={() => onTogglePublicView(false)} className="bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-amber-500/30 transition-all shrink-0" title="Vista Pública">
               <Eye className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">Vista Pública</span>
+              <span className="whitespace-nowrap truncate max-w-[100px]">Vista Pública</span>
             </button>
           )}
         </div>
@@ -547,18 +683,6 @@ export default function PartnerDashboardView({
 
       {/* Primary View Navigation Tabs Bar */}
       <div className="flex items-center space-x-2 bg-slate-900/80 p-1.5 sm:p-2 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar w-full max-w-full">
-        <button
-          onClick={() => handleTabClick('schedule')}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'schedule'
-              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <Calendar className="w-3.5 h-3.5" />
-          <span>📅 Cuadrante Semanal</span>
-        </button>
-
         <button
           onClick={() => handleTabClick('live')}
           className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
@@ -569,6 +693,18 @@ export default function PartnerDashboardView({
         >
           <Radio className="w-3.5 h-3.5 animate-pulse text-rose-400" />
           <span>🔴 Actividad en Tiempo Real</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('schedule')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+            activeTab === 'schedule'
+              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
+              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          <span>📅 Cuadrante Semanal</span>
         </button>
 
         <button
@@ -665,6 +801,48 @@ export default function PartnerDashboardView({
             {(balancesData.workers || []).map((worker) => {
               const isExpanded = expandedWorkerId === worker.id;
 
+              const hours = findWorkerHours(worker.name);
+              let dynamicCost = 0;
+              let dynamicShifts = [];
+              let consumedBolsa = 0;
+
+              if (hours && hours.shifts && hours.shifts.length > 0) {
+                hours.shifts.forEach(s => {
+                  let computedCost = 0;
+                  let computedConcept = '';
+                  const fmtHours = (h) => (Number.isInteger(h) ? `${h}` : parseFloat(h.toFixed(2)).toString());
+
+                  if (worker.isSpecialPurse && worker.purseInfo) {
+                    const p = worker.purseInfo;
+                    const remaining = Math.max(0, p.totalHours - consumedBolsa);
+                    const purseHours = Math.min(s.durationHours, remaining);
+                    const extraHours = Math.max(0, s.durationHours - purseHours);
+                    computedCost = purseHours * p.hourlyRate + extraHours * p.extraRateAfter80h;
+                    
+                    if (extraHours === 0) {
+                      computedConcept = `🕒 ${s.startDate} [${s.startTime} a ${s.endTime}] - ${fmtHours(s.durationHours)}h a ${p.hourlyRate}€/h (Bolsa)`;
+                    } else if (purseHours === 0) {
+                      computedConcept = `🕒 ${s.startDate} [${s.startTime} a ${s.endTime}] - ${fmtHours(s.durationHours)}h a ${p.extraRateAfter80h}€/h (Extra)`;
+                    } else {
+                      computedConcept = `🕒 ${s.startDate} [${s.startTime} a ${s.endTime}] - ${fmtHours(purseHours)}h a ${p.hourlyRate}€/h + ${fmtHours(extraHours)}h a ${p.extraRateAfter80h}€/h`;
+                    }
+                    consumedBolsa += s.durationHours;
+                  } else {
+                    computedCost = s.cost;
+                    computedConcept = `🕒 ${s.startDate} [${s.startTime} a ${s.endTime}] - ${fmtHours(s.durationHours)}h a ${s.rate}€/h`;
+                  }
+
+                  dynamicCost += computedCost;
+                  dynamicShifts.push({
+                    concept: computedConcept,
+                    amount: computedCost,
+                    isDynamic: true
+                  });
+                });
+              }
+              
+              const displayBalance = worker.currentBalance + dynamicCost;
+
               return (
                 <div 
                   key={worker.id}
@@ -724,30 +902,23 @@ export default function PartnerDashboardView({
                           <span className="text-xl font-extrabold text-amber-400 font-mono">0,00 €</span>
                         ) : (
                           <span className={`text-2xl sm:text-3xl font-extrabold font-mono ${
-                            worker.currentBalance > 0 ? 'text-emerald-400' : worker.currentBalance < 0 ? 'text-rose-400' : 'text-slate-400'
+                            displayBalance > 0 ? 'text-emerald-400' : displayBalance < 0 ? 'text-rose-400' : 'text-slate-400'
                           }`}>
-                            {worker.currentBalance >= 0 ? `+${worker.currentBalance.toFixed(2)} €` : `${worker.currentBalance.toFixed(2)} €`}
+                            {displayBalance >= 0 ? `+${displayBalance.toFixed(2)} €` : `${displayBalance.toFixed(2)} €`}
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Horas reales fichadas — mismo cálculo que Resumen
-                        Financiero (workerBalances/aggregateShiftsByWorker),
-                        solo que también se muestra aquí junto al saldo. */}
-                    {(() => {
-                      const hours = findWorkerHours(worker.name);
-                      if (!hours || hours.completedShifts === 0) return null;
-                      return (
-                        <div className="mt-3 flex items-center gap-2 text-xs bg-slate-950/70 border border-slate-800 rounded-xl px-3 py-2">
-                          <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                          <span className="text-slate-300">
-                            <b className="text-emerald-400 font-mono">{hours.totalHours.toFixed(1)}h</b> fichadas
-                            {' '}({hours.totalCost.toFixed(2)} €)
-                          </span>
-                        </div>
-                      );
-                    })()}
+                    {/* Horas reales fichadas sumadas al balance */}
+                    {hours && hours.completedShifts > 0 && (
+                      <div className="mt-3 flex items-center gap-2 text-xs bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">
+                        <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span className="text-emerald-100">
+                          <b className="text-emerald-400 font-mono">{parseFloat(hours.totalHours.toFixed(2))}h</b> fichadas automáticamente y sumadas al saldo
+                        </span>
+                      </div>
+                    )}
 
                     {/* Special Jefferson Purse Box */}
                     {worker.isSpecialPurse && worker.purseInfo && (
@@ -794,8 +965,8 @@ export default function PartnerDashboardView({
                           <div className="pt-2 border-t border-amber-500/20 space-y-1 text-xs text-slate-300">
                             {worker.purseInfo.shifts.map((s, idx) => (
                               <div key={idx} className="flex justify-between items-center bg-slate-950 p-2 rounded-lg">
-                                <span>📅 <b>{s.date}</b> ({s.range})</span>
-                                <span className="font-bold text-amber-300">{s.hours}h</span>
+                                  <span className="break-words min-w-0 flex-1 pr-2">📅 <b>{s.date}</b> ({s.range})</span>
+                                  <span className="font-bold text-amber-400 shrink-0">{s.hours}h</span>
                               </div>
                             ))}
                           </div>
@@ -823,26 +994,28 @@ export default function PartnerDashboardView({
                       <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
                         Desglose de Conceptos & Turnos
                       </span>
-                      <div className={`space-y-1.5 pr-1 ${(worker.breakdown || []).length > 5 ? 'max-h-48 overflow-y-auto' : ''}`}>
-                        {(worker.breakdown || []).map((item, idx) => (
+                      <div className={`space-y-1.5 pr-1 ${(worker.breakdown || []).length + dynamicShifts.length > 5 ? 'max-h-[32rem] overflow-y-auto custom-scrollbar' : ''}`}>
+                        {[...dynamicShifts, ...(worker.breakdown || [])].map((item, idx) => (
                           <div
                             key={idx}
                             className={`p-2.5 rounded-xl border text-xs flex items-center justify-between gap-2 ${
                               item.amount < 0
                                 ? 'bg-rose-500/10 border-rose-500/20 text-rose-200'
+                                : item.isDynamic
+                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-100'
                                 : 'bg-slate-950/80 border-slate-800 text-slate-200'
                             }`}
                           >
-                            <span className="font-medium">{item.concept}</span>
+                            <span className="font-medium break-words min-w-0 flex-1 pr-2">{item.concept}</span>
                             <div className="flex items-center gap-2 shrink-0">
                               <span className={`font-bold font-mono ${
                                 item.amount > 0 ? 'text-emerald-400' : item.amount < 0 ? 'text-rose-400' : 'text-slate-400'
                               }`}>
                                 {item.amount > 0 ? `+${item.amount.toFixed(2)} €` : item.amount < 0 ? `${item.amount.toFixed(2)} €` : '0,00 €'}
                               </span>
-                              {adminUnlocked && (
+                              {adminUnlocked && !item.isDynamic && (
                                 <button
-                                  onClick={() => handleDeleteConcept(worker, idx)}
+                                  onClick={() => handleDeleteConcept(worker, idx - dynamicShifts.length)}
                                   disabled={savingBalanceId === worker.id}
                                   className="text-slate-500 hover:text-rose-400 transition-colors disabled:opacity-40"
                                   title="Eliminar concepto"
@@ -858,15 +1031,14 @@ export default function PartnerDashboardView({
                       {adminUnlocked && (
                         addingConceptFor === worker.id ? (
                           <div className="p-3 rounded-xl border border-amber-500/30 bg-slate-950/80 space-y-2.5">
-                            {/* Modo: turno (calcula solo) vs ajuste manual */}
-                            <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
+                            <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800 space-x-1">
                               <button
                                 onClick={() => setNewConceptMode('turno')}
                                 className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all ${
                                   newConceptMode === 'turno' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
                                 }`}
                               >
-                                🕒 Turno (calcula solo)
+                                🕒 Turno
                               </button>
                               <button
                                 onClick={() => setNewConceptMode('manual')}
@@ -874,7 +1046,15 @@ export default function PartnerDashboardView({
                                   newConceptMode === 'manual' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
                                 }`}
                               >
-                                ✏️ Ajuste manual
+                                ✏️ Ajuste
+                              </button>
+                              <button
+                                onClick={() => setNewConceptMode('pago')}
+                                className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all ${
+                                  newConceptMode === 'pago' ? 'bg-rose-500 text-white' : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                💸 Adelanto
                               </button>
                             </div>
 
@@ -928,13 +1108,13 @@ export default function PartnerDashboardView({
                                   </>
                                 );
                               })()
-                            ) : (
+                            ) : newConceptMode === 'manual' ? (
                               <>
                                 <input
                                   type="text"
                                   value={newConceptText}
                                   onChange={(e) => setNewConceptText(e.target.value)}
-                                  placeholder="Concepto (ej: Roturas cristalería eventos)"
+                                  placeholder="Concepto (ej: Plus puntualidad)"
                                   className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500"
                                 />
                                 <input
@@ -942,16 +1122,56 @@ export default function PartnerDashboardView({
                                   inputMode="decimal"
                                   value={newConceptAmount}
                                   onChange={(e) => setNewConceptAmount(e.target.value)}
-                                  placeholder="Importe (usa - para restar, ej: -20.00)"
+                                  placeholder="Importe a SUMAR (ej: 20.00)"
                                   className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500"
                                 />
                                 <div className="flex gap-2">
                                   <button
                                     onClick={() => handleAddConcept(worker)}
-                                    disabled={savingBalanceId === worker.id}
+                                    disabled={savingBalanceId === worker.id || !newConceptAmount || isNaN(parseFloat(newConceptAmount.replace(',','.')))}
                                     className="flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all disabled:opacity-50"
                                   >
-                                    {savingBalanceId === worker.id ? 'Guardando...' : 'Guardar'}
+                                    {savingBalanceId === worker.id ? 'Guardando...' : 'Añadir Importe'}
+                                  </button>
+                                  <button
+                                    onClick={resetAddConceptForm}
+                                    className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <input
+                                  type="text"
+                                  value={newConceptText}
+                                  onChange={(e) => setNewConceptText(e.target.value)}
+                                  placeholder="Concepto (ej: Adelanto nómina, Pago Bizum)"
+                                  className="w-full bg-slate-900 border border-rose-900/50 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-rose-500"
+                                />
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={newConceptAmount}
+                                  onChange={(e) => setNewConceptAmount(e.target.value)}
+                                  placeholder="Importe a RESTAR (se pondrá en negativo)"
+                                  className="w-full bg-slate-900 border border-rose-900/50 rounded-lg p-2 text-xs text-rose-400 focus:outline-none focus:border-rose-500"
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => {
+                                      // Asegurarnos de que el importe sea negativo
+                                      let val = parseFloat(newConceptAmount.replace(',', '.'));
+                                      if (!isNaN(val)) {
+                                        val = Math.abs(val) * -1; // Fuerza negativo
+                                        handleAddConcept(worker, val);
+                                      }
+                                    }}
+                                    disabled={savingBalanceId === worker.id || !newConceptAmount || isNaN(parseFloat(newConceptAmount.replace(',','.')))}
+                                    className="flex-1 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-all disabled:opacity-50 shadow-md shadow-rose-600/20"
+                                  >
+                                    {savingBalanceId === worker.id ? 'Guardando...' : 'Registrar Adelanto'}
                                   </button>
                                   <button
                                     onClick={resetAddConceptForm}
@@ -1055,19 +1275,27 @@ export default function PartnerDashboardView({
               <p className="text-xs text-slate-500 mt-1">Los fichajes realizados por los trabajadores aparecerán aquí automáticamente.</p>
             </div>
           ) : (() => {
-            // Agrupado por trabajador (pedido por el usuario) — orden de
-            // grupo según el roster (workersList), y dentro de cada grupo se
-            // conserva el orden que ya trae clockEntries (más reciente primero).
-            const byWorker = {};
-            clockEntries.forEach(e => {
-              if (!byWorker[e.workerName]) byWorker[e.workerName] = [];
-              byWorker[e.workerName].push(e);
+            // Agrupado por día (dateFormatted)
+            const byDay = {};
+            // Primero ordenamos todos los fichajes de más antiguo a más reciente
+            // para que dentro de un mismo día salgan en orden cronológico real.
+            const sortedEntries = [...clockEntries].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+            
+            sortedEntries.forEach(e => {
+              const day = e.dateFormatted || 'Sin Fecha';
+              if (!byDay[day]) byDay[day] = [];
+              byDay[day].push(e);
             });
-            const orderedNames = [
-              ...workersList.map(w => w.name).filter(n => byWorker[n]),
-              ...Object.keys(byWorker).filter(n => !workersList.some(w => w.name === n))
-            ];
-            const groupedEntries = orderedNames.map(name => ({ name, entries: byWorker[name] }));
+
+            // Queremos que los días más recientes salgan primero en la lista general
+            const orderedDays = Object.keys(byDay).sort((a, b) => {
+              // Convertir DD/MM/YYYY a Date para ordenar correctamente
+              const dateA = new Date(a.split('/').reverse().join('-'));
+              const dateB = new Date(b.split('/').reverse().join('-'));
+              return dateB - dateA; // Descendente (más reciente primero)
+            });
+
+            const groupedEntries = orderedDays.map(day => ({ name: day, entries: byDay[day] }));
 
             return (
             <div className="overflow-x-auto">
@@ -1075,6 +1303,7 @@ export default function PartnerDashboardView({
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
                     <th className="py-3.5 px-4">Fecha & Hora</th>
+                    <th className="py-3.5 px-4">Trabajador</th>
                     <th className="py-3.5 px-4">Tipo</th>
                     <th className="py-3.5 px-4">Tarea / Concepto</th>
                     <th className="py-3.5 px-4">Tarifa (€/h)</th>
@@ -1084,13 +1313,12 @@ export default function PartnerDashboardView({
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
                   {groupedEntries.map(({ name, entries }) => {
-                    const profile = workersList.find(w => w.name === name);
                     return (
                       <React.Fragment key={name}>
                         <tr className="bg-slate-950/80">
-                          <td colSpan={adminUnlocked ? 6 : 5} className="py-2 px-4">
+                          <td colSpan={adminUnlocked ? 7 : 6} className="py-2 px-4">
                             <span className="inline-flex items-center gap-2 text-xs font-extrabold text-amber-300">
-                              <span className="text-base">{profile?.avatar || '👤'}</span>
+                              <span className="text-base">📅</span>
                               <span>{name}</span>
                               <span className="text-[10px] font-semibold text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-800">
                                 {entries.length} {entries.length === 1 ? 'fichaje' : 'fichajes'}
@@ -1098,16 +1326,32 @@ export default function PartnerDashboardView({
                             </span>
                           </td>
                         </tr>
-                        {entries.map((entry) => (
+                        {entries.map((entry) => {
+                          const profile = workersList.find(w => w.name === entry.workerName);
+                          return (
                     <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
                       <td className="py-3.5 px-4 font-mono text-slate-200">
-                        <div className="font-bold text-white">{entry.timeFormatted}</div>
-                        <div className="text-[10px] text-slate-500">{entry.dateFormatted}</div>
+                        <div className="font-bold text-white">
+                          {entry.timeFormatted || new Date(entry.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          {entry.dateFormatted || new Date(entry.timestamp).toLocaleDateString('es-ES')}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{profile?.avatar || '👤'}</span>
+                          <span className="font-bold text-slate-200">{entry.workerName || entry.worker || entry.name || 'Desconocido'}</span>
+                        </div>
                       </td>
                       <td className="py-3.5 px-4">
                         {entry.type === 'entrada' ? (
                           <span className="px-2.5 py-1 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold inline-flex items-center space-x-1">
                             <span>🟢 ENTRADA</span>
+                          </span>
+                        ) : entry.type === 'fichaje' ? (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/30 font-bold inline-flex items-center space-x-1">
+                            <span>☑️ CHECK</span>
                           </span>
                         ) : (
                           <span className="px-2.5 py-1 rounded-full text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold inline-flex items-center space-x-1">
@@ -1124,7 +1368,7 @@ export default function PartnerDashboardView({
                       <td className="py-3.5 px-4">
                         <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 inline-flex items-center space-x-1">
                           <Lock className="w-3 h-3 text-amber-400" />
-                          <span>🔒 Registrado & Verificado</span>
+                          <span>🔒 Registrado</span>
                         </span>
                       </td>
                       {adminUnlocked && (
@@ -1151,7 +1395,8 @@ export default function PartnerDashboardView({
                         </td>
                       )}
                     </tr>
-                        ))}
+                          );
+                        })}
                       </React.Fragment>
                     );
                   })}
@@ -1208,47 +1453,162 @@ export default function PartnerDashboardView({
                 <Clock className="w-5 h-5 text-emerald-400" />
               </div>
               <p className="text-3xl font-extrabold text-emerald-400 mt-2 font-['Outfit'] font-mono">
-                {totalExtraHours.toFixed(1)} h
+                {parseFloat(totalExtraHours.toFixed(2))} h
               </p>
               <p className="text-xs text-slate-500 mt-1">Acumulado de jornadas en fichaje</p>
             </div>
           </div>
 
-          <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4">
-            <h4 className="font-bold text-white text-base flex items-center space-x-2">
-              <TrendingUp className="w-5 h-5 text-amber-400" />
-              <span>Resumen de Horas Fichadas por Trabajador</span>
-            </h4>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {balancesList.map((w, idx) => (
-                <div key={idx} className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-2xl">{w.avatar}</span>
-                    {w.isPayroll ? (
-                      <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                        Nómina (14€/h)
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                        Extra (10€/h)
-                      </span>
-                    )}
-                  </div>
-
-                  <div>
-                    <h5 className="font-bold text-white text-base">{w.name}</h5>
-                    <p className="text-xs text-slate-400 mt-0.5">{w.role}</p>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs font-mono">
-                    <span className="text-slate-400">{w.totalHours.toFixed(1)}h fichadas</span>
-                    <span className="font-extrabold text-amber-400 text-sm">
-                      {w.totalCost.toFixed(2)} €
-                    </span>
-                  </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Columna Izquierda: Tablas */}
+            <div className="space-y-8">
+              {/* Tabla Eventos */}
+              <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+                <div className="bg-[#1e3a8a]/50 px-6 py-4 border-b border-slate-800 flex items-center space-x-2">
+                  <TrendingUp className="w-5 h-5 text-indigo-400" />
+                  <h4 className="font-extrabold text-white text-base tracking-wider uppercase">
+                    DASHBOARDS GULA
+                  </h4>
                 </div>
-              ))}
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#1e3a8a] text-white">
+                    <tr>
+                      <th className="px-6 py-3 font-bold uppercase">Evento</th>
+                      <th className="px-6 py-3 font-bold uppercase text-right">Horas</th>
+                      <th className="px-6 py-3 font-bold uppercase text-right">Coste</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {eventsList.map((evt, idx) => (
+                      <tr key={idx} className={idx % 2 === 0 ? "bg-slate-800/20" : "bg-transparent"}>
+                        <td className="px-6 py-3 font-bold text-slate-200">{evt.eventName}</td>
+                        <td className="px-6 py-3 text-right text-slate-300">{parseFloat(evt.totalHours.toFixed(2))}</td>
+                        <td className="px-6 py-3 text-right font-bold text-amber-400">{evt.totalCost.toFixed(2)} €</td>
+                      </tr>
+                    ))}
+                    {eventsList.length === 0 && (
+                      <tr>
+                        <td colSpan="3" className="px-6 py-8 text-center text-slate-500">No hay eventos registrados.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Tabla Personal */}
+              <div className="bg-slate-900 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#1e3a8a] text-white">
+                    <tr>
+                      <th className="px-6 py-3 font-bold uppercase">Personal</th>
+                      <th className="px-6 py-3 font-bold uppercase text-right">Horas</th>
+                      <th className="px-6 py-3 font-bold uppercase text-right">Coste</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {balancesList.filter(w => w.totalHours > 0).map((w, idx) => (
+                      <tr key={idx} className={idx % 2 === 0 ? "bg-slate-800/20" : "bg-transparent"}>
+                        <td className="px-6 py-3 font-bold text-slate-200 flex items-center space-x-2">
+                          <span>{w.avatar}</span>
+                          <span>{w.name}</span>
+                        </td>
+                        <td className="px-6 py-3 text-right text-slate-300">{parseFloat(w.totalHours.toFixed(2))}</td>
+                        <td className="px-6 py-3 text-right font-bold text-amber-400">{w.totalCost.toFixed(2)} €</td>
+                      </tr>
+                    ))}
+                    {balancesList.filter(w => w.totalHours > 0).length === 0 && (
+                      <tr>
+                        <td colSpan="3" className="px-6 py-8 text-center text-slate-500">No hay horas de personal.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Columna Derecha: Gráficas */}
+            <div className="space-y-8">
+              {/* Gráfica Barras */}
+              <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
+                <h4 className="font-bold text-slate-400 text-center text-lg mb-6">Coste por Evento</h4>
+                <div className="h-64 w-full">
+                  {eventsList.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={eventsList} margin={{ top: 10, right: 10, left: -20, bottom: 40 }}>
+                        <XAxis 
+                          dataKey="eventName" 
+                          tick={{ fill: '#94a3b8', fontSize: 9 }}
+                          tickLine={false}
+                          axisLine={false}
+                          angle={-35}
+                          textAnchor="end"
+                          height={50}
+                        />
+                        <YAxis 
+                          tick={{ fill: '#94a3b8', fontSize: 10 }}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(value) => `${value}€`}
+                        />
+                        <Tooltip 
+                          cursor={{ fill: '#334155', opacity: 0.2 }}
+                          contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', padding: '12px' }}
+                          itemStyle={{ color: '#fbbf24', fontWeight: 'bold' }}
+                          formatter={(value) => [`${value.toFixed(2)}€`, 'Coste']}
+                        />
+                        <Bar dataKey="totalCost" radius={[4, 4, 0, 0]}>
+                          {eventsList.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill="#3b82f6" />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-slate-600 text-sm">
+                      Sin datos suficientes
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Gráfica Donut */}
+              <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl">
+                <h4 className="font-bold text-slate-400 text-center text-lg mb-2">Distribución de Horas</h4>
+                <div className="h-64 w-full relative">
+                  {balancesList.filter(w => w.totalHours > 0).length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={balancesList.filter(w => w.totalHours > 0)}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={90}
+                          paddingAngle={3}
+                          dataKey="totalHours"
+                          nameKey="name"
+                          label={({ percent }) => `${(percent * 100).toFixed(1)}%`}
+                          labelLine={false}
+                        >
+                          {balancesList.filter(w => w.totalHours > 0).map((entry, index) => {
+                            const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#8b5cf6', '#06b6d4', '#f59e0b', '#64748b', '#ec4899'];
+                            return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
+                          })}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', padding: '12px' }}
+                          itemStyle={{ color: '#fbbf24', fontWeight: 'bold' }}
+                          formatter={(value) => [`${parseFloat(value.toFixed(2))}h`, 'Horas']}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-slate-600 text-sm">
+                      Sin datos suficientes
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1424,21 +1784,30 @@ export default function PartnerDashboardView({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
-                {(activeWeekData.saturdaySpecial.weddings || []).map((w, idx) => (
-                  <div key={idx} className="bg-slate-950/90 p-5 rounded-2xl border border-slate-800 space-y-3 hover:border-amber-500/30 transition-all">
-                    <div className="flex items-start justify-between">
-                      <span className="font-extrabold text-amber-300 block text-sm sm:text-base font-['Outfit']">🏔️ {w.location}</span>
-                      {w.timeFrame && (
-                        <span className="text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {w.timeFrame}
-                        </span>
-                      )}
+                {(activeWeekData.saturdaySpecial.weddings || []).map((w, idx) => {
+                  const wAssigned = w.assigned || [];
+                  const matchesFilter = !selectedWorkerFilter || wAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
+
+                  return (
+                    <div key={idx} className={`p-5 rounded-2xl border space-y-3 transition-all ${
+                      !matchesFilter 
+                        ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-850' 
+                        : 'bg-slate-950/90 border-slate-800 hover:border-amber-500/30'
+                    }`}>
+                      <div className="flex items-start justify-between">
+                        <span className={`font-extrabold block text-sm sm:text-base font-['Outfit'] ${!matchesFilter ? 'text-amber-500/50' : 'text-amber-300'}`}>🏔️ {w.location}</span>
+                        {w.timeFrame && (
+                          <span className="text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {w.timeFrame}
+                          </span>
+                        )}
+                      </div>
+                      <span className={`block font-semibold ${!matchesFilter ? 'text-slate-400' : 'text-slate-200'}`}>{w.truck}</span>
+                      <p className={`text-xs leading-relaxed ${!matchesFilter ? 'text-slate-500' : 'text-slate-400'}`}>{w.details}</p>
                     </div>
-                    <span className="text-slate-200 block font-semibold">{w.truck}</span>
-                    <p className="text-xs text-slate-400 leading-relaxed">{w.details}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           )}
@@ -1453,8 +1822,15 @@ export default function PartnerDashboardView({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs sm:text-sm text-slate-300">
                 {(activeWeekData.sundayMonday.tasks || []).map((task, idx) => {
                   const taskText = typeof task === 'object' ? task.text : task;
+                  const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
+                  const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
+
                   return (
-                    <div key={idx} className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 leading-relaxed">
+                    <div key={idx} className={`p-4 rounded-2xl border leading-relaxed transition-all ${
+                      !matchesFilter 
+                        ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-850 text-slate-500' 
+                        : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                    }`}>
                       <span>{taskText}</span>
                       {typeof task === 'object' && task.timeFrame && (
                         <span className="ml-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 align-middle whitespace-nowrap">
@@ -1574,6 +1950,17 @@ export default function PartnerDashboardView({
                       </button>
                     )}
 
+                    {adminUnlocked && (
+                      <button
+                        onClick={() => { handleOpenNotifyModal(); setIsMobileDrawerOpen(false); }}
+                        disabled={isPushLoading}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                      >
+                        <Bell className={`w-4 h-4 shrink-0 ${isPushLoading ? 'animate-pulse' : ''}`} />
+                        <span>{isPushLoading ? 'Avisando...' : '🔔 Avisar Cambios'}</span>
+                      </button>
+                    )}
+
                     {adminUnlocked && onOpenWorkerEditor && (
                       <button
                         onClick={() => { onOpenWorkerEditor(); setIsMobileDrawerOpen(false); }}
@@ -1677,18 +2064,6 @@ export default function PartnerDashboardView({
       {/* Mobile Floating Bottom Navigation Bar (Thumb-Accessible) */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 px-3 py-1.5 flex items-center justify-around shadow-2xl safe-bottom">
         <button
-          onClick={() => handleTabClick('schedule')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
-            activeTab === 'schedule'
-              ? 'text-amber-400 font-extrabold scale-105'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Calendar className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Cuadrante</span>
-        </button>
-
-        <button
           onClick={() => handleTabClick('live')}
           className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all relative ${
             activeTab === 'live'
@@ -1698,6 +2073,18 @@ export default function PartnerDashboardView({
         >
           <Radio className="w-5 h-5 mb-0.5 text-rose-400 animate-pulse" />
           <span className="text-[10px]">En Vivo</span>
+        </button>
+
+        <button
+          onClick={() => handleTabClick('schedule')}
+          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
+            activeTab === 'schedule'
+              ? 'text-amber-400 font-extrabold scale-105'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Calendar className="w-5 h-5 mb-0.5" />
+          <span className="text-[10px]">Cuadrante</span>
         </button>
 
         <button
@@ -1732,6 +2119,73 @@ export default function PartnerDashboardView({
           <span className="text-[10px]">Menú</span>
         </button>
       </nav>
+      {/* Modales y Drawers (existentes arriba, pero este es el de Avisar Cambios) */}
+      {isNotifyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl flex flex-col">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900">
+              <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+                <Bell className="w-4 h-4 text-indigo-400" />
+                ¿A quién quieres avisar?
+              </h2>
+              <button onClick={() => setIsNotifyModalOpen(false)} className="text-slate-400 hover:text-white p-1 rounded-full hover:bg-slate-800 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="p-4 overflow-y-auto max-h-[60vh] space-y-2">
+              <p className="text-xs text-slate-400 mb-3">
+                Selecciona a los trabajadores que recibirán la notificación de cambios en su planning. Si no seleccionas a ninguno, se enviará a <strong>todos</strong>.
+              </p>
+              
+              <button 
+                onClick={() => setSelectedWorkersToNotify([])}
+                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-colors ${selectedWorkersToNotify.length === 0 ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300 font-bold' : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'}`}
+              >
+                <span>Avisar a Todos</span>
+                {selectedWorkersToNotify.length === 0 && <Check className="w-4 h-4" />}
+              </button>
+
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                {workersList.map(w => {
+                  const isSelected = selectedWorkersToNotify.includes(w.name);
+                  return (
+                    <button
+                      key={w.name}
+                      onClick={() => {
+                        setSelectedWorkersToNotify(prev => 
+                          prev.includes(w.name) ? prev.filter(n => n !== w.name) : [...prev, w.name]
+                        );
+                      }}
+                      className={`flex items-center justify-center gap-1.5 p-2 rounded-xl border text-[11px] font-bold transition-all ${isSelected ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300 shadow-md shadow-indigo-500/10' : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'}`}
+                    >
+                      <span>{w.avatar}</span>
+                      <span className="truncate">{w.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex gap-2">
+              <button 
+                onClick={() => setIsNotifyModalOpen(false)}
+                className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleSendNotification}
+                disabled={isPushLoading}
+                className="flex-1 px-4 py-2 bg-indigo-500 hover:bg-indigo-400 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 disabled:opacity-50 transition-colors"
+              >
+                <Bell className={`w-3.5 h-3.5 ${isPushLoading ? 'animate-pulse' : ''}`} />
+                {isPushLoading ? 'Enviando...' : 'Enviar Aviso'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

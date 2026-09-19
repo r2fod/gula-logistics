@@ -1,5 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Edit3, Save, Plus, Trash2, Calendar, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, Edit3, Save, Plus, Trash2, Calendar, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+function SortableTask({ id, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 'auto', opacity: isDragging ? 0.7 : 1 };
+  return (
+    <div ref={setNodeRef} style={style} className="flex gap-1.5 items-start bg-slate-900 border border-slate-700/90 rounded-xl p-2 sm:p-3 transition-all relative">
+      <div {...attributes} {...listeners} className="flex flex-col items-center gap-1 shrink-0 pt-0.5 cursor-grab active:cursor-grabbing">
+         <div className="w-6 h-6 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 transition-colors">
+            <GripVertical className="w-4 h-4" />
+         </div>
+      </div>
+      {children}
+    </div>
+  );
+}
+
 
 const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 
@@ -9,14 +28,27 @@ const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 // HH:MM y evita esos despistes. Mantenemos "Pendiente" como estado aparte
 // para tareas que de verdad no tienen hora todavía.
 function parseTimeFrame(tf) {
-  const m = /^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/.exec((tf || '').trim());
-  if (!m) return { start: '', end: '', pending: !!(tf && tf.trim()) };
-  const pad = (n) => n.padStart(2, '0');
-  return { start: `${pad(m[1])}:${m[2]}`, end: `${pad(m[3])}:${m[4]}`, pending: false };
+  tf = (tf || '').trim();
+  if (!tf) return { start: '', end: '', pending: false };
+  if (tf.toLowerCase() === 'pendiente') return { start: '', end: '', pending: true };
+
+  // Separar por el guion si existe
+  const parts = tf.split('-');
+  if (parts.length >= 2) {
+    return { start: parts[0].trim(), end: parts[1].trim(), pending: false };
+  } else {
+    // Si no hay guion, podría ser una hora única válida o texto libre
+    if (/^\d{1,2}:\d{2}$/.test(tf)) {
+      return { start: tf, end: '', pending: false };
+    }
+    // Si es texto libre que no es hora, se considera pendiente
+    return { start: '', end: '', pending: true };
+  }
 }
 
 function formatTimeFrame(start, end) {
-  return (start && end) ? `${start} - ${end}` : (start || end || '');
+  if (!start && !end) return '';
+  return `${start || ''}-${end || ''}`;
 }
 
 function TimeRangeEditor({ value, onChange }) {
@@ -54,6 +86,40 @@ function TimeRangeEditor({ value, onChange }) {
 }
 
 export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, workersList = [], onSaveWeekData }) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEndDnd = (event, dayKey) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = parseInt(active.id.split('-').pop(), 10);
+    const newIndex = parseInt(over.id.split('-').pop(), 10);
+
+    setLocalWeek(prev => {
+      const updated = { ...prev };
+      if (dayKey === 'sabado') {
+        const weddings = [...(updated.saturdaySpecial?.weddings || [])];
+        const [moved] = weddings.splice(oldIndex, 1);
+        weddings.splice(newIndex, 0, moved);
+        updated.saturdaySpecial.weddings = weddings;
+      } else if (dayKey === 'sundayMonday') {
+        const tasks = [...(updated.sundayMonday?.tasks || [])];
+        const [moved] = tasks.splice(oldIndex, 1);
+        tasks.splice(newIndex, 0, moved);
+        updated.sundayMonday.tasks = tasks;
+      } else {
+        const tasks = [...(updated.schedule[dayKey]?.tasks || [])];
+        const [moved] = tasks.splice(oldIndex, 1);
+        tasks.splice(newIndex, 0, moved);
+        updated.schedule[dayKey].tasks = tasks;
+      }
+      return updated;
+    });
+  };
+
   const [localWeek, setLocalWeek] = useState(null);
   const [activeDayId, setActiveDayId] = useState('martes');
   const wasOpenRef = useRef(false);
@@ -350,7 +416,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
   };
 
   const AssignedPicker = ({ assigned = [], onToggle }) => (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
       {workersList.map(w => {
         const isChecked = assigned.includes(w.name);
         return (
@@ -358,14 +424,14 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
             key={w.name}
             type="button"
             onClick={() => onToggle(w.name)}
-            className={`text-[10px] font-bold px-2 py-1 rounded-lg border transition-colors flex items-center gap-1 ${
+            className={`text-[10px] sm:text-[11px] font-bold px-1.5 py-1.5 sm:px-2 sm:py-2 rounded-lg border transition-colors flex items-center justify-center gap-1.5 ${
               isChecked
-                ? 'bg-amber-500 text-slate-950 border-amber-400'
-                : 'bg-slate-950 text-slate-400 border-slate-700 hover:border-slate-500'
+                ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/10'
+                : 'bg-slate-950 text-slate-400 border-slate-700/60 hover:border-slate-500 hover:bg-slate-900'
             }`}
           >
-            <span>{w.avatar}</span>
-            <span>{w.name}</span>
+            <span className="shrink-0">{w.avatar}</span>
+            <span className="truncate">{w.name}</span>
           </button>
         );
       })}
@@ -386,10 +452,10 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
       <div className="relative w-full max-w-6xl bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl text-white max-h-[94vh] flex flex-col">
         {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between shrink-0">
+        <div className="p-3 sm:p-6 border-b border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 p-0.5 shadow-lg">
               <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-amber-400">
@@ -502,7 +568,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                   </button>
                 </div>
                 
-                <div className="p-3 sm:p-4 space-y-3">
+                <div className="p-2 sm:p-4 space-y-3">
                   {currentTasks.map((task, idx) => {
                     const textValue = typeof task === 'object' ? task.text : task;
                     const timeValue = typeof task === 'object' ? (task.timeFrame || '') : '';
@@ -513,14 +579,14 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                     const truckValue = typeof task === 'object' ? (task.truck || '') : '';
 
                     return (
-                      <div key={idx} className="flex gap-2.5 items-start bg-slate-900 border border-slate-700/90 rounded-xl p-3 sm:p-3.5 transition-all">
+                      <div key={idx} className="flex gap-1.5 items-start bg-slate-900 border border-slate-700/90 rounded-xl p-2 sm:p-3 transition-all">
                         {/* Reorder Up/Down Column */}
                         <div className="flex flex-col items-center gap-1 shrink-0 pt-0.5">
                           <button
                             type="button"
                             disabled={idx === 0}
                             onClick={() => handleMoveTask(dayKey, idx, -1)}
-                            className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:hover:bg-slate-800 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
+                            className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:hover:bg-slate-800 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
                             title="Subir tarea"
                           >
                             <ChevronUp className="w-4 h-4" />
@@ -532,7 +598,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                             type="button"
                             disabled={idx === currentTasks.length - 1}
                             onClick={() => handleMoveTask(dayKey, idx, 1)}
-                            className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:hover:bg-slate-800 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
+                            className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:hover:bg-slate-800 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
                             title="Bajar tarea"
                           >
                             <ChevronDown className="w-4 h-4" />
@@ -540,12 +606,46 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                         </div>
 
                         <div className="flex-1 min-w-0 space-y-2">
-                          <textarea
-                            value={textValue}
-                            onChange={(e) => handleTaskChange(dayKey, idx, e.target.value)}
-                            placeholder="Descripción de la tarea..."
-                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500 resize-y min-h-[40px]"
-                          />
+                          {/* Event / Task Split Inputs */}
+                          {(() => {
+                            let eventName = '';
+                            let specificTask = textValue;
+                            if (textValue && textValue.includes(' - ')) {
+                              const parts = textValue.split(' - ');
+                              eventName = parts[0];
+                              specificTask = parts.slice(1).join(' - ');
+                            }
+
+                            const handleSplitChange = (newEv, newTk) => {
+                              const combined = newEv.trim() ? `${newEv} - ${newTk}` : newTk;
+                              handleTaskChange(dayKey, idx, combined);
+                            };
+
+                            return (
+                              <div className="flex flex-col gap-2">
+                                <div>
+                                  <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Nombre del Evento (Ej: Boda Soto)</label>
+                                  <input
+                                    type="text"
+                                    value={eventName}
+                                    onChange={(e) => handleSplitChange(e.target.value, specificTask)}
+                                    placeholder="Dejar vacío si es una Tarea General"
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-amber-300 font-bold focus:outline-none focus:border-amber-500"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Descripción de la Tarea Específica</label>
+                                  <textarea
+                                    rows={2}
+                                    value={specificTask}
+                                    onChange={(e) => handleSplitChange(eventName, e.target.value)}
+                                    placeholder="Ej: Carga de camión y montaje de carpas..."
+                                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500 resize-y min-h-[60px]"
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })()}
                           <div className="flex flex-col sm:flex-row gap-2">
                             <TimeRangeEditor
                               value={timeValue}
@@ -598,7 +698,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                         <button
                           type="button"
                           onClick={() => handleDeleteTask(dayKey, idx)}
-                          className="p-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/20 transition-colors shrink-0 flex items-center justify-center mt-1"
+                          className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/20 transition-colors shrink-0 flex items-center justify-center mt-1"
                           title="Eliminar tarea"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -648,16 +748,16 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                 </button>
               </div>
 
-              <div className="p-3 sm:p-4 space-y-3">
+              <div className="p-2 sm:p-4 space-y-3">
                 {(localWeek.saturdaySpecial.weddings || []).map((w, idx) => (
-                  <div key={idx} className="flex gap-2.5 items-start bg-slate-900 border border-slate-800 rounded-xl p-3 sm:p-3.5">
+                  <div key={idx} className="flex gap-1.5 items-start bg-slate-900 border border-slate-800 rounded-xl p-2 sm:p-3">
                     {/* Reorder Up/Down */}
                     <div className="flex flex-col items-center gap-1 shrink-0 pt-0.5">
                       <button
                         type="button"
                         disabled={idx === 0}
                         onClick={() => handleMoveWedding(idx, -1)}
-                        className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
+                        className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
                         title="Subir evento"
                       >
                         <ChevronUp className="w-4 h-4" />
@@ -669,7 +769,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                         type="button"
                         disabled={idx === (localWeek.saturdaySpecial.weddings || []).length - 1}
                         onClick={() => handleMoveWedding(idx, 1)}
-                        className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
+                        className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
                         title="Bajar evento"
                       >
                         <ChevronDown className="w-4 h-4" />
@@ -741,7 +841,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                     <button
                       type="button"
                       onClick={() => handleDeleteWedding(idx)}
-                      className="p-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/20 transition-colors shrink-0 flex items-center justify-center mt-1"
+                      className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/20 transition-colors shrink-0 flex items-center justify-center mt-1"
                       title="Eliminar evento"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -785,7 +885,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                 </button>
               </div>
 
-              <div className="p-3 sm:p-4 space-y-3">
+              <div className="p-2 sm:p-4 space-y-3">
                 {(localWeek.sundayMonday.tasks || []).map((task, idx) => {
                   const textValue = typeof task === 'object' ? task.text : task;
                   const timeValue = typeof task === 'object' ? (task.timeFrame || '') : '';
@@ -796,14 +896,14 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                   const truckValue = typeof task === 'object' ? (task.truck || '') : '';
 
                   return (
-                    <div key={idx} className="flex gap-2.5 items-start bg-slate-900 border border-slate-700 rounded-xl p-3 sm:p-3.5">
+                    <div key={idx} className="flex gap-1.5 items-start bg-slate-900 border border-slate-700 rounded-xl p-2 sm:p-3">
                       {/* Reorder Up/Down */}
                       <div className="flex flex-col items-center gap-1 shrink-0 pt-0.5">
                         <button
                           type="button"
                           disabled={idx === 0}
                           onClick={() => handleMoveTask('sundayMonday', idx, -1)}
-                          className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
+                          className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
                           title="Subir tarea"
                         >
                           <ChevronUp className="w-4 h-4" />
@@ -815,7 +915,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                           type="button"
                           disabled={idx === (localWeek.sundayMonday.tasks || []).length - 1}
                           onClick={() => handleMoveTask('sundayMonday', idx, 1)}
-                          className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
+                          className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
                           title="Bajar tarea"
                         >
                           <ChevronDown className="w-4 h-4" />
@@ -824,10 +924,11 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
 
                       <div className="flex-1 min-w-0 space-y-2">
                         <textarea
+                          rows={3}
                           value={textValue}
                           onChange={(e) => handleTaskChange('sundayMonday', idx, e.target.value)}
                           placeholder="Descripción de la tarea..."
-                          className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 resize-y min-h-[40px]"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-emerald-500 resize-y min-h-[80px]"
                         />
                         <div className="flex flex-col sm:flex-row gap-2">
                           <TimeRangeEditor
@@ -881,7 +982,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                       <button
                         type="button"
                         onClick={() => handleDeleteTask('sundayMonday', idx)}
-                        className="p-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/20 transition-colors shrink-0 flex items-center justify-center mt-1"
+                        className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/20 transition-colors shrink-0 flex items-center justify-center mt-1"
                         title="Eliminar tarea"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -905,7 +1006,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
         </div>
 
         {/* Footer */}
-        <div className="p-4 sm:p-6 border-t border-slate-800 shrink-0">
+        <div className="p-3 sm:p-6 border-t border-slate-800 shrink-0">
           <button 
             onClick={handleSave}
             className="w-full py-3.5 sm:py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-95 text-slate-950 font-black text-sm shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2"

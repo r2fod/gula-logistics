@@ -5,7 +5,8 @@ import {
   Copy,
   X,
   MessageCircle,
-  ShieldCheck
+  ShieldCheck,
+  ExternalLink
 } from 'lucide-react';
 
 import WeekManagerModal from './components/WeekManagerModal';
@@ -18,6 +19,7 @@ import AdminTaskEditorModal from './components/AdminTaskEditorModal';
 
 import WorkerView from './components/WorkerView';
 import PublicView from './components/PublicView';
+import BackgroundAnimation from './components/BackgroundAnimation';
 import AdminLoginModal from './components/AdminLoginModal';
 import { logisticsData as BASE_DATA } from './data/logisticsData';
 import {
@@ -31,7 +33,8 @@ import {
   logoutAdmin,
   fetchWeeksFromAPI,
   saveWeeksToAPI,
-  patchTaskCompletionInAPI
+  patchTaskCompletionInAPI,
+  saveWorkerBalanceToAPI
 } from './data/apiService';
 import { initialBalancesData } from './data/balancesData';
 import { getActiveShiftForWorker } from './data/shiftCalculations';
@@ -109,6 +112,11 @@ export default function App() {
     };
     setBalancesData(updatedBalances);
     localStorage.setItem('gula_balances_v1', JSON.stringify(updatedBalances));
+
+    // 3. Persist to API so it doesn't get wiped by fetchBalancesFromAPI
+    saveWorkerBalanceToAPI(newBalanceProfile.id, newBalanceProfile).catch(err => {
+      console.warn("Failed to persist new worker balance to API", err);
+    });
   };
 
   // Quita a alguien del roster operativo (selectores de fichaje/asignación).
@@ -354,7 +362,7 @@ export default function App() {
   };
 
   const handleDeleteClockEntry = (entryId) => {
-    const updated = clockEntries.filter(e => e.id !== entryId);
+    const updated = clockEntries.map(e => e.id === entryId ? { ...e, deleted: true } : e);
     setClockEntries(updated);
     try {
       localStorage.setItem('gula_clock_entries_v1', JSON.stringify(updated));
@@ -362,6 +370,23 @@ export default function App() {
       console.error(e);
     }
     deleteClockEntryInAPI(entryId);
+  };
+
+  const handleRestoreClockEntry = (entryId) => {
+    const updated = clockEntries.map(e => e.id === entryId ? { ...e, deleted: false } : e);
+    setClockEntries(updated);
+    try {
+      localStorage.setItem('gula_clock_entries_v1', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+    
+    // API Call
+    const adminToken = localStorage.getItem('gula_admin_token');
+    fetch(`${API_URL}/clock/${entryId}/restore`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    }).catch(err => console.error(err));
   };
 
   const handleClearClockEntries = () => {
@@ -494,19 +519,25 @@ export default function App() {
     setIsAdminUnlocked(false);
   };
 
+  const activeClockEntries = clockEntries.filter(e => !e.deleted);
+  const deletedClockEntries = clockEntries.filter(e => e.deleted);
+
   if (activeWorker) {
     return (
-      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans selection:bg-amber-500 selection:text-slate-950">
+      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans selection:bg-amber-500 selection:text-slate-950 relative">
+        <BackgroundAnimation viewMode="worker" />
         <WorkerView
           workerName={activeWorker}
           workersList={workersList}
           activeWeekData={activeWeek}
-          clockEntries={clockEntries}
+          clockEntries={activeClockEntries}
           isAdmin={isAdmin}
           onToggleTask={(dayKey, taskIdx) => toggleTask(dayKey, taskIdx)}
           onClockEntryCreated={handleClockEntryCreated}
           onUpdateClockEntry={handleUpdateClockEntry}
           onDeleteClockEntry={handleDeleteClockEntry}
+          onRestoreClockEntry={handleRestoreClockEntry}
+          deletedClockEntries={deletedClockEntries}
           onOpenAdminDashboard={() => {
             if (isAdmin) {
               // Ya autenticado: ir directo al panel, sin pedir contraseña
@@ -548,8 +579,9 @@ export default function App() {
   // controls, regardless of whether this browser also has an admin session.
   if (isPublicPreviewMode && !activeWorker) {
     return (
-      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans">
-        <div className="w-full space-y-4">
+      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans relative">
+        <BackgroundAnimation viewMode="public" />
+        <div className="w-full space-y-4 relative z-10">
           <button
             onClick={() => { setIsPublicPreviewMode(false); clearUrlParams(); }}
             className="text-xs bg-slate-900 hover:bg-slate-800 text-slate-300 px-3.5 py-2 rounded-xl font-semibold transition-colors border border-slate-800 flex items-center gap-1.5"
@@ -560,7 +592,7 @@ export default function App() {
           <PublicView
             data={activeWeek}
             workersList={workersList}
-            clockEntries={clockEntries}
+            clockEntries={activeClockEntries}
             onToggleTask={() => {}}
             onClockEntryCreated={handleClockEntryCreated}
             onOpenClockModal={(workerName) => {
@@ -575,7 +607,7 @@ export default function App() {
           onClose={() => setIsClockInModalOpen(false)}
           workersList={workersList}
           initialWorkerName={activeWorker}
-          clockEntries={clockEntries}
+          clockEntries={activeClockEntries}
           onClockEntryCreated={handleClockEntryCreated}
         />
       </div>
@@ -591,12 +623,13 @@ export default function App() {
   // abrirse) veía igualmente el Cuadrante/Saldos completos sin login.
   if (!isPartnerMode && !isAdmin) {
     return (
-      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans">
-        <div className="w-full space-y-4">
+      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans relative">
+        <BackgroundAnimation viewMode="public" />
+        <div className="w-full space-y-4 relative z-10">
           <PublicView
             data={activeWeek}
             workersList={workersList}
-            clockEntries={clockEntries}
+            clockEntries={activeClockEntries}
             onToggleTask={() => {}}
             onOpenLogin={() => setIsAdminLoginOpen(true)}
             onClockEntryCreated={handleClockEntryCreated}
@@ -612,7 +645,7 @@ export default function App() {
           onClose={() => setIsClockInModalOpen(false)}
           workersList={workersList}
           initialWorkerName={activeWorker}
-          clockEntries={clockEntries}
+          clockEntries={activeClockEntries}
           onClockEntryCreated={handleClockEntryCreated}
         />
 
@@ -629,14 +662,15 @@ export default function App() {
   }
 
   return (
-    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950">
+    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950 relative">
+      <BackgroundAnimation viewMode="partner_planning" />
       <PartnerDashboardView
         activeWeekData={activeWeek}
         allWeeks={allWeeks}
         activeWeekId={activeWeekId}
         onSelectWeek={setActiveWeekId}
         workersList={workersList}
-        clockEntries={clockEntries}
+        clockEntries={activeClockEntries}
         isAdmin={isAdmin}
         balancesData={balancesData}
         setBalancesData={setBalancesData}
@@ -665,7 +699,7 @@ export default function App() {
         onClose={() => setIsClockInModalOpen(false)}
         workersList={workersList}
         initialWorkerName={activeWorker}
-        clockEntries={clockEntries}
+        clockEntries={activeClockEntries}
         onClockEntryCreated={handleClockEntryCreated}
       />
 
@@ -678,6 +712,7 @@ export default function App() {
         isAdmin={isAdmin}
         onUpdateEntry={handleUpdateClockEntry}
         onDeleteEntry={handleDeleteClockEntry}
+        onRestoreEntry={handleRestoreClockEntry}
         onClockEntryCreated={handleClockEntryCreated}
         activeWeekData={activeWeek}
       />
@@ -736,10 +771,10 @@ export default function App() {
                 />
               </div>
 
-              <div className="flex items-center space-x-2 pt-1">
+              <div className="flex flex-col sm:flex-row gap-2 pt-1 w-full">
                 <button
                   onClick={copyPartnerSecureLink}
-                  className="flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center justify-center space-x-1.5 transition-colors border border-slate-700 whitespace-nowrap"
+                  className="w-full sm:flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-colors border border-slate-700 whitespace-nowrap"
                 >
                   {copiedPartnerLink ? (
                     <>
@@ -756,7 +791,7 @@ export default function App() {
 
                 <button
                   onClick={sharePartnerLinkWhatsApp}
-                  className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20 whitespace-nowrap"
+                  className="w-full sm:flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-emerald-600/20 whitespace-nowrap"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                   <span>WhatsApp Socias</span>
@@ -765,11 +800,11 @@ export default function App() {
             </div>
 
             {/* Workers List */}
-            <div className="space-y-3 max-h-[50vh] overflow-y-auto overflow-x-hidden pr-1">
+            <div className="space-y-3 max-h-[50vh] overflow-y-auto overflow-x-hidden pr-1 no-scrollbar">
               <span className="text-xs font-semibold text-slate-400 block uppercase tracking-wider">Enlaces de Trabajadores</span>
               {workersList.map((w, idx) => (
                 <div key={idx} className="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 overflow-hidden">
-                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                  <div className="flex items-center space-x-3 min-w-0 flex-1 w-full">
                     <span className="text-2xl shrink-0">{w.avatar}</span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center space-x-2">
@@ -784,10 +819,10 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2 w-full sm:w-auto shrink-0">
+                  <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full sm:w-auto shrink-0">
                     <button
                       onClick={() => copyWorkerLink(w.name)}
-                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center space-x-1.5 transition-colors whitespace-nowrap shrink-0"
+                      className="col-span-2 sm:col-span-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
                     >
                       {copiedWorker === w.name ? (
                         <>
@@ -804,10 +839,18 @@ export default function App() {
 
                     <button
                       onClick={() => shareViaWhatsApp(w.name)}
-                      className="flex-1 sm:flex-none px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center space-x-1.5 transition-colors shadow-md shadow-emerald-600/20 whitespace-nowrap shrink-0"
+                      className="col-span-1 sm:col-span-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-emerald-600/20 whitespace-nowrap shrink-0"
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
                       <span>WhatsApp</span>
+                    </button>
+
+                    <button
+                      onClick={() => window.open(getWorkerLink(w.name), '_blank')}
+                      className="col-span-1 sm:col-span-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-blue-600/20 whitespace-nowrap shrink-0"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Abrir</span>
                     </button>
                   </div>
                 </div>

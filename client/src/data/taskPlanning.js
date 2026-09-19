@@ -8,6 +8,7 @@
 // vez de repetir el `dayKey === 'domingo'` a mano.
 export function getTaskListForDay(weekData, dayKey) {
   if (!weekData) return [];
+  if (dayKey === 'sabado') return weekData.saturdaySpecial?.weddings || [];
   return dayKey === 'domingo'
     ? (weekData.sundayMonday?.tasks || [])
     : (weekData.schedule?.[dayKey]?.tasks || []);
@@ -19,7 +20,10 @@ export function getTaskListForDay(weekData, dayKey) {
 // etc.), así que el índice visible ahí nunca es el índice real en Mongo.
 export function resolveTaskIndexByText(weekData, dayKey, taskText) {
   const list = getTaskListForDay(weekData, dayKey);
-  const idx = list.findIndex(t => (typeof t === 'object' ? t.text : t) === taskText);
+  const idx = list.findIndex(t => {
+    if (dayKey === 'sabado') return `Boda: ${t.location} (${t.truck})` === taskText || t.location === taskText;
+    return (typeof t === 'object' ? t.text : t) === taskText;
+  });
   return idx !== -1 ? idx : null;
 }
 
@@ -28,6 +32,9 @@ export function resolveTaskIndexByText(weekData, dayKey, taskText) {
 // es domingo/lunes (bajo la clave `sundayMonday`) o un día normal (bajo
 // `schedule[dayKey]`). Combinar con `{ ...weekData, ...patch }`.
 export function buildTaskListPatch(weekData, dayKey, updatedList) {
+  if (dayKey === 'sabado') {
+    return { saturdaySpecial: { ...weekData.saturdaySpecial, weddings: updatedList } };
+  }
   return dayKey === 'domingo'
     ? { sundayMonday: { ...weekData.sundayMonday, tasks: updatedList } }
     : { schedule: { ...weekData.schedule, [dayKey]: { ...weekData.schedule?.[dayKey], tasks: updatedList } } };
