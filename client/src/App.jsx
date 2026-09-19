@@ -57,94 +57,39 @@ const BASE_WEEK_3 = {
   ...BASE_DATA
 };
 
+import { useWorkers } from './hooks/useWorkers';
+import { useBalances } from './hooks/useBalances';
+import { useClockings } from './hooks/useClockings';
+import { useWeeks } from './hooks/useWeeks';
+
 export default function App() {
-  const [workersList, setWorkersList] = useState(() => {
-    try {
-      const saved = localStorage.getItem('gula_workers_v1');
-      return saved ? JSON.parse(saved) : DEFAULT_WORKERS_LIST;
-    } catch {
-      return DEFAULT_WORKERS_LIST;
-    }
-  });
+  const { workersList, setWorkersList, handleRemoveWorker } = useWorkers();
+  const { balancesData, setBalancesData, handleAddWorker } = useBalances(workersList, setWorkersList);
+  
+  const {
+    allWeeks,
+    setAllWeeks,
+    activeWeekId,
+    setActiveWeekId,
+    activeWeek,
+    handleUpdateActiveWeek,
+    toggleTask,
+    markTaskCompleted,
+    handleCreateWeek,
+    handleApplyGeminiSchedule
+  } = useWeeks();
 
-  const [balancesData, setBalancesData] = useState(() => {
-    try {
-      const saved = localStorage.getItem('gula_balances_v1');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && Array.isArray(parsed.workers) && parsed.workers.some(w => (w.breakdown && w.breakdown.length > 0) || (w.currentBalance && w.currentBalance !== 0))) {
-          return parsed;
-        }
-      }
-      return initialBalancesData;
-    } catch {
-      return initialBalancesData;
-    }
-  });
-
-  const handleAddWorker = (newWorker) => {
-    // 1. Añadir a la lista de trabajadores
-    const updatedWorkers = [...workersList, newWorker];
-    setWorkersList(updatedWorkers);
-    localStorage.setItem('gula_workers_v1', JSON.stringify(updatedWorkers));
-
-    // 2. Añadir perfil de saldo automático
-    const newBalanceProfile = {
-      id: newWorker.name.toLowerCase().replace(/\s+/g, '-'),
-      name: newWorker.name,
-      role: newWorker.role,
-      avatar: newWorker.avatar || "👤",
-      status: "Sin saldo",
-      statusType: "neutral",
-      currentBalance: 0.00,
-      agreements: [
-        "Extra a 10,00 € / hora (Por Defecto)"
-      ],
-      breakdown: [
-        { concept: "Alta inicial en el sistema", amount: 0.00, isPositive: true }
-      ],
-      notes: "Añadido manualmente al sistema."
-    };
-
-    const updatedBalances = {
-      ...balancesData,
-      workers: [...(balancesData.workers || []), newBalanceProfile]
-    };
-    setBalancesData(updatedBalances);
-    localStorage.setItem('gula_balances_v1', JSON.stringify(updatedBalances));
-
-    // 3. Persist to API so it doesn't get wiped by fetchBalancesFromAPI
-    saveWorkerBalanceToAPI(newBalanceProfile.id, newBalanceProfile).catch(err => {
-      console.warn("Failed to persist new worker balance to API", err);
-    });
-  };
-
-  // Quita a alguien del roster operativo (selectores de fichaje/asignación).
-  // No borra su ficha en Saldos & Acuerdos ni sus fichajes históricos —
-  // eso es un registro financiero, se mantiene aunque ya no esté activo.
-  const handleRemoveWorker = (workerName) => {
-    const updatedWorkers = workersList.filter(w => w.name !== workerName);
-    setWorkersList(updatedWorkers);
-    localStorage.setItem('gula_workers_v1', JSON.stringify(updatedWorkers));
-  };
-
-  const [allWeeks, setAllWeeks] = useState(() => {
-    try {
-      const saved = localStorage.getItem('gula_logistics_all_weeks_v10');
-      return saved ? JSON.parse(saved) : { week_3: BASE_WEEK_3 };
-    } catch {
-      return { week_3: BASE_WEEK_3 };
-    }
-  });
-
-  const [clockEntries, setClockEntries] = useState(() => {
-    try {
-      const saved = localStorage.getItem('gula_clock_entries_v1');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const {
+    clockEntries,
+    setClockEntries,
+    activeClockEntries,
+    deletedClockEntries,
+    handleClockEntryCreated,
+    handleUpdateClockEntry,
+    handleDeleteClockEntry,
+    handleRestoreClockEntry,
+    handleClearClockEntries
+  } = useClockings(markTaskCompleted);
 
   const [activeWeekId, setActiveWeekId] = useState('week_3');
   const [activeWorker, setActiveWorker] = useState(null);
@@ -293,179 +238,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Solo actualiza el estado local (React + localStorage), sin tocar el
-  // servidor — para los casos donde el guardado real se hace aparte con un
-  // endpoint más estrecho (ver toggleTask/markTaskCompleted).
-  const applyLocalWeeksState = (newWeeks) => {
-    setAllWeeks(newWeeks);
-    try {
-      localStorage.setItem('gula_logistics_all_weeks_v10', JSON.stringify(newWeeks));
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
-  // Reemplaza el documento COMPLETO de la semana en el servidor (requiere
-  // admin) — usar solo para guardados masivos de verdad (editor de tareas,
-  // crear/clonar semana, aplicar plan de Gemini). Para marcar una tarea
-  // como hecha, usar patchTaskCompletionInAPI vía toggleTask/markTaskCompleted.
-  //
-  // El cambio se aplica igualmente en local aunque falle el guardado real
-  // (para no perder lo escrito), pero se avisa siempre que el servidor lo
-  // rechace — si no, el cambio parece guardado y desaparece solo en el
-  // siguiente refresco de 20s sin explicación (p.ej. sesión de admin
-  // caducada o revocada tras cambiar la contraseña).
-  const updateWeeks = async (newWeeks) => {
-    applyLocalWeeksState(newWeeks);
-    const result = await saveWeeksToAPI(newWeeks);
-    if (!result) {
-      alert('⚠️ No se pudo guardar en el servidor (posible sesión de administrador caducada). El cambio se ve aquí pero puede desaparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite el cambio.');
-    }
-  };
-
-  const handleUpdateActiveWeek = (updatedWeekData) => {
-    const newWeeks = { ...allWeeks, [activeWeekId]: updatedWeekData };
-    updateWeeks(newWeeks);
-  };
-
-  const handleClockEntryCreated = (newEntry) => {
-    const updated = [...clockEntries, newEntry];
-    setClockEntries(updated);
-    try {
-      localStorage.setItem('gula_clock_entries_v1', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
-    saveClockEntryToAPI(newEntry);
-
-    // Al fichar salida de una tarea concreta (fichada con taskRef desde
-    // "Fichar Esta Tarea" / "Fichar Entrada Ahora"), marcarla como hecha
-    // sola en el planning — se busca en los fichajes previos a este (el
-    // array `clockEntries` de este cierre, sin el `newEntry` todavía).
-    if (newEntry.type === 'salida') {
-      const closingShift = getActiveShiftForWorker(clockEntries, newEntry.workerName);
-      if (closingShift?.taskRef) {
-        markTaskCompleted(closingShift.taskRef.dayKey, closingShift.taskRef.taskIndex);
-      }
-    }
-  };
-
-  const handleUpdateClockEntry = (updatedEntry) => {
-    const updated = clockEntries.map(e => e.id === updatedEntry.id ? updatedEntry : e);
-    setClockEntries(updated);
-    try {
-      localStorage.setItem('gula_clock_entries_v1', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
-    updateClockEntryInAPI(updatedEntry);
-  };
-
-  const handleDeleteClockEntry = (entryId) => {
-    const updated = clockEntries.map(e => e.id === entryId ? { ...e, deleted: true } : e);
-    setClockEntries(updated);
-    try {
-      localStorage.setItem('gula_clock_entries_v1', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
-    deleteClockEntryInAPI(entryId);
-  };
-
-  const handleRestoreClockEntry = (entryId) => {
-    const updated = clockEntries.map(e => e.id === entryId ? { ...e, deleted: false } : e);
-    setClockEntries(updated);
-    try {
-      localStorage.setItem('gula_clock_entries_v1', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
-    
-    // API Call
-    const adminToken = localStorage.getItem('gula_admin_token');
-    fetch(`${API_URL}/clock/${entryId}/restore`, {
-      method: 'PUT',
-      headers: { 'Authorization': `Bearer ${adminToken}` }
-    }).catch(err => console.error(err));
-  };
-
-  const handleClearClockEntries = () => {
-    setClockEntries([]);
-    localStorage.removeItem('gula_clock_entries_v1');
-    clearAllClockEntriesInAPI();
-  };
-
-  const activeWeek = allWeeks[activeWeekId] || BASE_WEEK_3;
-
-  // Toggle tasks. dayKey 'domingo' es especial: agrupa las tareas de
-  // domingo Y lunes bajo sundayMonday.tasks (no schedule.domingo, que ni
-  // existe) — resuelto por taskPlanning.js, la única fuente de verdad sobre
-  // dónde vive la lista de tareas de un día (ver comentario ahí).
-  // Guarda solo en el servidor con PATCH /weeks/:weekId/tasks — no requiere
-  // admin (a diferencia de saveWeeksToAPI/updateWeeks), así que es seguro
-  // llamarlo desde la vista de un trabajador sin sesión.
-  const toggleTask = (dayKey, taskIdx) => {
-    const list = [...getTaskListForDay(activeWeek, dayKey)];
-    const taskItem = list[taskIdx];
-    if (taskItem === undefined) return;
-    const newCompleted = typeof taskItem === 'object' ? !taskItem.completed : true;
-    if (typeof taskItem === 'object') {
-      taskItem.completed = newCompleted;
-    } else {
-      list[taskIdx] = { text: taskItem, completed: newCompleted };
-    }
-    applyLocalWeeksState({ ...allWeeks, [activeWeekId]: { ...activeWeek, ...buildTaskListPatch(activeWeek, dayKey, list) } });
-    patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, newCompleted);
-  };
-
-  // Marca una tarea como hecha (nunca la desmarca) — usado al fichar salida
-  // de una tarea concreta, para no tener que ir luego a tildarla a mano.
-  const markTaskCompleted = (dayKey, taskIdx) => {
-    const list = [...getTaskListForDay(activeWeek, dayKey)];
-    const taskItem = list[taskIdx];
-    if (taskItem === undefined) return;
-    if (typeof taskItem === 'object') {
-      if (taskItem.completed) return;
-      taskItem.completed = true;
-    } else {
-      list[taskIdx] = { text: taskItem, completed: true };
-    }
-    applyLocalWeeksState({ ...allWeeks, [activeWeekId]: { ...activeWeek, ...buildTaskListPatch(activeWeek, dayKey, list) } });
-    patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, true);
-  };
-
-  // Create new week
-  const handleCreateWeek = ({ name, dateRange, cloneCurrent }) => {
-    const newId = `week_${Date.now()}`;
-    const template = cloneCurrent ? JSON.parse(JSON.stringify(activeWeek)) : JSON.parse(JSON.stringify(BASE_WEEK_3));
-    
-    const newWeekObj = {
-      ...template,
-      id: newId,
-      name,
-      meta: {
-        ...template.meta,
-        week: name,
-        dateRange,
-        status: "Operativa Activa"
-      }
-    };
-
-    updateWeeks({ ...allWeeks, [newId]: newWeekObj });
-    setActiveWeekId(newId);
-  };
-
-  // Apply Gemini AI Schedule
-  const handleApplyGeminiSchedule = (aiGeneratedJson) => {
-    const updatedWeek = {
-      ...activeWeek,
-      meta: { ...activeWeek.meta, ...aiGeneratedJson.meta },
-      schedule: aiGeneratedJson.schedule || activeWeek.schedule,
-      saturdaySpecial: aiGeneratedJson.saturdaySpecial || activeWeek.saturdaySpecial,
-      sundayMonday: aiGeneratedJson.sundayMonday || activeWeek.sundayMonday
-    };
-    updateWeeks({ ...allWeeks, [activeWeekId]: updatedWeek });
-  };
 
   // Link Generators
   const getWorkerLink = (workerName) => {
