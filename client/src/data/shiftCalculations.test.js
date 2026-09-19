@@ -74,6 +74,9 @@ describe('getActiveShiftForWorker', () => {
 
 describe('pairShiftsFromEntries', () => {
   it('empareja entrada+salida y calcula duración y coste con la tarifa Extra (10€/h)', () => {
+    // El pago se redondea a la hora completa (para pagar en billetes, no en
+    // céntimos): desde 30min inclusive redondea arriba, por debajo abajo.
+    // 2h30m -> 3h -> 30€ (Math.round hace "redondeo estándar": .5 sube).
     const entries = [
       entry({ id: '1', workerName: 'Persona2', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
       entry({ id: '2', workerName: 'Persona2', type: 'salida', timestamp: '2026-09-10T10:30:00.000Z' }),
@@ -85,11 +88,21 @@ describe('pairShiftsFromEntries', () => {
       workerName: 'Persona2',
       isSalaried: false,
       rate: 10,
-      durationFormatted: '2h 30m',
+      durationFormatted: '3h 0m',
     });
-    expect(shifts[0].durationHours).toBeCloseTo(2.5);
-    expect(shifts[0].cost).toBeCloseTo(25);
+    expect(shifts[0].durationHours).toBe(3);
+    expect(shifts[0].cost).toBe(30);
     expect(activeShifts).toEqual({});
+  });
+
+  it('redondea hacia abajo cuando faltan más de 30min para la hora siguiente', () => {
+    const entries = [
+      entry({ id: '1', workerName: 'Persona2', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
+      entry({ id: '2', workerName: 'Persona2', type: 'salida', timestamp: '2026-09-10T10:20:00.000Z' }), // 2h20m
+    ];
+    const { shifts } = pairShiftsFromEntries(entries);
+    expect(shifts[0].durationHours).toBe(2);
+    expect(shifts[0].cost).toBe(20);
   });
 
   it('usa la tarifa Nómina (14€/h) para Persona4 y Persona8', () => {
@@ -165,13 +178,38 @@ describe('aggregateShiftsByWorker', () => {
     expect(result.Persona4).toMatchObject({ totalHours: 0, totalCost: 0, completedShifts: 0, rate: 14 });
   });
 
-  it('suma horas, coste y nº de turnos por trabajador', () => {
+  it('suma horas, coste y nº de turnos por trabajador (turnos en días distintos)', () => {
+    // startDate distinto en cada uno: si coincidiera, aggregateShiftsByWorker
+    // los agruparía como "Jornada Partida" (ver test de abajo) y
+    // completedShifts contaría 1, no 2.
     const shifts = [
-      { workerName: 'Persona2', durationHours: 2, cost: 20 },
-      { workerName: 'Persona2', durationHours: 3, cost: 30 },
+      { workerName: 'Persona2', durationHours: 2, cost: 20, startDate: '10/09/2026', startTime: '08:00', endTime: '10:00' },
+      { workerName: 'Persona2', durationHours: 3, cost: 30, startDate: '11/09/2026', startTime: '08:00', endTime: '11:00' },
     ];
     const result = aggregateShiftsByWorker(shifts, workersList);
     expect(result.Persona2).toMatchObject({ totalHours: 5, totalCost: 50, completedShifts: 2 });
+  });
+
+  it('agrupa turnos del mismo día como "Jornada Partida" en una sola fila, sumando horas y coste', () => {
+    // Un trabajador que ficha, sale a comer y vuelve a fichar el mismo día:
+    // dos turnos con el mismo startDate deben verse como un solo bloque en
+    // Saldos & Acuerdos (aunque las horas totales del trabajador sí suman
+    // ambos), con el rango de cada tramo guardado en `ranges`.
+    const shifts = [
+      { workerName: 'Persona2', durationHours: 2, cost: 20, startDate: '10/09/2026', startTime: '08:00:00', endTime: '10:00:00' },
+      { workerName: 'Persona2', durationHours: 1, cost: 10, startDate: '10/09/2026', startTime: '15:00:00', endTime: '16:00:00' },
+    ];
+    const result = aggregateShiftsByWorker(shifts, workersList);
+    expect(result.Persona2.completedShifts).toBe(1);
+    expect(result.Persona2.totalHours).toBe(3);
+    expect(result.Persona2.totalCost).toBe(30);
+    expect(result.Persona2.shifts).toHaveLength(1);
+    expect(result.Persona2.shifts[0]).toMatchObject({
+      durationHours: 3,
+      cost: 30,
+      endTime: '16:00:00', // se queda con el último tramo de salida
+      ranges: ['08:00:00 a 10:00:00', '15:00:00 a 16:00:00'],
+    });
   });
 
   it('ignora turnos de alguien que ya no está en workersList (huérfanos), sin romper', () => {
