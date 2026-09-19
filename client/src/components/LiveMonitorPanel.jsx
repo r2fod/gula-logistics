@@ -46,6 +46,20 @@ export default function LiveMonitorPanel({
     return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
   };
 
+  // Las bodas de sábado (saturdaySpecial.weddings, ver getTaskListForDay en
+  // taskPlanning.js) no tienen campo `.text` como las tareas normales —
+  // tienen `location`/`truck`. Sin este helper, `t.text` salía `undefined`
+  // para una boda y rompía tanto el filtrado por texto (`.toLowerCase()` de
+  // `undefined` lanza) como lo que se mostraba en "Actividad / Tarea
+  // Asignada" (quedaba en blanco para cualquiera fichado en un turno
+  // genérico y asignado a una boda un sábado).
+  const getTaskDisplayText = (t) => {
+    if (typeof t !== 'object' || t === null) return t || '';
+    if (typeof t.text === 'string') return t.text;
+    if (t.location) return `Boda: ${t.location}${t.truck ? ` (${t.truck})` : ''}`;
+    return '';
+  };
+
   const getAssignedTasksForWorker = (workerName) => {
     const days = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const todayIndex = currentTime.getDay();
@@ -58,8 +72,7 @@ export default function LiveMonitorPanel({
       if (typeof t === 'object' && Array.isArray(t.assigned) && t.assigned.length > 0) {
         return t.assigned.some(a => a.toLowerCase() === nameLower);
       }
-      const text = typeof t === 'object' ? t.text : t;
-      return text.toLowerCase().includes(nameLower);
+      return getTaskDisplayText(t).toLowerCase().includes(nameLower);
     });
   };
 
@@ -122,7 +135,7 @@ export default function LiveMonitorPanel({
     const primary = current?.task || upcoming?.task || matches[0];
 
     return {
-      text: typeof primary === 'object' ? primary.text : primary,
+      text: getTaskDisplayText(primary),
       extraCount: Math.max(0, matches.length - 1)
     };
   };
