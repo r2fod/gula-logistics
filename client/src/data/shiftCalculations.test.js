@@ -74,9 +74,9 @@ describe('getActiveShiftForWorker', () => {
 
 describe('pairShiftsFromEntries', () => {
   it('empareja entrada+salida y calcula duración y coste con la tarifa Extra (10€/h)', () => {
-    // El pago se redondea a la hora completa (para pagar en billetes, no en
-    // céntimos): desde 30min inclusive redondea arriba, por debajo abajo.
-    // 2h30m -> 3h -> 30€ (Math.round hace "redondeo estándar": .5 sube).
+    // El pago se redondea a la MEDIA hora más cercana (para pagar en
+    // billetes de 5€/10€, no en céntimos), no a la hora completa. 2h30m cae
+    // justo en un múltiplo de media hora, así que no hay redondeo que hacer.
     const entries = [
       entry({ id: '1', workerName: 'Ricardo', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
       entry({ id: '2', workerName: 'Ricardo', type: 'salida', timestamp: '2026-09-10T10:30:00.000Z' }),
@@ -88,21 +88,40 @@ describe('pairShiftsFromEntries', () => {
       workerName: 'Ricardo',
       isSalaried: false,
       rate: 10,
-      durationFormatted: '3h 0m',
+      durationFormatted: '2h 30m',
     });
-    expect(shifts[0].durationHours).toBe(3);
-    expect(shifts[0].cost).toBe(30);
+    expect(shifts[0].durationHours).toBe(2.5);
+    expect(shifts[0].cost).toBe(25);
     expect(activeShifts).toEqual({});
   });
 
-  it('redondea hacia abajo cuando faltan más de 30min para la hora siguiente', () => {
+  it('redondea a la media hora más cercana, NO a la hora completa', () => {
+    // 2h31m está a 1min de 2.5h y a 29min de 3h -> debe quedarse en 2.5h.
+    // Es el caso que distingue "redondeo a la hora" (bug) de "redondeo a la
+    // media hora" (correcto): con Math.round(rawDuration) a secas, 2h31m
+    // habría subido a 3h.
     const entries = [
       entry({ id: '1', workerName: 'Ricardo', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
-      entry({ id: '2', workerName: 'Ricardo', type: 'salida', timestamp: '2026-09-10T10:20:00.000Z' }), // 2h20m
+      entry({ id: '2', workerName: 'Ricardo', type: 'salida', timestamp: '2026-09-10T10:31:00.000Z' }), // 2h31m
     ];
     const { shifts } = pairShiftsFromEntries(entries);
-    expect(shifts[0].durationHours).toBe(2);
-    expect(shifts[0].cost).toBe(20);
+    expect(shifts[0].durationHours).toBe(2.5);
+    expect(shifts[0].cost).toBe(25);
+  });
+
+  it('redondea hacia abajo por debajo del cuarto de hora, y hacia arriba desde ahí', () => {
+    // Entre dos múltiplos de media hora (ej. 2.5h y 3h) el punto de corte
+    // está en el cuarto de hora intermedio (2h45m): antes de eso baja al de
+    // abajo, desde ahí sube al de arriba.
+    const build = (mins) => {
+      const entries = [
+        entry({ id: '1', workerName: 'Ricardo', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
+        entry({ id: '2', workerName: 'Ricardo', type: 'salida', timestamp: new Date(new Date('2026-09-10T08:00:00.000Z').getTime() + mins * 60000).toISOString() }),
+      ];
+      return pairShiftsFromEntries(entries).shifts[0].durationHours;
+    };
+    expect(build(164)).toBe(2.5); // 2h44m -> aún más cerca de 2.5h
+    expect(build(166)).toBe(3);   // 2h46m -> ya más cerca de 3h
   });
 
   it('usa la tarifa Nómina (14€/h) para Irene y Raúl', () => {
