@@ -123,7 +123,7 @@ export default function PartnerDashboardView({
   };
 
   const [addingConceptFor, setAddingConceptFor] = useState(null); // worker.id en edición, o null
-  const [newConceptMode, setNewConceptMode] = useState('turno'); // 'turno' (fecha+horario, calcula solo) | 'manual' (concepto libre)
+  const [newConceptMode, setNewConceptMode] = useState('turno'); // 'turno' | 'manual' | 'pago'
   const [newConceptText, setNewConceptText] = useState('');
   const [newConceptAmount, setNewConceptAmount] = useState('');
   const [newShiftDate, setNewShiftDate] = useState('');
@@ -302,8 +302,8 @@ export default function PartnerDashboardView({
     resetAddConceptForm();
   };
 
-  const handleAddConcept = async (worker) => {
-    const amount = parseFloat(newConceptAmount.replace(',', '.'));
+  const handleAddConcept = async (worker, overrideAmount = null) => {
+    const amount = overrideAmount !== null ? overrideAmount : parseFloat(newConceptAmount.replace(',', '.'));
     if (!newConceptText.trim() || Number.isNaN(amount)) return;
 
     const newItem = { concept: newConceptText.trim(), amount, isPositive: amount >= 0 };
@@ -921,15 +921,14 @@ export default function PartnerDashboardView({
                       {adminUnlocked && (
                         addingConceptFor === worker.id ? (
                           <div className="p-3 rounded-xl border border-amber-500/30 bg-slate-950/80 space-y-2.5">
-                            {/* Modo: turno (calcula solo) vs ajuste manual */}
-                            <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
+                            <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800 space-x-1">
                               <button
                                 onClick={() => setNewConceptMode('turno')}
                                 className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all ${
                                   newConceptMode === 'turno' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
                                 }`}
                               >
-                                🕒 Turno (calcula solo)
+                                🕒 Turno
                               </button>
                               <button
                                 onClick={() => setNewConceptMode('manual')}
@@ -937,7 +936,15 @@ export default function PartnerDashboardView({
                                   newConceptMode === 'manual' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
                                 }`}
                               >
-                                ✏️ Ajuste manual
+                                ✏️ Ajuste
+                              </button>
+                              <button
+                                onClick={() => setNewConceptMode('pago')}
+                                className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all ${
+                                  newConceptMode === 'pago' ? 'bg-rose-500 text-white' : 'text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                💸 Adelanto
                               </button>
                             </div>
 
@@ -991,13 +998,13 @@ export default function PartnerDashboardView({
                                   </>
                                 );
                               })()
-                            ) : (
+                            ) : newConceptMode === 'manual' ? (
                               <>
                                 <input
                                   type="text"
                                   value={newConceptText}
                                   onChange={(e) => setNewConceptText(e.target.value)}
-                                  placeholder="Concepto (ej: Roturas cristalería eventos)"
+                                  placeholder="Concepto (ej: Plus puntualidad)"
                                   className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500"
                                 />
                                 <input
@@ -1005,16 +1012,56 @@ export default function PartnerDashboardView({
                                   inputMode="decimal"
                                   value={newConceptAmount}
                                   onChange={(e) => setNewConceptAmount(e.target.value)}
-                                  placeholder="Importe (usa - para restar, ej: -20.00)"
+                                  placeholder="Importe a SUMAR (ej: 20.00)"
                                   className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500"
                                 />
                                 <div className="flex gap-2">
                                   <button
                                     onClick={() => handleAddConcept(worker)}
-                                    disabled={savingBalanceId === worker.id}
+                                    disabled={savingBalanceId === worker.id || !newConceptAmount || isNaN(parseFloat(newConceptAmount.replace(',','.')))}
                                     className="flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all disabled:opacity-50"
                                   >
-                                    {savingBalanceId === worker.id ? 'Guardando...' : 'Guardar'}
+                                    {savingBalanceId === worker.id ? 'Guardando...' : 'Añadir Importe'}
+                                  </button>
+                                  <button
+                                    onClick={resetAddConceptForm}
+                                    className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all"
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <input
+                                  type="text"
+                                  value={newConceptText}
+                                  onChange={(e) => setNewConceptText(e.target.value)}
+                                  placeholder="Concepto (ej: Adelanto nómina, Pago Bizum)"
+                                  className="w-full bg-slate-900 border border-rose-900/50 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-rose-500"
+                                />
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={newConceptAmount}
+                                  onChange={(e) => setNewConceptAmount(e.target.value)}
+                                  placeholder="Importe a RESTAR (se pondrá en negativo)"
+                                  className="w-full bg-slate-900 border border-rose-900/50 rounded-lg p-2 text-xs text-rose-400 focus:outline-none focus:border-rose-500"
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => {
+                                      // Asegurarnos de que el importe sea negativo
+                                      let val = parseFloat(newConceptAmount.replace(',', '.'));
+                                      if (!isNaN(val)) {
+                                        val = Math.abs(val) * -1; // Fuerza negativo
+                                        handleAddConcept(worker, val);
+                                      }
+                                    }}
+                                    disabled={savingBalanceId === worker.id || !newConceptAmount || isNaN(parseFloat(newConceptAmount.replace(',','.')))}
+                                    className="flex-1 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-all disabled:opacity-50 shadow-md shadow-rose-600/20"
+                                  >
+                                    {savingBalanceId === worker.id ? 'Guardando...' : 'Registrar Adelanto'}
                                   </button>
                                   <button
                                     onClick={resetAddConceptForm}
