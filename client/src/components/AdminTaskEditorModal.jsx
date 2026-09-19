@@ -1,24 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Edit3, Save, Plus, Trash2, Calendar, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-
-function SortableTask({ id, children }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 50 : 'auto', opacity: isDragging ? 0.7 : 1 };
-  return (
-    <div ref={setNodeRef} style={style} className="flex gap-1.5 items-start bg-slate-900 border border-slate-700/90 rounded-xl p-2 sm:p-3 transition-all relative">
-      <div {...attributes} {...listeners} className="flex flex-col items-center gap-1 shrink-0 pt-0.5 cursor-grab active:cursor-grabbing">
-         <div className="w-6 h-6 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center hover:bg-slate-700 transition-colors">
-            <GripVertical className="w-4 h-4" />
-         </div>
-      </div>
-      {children}
-    </div>
-  );
-}
-
+import { X, Edit3, Save, Plus, Trash2, Calendar, ChevronUp, ChevronDown } from 'lucide-react';
+import { getTaskListForDay, buildTaskListPatch } from '../data/taskPlanning';
 
 const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 
@@ -86,40 +68,6 @@ function TimeRangeEditor({ value, onChange }) {
 }
 
 export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, workersList = [], onSaveWeekData }) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const handleDragEndDnd = (event, dayKey) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const oldIndex = parseInt(active.id.split('-').pop(), 10);
-    const newIndex = parseInt(over.id.split('-').pop(), 10);
-
-    setLocalWeek(prev => {
-      const updated = { ...prev };
-      if (dayKey === 'sabado') {
-        const weddings = [...(updated.saturdaySpecial?.weddings || [])];
-        const [moved] = weddings.splice(oldIndex, 1);
-        weddings.splice(newIndex, 0, moved);
-        updated.saturdaySpecial.weddings = weddings;
-      } else if (dayKey === 'sundayMonday') {
-        const tasks = [...(updated.sundayMonday?.tasks || [])];
-        const [moved] = tasks.splice(oldIndex, 1);
-        tasks.splice(newIndex, 0, moved);
-        updated.sundayMonday.tasks = tasks;
-      } else {
-        const tasks = [...(updated.schedule[dayKey]?.tasks || [])];
-        const [moved] = tasks.splice(oldIndex, 1);
-        tasks.splice(newIndex, 0, moved);
-        updated.schedule[dayKey].tasks = tasks;
-      }
-      return updated;
-    });
-  };
-
   const [localWeek, setLocalWeek] = useState(null);
   const [activeDayId, setActiveDayId] = useState('martes');
   const wasOpenRef = useRef(false);
@@ -184,26 +132,21 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
 
   if (!isOpen || !localWeek) return null;
 
+  // Estas cinco funciones manejaban por separado "sundayMonday" (domingo Y
+  // lunes comparten una sola lista, bajo weekData.sundayMonday.tasks) frente
+  // a un día normal (weekData.schedule[dayKey].tasks) — la misma lógica
+  // duplicada dos veces por función. Ahora usan getTaskListForDay/
+  // buildTaskListPatch de taskPlanning.js, la única fuente de verdad para
+  // ese caso especial en toda la app (ver el comentario de ese archivo).
   const handleTaskChange = (dayKey, taskIndex, newValue) => {
-    const updated = { ...localWeek };
-    
-    if (dayKey === 'sundayMonday') {
-      const task = updated.sundayMonday.tasks[taskIndex];
-      if (typeof task === 'string') {
-        updated.sundayMonday.tasks[taskIndex] = newValue;
-      } else {
-        updated.sundayMonday.tasks[taskIndex].text = newValue;
-      }
-    } else {
-      const task = updated.schedule[dayKey].tasks[taskIndex];
-      if (typeof task === 'string') {
-        updated.schedule[dayKey].tasks[taskIndex] = { text: task, timeFrame: '', mapsUrl: '' };
-        updated.schedule[dayKey].tasks[taskIndex].text = newValue;
-      } else {
-        updated.schedule[dayKey].tasks[taskIndex].text = newValue;
-      }
-    }
-    setLocalWeek(updated);
+    setLocalWeek(prev => {
+      const list = [...getTaskListForDay(prev, dayKey)];
+      const task = list[taskIndex];
+      list[taskIndex] = typeof task === 'string'
+        ? { text: newValue, timeFrame: '', mapsUrl: '' }
+        : { ...task, text: newValue };
+      return { ...prev, ...buildTaskListPatch(prev, dayKey, list) };
+    });
   };
 
   // Escribir el nombre/dirección del sitio genera el link de Google Maps
@@ -213,115 +156,46 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
     : '';
 
   const handleTaskMetadataChange = (dayKey, taskIndex, field, newValue) => {
-    const updated = { ...localWeek };
-    const taskList = dayKey === 'sundayMonday' ? updated.sundayMonday.tasks : updated.schedule[dayKey].tasks;
-    const task = taskList[taskIndex];
-
-    if (typeof task === 'string') {
-      taskList[taskIndex] = { text: task, [field]: newValue };
-    } else {
-      taskList[taskIndex][field] = newValue;
+    setLocalWeek(prev => {
+      const list = [...getTaskListForDay(prev, dayKey)];
+      const task = list[taskIndex];
+      const nextTask = typeof task === 'string' ? { text: task } : { ...task };
+      nextTask[field] = newValue;
       if (field === 'location') {
-        taskList[taskIndex].mapsUrl = buildMapsUrl(newValue);
+        nextTask.mapsUrl = buildMapsUrl(newValue);
       }
-    }
-    setLocalWeek(updated);
+      list[taskIndex] = nextTask;
+      return { ...prev, ...buildTaskListPatch(prev, dayKey, list) };
+    });
   };
 
   const handleAddTask = (dayKey) => {
     setLocalWeek(prev => {
       if (!prev) return prev;
       const newTask = { text: "Nueva Tarea", timeFrame: "", mapsUrl: "", location: "", phone: "", truck: "", assigned: [] };
-      if (dayKey === 'sundayMonday') {
-        return {
-          ...prev,
-          sundayMonday: {
-            ...prev.sundayMonday,
-            tasks: [...(prev.sundayMonday?.tasks || []), newTask]
-          }
-        };
-      } else {
-        const daySchedule = prev.schedule?.[dayKey] || { title: dayKey, tasks: [] };
-        return {
-          ...prev,
-          schedule: {
-            ...prev.schedule,
-            [dayKey]: {
-              ...daySchedule,
-              tasks: [...(daySchedule.tasks || []), newTask]
-            }
-          }
-        };
-      }
+      const list = [...getTaskListForDay(prev, dayKey), newTask];
+      return { ...prev, ...buildTaskListPatch(prev, dayKey, list) };
     });
   };
 
   const handleDeleteTask = (dayKey, taskIndex) => {
     setLocalWeek(prev => {
       if (!prev) return prev;
-      if (dayKey === 'sundayMonday') {
-        const tasks = [...(prev.sundayMonday?.tasks || [])];
-        tasks.splice(taskIndex, 1);
-        return {
-          ...prev,
-          sundayMonday: {
-            ...prev.sundayMonday,
-            tasks
-          }
-        };
-      } else {
-        const daySchedule = prev.schedule?.[dayKey];
-        if (!daySchedule) return prev;
-        const tasks = [...(daySchedule.tasks || [])];
-        tasks.splice(taskIndex, 1);
-        return {
-          ...prev,
-          schedule: {
-            ...prev.schedule,
-            [dayKey]: {
-              ...daySchedule,
-              tasks
-            }
-          }
-        };
-      }
+      const list = [...getTaskListForDay(prev, dayKey)];
+      list.splice(taskIndex, 1);
+      return { ...prev, ...buildTaskListPatch(prev, dayKey, list) };
     });
   };
 
   const handleMoveTask = (dayKey, taskIndex, direction) => {
     setLocalWeek(prev => {
       if (!prev) return prev;
+      const list = [...getTaskListForDay(prev, dayKey)];
       const targetIndex = taskIndex + direction;
-      if (dayKey === 'sundayMonday') {
-        const tasks = [...(prev.sundayMonday?.tasks || [])];
-        if (targetIndex < 0 || targetIndex >= tasks.length) return prev;
-        const [moved] = tasks.splice(taskIndex, 1);
-        tasks.splice(targetIndex, 0, moved);
-        return {
-          ...prev,
-          sundayMonday: {
-            ...prev.sundayMonday,
-            tasks
-          }
-        };
-      } else {
-        const daySchedule = prev.schedule?.[dayKey];
-        if (!daySchedule) return prev;
-        const tasks = [...(daySchedule.tasks || [])];
-        if (targetIndex < 0 || targetIndex >= tasks.length) return prev;
-        const [moved] = tasks.splice(taskIndex, 1);
-        tasks.splice(targetIndex, 0, moved);
-        return {
-          ...prev,
-          schedule: {
-            ...prev.schedule,
-            [dayKey]: {
-              ...daySchedule,
-              tasks
-            }
-          }
-        };
-      }
+      if (targetIndex < 0 || targetIndex >= list.length) return prev;
+      const [moved] = list.splice(taskIndex, 1);
+      list.splice(targetIndex, 0, moved);
+      return { ...prev, ...buildTaskListPatch(prev, dayKey, list) };
     });
   };
 
@@ -393,18 +267,14 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
   // Toggle a worker in/out of a task's or wedding's `assigned` list — this is
   // what actually assigns "who does this", vs. it just being free text.
   const toggleAssignedWorker = (dayKey, taskIndex, workerName) => {
-    const updated = { ...localWeek };
-    const taskList = dayKey === 'sundayMonday' ? updated.sundayMonday.tasks : updated.schedule[dayKey].tasks;
-    const task = taskList[taskIndex];
-    const current = (typeof task === 'object' && Array.isArray(task.assigned)) ? task.assigned : [];
-    const next = current.includes(workerName) ? current.filter(n => n !== workerName) : [...current, workerName];
-
-    if (typeof task === 'string') {
-      taskList[taskIndex] = { text: task, assigned: next };
-    } else {
-      taskList[taskIndex].assigned = next;
-    }
-    setLocalWeek(updated);
+    setLocalWeek(prev => {
+      const list = [...getTaskListForDay(prev, dayKey)];
+      const task = list[taskIndex];
+      const current = (typeof task === 'object' && Array.isArray(task.assigned)) ? task.assigned : [];
+      const next = current.includes(workerName) ? current.filter(n => n !== workerName) : [...current, workerName];
+      list[taskIndex] = typeof task === 'string' ? { text: task, assigned: next } : { ...task, assigned: next };
+      return { ...prev, ...buildTaskListPatch(prev, dayKey, list) };
+    });
   };
 
   const toggleAssignedWedding = (weddingIndex, workerName) => {
