@@ -27,7 +27,20 @@ const storage = multer.diskStorage({
     cb(null, 'rental-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
-const upload = multer({ storage: storage });
+// Solo PDFs (es un contrato/factura de alquiler) y máximo 10MB — sin esto,
+// multer aceptaba cualquier archivo de cualquier tamaño de quien tuviera
+// sesión de admin, y /uploads se sirve como estático (un .html o .svg
+// subido se serviría con su propio Content-Type).
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== 'application/pdf') {
+      return cb(new Error('Solo se permiten archivos PDF'));
+    }
+    cb(null, true);
+  }
+});
 
 const router = express.Router();
 
@@ -178,7 +191,15 @@ router.patch('/weeks/:weekId/tasks', async (req, res) => {
 });
 
 // POST /api/logistics/upload-rental
-router.post('/upload-rental', requireAdmin, upload.single('file'), (req, res) => {
+router.post('/upload-rental', requireAdmin, (req, res, next) => {
+  // No hay un error-handler global en server.js, así que si fileFilter o
+  // el límite de tamaño rechazan el archivo, multer llama a next(err) y sin
+  // esto Express devolvería su página HTML de error 500 en vez de JSON.
+  upload.single('file')(req, res, (err) => {
+    if (err) return res.status(400).json({ success: false, message: err.message });
+    next();
+  });
+}, (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'No file uploaded' });
   }
@@ -195,8 +216,9 @@ router.post('/optimize', requireAdmin, async (req, res) => {
     if (mongoose.connection.readyState === 1) {
       // Importar modelo de fichajes
       const { ClockEntry } = await import('../models/ClockEntry.model.js');
-      // Borrar fichajes marcados como isDeleted: true
-      const result = await ClockEntry.deleteMany({ isDeleted: true });
+      // Borrar fichajes marcados como borrados (papelera) — el campo real
+      // en el schema es `deleted`, no `isDeleted` (ver clock.routes.js).
+      const result = await ClockEntry.deleteMany({ deleted: true });
       deletedCount = result.deletedCount;
       
       // Opcional: borrar semanas viejas si hay más de 10

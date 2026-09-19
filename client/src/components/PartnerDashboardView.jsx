@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ShieldCheck, 
   DollarSign, 
@@ -221,9 +221,12 @@ export default function PartnerDashboardView({
     setIsAdminEditOpen(true);
   };
 
-  // Process shift entries for financial calculations
-  const { shifts: paidShifts } = pairShiftsFromEntries(clockEntries);
-  const workerBalances = aggregateShiftsByWorker(paidShifts, workersList);
+  // Process shift entries for financial calculations. Memoizado por
+  // clockEntries/workersList: sin esto se reemparejaban y reagregaban TODOS
+  // los fichajes en cada re-render de este panel (cambiar de pestaña, abrir
+  // un modal, etc.), aunque no hubiera ni un fichaje nuevo.
+  const { shifts: paidShifts } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
+  const workerBalances = useMemo(() => aggregateShiftsByWorker(paidShifts, workersList), [paidShifts, workersList]);
   const balancesList = Object.values(workerBalances);
   const totalExtraExpense = balancesList.reduce((acc, curr) => acc + (curr.isPayroll ? 0 : curr.totalCost), 0);
   const totalPayrollValuation = balancesList.reduce((acc, curr) => acc + (curr.isPayroll ? curr.totalCost : 0), 0);
