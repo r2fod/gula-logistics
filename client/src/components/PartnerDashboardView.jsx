@@ -1777,21 +1777,30 @@ export default function PartnerDashboardView({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
-                {(activeWeekData.saturdaySpecial.weddings || []).map((w, idx) => (
-                  <div key={idx} className="bg-slate-950/90 p-5 rounded-2xl border border-slate-800 space-y-3 hover:border-amber-500/30 transition-all">
-                    <div className="flex items-start justify-between">
-                      <span className="font-extrabold text-amber-300 block text-sm sm:text-base font-['Outfit']">🏔️ {w.location}</span>
-                      {w.timeFrame && (
-                        <span className="text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {w.timeFrame}
-                        </span>
-                      )}
+                {(activeWeekData.saturdaySpecial.weddings || []).map((w, idx) => {
+                  const wAssigned = w.assigned || [];
+                  const matchesFilter = !selectedWorkerFilter || wAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
+
+                  return (
+                    <div key={idx} className={`p-5 rounded-2xl border space-y-3 transition-all ${
+                      !matchesFilter 
+                        ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-850' 
+                        : 'bg-slate-950/90 border-slate-800 hover:border-amber-500/30'
+                    }`}>
+                      <div className="flex items-start justify-between">
+                        <span className={`font-extrabold block text-sm sm:text-base font-['Outfit'] ${!matchesFilter ? 'text-amber-500/50' : 'text-amber-300'}`}>🏔️ {w.location}</span>
+                        {w.timeFrame && (
+                          <span className="text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {w.timeFrame}
+                          </span>
+                        )}
+                      </div>
+                      <span className={`block font-semibold ${!matchesFilter ? 'text-slate-400' : 'text-slate-200'}`}>{w.truck}</span>
+                      <p className={`text-xs leading-relaxed ${!matchesFilter ? 'text-slate-500' : 'text-slate-400'}`}>{w.details}</p>
                     </div>
-                    <span className="text-slate-200 block font-semibold">{w.truck}</span>
-                    <p className="text-xs text-slate-400 leading-relaxed">{w.details}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           )}
@@ -1806,8 +1815,15 @@ export default function PartnerDashboardView({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs sm:text-sm text-slate-300">
                 {(activeWeekData.sundayMonday.tasks || []).map((task, idx) => {
                   const taskText = typeof task === 'object' ? task.text : task;
+                  const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
+                  const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
+
                   return (
-                    <div key={idx} className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 leading-relaxed">
+                    <div key={idx} className={`p-4 rounded-2xl border leading-relaxed transition-all ${
+                      !matchesFilter 
+                        ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-850 text-slate-500' 
+                        : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                    }`}>
                       <span>{taskText}</span>
                       {typeof task === 'object' && task.timeFrame && (
                         <span className="ml-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 align-middle whitespace-nowrap">
