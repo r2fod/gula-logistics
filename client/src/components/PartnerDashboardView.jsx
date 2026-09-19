@@ -160,6 +160,24 @@ export default function PartnerDashboardView({
     });
   }, [activeTab]);
 
+  const rawBalancesData = externalBalancesData || internalBalancesData || { workers: [] };
+  const mergedBalancesData = { ...rawBalancesData };
+  mergedBalancesData.workers = workersList.map(worker => {
+    const existing = (rawBalancesData.workers || []).find(w => w.name.toLowerCase() === worker.name.toLowerCase());
+    if (existing) return existing;
+    return {
+      id: worker.name.toLowerCase().replace(/\s+/g, '-'),
+      name: worker.name,
+      role: worker.role,
+      avatar: worker.avatar || "👤",
+      status: "Sin saldo",
+      statusType: "neutral",
+      currentBalance: 0.00,
+      agreements: [worker.isPayroll ? "Nómina Fija (Control interno)" : "Extra a 10,00 € / hora (Por Defecto)"],
+      breakdown: []
+    };
+  });
+
   // Actualiza un trabajador dentro de balancesData (en pantalla al instante)
   // y lo guarda en MongoDB vía PUT /api/balances/:id. Solo admin (los
   // botones que llaman a esto están ocultos si !adminUnlocked).
@@ -585,7 +603,7 @@ export default function PartnerDashboardView({
       {/* TAB 1: Saldos & Acuerdos Detallados */}
       {activeTab === 'balances' && (
         <TeamBalancesTab
-          balancesData={balancesData}
+          balancesData={mergedBalancesData}
           onOpenShareModal={onOpenShareModal}
           adminUnlocked={adminUnlocked}
           onDeleteClockEntry={onDeleteClockEntry}
