@@ -3,10 +3,10 @@ import {
   saveClockEntryToAPI, 
   updateClockEntryInAPI, 
   deleteClockEntryInAPI, 
-  clearAllClockEntriesInAPI 
+  clearAllClockEntriesInAPI,
+  restoreClockEntryInAPI
 } from '../data/apiService';
 import { getActiveShiftForWorker } from '../data/shiftCalculations';
-import { API_URL } from '../data/apiService';
 
 export function useClockings(markTaskCompleted) {
   const [clockEntries, setClockEntries] = useState(() => {
@@ -71,12 +71,7 @@ export function useClockings(markTaskCompleted) {
       console.error(e);
     }
     
-    // API Call
-    const adminToken = localStorage.getItem('gula_admin_token');
-    fetch(`${API_URL}/clock/${entryId}/restore`, {
-      method: 'PUT',
-      headers: { 'Authorization': `Bearer ${adminToken}` }
-    }).catch(err => console.error(err));
+    restoreClockEntryInAPI(entryId);
   };
 
   const handleClearClockEntries = () => {

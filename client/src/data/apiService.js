@@ -161,6 +161,20 @@ export async function deleteClockEntryInAPI(entryId) {
 }
 
 /**
+ * Restore clock entry in MongoDB / Backend API
+ */
+export async function restoreClockEntryInAPI(entryId) {
+  try {
+    await fetch(`${API_BASE}/clock/${entryId}/restore`, {
+      method: 'PUT',
+      headers: { ...authHeaders() }
+    });
+  } catch (err) {
+    console.warn('Backend API restore failed:', err.message);
+  }
+}
+
+/**
  * Clear all clock entries in MongoDB / Backend API
  */
 export async function clearAllClockEntriesInAPI() {
