@@ -164,7 +164,19 @@ export default function PartnerDashboardView({
   const rawBalancesData = externalBalancesData || internalBalancesData || { workers: [] };
   const mergedBalancesData = { ...rawBalancesData };
   mergedBalancesData.workers = workersList.map(worker => {
-    const existing = (rawBalancesData.workers || []).find(w => w.name.toLowerCase() === worker.name.toLowerCase());
+    // Mismo problema que findWorkerHours (más abajo en este archivo): el
+    // roster usa "Jeferson"/"Ricardo" pero balancesData en Mongo guarda
+    // "Jefferson Gula"/"Ricardo Gula" — una comparación exacta nunca los
+    // cruza. Sin esta normalización, un trabajador con saldo real (ej.
+    // Jefferson: 872€, bolsa de 80h consumida) aparecía con +0,00€ y sin
+    // desglose en su propia tarjeta de Saldos & Acuerdos.
+    const normalizedRosterName = worker.name.trim().toLowerCase().replace(/ff/g, 'f');
+    const existing = (rawBalancesData.workers || []).find(w => {
+      const normalizedBalanceName = (w.name || '').trim().toLowerCase().replace(/ff/g, 'f');
+      return normalizedBalanceName === normalizedRosterName
+        || normalizedBalanceName.startsWith(`${normalizedRosterName} `)
+        || normalizedBalanceName.includes(normalizedRosterName);
+    });
     if (existing) return existing;
     return {
       id: worker.name.toLowerCase().replace(/\s+/g, '-'),
