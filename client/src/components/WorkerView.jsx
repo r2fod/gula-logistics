@@ -295,6 +295,44 @@ export default function WorkerView({
     return ordinal !== -1 && todayOrdinal !== -1 && ordinal > todayOrdinal;
   };
 
+  const isTaskChronologicallyPast = (dayKey, timeFrame) => {
+    const ordinal = weekDayOrder.indexOf(dayKey);
+    if (ordinal < 0 || todayOrdinal < 0) return false;
+    if (ordinal < todayOrdinal) return true; // Past day
+    if (ordinal > todayOrdinal) return false; // Future day
+    
+    // If it's today, check the end time if available
+    if (!timeFrame) return false;
+    
+    const parts = timeFrame.split('-');
+    if (parts.length === 2) {
+      const endTimeStr = parts[1].trim(); // "16:00" or "00:30"
+      const timeParts = endTimeStr.split(':');
+      if (timeParts.length === 2) {
+        let endHours = parseInt(timeParts[0], 10);
+        const endMinutes = parseInt(timeParts[1], 10);
+        
+        // Handle after-midnight end times (e.g., 00:30 means it's past midnight of the current day's shift)
+        if (endHours < 5) {
+          endHours += 24; // Treat 00:30 as 24:30 for comparison
+        }
+        
+        let currentHours = currentTime.getHours();
+        const currentMinutes = currentTime.getMinutes();
+        
+        if (currentHours < 5) {
+           currentHours += 24; // Treat 1 AM as 25:00
+        }
+        
+        const endTotal = endHours * 60 + endMinutes;
+        const currentTotal = currentHours * 60 + currentMinutes;
+        
+        return currentTotal > endTotal;
+      }
+    }
+    return false;
+  };
+
   return (
     <div className="space-y-4 sm:space-y-5 animate-fadeIn w-full max-w-full overflow-x-hidden">
       
@@ -827,9 +865,14 @@ export default function WorkerView({
                         <ul className="space-y-2 text-xs text-slate-200">
                           {dayGroup.tasks.map((task, idx) => {
                             const taskText = typeof task === 'object' ? task.text : task;
-                            const isCompleted = typeof task === 'object' ? task.completed : false;
-                            const taskLabel = typeof task === 'object' && task.timeFrame
-                              ? `${taskText} (${task.timeFrame})`
+                            const timeFrame = typeof task === 'object' ? task.timeFrame : null;
+                            const manuallyCompleted = typeof task === 'object' ? task.completed : false;
+                            
+                            // A task is considered visually completed if manually marked OR if its time has past
+                            const isCompleted = manuallyCompleted || isTaskChronologicallyPast(dayGroup.key, timeFrame);
+                            
+                            const taskLabel = timeFrame
+                              ? `${taskText} (${timeFrame})`
                               : taskText;
 
                             return (
@@ -851,51 +894,33 @@ export default function WorkerView({
                                   }}
                                 >
                                   <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`} />
-                                  <span className={`leading-relaxed font-medium ${isCompleted ? 'line-through' : ''}`}>
-                                    {taskText}
+                                  <span className={`font-medium ${isCompleted ? 'line-through opacity-70' : ''}`}>
+                                    {taskLabel}
                                   </span>
                                 </div>
-
-                                {/* Rich Metadata (Time & Location & TargetDay) */}
-                                {typeof task === 'object' && (task.timeFrame || task.mapsUrl || task.location || task.targetDay) && (
-                                  <div className="flex flex-wrap items-center gap-1.5 pl-6 mt-0.5">
-                                    {task.targetDay && (
-                                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded border flex items-center gap-1 ${
-                                        task.targetDay === 'Domingo' 
-                                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
-                                          : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
-                                      }`}>
-                                        <Calendar className="w-3 h-3" />
-                                        {task.targetDay.toUpperCase()}
-                                      </span>
-                                    )}
-                                    {task.timeFrame && (
-                                      <span className="text-[10px] font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded flex items-center gap-1">
-                                        <Clock className="w-3 h-3" />
-                                        {task.timeFrame}
-                                      </span>
-                                    )}
+                                
+                                {/* Location Badge if available */}
+                                {typeof task === 'object' && (task.mapsUrl || task.location) && (
+                                  <div className="ml-6 flex">
                                     {task.mapsUrl ? (
                                       <a 
                                         href={task.mapsUrl} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
-                                        className="text-[10px] font-bold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 px-2 py-0.5 rounded flex items-center gap-1 transition-colors"
+                                        className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 px-2.5 py-1 rounded-lg transition-colors"
                                       >
                                         <MapPin className="w-3 h-3" />
                                         {task.location || 'Abrir en Maps'}
                                       </a>
-                                    ) : task.location ? (
-                                      <span className="text-[10px] font-bold bg-slate-800 text-slate-400 px-2 py-0.5 rounded flex items-center gap-1">
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-800 text-slate-400 px-2.5 py-1 rounded-lg">
                                         <MapPin className="w-3 h-3" />
                                         {task.location}
                                       </span>
-                                    ) : null}
+                                    )}
                                   </div>
                                 )}
 
-                                {/* Per-Task Clock-In Button — deshabilitado
-                                    si el día todavía no ha llegado. */}
                                 {!isCompleted && (
                                   isDayInFuture(dayGroup.key) ? (
                                     <span className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed">
@@ -931,72 +956,86 @@ export default function WorkerView({
                             <Award className="w-3.5 h-3.5 text-amber-400" />
                             <span>Boda Asignada Sábado</span>
                           </span>
-                          {dayGroup.weddings.map((w, idx) => (
-                            <div key={idx} className={`p-3 sm:p-3.5 rounded-xl border space-y-1 transition-all ${
-                              w.completed
-                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                                : 'bg-slate-900 border-amber-500/30'
-                            }`}>
-                              <div 
-                                className="flex justify-between items-start cursor-pointer hover:text-white"
-                                onClick={() => {
-                                  if (onToggleTask) {
-                                    const realIdx = resolveRealTaskIndex('sabado', `Boda: ${w.location} (${w.truck})`);
-                                    if (realIdx !== null) onToggleTask('sabado', realIdx);
-                                  }
-                                }}
-                              >
-                                <div className="flex items-start space-x-2.5">
-                                  <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${w.completed ? 'text-emerald-400' : 'text-slate-500'}`} />
-                                  <span className={`font-extrabold text-white text-xs sm:text-sm block ${w.completed ? 'line-through text-emerald-100' : ''}`}>🏔️ {w.location}</span>
+                          {dayGroup.weddings.map((w, idx) => {
+                            const manuallyCompleted = w.completed;
+                            const isCompleted = manuallyCompleted || isTaskChronologicallyPast('sabado', w.time);
+                            
+                            return (
+                              <div key={idx} className={`p-3 sm:p-3.5 rounded-xl border space-y-1 transition-all ${
+                                isCompleted
+                                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                                  : 'bg-slate-900 border-amber-500/30'
+                              }`}>
+                                <div 
+                                  className="flex justify-between items-start cursor-pointer hover:text-white"
+                                  onClick={() => {
+                                    if (onToggleTask) {
+                                      const realIdx = resolveRealTaskIndex('sabado', `Boda: ${w.location} (${w.truck})`);
+                                      if (realIdx !== null) onToggleTask('sabado', realIdx);
+                                    }
+                                  }}
+                                >
+                                  <div className="flex items-start space-x-2.5">
+                                    <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`} />
+                                    <div>
+                                      <div className="flex items-center flex-wrap gap-2">
+                                        <span className={`font-black text-sm ${isCompleted ? 'line-through opacity-70' : 'text-white'}`}>
+                                          🏔️ {w.location}
+                                        </span>
+                                        {w.time && (
+                                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">
+                                            <Clock className="w-3 h-3 inline mr-1" />
+                                            {w.time}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-amber-400 font-bold text-xs mt-1">{w.truck}</p>
+                                      {w.note && <p className={`text-[11px] mt-1 ${isCompleted ? 'text-emerald-300/70' : 'text-slate-400'}`}>{w.note}</p>}
+                                    </div>
+                                  </div>
                                 </div>
-                                {w.timeFrame && (
-                                  <span className="text-[10px] font-bold bg-slate-800 text-slate-300 px-2 py-0.5 rounded flex items-center gap-1 shrink-0">
-                                    <Clock className="w-3 h-3" />
-                                    {w.timeFrame}
-                                  </span>
+                                
+                                {w.mapsUrl && (
+                                  <div className="ml-6 pt-1">
+                                    <a 
+                                      href={w.mapsUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 px-2.5 py-1 rounded-lg transition-colors"
+                                    >
+                                      <MapPin className="w-3 h-3" />
+                                      Ruta a {w.location}
+                                    </a>
+                                  </div>
+                                )}
+
+                                {!isCompleted && (
+                                  <div className="ml-6 pt-1">
+                                    {isDayInFuture('sabado') ? (
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed">
+                                        <Lock className="w-3 h-3" />
+                                        <span>Aún no ha llegado este día</span>
+                                      </span>
+                                    ) : (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setPrefilledTask(`Boda: ${w.location} (${w.truck})`);
+                                          const realTaskIndex = resolveRealTaskIndex('sabado', `Boda: ${w.location} (${w.truck})`);
+                                          setTaskRef(realTaskIndex !== null ? { dayKey: 'sabado', taskIndex: realTaskIndex } : null);
+                                          setIsClockModalOpen(true);
+                                        }}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95 mt-1"
+                                      >
+                                        <Play className="w-3 h-3" />
+                                        <span>⏱️ Fichar Boda Sábado</span>
+                                      </button>
+                                    )}
+                                  </div>
                                 )}
                               </div>
-                              
-                              <span className="text-amber-400 font-semibold text-xs block">{w.truck}</span>
-                              <p className="text-[11px] text-slate-300 leading-relaxed pb-1">{w.details}</p>
-                              
-                              {w.mapsUrl && (
-                                <a 
-                                  href={w.mapsUrl} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="inline-flex text-[10px] font-bold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 px-2 py-1 rounded items-center gap-1 mt-1 transition-colors"
-                                >
-                                  <MapPin className="w-3 h-3" />
-                                  Ruta a {w.location}
-                                </a>
-                              )}
-
-                              {!w.completed && (
-                                isDayInFuture('sabado') ? (
-                                  <span className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed w-fit">
-                                    <Lock className="w-3 h-3" />
-                                    <span>Aún no ha llegado este día</span>
-                                  </span>
-                                ) : (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setPrefilledTask(`Boda: ${w.location} (${w.truck})`);
-                                      const realIdx = resolveRealTaskIndex('sabado', `Boda: ${w.location} (${w.truck})`);
-                                      setTaskRef(realIdx !== null ? { dayKey: 'sabado', taskIndex: realIdx } : null);
-                                      setIsClockModalOpen(true);
-                                    }}
-                                    className="mt-2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95"
-                                  >
-                                    <Play className="w-3 h-3 fill-current" />
-                                    <span>⏱️ Fichar Boda Sábado</span>
-                                  </button>
-                                )
-                              )}
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
 

@@ -4,6 +4,43 @@ import { Users, Calendar, Clock, Check, Sparkles } from 'lucide-react';
 export default function ScheduleTab({ activeWeekData, workersList, onToggleTask }) {
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
 
+  // Auto-completion logic based on time
+  const currentTime = new Date();
+  const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+  const todayKey = dayNames[currentTime.getDay()];
+  const weekDayOrder = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+  const todayOrdinal = weekDayOrder.indexOf(todayKey);
+
+  const isTaskChronologicallyPast = (dayKey, timeFrame) => {
+    const ordinal = weekDayOrder.indexOf(dayKey);
+    if (ordinal < 0 || todayOrdinal < 0) return false;
+    if (ordinal < todayOrdinal) return true; // Past day
+    if (ordinal > todayOrdinal) return false; // Future day
+    
+    if (!timeFrame) return false;
+    
+    const parts = timeFrame.split('-');
+    if (parts.length === 2) {
+      const endTimeStr = parts[1].trim();
+      const timeParts = endTimeStr.split(':');
+      if (timeParts.length === 2) {
+        let endHours = parseInt(timeParts[0], 10);
+        const endMinutes = parseInt(timeParts[1], 10);
+        if (endHours < 5) endHours += 24; // Handle past midnight
+        
+        let currentHours = currentTime.getHours();
+        const currentMinutes = currentTime.getMinutes();
+        if (currentHours < 5) currentHours += 24;
+        
+        const endTotal = endHours * 60 + endMinutes;
+        const currentTotal = currentHours * 60 + currentMinutes;
+        
+        return currentTotal > endTotal;
+      }
+    }
+    return false;
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Team Members Grid - Full Widescreen Layout */}
@@ -80,7 +117,11 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask 
               <ul className="space-y-2.5 text-xs text-slate-300">
                 {(day.tasks || []).map((task, idx) => {
                   const taskText = typeof task === 'object' ? task.text : task;
-                  const isCompleted = typeof task === 'object' ? !!task.completed : false;
+                  const timeFrame = typeof task === 'object' ? task.timeFrame : null;
+                  const manuallyCompleted = typeof task === 'object' ? !!task.completed : false;
+                  
+                  const isCompleted = manuallyCompleted || isTaskChronologicallyPast(key, timeFrame);
+                  
                   const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
                   const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
 
@@ -90,7 +131,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask 
                       onClick={() => onToggleTask && onToggleTask(key, idx)}
                       className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
                         isCompleted 
-                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 line-through' 
+                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 line-through opacity-60' 
                           : matchesFilter && selectedWorkerFilter
                             ? 'bg-amber-500/10 border-amber-500/60 ring-1 ring-amber-500/40 text-white font-medium shadow-sm'
                             : !matchesFilter && selectedWorkerFilter
@@ -139,17 +180,24 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask 
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
             {(activeWeekData.saturdaySpecial.weddings || []).map((w, idx) => {
+              const manuallyCompleted = !!w.completed;
+              const isCompleted = manuallyCompleted || isTaskChronologicallyPast('sabado', w.timeFrame);
               const wAssigned = w.assigned || [];
               const matchesFilter = !selectedWorkerFilter || wAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
 
               return (
                 <div key={idx} className={`p-5 rounded-2xl border space-y-3 transition-all ${
-                  !matchesFilter 
-                    ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-850' 
-                    : 'bg-slate-950/90 border-slate-800 hover:border-amber-500/30'
+                  isCompleted
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 opacity-60'
+                    : !matchesFilter 
+                      ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-850' 
+                      : 'bg-slate-950/90 border-slate-800 hover:border-amber-500/30'
                 }`}>
                   <div className="flex items-start justify-between">
-                    <span className={`font-extrabold block text-sm sm:text-base font-['Outfit'] ${!matchesFilter ? 'text-amber-500/50' : 'text-amber-300'}`}>🏔️ {w.location}</span>
+                    <span className={`font-extrabold block text-sm sm:text-base font-['Outfit'] ${isCompleted ? 'line-through' : !matchesFilter ? 'text-amber-500/50' : 'text-amber-300'}`}>
+                      {isCompleted && <Check className="w-4 h-4 inline mr-1 text-emerald-400" />}
+                      🏔️ {w.location}
+                    </span>
                     {w.timeFrame && (
                       <span className="text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1">
                         <Clock className="w-3 h-3" />
@@ -157,8 +205,8 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask 
                       </span>
                     )}
                   </div>
-                  <span className={`block font-semibold ${!matchesFilter ? 'text-slate-400' : 'text-slate-200'}`}>{w.truck}</span>
-                  <p className={`text-xs leading-relaxed ${!matchesFilter ? 'text-slate-500' : 'text-slate-400'}`}>{w.details}</p>
+                  <span className={`block font-semibold ${isCompleted ? 'text-emerald-300/70' : !matchesFilter ? 'text-slate-400' : 'text-slate-200'}`}>{w.truck}</span>
+                  <p className={`text-xs leading-relaxed ${isCompleted ? 'text-emerald-300/50' : !matchesFilter ? 'text-slate-500' : 'text-slate-400'}`}>{w.details}</p>
                 </div>
               );
             })}
@@ -176,17 +224,32 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs sm:text-sm text-slate-300">
             {(activeWeekData.sundayMonday.tasks || []).map((task, idx) => {
               const taskText = typeof task === 'object' ? task.text : task;
+              const timeFrame = typeof task === 'object' ? task.timeFrame : null;
+              
+              // For Domingo/Lunes tasks, we use the specific day if mentioned in targetDay, otherwise default to 'domingo'
+              const taskDayKey = (typeof task === 'object' && task.targetDay) 
+                ? task.targetDay.toLowerCase() 
+                : 'domingo';
+                
+              const manuallyCompleted = typeof task === 'object' ? !!task.completed : false;
+              const isCompleted = manuallyCompleted || isTaskChronologicallyPast(taskDayKey, timeFrame);
+              
               const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
               const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
 
               return (
                 <div key={idx} className={`p-4 rounded-2xl border leading-relaxed transition-all ${
-                  !matchesFilter 
-                    ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-850 text-slate-500' 
-                    : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
+                  isCompleted
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 line-through opacity-60'
+                    : !matchesFilter 
+                      ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-850 text-slate-500' 
+                      : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
                 }`}>
                   <div className="flex items-start justify-between gap-2">
-                    <span>{taskText}</span>
+                    <span>
+                      {isCompleted && <Check className="w-4 h-4 inline mr-1 text-emerald-400" />}
+                      {taskText}
+                    </span>
                     {typeof task === 'object' && task.targetDay && (
                       <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg whitespace-nowrap shrink-0 border ${
                         task.targetDay === 'Domingo' 
@@ -197,10 +260,10 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask 
                       </span>
                     )}
                   </div>
-                  {typeof task === 'object' && task.timeFrame && (
+                  {timeFrame && (
                     <span className="mt-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 align-middle whitespace-nowrap">
                       <Clock className="w-3 h-3" />
-                      {task.timeFrame}
+                      {timeFrame}
                     </span>
                   )}
                 </div>
