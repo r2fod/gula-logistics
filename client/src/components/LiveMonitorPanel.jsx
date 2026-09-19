@@ -155,16 +155,25 @@ export default function LiveMonitorPanel({
 
     // Prefer the task the worker actually clocked into (fichar por tarea)
     // over the day-of-week guess, so this reflects real, live control.
-    const realTaskName = clockEntry?.taskName || clockEntry?.note;
+    const rawTaskName = clockEntry?.taskName || clockEntry?.note;
     const taskInfo = getWorkerTaskInfo(w.name);
+    
+    // If the task name is a generic clock-in label like "JORNADA" or "Inicio de Jornada Operativa",
+    // intelligently fall back to the assigned task from the schedule instead of showing the generic text.
+    const isGenericTaskName = rawTaskName && (
+      rawTaskName.toUpperCase() === 'JORNADA' || 
+      rawTaskName.toUpperCase().includes('INICIO DE JORNADA')
+    );
+    
+    const currentTaskToDisplay = (rawTaskName && !isGenericTaskName) ? rawTaskName : taskInfo.text;
 
     return {
       ...w,
       isClockedIn,
       clockEntry,
       elapsedTimeFormatted,
-      currentTask: realTaskName || taskInfo.text,
-      extraTasksCount: realTaskName ? 0 : taskInfo.extraCount,
+      currentTask: currentTaskToDisplay,
+      extraTasksCount: (rawTaskName && !isGenericTaskName) ? 0 : taskInfo.extraCount,
       location: getWorkerLocation(w.name)
     };
   });
