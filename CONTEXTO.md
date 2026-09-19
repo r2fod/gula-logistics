@@ -27,6 +27,8 @@ Personal de eventos/sala mencionado en tareas puntuales (Anto, Marc, Miriam, Lui
 - **Camión Covey** — alquiler.
 - **Camión Albacar** — alquiler.
 
+Desde el 19/09/2026 la flota ya no es fija en el código: se gestiona por semana desde el panel de admin (Flota & Bodas → gestor de flota), permitiendo añadir/quitar camiones, marcarlos propio/alquiler y adjuntar el PDF del contrato de alquiler. La lista de arriba es la de partida (Semana 3), no una lista cerrada.
+
 ## Semana 3 (15–20 sept. 2026) — la semana operativa actual
 
 La semana **empieza el martes** (no hay lunes operativo — los lunes son reuniones internas, no logística de campo).

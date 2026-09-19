@@ -162,3 +162,28 @@ Pedido por el usuario tras cerrar la instalación de la PWA: auditoría a fondo 
 **Dos fugas de datos reales encontradas tras instalar la app, ambas corregidas y desplegadas:**
 1. El manifest de la PWA fija `start_url` sin parámetros de URL, así que el icono instalado siempre abre la URL base — y esa URL base no tenía ninguna protección real: cualquiera sin sesión veía el panel completo de socias (Cuadrante, Saldos, Nóminas). Ahora, sin sesión de admin ni identidad de trabajador reconocida, se muestra la vista pública segura (sin datos económicos) con un botón para iniciar sesión. Un trabajador que instale su propio enlace tampoco pierde ya su identidad en cada relanzamiento — se recuerda en `localStorage` y se revalida contra el roster actual en cada carga (si lo has quitado del equipo, no se restaura).
 2. La pestaña "🕸️ Grafo" dentro de la vista de un trabajador reutilizaba el mismo componente del panel de admin sin ningún filtro — cualquier trabajador podía ver la asignación completa de todos sus compañeros, toda la semana, todos los camiones. Ahora se restringe solo a lo conectado de verdad a ese trabajador (sus tareas, los días y camiones de esas tareas). El Grafo del panel de admin no cambia.
+
+## Trabajo en paralelo con Gemini/Antigravity + auditoría y fixes de Claude (19/09/2026)
+
+Sesión con dos IAs tocando el proyecto a la vez (el usuario avisó expresamente de tener cuidado de no pisarse). Gemini avanzó en varios frentes nuevos mientras Claude auditaba lo ya hecho, verificaba en vivo, y arreglaba lo que encontraba roto — con deploy después de cada arreglo, no todo junto al final.
+
+**Lo que trajo Gemini, verificado y en producción:**
+- Petición pendiente del usuario cumplida correctamente: Saldos & Acuerdos ya sumaba las horas fichadas al saldo (`displayBalance = currentBalance + dynamicCost`) y las mostraba en el formato pedido (`🕒 fecha [entrada a salida] - Nh a X€/h`).
+- "Jornada Partida": turnos del mismo día (ficha, sale a comer, vuelve a fichar) se agrupan en una sola fila de Saldos con todos los tramos, en vez de aparecer como turnos sueltos.
+- Fix de formato de fecha/hora sin locale fijo (arreglaba el mismo síntoma que ya se había corregido una vez con Ricardo/Jefferson: cada móvil guardaba el fichaje en el idioma/formato de su propio sistema).
+- Gestión de flota por semana (`FleetManagerModal.jsx`) con subida de PDF de contrato de alquiler — ver `CONTEXTO.md`.
+- Modularización de `PartnerDashboardView.jsx` (2000+ líneas) en pestañas separadas (`dashboard/*.jsx`) — reduce el tamaño de cada archivo, pero dejó dos referencias colgando al mover código sin actualizar el padre (ver más abajo).
+- Fix del toggle de tareas que no persistía (polling de 20s pisando el cambio local) y limpieza de un `.env.local` peligroso.
+
+**Bugs reales encontrados por Claude y corregidos (todos verificados en vivo en producción, no solo en local):**
+1. **Redondeo de horas al entero en vez de a la media hora** (bug de dinero, `shiftCalculations.js`) — pagaba de más o de menos en cualquier turno que no cayera justo en una hora exacta. Confirmado con el usuario el criterio correcto (media hora, no hora completa) tras un primer intento equivocado.
+2. **Saldos & Acuerdos crasheaba al abrir y al guardar** — dos referencias (`handleSendWhatsApp`, `setSavingBalanceId`) que la modularización de Gemini dejó apuntando a funciones que ya solo existían en el componente hijo. Encontrados con un barrido `eslint --rule no-undef` sobre todo `client/src` (técnica nueva, reutilizable — el build normal no detecta esta clase de error porque es de JS en tiempo de ejecución, no de sintaxis).
+3. **`/api/logistics/optimize` no borraba nunca nada** — comparaba contra el nombre de campo equivocado (`isDeleted` en vez de `deleted`).
+4. **Subida de PDF de alquiler sin límite de tamaño/tipo** — endurecido a solo-PDF + 10MB.
+5. **Rendimiento**: cálculo de turnos sin memoizar, recalculado hasta 60 veces/minuto en el Monitor de Actividad en Tiempo Real por el cronómetro. Memoizado en los 3 sitios donde pasaba.
+6. **Duplicación de `AdminTaskEditorModal.jsx`**: reimplementaba a mano el caso domingo/lunes en 6 funciones en vez de usar `taskPlanning.js` — justo el patrón que ya causó un bug real antes. Unificado.
+7. **Código muerto de `@dnd-kit`**: importado, configurado, nunca conectado al JSX real (el reordenado real siempre fue por botones ⬆⬇). Eliminado junto con la dependencia — bundle 869KB → 853KB.
+
+**Metodología que vale la pena repetir:** verificar cada hallazgo contra la URL real desplegada, no solo contra el código o un servidor local — la previsualización local falló repetidamente por procesos zombis de la sesión anterior de Gemini en los mismos puertos, así que la verificación se hizo abriendo pestañas nuevas contra `https://r2fod.github.io/gula-logistics` tras cada deploy, incluyendo comprobar la consola sin errores y ejercitar de verdad la funcionalidad tocada (ej. abrir el editor de domingo/lunes y hacer un toggle de asignación real, sin guardar, para probar el refactor sin tocar datos de producción).
+
+**Pendiente real de esta sesión:** la Bolsa Mensual (`purseInfo`) no cuenta las horas ya consumidas a mano al calcular la tarifa de los turnos fichados por la app (ver `PENDIENTES.md`) — necesitaba confirmar la regla de negocio con el usuario antes de tocar dinero. Sigue sin empezar: animaciones de iconos por página, revisión responsive sistemática 320–1920px.
