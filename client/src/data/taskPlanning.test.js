@@ -124,6 +124,37 @@ describe('isTaskChronologicallyPast', () => {
     const mismoDia0230 = new Date(2026, 8, 20, 2, 30);
     expect(isTaskChronologicallyPast('domingo', '22:00-02:00', mismoDia0230)).toBe(true); // 02:30 > 02:00, pasada
   });
+
+  it('BUG real (20/09): boda de domingo que cruza medianoche, comprobada ya el LUNES, debe seguir "en curso" hasta pasado su margen', () => {
+    // 'domingo' es el último elemento de weekDayOrder (ordinal más alto),
+    // así que domingo->lunes es el único par del ciclo semanal donde el
+    // día de la tarea tiene un ordinal MAYOR que el de "hoy" sin ser en
+    // realidad un día futuro — justo el caso que se saltaba el fix del
+    // sábado->domingo (ordinales 5 y 6, sin ese problema de límite).
+    const lunes0035 = new Date(2026, 8, 21, 0, 35); // lunes 21, 5min tras las 00:30 reales
+    expect(isTaskChronologicallyPast('domingo', '20:30-00:30', lunes0035, 45)).toBe(false);
+  });
+
+  it('BUG real (20/09): esa misma boda de domingo SÍ se da por pasada una vez superado el margen, ya en lunes', () => {
+    const lunes0122 = new Date(2026, 8, 21, 1, 22); // lunes 21, 52min tras las 00:30 reales
+    expect(isTaskChronologicallyPast('domingo', '20:30-00:30', lunes0122, 45)).toBe(true);
+  });
+
+  it('BUG real (20/09): tarea de domingo SIN cruzar medianoche, comprobada ya el lunes por la tarde, sí se da por pasada (2+ días de margen de sobra)', () => {
+    // Antes del fix esto devolvía false para siempre (se trataba como "día
+    // futuro"): una tarea 15:00-17:00 del domingo, vista el lunes a las
+    // 14:00, lleva casi 21h pasada su hora de fin, muy por encima de
+    // cualquier margen razonable.
+    const lunesTarde = new Date(2026, 8, 21, 14, 0);
+    expect(isTaskChronologicallyPast('domingo', '15:00-17:00', lunesTarde, 45)).toBe(true);
+  });
+
+  it('sabado->domingo (el caso ya cubierto arriba) sigue funcionando igual tras el fix', () => {
+    const domingo0035 = new Date(2026, 8, 20, 0, 35);
+    expect(isTaskChronologicallyPast('sabado', '20:30-00:30', domingo0035, 45)).toBe(false);
+    const masTarde = new Date(2026, 8, 20, 1, 22);
+    expect(isTaskChronologicallyPast('sabado', '20:30-00:30', masTarde, 45)).toBe(true);
+  });
 });
 
 describe('isTaskTooEarlyToClockIn', () => {
