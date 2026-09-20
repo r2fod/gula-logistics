@@ -232,10 +232,17 @@ describe('aggregateShiftsByWorker', () => {
     });
   });
 
-  it('ignora turnos de alguien que ya no está en workersList (huérfanos), sin romper', () => {
-    const shifts = [{ workerName: 'Ex-trabajador', durationHours: 5, cost: 50 }];
+  it('BUG real: antes ignoraba en silencio los turnos de alguien que ya no está en workersList — ahora los cuenta igual, sin perder el histórico', () => {
+    // Quitar a alguien del roster (localStorage) no debería hacer
+    // desaparecer sus horas/coste ya fichados de Resumen Financiero ni de
+    // Saldos & Acuerdos — antes de este fix, aggregateShiftsByWorker
+    // descartaba en silencio cualquier turno cuyo workerName no estuviera
+    // en la lista actual.
+    const shifts = [{ workerName: 'Ex-trabajador', durationHours: 5, cost: 50, startDate: '10/09/2026', startTime: '08:00', endTime: '13:00', isSalaried: false, rate: 10 }];
     expect(() => aggregateShiftsByWorker(shifts, workersList)).not.toThrow();
-    expect(Object.keys(aggregateShiftsByWorker(shifts, workersList))).toEqual(['Ricardo', 'Irene']);
+    const result = aggregateShiftsByWorker(shifts, workersList);
+    expect(Object.keys(result)).toEqual(expect.arrayContaining(['Ricardo', 'Irene', 'Ex-trabajador']));
+    expect(result['Ex-trabajador']).toMatchObject({ totalHours: 5, totalCost: 50, completedShifts: 1, isOrphaned: true });
   });
 });
 
