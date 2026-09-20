@@ -104,4 +104,24 @@ describe('isTaskChronologicallyPast', () => {
     const martes = new Date(2026, 8, 15); // martes, con 'viernes' como dayKey (día futuro)
     expect(isTaskChronologicallyPast('viernes', '09:00-16:00', martes, 45)).toBe(false);
   });
+
+  it('BUG real reproducido en producción: una tarea normal de tarde del MISMO día, comprobada de madrugada, NO debe darse por pasada', () => {
+    // Domingo 20, tarea "15:00-17:00" (sin cruzar medianoche), comprobada a
+    // las 02:00 del propio domingo — autoCompletePastTasks la marcó como
+    // completada en Mongo esa madrugada sin haber llegado siquiera su hora
+    // de inicio. Causa: la condición de "hora de madrugada" se aplicaba a
+    // cualquier tarea, no solo a las que de verdad cruzan medianoche.
+    const domingo0200 = new Date(2026, 8, 20, 2, 0);
+    expect(isTaskChronologicallyPast('domingo', '15:00-17:00', domingo0200, 45)).toBe(false);
+    expect(isTaskChronologicallyPast('domingo', '15:00-17:00', domingo0200)).toBe(false); // también sin margen
+  });
+
+  it('una tarea de madrugada de verdad (que SÍ cruza medianoche) sigue detectándose bien en el mismo día', () => {
+    // Por si el fix de arriba rompiera el caso legítimo: una tarea
+    // "22:00-02:00" comprobada a la 01:00 del mismo día sigue en curso.
+    const mismoDia0100 = new Date(2026, 8, 20, 1, 0);
+    expect(isTaskChronologicallyPast('domingo', '22:00-02:00', mismoDia0100)).toBe(false); // 01:00 < 02:00, en curso
+    const mismoDia0230 = new Date(2026, 8, 20, 2, 30);
+    expect(isTaskChronologicallyPast('domingo', '22:00-02:00', mismoDia0230)).toBe(true); // 02:30 > 02:00, pasada
+  });
 });
