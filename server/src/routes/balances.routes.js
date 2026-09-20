@@ -53,10 +53,23 @@ router.post('/seed', requireAdmin, async (req, res) => {
 router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const updatePayload = req.body;
+    // El cliente siempre manda un payload PARCIAL (ej. solo {breakdown,
+    // currentBalance} al añadir un turno) — nunca el documento completo.
+    // Un objeto sin operadores ($set, etc.) que se pasa tal cual a
+    // findOneAndUpdate lo trata MongoDB como documento de REEMPLAZO
+    // completo, no como una actualización parcial: cualquier campo no
+    // incluido en el payload (name, avatar, hasTransportBonus, purseInfo,
+    // agreements...) se borraría del documento entero. `id` fuera del
+    // propio payload para que $set/$setOnInsert nunca compitan por el
+    // mismo campo.
+    const { id: _ignored, ...updatePayload } = req.body || {};
 
     if (mongoose.connection.readyState === 1) {
-      const updatedDoc = await WorkerBalance.findOneAndUpdate({ id }, updatePayload, { new: true, upsert: true });
+      const updatedDoc = await WorkerBalance.findOneAndUpdate(
+        { id },
+        { $set: updatePayload, $setOnInsert: { id } },
+        { new: true, upsert: true }
+      );
       return res.json(updatedDoc);
     }
 
