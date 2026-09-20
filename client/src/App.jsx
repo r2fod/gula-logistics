@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Share2,
   Check,
@@ -81,6 +81,17 @@ export default function App() {
     handleApplyGeminiSchedule,
     lastLocalEditRef
   } = useWeeks();
+
+  // El efecto del sondeo de 20s se monta UNA vez ([] de dependencias), así
+  // que llamaba siempre a la versión de autoCompletePastTasks de la primera
+  // render — con la semana tal como estaba al abrir la app. Si desde
+  // entonces las tareas ya se habían completado, esa copia vieja seguía
+  // viéndolas pendientes y repetía el mismo PATCH cada 20s para siempre,
+  // subiendo `updatedAt` en cada vuelta y haciendo que los guardados del
+  // admin chocaran con "Alguien más ha guardado cambios". Con la ref, cada
+  // tick usa la última versión (ve el estado real).
+  const autoCompletePastTasksRef = useRef(autoCompletePastTasks);
+  autoCompletePastTasksRef.current = autoCompletePastTasks;
 
   const {
     clockEntries,
@@ -248,7 +259,7 @@ export default function App() {
     // pasaron mientras la app estaba cerrada — no solo esperar al primer
     // tick del intervalo de 20s.
     if (getStoredAdminToken()) {
-      autoCompletePastTasks();
+      autoCompletePastTasksRef.current();
     }
     // En cuanto el móvil recupera cobertura, reintentar YA los fichajes
     // pendientes en vez de esperar hasta 20s al siguiente tick del
@@ -280,7 +291,7 @@ export default function App() {
       // sesión después de montar la app) para que no lo dispare cada
       // trabajador desde su propio móvil a la vez.
       if (getStoredAdminToken()) {
-        autoCompletePastTasks();
+        autoCompletePastTasksRef.current();
       }
     }, 20000);
     return () => {

@@ -26,7 +26,7 @@
 ## WORKFLOW
 - No editar `logisticsData.js` (cliente o servidor) esperando que afecte a lo ya desplegado — **el planning vive en Mongo desde hoy**, esos archivos solo son la semilla para un bootstrap desde cero. Para cambiar la semana activa hay que hacer `POST /api/logistics/weeks` con el objeto de semana completo (no parcial, `findOneAndUpdate` sin `$set` reemplaza el documento entero).
 - Dos checkouts en este entorno: este worktree (rama de trabajo) y `/Users/raul/Desktop/projects/gula-logistics` (checkout principal, rama `main`, desde donde se hace merge + push + `npm run deploy`). Ver flujo completo abajo.
-- Deploy cliente: `cd client && npm run deploy` (gh-pages). Deploy servidor: push a `main` dispara auto-deploy en Render (o "Manual Deploy" en su dashboard si no).
+- Deploy cliente: **automático** — cada push a `main` lo despliega la GitHub Action (`.github/workflows/deploy.yml`, Pages en modo workflow; tarda ~1 min, comprobar el hash del bundle en la URL pública). `npm run deploy` (rama `gh-pages`) ya no es lo que se sirve. Deploy servidor: push a `main` dispara auto-deploy en Render (o "Manual Deploy" en su dashboard si no).
 - Git: commit en el worktree → merge a `main` en el checkout principal → push → deploy. No hacer commit directo en el checkout principal salvo para el merge.
 
 ```bash
@@ -37,8 +37,8 @@ git add -A && git commit -m "..."
 git -C /Users/raul/Desktop/projects/gula-logistics merge <rama-worktree>
 git -C /Users/raul/Desktop/projects/gula-logistics push origin main
 
-# Deploy del cliente
-cd /Users/raul/Desktop/projects/gula-logistics/client && npm run deploy
+# El cliente se despliega solo al hacer push (GitHub Action); comprobar con:
+gh run list --limit 1
 ```
 
 ## PROHIBITED

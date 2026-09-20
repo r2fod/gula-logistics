@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getTaskListForDay, resolveTaskIndexByText, buildTaskListPatch, isTaskChronologicallyPast, isTaskTooEarlyToClockIn,
-  parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge,
+  parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, isTaskTooEarlyToStart,
 } from './taskPlanning';
 
 const weekData = {
@@ -377,5 +377,36 @@ describe('getWeddingsBadge', () => {
     expect(getWeddingsBadge({ saturdaySpecial: { weddings: [{ location: 'A' }, { location: 'A' }] } })).toBe('1 Boda');
     expect(getWeddingsBadge({ saturdaySpecial: { weddings: [] } })).toBe('Sin bodas');
     expect(getWeddingsBadge(null)).toBe('Sin bodas');
+  });
+});
+
+describe('isTaskTooEarlyToStart — fichar solo desde 5 min antes, por fecha real', () => {
+  const sofa = { text: 'Devolución Sofá', timeFrame: '09:00 - 09:30' }; // sin etiquetar -> lunes
+  const recogida = { text: 'Recogida', timeFrame: '15:00-17:00', targetDay: 'Domingo' };
+
+  it('BUG evitado: el lunes a la 01:34 no se puede fichar una tarea de lunes de las 09:00', () => {
+    expect(isTaskTooEarlyToStart(SEMANA_ACTUAL, 'domingo', sofa, at(2026, 9, 21, 1, 34))).toBe(true);
+  });
+
+  it('se habilita exactamente 5 minutos antes de empezar', () => {
+    expect(isTaskTooEarlyToStart(SEMANA_ACTUAL, 'domingo', sofa, at(2026, 9, 21, 8, 54))).toBe(true);
+    expect(isTaskTooEarlyToStart(SEMANA_ACTUAL, 'domingo', sofa, at(2026, 9, 21, 8, 55))).toBe(false);
+    expect(isTaskTooEarlyToStart(SEMANA_ACTUAL, 'domingo', sofa, at(2026, 9, 21, 9, 20))).toBe(false); // ya empezada
+  });
+
+  it('una tarea etiquetada "Solo Domingo" cuenta con el domingo, no con el lunes', () => {
+    expect(isTaskTooEarlyToStart(SEMANA_ACTUAL, 'domingo', recogida, at(2026, 9, 20, 12, 0))).toBe(true);
+    expect(isTaskTooEarlyToStart(SEMANA_ACTUAL, 'domingo', recogida, at(2026, 9, 20, 14, 56))).toBe(false);
+  });
+
+  it('una semana futura no se puede fichar aunque la hora del día ya haya pasado hoy', () => {
+    const proxima = semana('Del 22 al 27 de Septiembre de 2026');
+    expect(isTaskTooEarlyToStart(proxima, 'martes', { timeFrame: '09:00 - 10:00' }, at(2026, 9, 20, 20, 0))).toBe(true);
+  });
+
+  it('sin fechas o sin hora legibles no bloquea', () => {
+    expect(isTaskTooEarlyToStart(semana('Fechas raras'), 'martes', { timeFrame: '09:00 - 10:00' }, at(2026, 9, 15, 1, 0))).toBe(false);
+    expect(isTaskTooEarlyToStart(SEMANA_ACTUAL, 'martes', { text: 'sin hora' }, at(2026, 9, 15, 1, 0))).toBe(false);
+    expect(getTaskStartDateTime(SEMANA_ACTUAL, 'martes', 'texto plano', at(2026, 9, 15))).toBeNull();
   });
 });

@@ -283,6 +283,31 @@ export function getTaskPastStatus(weekData, dayKey, task, now = new Date(), grac
   return now.getTime() > end.getTime() + graceMinutes * 60 * 1000;
 }
 
+// Momento REAL (Date) en que EMPIEZA una tarea, según la fecha de su día en
+// la semana y la hora de inicio de su horario. null si no se puede saber
+// (fechas de la semana ilegibles u horario sin "HH:MM").
+export function getTaskStartDateTime(weekData, dayKey, task, now = new Date()) {
+  const range = getWeekRange(weekData, now);
+  if (!range) return null;
+  const date = resolveTaskDate(range, resolveTaskEvalDay(dayKey, task));
+  const timeFrame = (task && typeof task === 'object') ? task.timeFrame : null;
+  const m = /^\s*(\d{1,2}):(\d{2})/.exec(typeof timeFrame === 'string' ? timeFrame : '');
+  if (!date || !m || Number(m[1]) > 23 || Number(m[2]) > 59) return null;
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), Number(m[1]), Number(m[2]));
+}
+
+// "Fichar esta tarea" solo se habilita desde `earlyMinutes` antes de que
+// EMPIECE la tarea, contando por fecha real: antes se comparaba solo si la
+// tarea era del día de hoy por día de la semana, así que una tarea de
+// lunes sin etiquetar se podía fichar el domingo de madrugada (y en
+// cualquier semana futura). Sin fecha o sin hora legible NO se bloquea
+// (mejor dejar fichar que impedir trabajar por un dato mal escrito).
+export function isTaskTooEarlyToStart(weekData, dayKey, task, now = new Date(), earlyMinutes = 5) {
+  const start = getTaskStartDateTime(weekData, dayKey, task, now);
+  if (!start) return false;
+  return now.getTime() < start.getTime() - earlyMinutes * 60 * 1000;
+}
+
 // Versión para PINTAR (tachado) y filtrar: solo true cuando las fechas reales
 // dicen que la tarea ya terminó. Con fechas ilegibles (null) o sin horario
 // utilizable no se da por pasada.

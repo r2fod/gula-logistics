@@ -137,6 +137,38 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
     );
   });
 
+  it('BUG evitado: repetir el mismo PATCH (tarea ya en ese estado) NO escribe ni sube updatedAt', async () => {
+    LogisticsWeek.findOne.mockResolvedValue({
+      weekId: 'week_3',
+      schedule: { martes: { tasks: [{ text: 'Cargar furgoneta', completed: true }] } },
+    });
+
+    const app = buildApp();
+    const res = await request(app)
+      .patch('/api/logistics/weeks/week_3/tasks')
+      .send({ dayKey: 'martes', taskIndex: 0, completed: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ success: true, unchanged: true });
+    expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('desmarcar una tarea que ya estaba sin marcar tampoco escribe', async () => {
+    LogisticsWeek.findOne.mockResolvedValue({
+      weekId: 'week_3',
+      sundayMonday: { tasks: [{ text: 'Devolver Dealde' }, 'texto plano'] },
+    });
+
+    const app = buildApp();
+    for (const taskIndex of [0, 1]) {
+      const res = await request(app)
+        .patch('/api/logistics/weeks/week_3/tasks')
+        .send({ dayKey: 'domingo', taskIndex, completed: false });
+      expect(res.body.unchanged).toBe(true);
+    }
+    expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
   it('resuelve "domingo" contra sundayMonday.tasks, no schedule.domingo', async () => {
     LogisticsWeek.findOne.mockResolvedValue({
       weekId: 'week_3',

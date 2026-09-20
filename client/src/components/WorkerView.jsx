@@ -31,7 +31,7 @@ import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
-import { getTaskListForDay, resolveTaskIndexByText, isTaskTooEarlyToClockIn, isTaskPast, getDayLabel, getWeddingsBadge } from '../data/taskPlanning';
+import { getTaskListForDay, resolveTaskIndexByText, isTaskPast, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskStartDateTime, isTaskTooEarlyToStart } from '../data/taskPlanning';
 import { subscribeToPush } from '../data/pushService';
 
 export default function WorkerView({
@@ -213,6 +213,9 @@ export default function WorkerView({
   }, 0);
 
   // Auto-detect immediate / first pending task for ZERO-SCROLL instant clock-in
+  // Se recalcula cada minuto (no cada segundo) para que una tarea que ya
+  // terminó deje de ser "la siguiente" sin tener que recargar.
+  const minuteKey = Math.floor(currentTime.getTime() / 60000);
   const immediateTask = useMemo(() => {
     if (activeShift) {
       return {
@@ -225,50 +228,64 @@ export default function WorkerView({
       };
     }
 
-    // Look for first uncompleted task across days (daysWithActivitiesForTotals
-    // ya excluye 'lunes' para no detectar dos veces la misma tarea de
-    // domingo/lunes, ni colarla antes que las de martes-viernes por ir
-    // 'lunes' primero en weekDays).
+    // La SIGUIENTE tarea: la que empieza antes entre las que ni están
+    // completadas ni han terminado ya (daysWithActivitiesForTotals excluye
+    // 'lunes' para no contar dos veces la lista compartida domingo/lunes).
+    // Antes era "la primera sin completar por orden de día", y una boda de
+    // sábado ya pasada se quedaba fijada como "siguiente" para siempre, así
+    // que "iniciar jornada" nunca esperaba a la hora de la tarea real. Se
+    // ordena por hora de inicio real porque la lista compartida mezcla
+    // tareas de domingo y de lunes en cualquier orden.
+    const candidates = [];
     for (const day of daysWithActivitiesForTotals) {
       for (const t of day.tasks) {
-        const isCompleted = typeof t === 'object' ? t.completed : false;
-        if (!isCompleted) {
-          const text = typeof t === 'object' ? t.text : t;
-          const timeFrame = typeof t === 'object' ? t.timeFrame : null;
-          const location = typeof t === 'object' ? t.location : null;
-          const mapsUrl = typeof t === 'object' ? t.mapsUrl : null;
-          return {
-            isShiftActive: false,
-            dayKey: day.key,
-            taskIndex: resolveRealTaskIndex(day.key, text),
-            dayTitle: day.title,
-            dayBadge: day.badge,
-            taskName: text,
-            timeFrame,
-            location,
-            mapsUrl,
-            rawTask: t,
-            isWedding: false
-          };
-        }
+        if (typeof t === 'object' && t.completed) continue;
+        if (isTaskPast(activeWeekData, day.key, t, currentTime)) continue;
+        candidates.push({ day, t, isWedding: false });
       }
-      if (day.weddings && day.weddings.length > 0) {
-        const w = day.weddings[0];
-        return {
-          isShiftActive: false,
-          dayKey: day.key,
-          dayTitle: day.title,
-          dayBadge: 'Boda Fin de Semana',
-          taskName: `Boda: ${w.location} (${w.truck})`,
-          timeFrame: w.timeFrame,
-          location: w.location,
-          rawTask: w,
-          isWedding: true
-        };
+      for (const w of day.weddings || []) {
+        if (w.completed || isTaskPast(activeWeekData, day.key, w, currentTime)) continue;
+        candidates.push({ day, t: w, isWedding: true });
       }
     }
-    return null;
-  }, [daysWithActivities, activeShift, elapsedTimeFormatted]);
+    const startOf = ({ day, t }) => getTaskStartDateTime(activeWeekData, day.key, t, currentTime)?.getTime() ?? Infinity;
+    candidates.sort((a, b) => {
+      const sa = startOf(a);
+      const sb = startOf(b);
+      return sa === sb ? 0 : sa < sb ? -1 : 1;
+    });
+
+    const next = candidates[0];
+    if (!next) return null;
+    const { day, t } = next;
+    if (next.isWedding) {
+      return {
+        isShiftActive: false,
+        dayKey: day.key,
+        dayTitle: day.title,
+        dayBadge: 'Boda Fin de Semana',
+        taskName: `Boda: ${t.location} (${t.truck})`,
+        timeFrame: t.timeFrame,
+        location: t.location,
+        rawTask: t,
+        isWedding: true
+      };
+    }
+    const text = typeof t === 'object' ? t.text : t;
+    return {
+      isShiftActive: false,
+      dayKey: day.key,
+      taskIndex: resolveRealTaskIndex(day.key, text),
+      dayTitle: day.title,
+      dayBadge: day.badge,
+      taskName: text,
+      timeFrame: typeof t === 'object' ? t.timeFrame : null,
+      location: typeof t === 'object' ? t.location : null,
+      mapsUrl: typeof t === 'object' ? t.mapsUrl : null,
+      rawTask: t,
+      isWedding: false
+    };
+  }, [daysWithActivities, activeShift, elapsedTimeFormatted, minuteKey]);
 
   // Compañeros de la MISMA tarea (no cualquiera fichado en algo sin
   // relación) — para saber a quién preguntar por compartir coche a la
@@ -325,6 +342,14 @@ export default function WorkerView({
   const weekDayOrder = weekDays.map(d => d.key);
   const todayOrdinal = weekDayOrder.indexOf(todayKey);
   const isDayInFuture = (dayKey) => {
+    // Por FECHA REAL cuando la semana tiene fechas legibles: así una semana
+    // futura entera sale bloqueada (por día de la semana suelto, el martes
+    // de la semana que viene "ya había llegado" un domingo por la noche).
+    const dayDate = resolveTaskDate(getWeekRange(activeWeekData, currentTime), dayKey);
+    if (dayDate) {
+      const today = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
+      return dayDate.getTime() > today.getTime();
+    }
     const ordinal = weekDayOrder.indexOf(dayKey);
     if (ordinal === -1 || todayOrdinal === -1) return false;
     // 'domingo' es el último elemento de weekDayOrder (ordinal más alto) —
@@ -338,16 +363,19 @@ export default function WorkerView({
   };
 
   // domingo y lunes comparten sundayMonday.tasks bajo un único bucket real
-  // ('domingo' es la clave de storage) — estos dos helpers evitan repetir
-  // esa conversión en cada sitio: toStorageDayKey para leer/escribir la
-  // lista real (findTaskIndex, toggle, taskRef), toEvalDayKey para saber
-  // si es demasiado pronto para fichar (isTaskTooEarlyToClockIn), respetando
-  // el targetDay propio de cada tarea ('Domingo'/'Lunes'/indiferente).
+  // ('domingo' es la clave de storage) — toStorageDayKey evita repetir esa
+  // conversión al leer/escribir la lista real (findTaskIndex, toggle,
+  // taskRef).
   const toStorageDayKey = (dayKey) => (dayKey === 'lunes' ? 'domingo' : dayKey);
-  const toEvalDayKey = (dayKey, task) => {
-    if (dayKey !== 'lunes' && dayKey !== 'domingo') return dayKey;
-    const targetDay = (task && typeof task === 'object' && task.targetDay) ? task.targetDay.toLowerCase() : null;
-    return targetDay || 'domingo';
+  // Fichar una tarea solo se habilita desde 5 min antes de que EMPIECE, por
+  // fecha real (ver isTaskTooEarlyToStart). tooEarly y su texto salen del
+  // mismo cálculo; si la tarea no es de hoy el texto dice el día.
+  const isTooEarlyToClockIn = (dayKey, task) => isTaskTooEarlyToStart(activeWeekData, dayKey, task, currentTime);
+  const availabilityText = (dayKey, task) => {
+    const start = getTaskStartDateTime(activeWeekData, dayKey, task, currentTime);
+    const hhmm = String(task?.timeFrame || '').split('-')[0].trim();
+    if (!start || start.toDateString() === currentTime.toDateString()) return `Disponible a partir de las ${hhmm}`;
+    return `Disponible el ${getDayLabel(activeWeekData, resolveTaskEvalDay(dayKey, task), currentTime)} a las ${hhmm}`;
   };
 
   // Solo tachado visual (grace 0). isTaskPast compara contra la FECHA REAL
@@ -599,18 +627,14 @@ export default function WorkerView({
                 // verdad de hoy — si la primera tarea pendiente de la
                 // semana era de un día futuro, su hora podía caer ya
                 // "pasada" hoy y se permitía iniciar jornada antes de
-                // tiempo. isTaskTooEarlyToClockIn ya comprueba el día real.
-                const isReady = !immediateTask?.dayKey || !isTaskTooEarlyToClockIn(toEvalDayKey(immediateTask.dayKey, immediateTask.rawTask), immediateTask.timeFrame);
+                // tiempo. isTooEarlyToClockIn ya comprueba la fecha real.
+                const isReady = !immediateTask?.dayKey || !isTooEarlyToClockIn(immediateTask.dayKey, immediateTask.rawTask);
                 let minutesLeft = 0;
                 if (!isReady) {
-                  const match = immediateTask.timeFrame.split('-')[0].trim().match(/^(\d{1,2}):(\d{2})$/);
-                  if (match) {
-                    const now = new Date();
-                    const taskTime = new Date();
-                    taskTime.setHours(parseInt(match[1], 10), parseInt(match[2], 10), 0, 0);
-                    minutesLeft = Math.max(1, Math.ceil((taskTime.getTime() - now.getTime()) / (1000 * 60) - 5));
-                  }
+                  const start = getTaskStartDateTime(activeWeekData, immediateTask.dayKey, immediateTask.rawTask, currentTime);
+                  if (start) minutesLeft = Math.max(1, Math.ceil((start.getTime() - currentTime.getTime()) / 60000 - 5));
                 }
+                const waitText = minutesLeft >= 60 ? `${Math.floor(minutesLeft / 60)} h ${minutesLeft % 60} min` : `${minutesLeft} min`;
 
                 return (
                   <button
@@ -647,7 +671,7 @@ export default function WorkerView({
                     ) : (
                       <>
                         <Clock className="w-4 h-4" />
-                        <span>Espera {minutesLeft} min para fichar</span>
+                        <span>Espera {waitText} para fichar</span>
                       </>
                     )}
                   </button>
@@ -963,13 +987,13 @@ export default function WorkerView({
                                       <Lock className="w-3 h-3" />
                                       <span>Aún no ha llegado este día</span>
                                     </span>
-                                  ) : isTaskTooEarlyToClockIn(toEvalDayKey(dayGroup.key, task), timeFrame) ? (
+                                  ) : isTooEarlyToClockIn(dayGroup.key, task) ? (
                                     // El día ya llegó, pero faltan más de 5min para la hora de
                                     // inicio de ESTA tarea concreta — evita fichar por error una
                                     // tarea de última hora del día nada más empezar la jornada.
                                     <span className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed">
                                       <Lock className="w-3 h-3" />
-                                      <span>Disponible a partir de las {timeFrame.split('-')[0].trim()}</span>
+                                      <span>{availabilityText(dayGroup.key, task)}</span>
                                     </span>
                                   ) : (
                                     <button
@@ -1064,10 +1088,10 @@ export default function WorkerView({
                                         <Lock className="w-3 h-3" />
                                         <span>Aún no ha llegado este día</span>
                                       </span>
-                                    ) : isTaskTooEarlyToClockIn('sabado', w.timeFrame) ? (
+                                    ) : isTooEarlyToClockIn('sabado', w) ? (
                                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed">
                                         <Lock className="w-3 h-3" />
-                                        <span>Disponible a partir de las {w.timeFrame.split('-')[0].trim()}</span>
+                                        <span>{availabilityText('sabado', w)}</span>
                                       </span>
                                     ) : (
                                       <button
