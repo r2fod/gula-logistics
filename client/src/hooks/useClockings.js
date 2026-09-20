@@ -57,7 +57,7 @@ export function useClockings(markTaskCompleted) {
     }
   };
 
-  const handleDeleteClockEntry = (entryId) => {
+  const handleDeleteClockEntry = async (entryId) => {
     const updated = clockEntries.map(e => e.id === entryId ? { ...e, deleted: true } : e);
     setClockEntries(updated);
     try {
@@ -65,10 +65,17 @@ export function useClockings(markTaskCompleted) {
     } catch (e) {
       console.error(e);
     }
-    deleteClockEntryInAPI(entryId);
+    // Igual que handleUpdateClockEntry: sin comprobar esto, un borrado que
+    // no llegara de verdad al servidor (sesión caducada, sin conexión) se
+    // veía "en la papelera" aquí y volvía a aparecer solo en el siguiente
+    // refresco de 20s, sin ninguna explicación.
+    const ok = await deleteClockEntryInAPI(entryId);
+    if (!ok) {
+      alert('⚠️ No se pudo mover este fichaje a la papelera en el servidor (posible sesión de administrador caducada o sin conexión). Puede volver a aparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite el borrado.');
+    }
   };
 
-  const handleRestoreClockEntry = (entryId) => {
+  const handleRestoreClockEntry = async (entryId) => {
     const updated = clockEntries.map(e => e.id === entryId ? { ...e, deleted: false } : e);
     setClockEntries(updated);
     try {
@@ -76,8 +83,11 @@ export function useClockings(markTaskCompleted) {
     } catch (e) {
       console.error(e);
     }
-    
-    restoreClockEntryInAPI(entryId);
+
+    const ok = await restoreClockEntryInAPI(entryId);
+    if (!ok) {
+      alert('⚠️ No se pudo restaurar este fichaje en el servidor (posible sesión de administrador caducada o sin conexión). Puede volver a desaparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite la restauración.');
+    }
   };
 
   const handleClearClockEntries = () => {

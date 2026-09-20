@@ -244,12 +244,14 @@ export async function updateClockEntryInAPI(entry) {
  */
 export async function deleteClockEntryInAPI(entryId) {
   try {
-    await fetch(`${API_BASE}/clock/${entryId}`, {
+    const res = await fetch(`${API_BASE}/clock/${entryId}`, {
       method: 'DELETE',
       headers: { ...authHeaders() }
     });
+    return res.ok;
   } catch (err) {
     console.warn('Backend API delete failed:', err.message);
+    return false;
   }
 }
 
@@ -258,12 +260,14 @@ export async function deleteClockEntryInAPI(entryId) {
  */
 export async function restoreClockEntryInAPI(entryId) {
   try {
-    await fetch(`${API_BASE}/clock/${entryId}/restore`, {
+    const res = await fetch(`${API_BASE}/clock/${entryId}/restore`, {
       method: 'PUT',
       headers: { ...authHeaders() }
     });
+    return res.ok;
   } catch (err) {
     console.warn('Backend API restore failed:', err.message);
+    return false;
   }
 }
 
