@@ -205,7 +205,13 @@ export default function PartnerDashboardView({
     // TeamBalancesTab.jsx alrededor de cada llamada a esta función — no
     // duplicarlo aquí (esta función no tiene ese estado, y llamarlo
     // rompía el guardado de cualquier cambio con un ReferenceError).
-    await saveWorkerBalanceToAPI(workerId, updatedFields);
+    const saved = await saveWorkerBalanceToAPI(workerId, updatedFields);
+    if (!saved) {
+      // El cambio ya se ve en pantalla (arriba, optimista) pero NO llegó a
+      // Mongo — sin este aviso, desaparecía solo en el siguiente refresco
+      // sin que nadie supiera por qué.
+      alert('⚠️ No se pudo guardar este cambio de saldo en el servidor (posible sesión de administrador caducada o sin conexión). Se ve aquí pero puede desaparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite el cambio.');
+    }
   };
 
   const handleRequestAdminUnlock = () => {

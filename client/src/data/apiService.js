@@ -230,9 +230,13 @@ export async function updateClockEntryInAPI(entry) {
       return await res.json();
     }
   } catch (err) {
-    console.warn('Backend API update failed, updating locally:', err.message);
+    console.warn('Backend API update failed:', err.message);
   }
-  return entry;
+  // null (no el `entry` echoado) para que quien llama pueda distinguir un
+  // guardado real del servidor de un fallo silencioso — antes esta función
+  // devolvía el mismo `entry` tanto si se guardaba como si no, así que el
+  // llamador no tenía forma de saber si de verdad se había guardado.
+  return null;
 }
 
 /**
@@ -343,7 +347,12 @@ export async function saveWorkerBalanceToAPI(workerId, updatePayload) {
   } catch (err) {
     console.warn('Backend API worker balance update failed:', err.message);
   }
-  return updatePayload;
+  // null en vez de `updatePayload` echoado: quien llama (persistWorkerBalance
+  // en PartnerDashboardView.jsx) ya actualiza el estado local de forma
+  // optimista ANTES de llamar a esto — sin una señal clara de fallo, un
+  // cambio de saldo que no llegara a Mongo se veía "guardado" en pantalla
+  // y desaparecía solo en el siguiente refresco, sin explicación.
+  return null;
 }
 
 /**
