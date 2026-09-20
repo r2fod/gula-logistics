@@ -33,9 +33,30 @@ router.get('/', async (req, res) => {
 // POST /api/clock - Add new clock entry
 router.post('/', async (req, res) => {
   try {
-    const newEntryData = req.body;
+    const newEntryData = { ...req.body };
     if (!newEntryData.id) {
       newEntryData.id = Date.now().toString();
+    }
+
+    // Este endpoint es intencionalmente público (los trabajadores fichan
+    // sin login) — sin estas dos comprobaciones, cualquiera con la URL de
+    // la API podía mandar un POST directo (sin pasar por la UI) con un
+    // coste inventado que pairShiftsFromEntries usaría tal cual.
+    // earnings/durationHours son valores CALCULADOS al emparejar turnos
+    // (nunca los manda el flujo real de ClockInModal.jsx) — se descartan
+    // siempre, vengan o no en la petición.
+    delete newEntryData.earnings;
+    delete newEntryData.durationHours;
+    // rate SÍ es legítimo que lo mande el cliente (algunos fichajes usan
+    // una tarifa distinta a la de por defecto, ver AdminClockEditModal),
+    // pero acotado a un rango razonable — nunca 0, negativo, ni una
+    // fantasía tipo 1000€/h.
+    if (newEntryData.rate !== undefined) {
+      const rate = Number(newEntryData.rate);
+      if (!Number.isFinite(rate) || rate <= 0 || rate > 100) {
+        return res.status(400).json({ error: 'rate fuera de un rango razonable (0-100€/h)' });
+      }
+      newEntryData.rate = rate;
     }
 
     if (mongoose.connection.readyState === 1) {
