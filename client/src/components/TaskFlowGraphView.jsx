@@ -127,7 +127,12 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
     };
 
     const truckIdByText = (text) => {
-      const found = trucks.find(t => text.includes(t.name) || (t.shortName && text.includes(t.shortName)));
+      // Una tarea sin `.text` (objeto malformado, ej. de una generación de
+      // IA incompleta) pasaba undefined hasta aquí y `.includes` reventaba
+      // toda la vista del Grafo — con este guard simplemente no encuentra
+      // camión, en vez de romper el render entero.
+      const safeText = typeof text === 'string' ? text : '';
+      const found = trucks.find(t => safeText.includes(t.name) || (t.shortName && safeText.includes(t.shortName)));
       return found ? found.id : null;
     };
 
@@ -137,7 +142,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
         if (truckId) links.push({ source: taskId, target: truckId });
         return;
       }
-      if (/\d+\s*camiones/i.test(text)) {
+      if (/\d+\s*camiones/i.test(text || '')) {
         trucks.forEach(t => links.push({ source: taskId, target: t.id }));
         return;
       }

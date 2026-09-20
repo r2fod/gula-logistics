@@ -11,10 +11,22 @@ export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = 
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+
+    // Sin esto, dos personas con el mismo nombre (o un reintento tras una
+    // errata) generan dos entradas — su id de saldo en Mongo se deriva del
+    // nombre (name.toLowerCase().replace(/\s+/g,'-')) así que colisionarían
+    // sobre la MISMA ficha financiera, y quitar a cualquiera de las dos
+    // (handleRemoveWorker filtra por nombre exacto) las borraría a ambas
+    // de golpe.
+    if (workersList.some(w => w.name.trim().toLowerCase() === trimmedName.toLowerCase())) {
+      alert(`Ya hay alguien llamado "${trimmedName}" en el equipo. Si es la misma persona, no hace falta añadirla otra vez; si es alguien distinto, usa un nombre que lo distinga (ej. añadiendo el apellido).`);
+      return;
+    }
 
     const newWorker = {
-      name: name.trim(),
+      name: trimmedName,
       role: role.trim(),
       truck: "No Asignado",
       avatar: avatar,
