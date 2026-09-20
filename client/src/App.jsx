@@ -546,6 +546,8 @@ export default function App() {
         onClose={() => setIsWeekModalOpen(false)}
         onCreateWeek={handleCreateWeek}
         currentWeekName={activeWeek.name}
+        currentWeekTrucks={activeWeek.trucks || []}
+        workersList={workersList}
       />
 
       <GeminiAssistantModal
