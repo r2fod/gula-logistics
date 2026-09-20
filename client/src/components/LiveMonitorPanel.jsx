@@ -178,7 +178,14 @@ export default function LiveMonitorPanel({
       rawTaskName.toUpperCase().includes('INICIO DE JORNADA')
     );
     
-    const currentTaskToDisplay = (rawTaskName && !isGenericTaskName) ? rawTaskName : taskInfo.text;
+    // Antes esto mostraba la próxima tarea del día (por hora) aunque el
+    // trabajador ni hubiera fichado entrada todavía — parecía que ya
+    // estaba trabajando en ella. Sin fichar, no hay ninguna tarea "en
+    // curso" real que mostrar; solo tiene sentido calcularla (o usar la
+    // tarea concreta fichada) una vez está EN TURNO de verdad.
+    const currentTaskToDisplay = !isClockedIn
+      ? null
+      : (rawTaskName && !isGenericTaskName) ? rawTaskName : taskInfo.text;
 
     return {
       ...w,
@@ -187,7 +194,7 @@ export default function LiveMonitorPanel({
       clockEntry,
       elapsedTimeFormatted,
       currentTask: currentTaskToDisplay,
-      extraTasksCount: (rawTaskName && !isGenericTaskName) ? 0 : taskInfo.extraCount,
+      extraTasksCount: !isClockedIn ? 0 : (rawTaskName && !isGenericTaskName) ? 0 : taskInfo.extraCount,
       location: getWorkerLocation(w.name)
     };
   });
@@ -419,8 +426,12 @@ export default function LiveMonitorPanel({
                       </span>
                     )}
                   </div>
-                  <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 text-xs text-slate-200 leading-relaxed font-medium">
-                    {worker.currentTask}
+                  <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80 text-xs leading-relaxed font-medium">
+                    {worker.currentTask ? (
+                      <span className="text-slate-200">{worker.currentTask}</span>
+                    ) : (
+                      <span className="text-slate-500 italic">⏸️ Sin fichar aún — sin tarea en curso</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -450,7 +461,7 @@ export default function LiveMonitorPanel({
                     if (worker.isClockedIn) {
                       const now = new Date();
                       const entry = {
-                        id: Date.now().toString(),
+                        id: crypto.randomUUID(),
                         workerName: worker.name,
                         role: worker.role,
                         isPayroll: worker.isPayroll,

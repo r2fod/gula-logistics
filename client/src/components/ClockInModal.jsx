@@ -47,7 +47,11 @@ export default function ClockInModal({
   const handleClockIn = () => {
     const now = new Date();
     const entry = {
-      id: Date.now().toString(),
+      // crypto.randomUUID() en vez de Date.now().toString(): dos fichajes
+      // que coincidan en el mismo milisegundo (típico si varios empiezan la
+      // jornada a la misma hora en punto) chocaban contra el índice único
+      // de `id` en Mongo — el segundo fallaba con un 500 silencioso.
+      id: crypto.randomUUID(),
       workerName: selectedWorker,
       role: currentWorkerObj.role,
       isPayroll: currentWorkerObj.isPayroll,
@@ -72,7 +76,11 @@ export default function ClockInModal({
   const handleClockOut = () => {
     const now = new Date();
     const entry = {
-      id: Date.now().toString(),
+      // crypto.randomUUID() en vez de Date.now().toString(): dos fichajes
+      // que coincidan en el mismo milisegundo (típico si varios empiezan la
+      // jornada a la misma hora en punto) chocaban contra el índice único
+      // de `id` en Mongo — el segundo fallaba con un 500 silencioso.
+      id: crypto.randomUUID(),
       workerName: selectedWorker,
       role: currentWorkerObj.role,
       isPayroll: currentWorkerObj.isPayroll,

@@ -463,7 +463,10 @@ export default function WorkerView({
                                 : null;
                                 
                               const entry = {
-                                id: Date.now().toString(),
+                                // Evita choques contra el índice único de
+                                // `id` en Mongo si dos fichajes coinciden en
+                                // el mismo milisegundo (ver ClockInModal.jsx).
+                                id: crypto.randomUUID(),
                                 workerName: currentWorkerObj.name,
                                 role: currentWorkerObj.role,
                                 isPayroll: currentWorkerObj.isPayroll,
@@ -514,7 +517,7 @@ export default function WorkerView({
                 onClick={() => { 
                   const now = new Date();
                   const entry = {
-                    id: Date.now().toString(),
+                    id: crypto.randomUUID(),
                     workerName: currentWorkerObj.name,
                     role: currentWorkerObj.role,
                     isPayroll: currentWorkerObj.isPayroll,
@@ -593,7 +596,7 @@ export default function WorkerView({
                     onClick={() => {
                       const now = new Date();
                       const entry = {
-                        id: Date.now().toString(),
+                        id: crypto.randomUUID(),
                         workerName: currentWorkerObj.name,
                         role: currentWorkerObj.role,
                         isPayroll: currentWorkerObj.isPayroll,
