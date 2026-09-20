@@ -25,6 +25,30 @@ export default function TeamBalancesTab({
     return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
   };
 
+  const parseSpanishDate = (str) => {
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((str || '').trim());
+    if (!m) return null;
+    return { day: parseInt(m[1], 10), month: parseInt(m[2], 10), year: parseInt(m[3], 10) };
+  };
+
+  // Riesgo de doble contabilidad: si ya hay fichajes reales de este
+  // trabajador ese mismo día, un concepto/turno metido a mano para la
+  // MISMA fecha se sumaría por duplicado (una vez aquí, otra vez ya
+  // calculado automáticamente sobre los fichajes). No se puede bloquear —
+  // a veces es un concepto legítimo aparte (ej. una rotura, un adelanto)
+  // que solo coincide en fecha por casualidad — así que solo se avisa,
+  // la decisión final la toma quien lo está guardando.
+  const hasRealShiftOnDate = (worker, isoDateStr) => {
+    const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDateStr || '');
+    if (!iso) return false;
+    const target = { day: parseInt(iso[3], 10), month: parseInt(iso[2], 10), year: parseInt(iso[1], 10) };
+    const shifts = findWorkerHours(worker.name)?.shifts || [];
+    return shifts.some(s => {
+      const d = parseSpanishDate(s.startDate);
+      return d && d.day === target.day && d.month === target.month && d.year === target.year;
+    });
+  };
+
   const computeShiftPreview = (worker) => {
     const startMin = parseHM(newShiftStart);
     const endMin = parseHM(newShiftEnd);
@@ -541,6 +565,11 @@ export default function TeamBalancesTab({
                                     {preview && (
                                       <div className="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2 font-mono">
                                         {preview.concept} → <b>+{preview.amount.toFixed(2)} €</b>
+                                      </div>
+                                    )}
+                                    {preview && hasRealShiftOnDate(worker, newShiftDate) && (
+                                      <div className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2">
+                                        ⚠️ Ya hay fichajes reales de {worker.name} ese mismo día — si son las mismas horas, esto las sumaría por duplicado. Revisa el desglose antes de guardar.
                                       </div>
                                     )}
                                     <div className="flex gap-2">
