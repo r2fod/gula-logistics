@@ -125,13 +125,27 @@ describe('pairShiftsFromEntries', () => {
     expect(build(166)).toBe(3);   // 2h46m -> ya más cerca de 3h
   });
 
-  it('usa la tarifa Nómina (14€/h) para Persona4 y Persona8', () => {
+  it('usa la tarifa Nómina (14€/h) cuando el propio fichaje trae isPayroll:true', () => {
+    const entries = [
+      entry({ id: '1', workerName: 'Persona4', isPayroll: true, type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
+      entry({ id: '2', workerName: 'Persona4', isPayroll: true, type: 'salida', timestamp: '2026-09-10T09:00:00.000Z' }),
+    ];
+    const { shifts } = pairShiftsFromEntries(entries);
+    expect(shifts[0]).toMatchObject({ isSalaried: true, rate: 14, cost: 14 });
+  });
+
+  it('BUG real: ya no fuerza Nómina por el nombre "Persona4"/"Persona8" — si isPayroll no viene en el fichaje, se trata como Extra', () => {
+    // Antes había un fallback hardcodeado (workerName === 'Persona4' ||
+    // workerName === 'Persona8') que con el || forzaba isSalaried=true SIEMPRE
+    // para esos dos nombres, aunque isPayroll dijera lo contrario — si
+    // alguno deja de estar en nómina fija, el código ya no debe decidirlo
+    // por encima del dato real.
     const entries = [
       entry({ id: '1', workerName: 'Persona4', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
       entry({ id: '2', workerName: 'Persona4', type: 'salida', timestamp: '2026-09-10T09:00:00.000Z' }),
     ];
     const { shifts } = pairShiftsFromEntries(entries);
-    expect(shifts[0]).toMatchObject({ isSalaried: true, rate: 14, cost: 14 });
+    expect(shifts[0]).toMatchObject({ isSalaried: false, rate: 10, cost: 10 });
   });
 
   it('respeta una tarifa custom (`rate`) del propio fichaje por encima de los defaults', () => {

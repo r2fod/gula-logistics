@@ -99,7 +99,13 @@ export function pairShiftsFromEntries(entries = []) {
       const hours = Math.floor(durationHours);
       const minutes = Math.floor((durationHours - hours) * 60);
 
-      const isSalaried = isPayroll || workerName === 'Persona4' || workerName === 'Persona8';
+      // Antes había un fallback hardcodeado a los nombres "Persona4"/"Persona8" —
+      // con el || eso forzaba isSalaried=true para ellos SIEMPRE, aunque
+      // su isPayroll real dijera lo contrario (si mañana alguno deja de
+      // estar en nómina fija, el dato ya no manda). Confirmado que todos
+      // sus fichajes reales ya traen isPayroll:true, así que quitarlo no
+      // cambia nada hoy — solo evita que el código, no el dato, decida.
+      const isSalaried = !!isPayroll;
       const hourlyRate = rate || (isSalaried ? 14 : 10);
       const cost = durationHours * hourlyRate;
 
