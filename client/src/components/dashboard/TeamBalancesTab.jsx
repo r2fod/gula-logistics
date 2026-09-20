@@ -17,6 +17,7 @@ export default function TeamBalancesTab({
   const [newShiftDate, setNewShiftDate] = useState('');
   const [newShiftStart, setNewShiftStart] = useState('');
   const [newShiftEnd, setNewShiftEnd] = useState('');
+  const [newShiftIncludeTransport, setNewShiftIncludeTransport] = useState(true);
   const [savingBalanceId, setSavingBalanceId] = useState(null);
 
   const parseHM = (hm) => {
@@ -49,6 +50,19 @@ export default function TeamBalancesTab({
     });
   };
 
+  // Si otro trabajador con ayuda de transporte ya tiene un turno con el
+  // +10€ metido ese mismo día, es buena señal de que pudieron ir en el
+  // mismo coche — solo un aviso, la decisión de si de verdad compartieron
+  // coche la sabe quien está guardando esto, no la puede adivinar la app.
+  const findOtherTransportBonusOnDate = (worker, dateLabel) => {
+    if (!dateLabel) return null;
+    return (balancesData.workers || []).find(w =>
+      w.id !== worker.id &&
+      w.hasTransportBonus &&
+      (w.breakdown || []).some(it => it.concept?.startsWith(`🕒 ${dateLabel}`) && it.concept.includes('transporte'))
+    );
+  };
+
   const computeShiftPreview = (worker) => {
     const startMin = parseHM(newShiftStart);
     const endMin = parseHM(newShiftEnd);
@@ -64,30 +78,37 @@ export default function TeamBalancesTab({
       : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
     const fmtHours = (h) => (Number.isInteger(h) ? `${h}` : parseFloat(h.toFixed(2)).toString());
 
+    // Solo se ofrece incluir el +10€ si el trabajador tiene la ayuda de
+    // transporte activada (hasTransportBonus) Y no se ha desmarcado en el
+    // formulario (ej. porque hoy compartió coche con otro compañero).
+    const includeTransport = !!worker.hasTransportBonus && newShiftIncludeTransport;
+    const transportAmount = includeTransport ? 10 : 0;
+    const transportSuffix = includeTransport ? ' + 10€ transporte' : '';
+
     if (worker.isSpecialPurse && worker.purseInfo) {
       const p = worker.purseInfo;
       const remaining = Math.max(0, p.totalHours - p.consumedHours);
       const purseHours = Math.min(hours, remaining);
       const extraHours = Math.max(0, hours - purseHours);
-      const amount = purseHours * p.hourlyRate + extraHours * p.extraRateAfter80h;
+      const amount = purseHours * p.hourlyRate + extraHours * p.extraRateAfter80h + transportAmount;
 
       let concept;
       if (extraHours === 0) {
-        concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(hours)}h a ${p.hourlyRate}€/h · Bolsa)`;
+        concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(hours)}h a ${p.hourlyRate}€/h${transportSuffix} · Bolsa)`;
       } else if (purseHours === 0) {
-        concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(hours)}h a ${p.extraRateAfter80h}€/h · Extra tras bolsa)`;
+        concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(hours)}h a ${p.extraRateAfter80h}€/h${transportSuffix} · Extra tras bolsa)`;
       } else {
-        concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(purseHours)}h a ${p.hourlyRate}€/h + ${fmtHours(extraHours)}h a ${p.extraRateAfter80h}€/h)`;
+        concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(purseHours)}h a ${p.hourlyRate}€/h + ${fmtHours(extraHours)}h a ${p.extraRateAfter80h}€/h${transportSuffix})`;
       }
 
-      return { hours, purseHours, extraHours, amount, concept, dateLabel, isPurse: true };
+      return { hours, purseHours, extraHours, amount, concept, dateLabel, isPurse: true, includeTransport };
     }
 
     const rate = worker.hourlyRate || (worker.statusType === 'payroll' ? 14 : 10);
-    const amount = hours * rate;
-    const concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(hours)}h a ${rate}€/h)`;
+    const amount = hours * rate + transportAmount;
+    const concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(hours)}h a ${rate}€/h${transportSuffix})`;
 
-    return { hours, rate, amount, concept, dateLabel, isPurse: false };
+    return { hours, rate, amount, concept, dateLabel, isPurse: false, includeTransport };
   };
 
   const resetAddConceptForm = () => {
@@ -97,6 +118,7 @@ export default function TeamBalancesTab({
     setNewShiftDate('');
     setNewShiftStart('');
     setNewShiftEnd('');
+    setNewShiftIncludeTransport(true);
   };
 
   const handleAddShift = async (worker) => {
@@ -145,6 +167,20 @@ export default function TeamBalancesTab({
         newBreakdown.push({
           concept: `🕒 ${preview.dateLabel} (${newShiftStart} a ${newShiftEnd} - ${hoursLabel}h a ${p.extraRateAfter80h}€/h · Extra tras bolsa)`,
           amount: preview.extraHours * p.extraRateAfter80h,
+          isPositive: true
+        });
+      }
+
+      // La bolsa (bolsaLine) y las horas extra tras bolsa se calculan aparte
+      // arriba, sin pasar por preview.concept/preview.amount — así que el
+      // +10€ de transporte que sí lleva ese preview (para el aviso en
+      // pantalla) se perdería al guardar si no se añade aquí como su propia
+      // línea, aparte de las horas de bolsa (el transporte no consume horas
+      // de la bolsa, es un concepto distinto).
+      if (preview.includeTransport) {
+        newBreakdown.push({
+          concept: `🕒 ${preview.dateLabel} — 10€ ayuda transporte`,
+          amount: 10,
           isPositive: true
         });
       }
@@ -581,6 +617,26 @@ export default function TeamBalancesTab({
                                         className="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500 [color-scheme:dark]"
                                       />
                                     </div>
+                                    {worker.hasTransportBonus && (
+                                      <label className="flex items-center gap-2 text-[11px] text-slate-300 bg-slate-900 border border-slate-700 rounded-lg p-2 cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={newShiftIncludeTransport}
+                                          onChange={(e) => setNewShiftIncludeTransport(e.target.checked)}
+                                          className="accent-amber-500"
+                                        />
+                                        <Bus className="w-3.5 h-3.5 text-blue-300 shrink-0" />
+                                        <span>Incluir +10€ ayuda transporte este día</span>
+                                      </label>
+                                    )}
+                                    {worker.hasTransportBonus && newShiftIncludeTransport && (() => {
+                                      const other = findOtherTransportBonusOnDate(worker, computeShiftPreview(worker)?.dateLabel);
+                                      return other ? (
+                                        <div className="text-[11px] text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-lg p-2">
+                                          🚌 <b>{other.name}</b> también tiene transporte añadido ese mismo día — si fuisteis en el mismo coche, desmarca la casilla de arriba para no pagarlo dos veces.
+                                        </div>
+                                      ) : null;
+                                    })()}
                                     {preview && (
                                       <div className="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2 font-mono">
                                         {preview.concept} → <b>+{preview.amount.toFixed(2)} €</b>
