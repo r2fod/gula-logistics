@@ -40,7 +40,7 @@ export function useClockings(markTaskCompleted) {
     }
   };
 
-  const handleUpdateClockEntry = (updatedEntry) => {
+  const handleUpdateClockEntry = async (updatedEntry) => {
     const updated = clockEntries.map(e => e.id === updatedEntry.id ? updatedEntry : e);
     setClockEntries(updated);
     try {
@@ -48,7 +48,13 @@ export function useClockings(markTaskCompleted) {
     } catch (e) {
       console.error(e);
     }
-    updateClockEntryInAPI(updatedEntry);
+    const saved = await updateClockEntryInAPI(updatedEntry);
+    if (!saved) {
+      // Editar un fichaje (hora, tarifa, tarea...) es una acción deliberada
+      // de admin — antes, si fallaba el guardado real, el cambio se veía
+      // aquí pero desaparecía solo en el siguiente refresco sin aviso.
+      alert('⚠️ No se pudo guardar este cambio de fichaje en el servidor (posible sesión de administrador caducada o sin conexión). Se ve aquí pero puede desaparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite el cambio.');
+    }
   };
 
   const handleDeleteClockEntry = (entryId) => {
