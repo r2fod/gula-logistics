@@ -217,6 +217,17 @@ router.patch('/weeks/:weekId/tasks', async (req, res) => {
     const current = list[taskIndex];
     if (current === undefined) return res.status(404).json({ error: 'Tarea no encontrada en ese día' });
 
+    // Sin cambio real -> no se escribe. Cada escritura sube `updatedAt`, y
+    // el POST /weeks de un admin compara contra ese valor: una sesión con el
+    // estado desactualizado que repite el mismo PATCH cada 20s (el sondeo de
+    // autoCompletePastTasks) hacía que TODOS los guardados de admin
+    // chocaran con "Alguien más ha guardado cambios" sin que nadie hubiera
+    // cambiado nada. PATCH es idempotente: repetirlo no debe tocar el doc.
+    const currentCompleted = !!(current && typeof current === 'object' && current.completed);
+    if (currentCompleted === completed) {
+      return res.json({ success: true, unchanged: true, data: week });
+    }
+
     const updatedTask = (current && typeof current === 'object') ? { ...current, completed } : { text: current, completed };
     const fieldPath = isSabado
       ? `saturdaySpecial.weddings.${taskIndex}`

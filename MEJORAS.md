@@ -201,3 +201,5 @@ Tres fallos distintos daban el mismo síntoma ("la app marca tareas hechas que n
 
 **Comprobación de la semana siguiente (checklist):** escribir el rango como "Del 22 al 27 de Septiembre de 2026" (el asistente avisa si no lo entiende); tras crearla, comprobar que ninguna tarea sale tachada antes de su día; poner "Día Específico" a las tareas de domingo/lunes; y no dar por buena la vista solo porque compile.
 
+**Añadido el 21/09:** (1) un `PATCH` que no cambia nada NO debe escribir: cada escritura sube `updatedAt` y eso alimenta el control de concurrencia de los guardados de admin — un bucle de "marcar lo ya marcado" desde una pestaña vieja bloqueaba todas las ediciones con un aviso falso de conflicto. (2) Los efectos con `[]` de dependencias congelan las funciones de la primera render: quien las llame desde un `setInterval` debe hacerlo por `ref`. (3) La deploy del cliente la hace la GitHub Action (`.github/workflows/deploy.yml`, Pages en modo "workflow") en cada push a `main`; `npm run deploy` (rama `gh-pages`) publica un build que Pages ya no sirve, así que sobra.
+
