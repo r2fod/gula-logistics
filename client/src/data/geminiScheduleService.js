@@ -100,7 +100,14 @@ function buildMockSchedule() {
 // pueda mostrar siempre algo (el mock de demostración) en vez de un
 // formulario roto.
 export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData }) {
-  const activeApiKey = (apiKey || '').trim() || import.meta.env.VITE_GEMINI_API_KEY;
+  // Sin fallback a import.meta.env.VITE_GEMINI_API_KEY a propósito:
+  // cualquier variable con prefijo VITE_ se compila tal cual en el JS
+  // público del bundle (GitHub Pages), así que un "default" ahí
+  // filtraría la clave a cualquiera que inspeccione el bundle en cuanto
+  // se configurara y desplegara. La única clave válida es la que cada
+  // admin pega a mano en este mismo navegador (persistida solo en su
+  // localStorage, nunca compilada).
+  const activeApiKey = (apiKey || '').trim();
 
   if (!activeApiKey) {
     await new Promise(resolve => setTimeout(resolve, 1200));
