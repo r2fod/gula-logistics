@@ -144,7 +144,12 @@ export default function PayrollReportModal({
 
   const estimatedSummary = Object.entries(estimatedHoursByWorker).map(([workerName, hours]) => {
     const workerObj = workersList.find(w => w.name === workerName);
-    const isSalaried = workerObj?.isPayroll || workerName === 'Irene' || workerName === 'Raúl';
+    // Sin fallback hardcodeado a "Irene"/"Raúl": si mañana cambia quién
+    // está en nómina fija, el roster (isPayroll) ya manda solo, sin tocar
+    // código. Si alguien no está en el roster actual, se trata como Extra
+    // por defecto (más seguro infravalorar el coste interno que asumir
+    // nómina de alguien que ya no reconoce la app).
+    const isSalaried = !!workerObj?.isPayroll;
     const rate = workerObj?.rate || (isSalaried ? 14 : 10);
     return { workerName, hours, isSalaried, rate, cost: isSalaried ? 0 : hours * rate };
   }).sort((a, b) => b.hours - a.hours);
