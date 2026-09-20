@@ -416,7 +416,6 @@ export default function App() {
             data={activeWeek}
             workersList={workersList}
             clockEntries={activeClockEntries}
-            onToggleTask={() => {}}
             onClockEntryCreated={handleClockEntryCreated}
             onOpenClockModal={(workerName) => {
               if (workerName) setActiveWorker(workerName);
@@ -453,7 +452,6 @@ export default function App() {
             data={activeWeek}
             workersList={workersList}
             clockEntries={activeClockEntries}
-            onToggleTask={() => {}}
             onOpenLogin={() => setIsAdminLoginOpen(true)}
             onClockEntryCreated={handleClockEntryCreated}
             onOpenClockModal={(workerName) => {
