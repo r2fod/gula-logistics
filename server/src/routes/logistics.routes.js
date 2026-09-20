@@ -125,16 +125,54 @@ router.get('/weeks', async (req, res) => {
 router.post('/weeks', requireAdmin, async (req, res) => {
   try {
     const weeksPayload = req.body; // { week_3: {...}, week_4: {...} }
-    currentMemoryWeeks = { ...currentMemoryWeeks, ...weeksPayload };
 
     if (mongoose.connection.readyState === 1) {
+      // Control de concurrencia: cada semana del payload puede traer el
+      // `updatedAt` que el cliente tenía cuando la abrió para editar (ya
+      // viene solo, es el mismo campo que devuelve GET /weeks sin que el
+      // cliente lo toque). Si ya no coincide con el actual en Mongo,
+      // alguien más la guardó por medio — antes este POST reemplazaba el
+      // documento entero a ciegas sin comprobarlo (demostrado en vivo con
+      // una reasignación perdida). No se aborta todo el payload por un
+      // conflicto en una semana: las demás se guardan igual.
+      const conflicts = [];
+      // Se acumula la versión REAL y fresca de Mongo de cada semana tocada
+      // en esta petición (recién guardada, o la que ya había si hubo
+      // conflicto) — `currentMemoryWeeks` es solo una caché en memoria que
+      // ninguna otra ruta mantiene al día (GET /weeks lee Mongo directo sin
+      // tocarla), así que devolverla tal cual en una respuesta de conflicto
+      // podría enseñar una versión más vieja todavía que la que causó el
+      // conflicto en primer lugar.
+      const freshDocs = {};
       for (const [weekId, weekData] of Object.entries(weeksPayload)) {
-        await LogisticsWeek.findOneAndUpdate(
+        const existing = await LogisticsWeek.findOne({ weekId });
+        if (existing && weekData.updatedAt &&
+            new Date(existing.updatedAt).getTime() !== new Date(weekData.updatedAt).getTime()) {
+          conflicts.push(weekId);
+          freshDocs[weekId] = existing;
+          continue;
+        }
+        const saved = await LogisticsWeek.findOneAndUpdate(
           { weekId },
           { ...weekData, weekId },
           { upsert: true, new: true }
         );
+        freshDocs[weekId] = saved;
       }
+
+      currentMemoryWeeks = { ...currentMemoryWeeks, ...freshDocs };
+
+      if (conflicts.length > 0) {
+        return res.status(409).json({
+          success: false,
+          conflict: true,
+          conflicts,
+          message: 'Alguien más ha guardado cambios en esta semana mientras la editabas. Recarga la página para ver la versión más reciente antes de repetir tu cambio, para no perder el otro.',
+          data: currentMemoryWeeks
+        });
+      }
+    } else {
+      currentMemoryWeeks = { ...currentMemoryWeeks, ...weeksPayload };
     }
 
     return res.json({ success: true, data: currentMemoryWeeks });

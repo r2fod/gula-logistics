@@ -63,6 +63,57 @@ describe('POST /api/logistics/weeks (reemplazo de documento completo)', () => {
       expect.objectContaining({ upsert: true })
     );
   });
+
+  it('semana nueva sin updatedAt previo: guarda sin comprobar conflicto (nada que comparar)', async () => {
+    LogisticsWeek.findOne.mockResolvedValue(null); // no existe todavía
+    LogisticsWeek.findOneAndUpdate.mockResolvedValue({ weekId: 'week_4' });
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/logistics/weeks')
+      .set('Authorization', adminAuthHeader())
+      .send({ week_4: { weekId: 'week_4', name: 'Semana 4', schedule: {} } });
+
+    expect(res.status).toBe(200);
+    expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalled();
+  });
+
+  it('guardado concurrente: si el updatedAt que manda el cliente ya no coincide con el actual, rechaza con 409 y NO sobrescribe', async () => {
+    LogisticsWeek.findOne.mockResolvedValue({
+      weekId: 'week_3',
+      updatedAt: '2026-09-20T10:00:00.000Z', // alguien más lo guardó después de que este cliente abriera la semana
+    });
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/logistics/weeks')
+      .set('Authorization', adminAuthHeader())
+      .send({
+        week_3: {
+          weekId: 'week_3',
+          name: 'Semana 3 (mi edición)',
+          schedule: {},
+          updatedAt: '2026-09-20T09:00:00.000Z', // la versión con la que este cliente abrió la semana
+        },
+      });
+
+    expect(res.status).toBe(409);
+    expect(res.body.conflict).toBe(true);
+    expect(res.body.conflicts).toEqual(['week_3']);
+    expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('guardado normal: si el updatedAt coincide con el actual, sí guarda', async () => {
+    const sameUpdatedAt = '2026-09-20T09:00:00.000Z';
+    LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_3', updatedAt: sameUpdatedAt });
+    LogisticsWeek.findOneAndUpdate.mockResolvedValue({ weekId: 'week_3', updatedAt: '2026-09-20T09:05:00.000Z' });
+    const app = buildApp();
+    const res = await request(app)
+      .post('/api/logistics/weeks')
+      .set('Authorization', adminAuthHeader())
+      .send({ week_3: { weekId: 'week_3', name: 'Semana 3', schedule: {}, updatedAt: sameUpdatedAt } });
+
+    expect(res.status).toBe(200);
+    expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalled();
+  });
 });
 
 describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
