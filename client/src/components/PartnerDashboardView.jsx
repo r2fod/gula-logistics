@@ -165,11 +165,15 @@ export default function PartnerDashboardView({
   const mergedBalancesData = { ...rawBalancesData };
   mergedBalancesData.workers = workersList.map(worker => {
     // Mismo problema que findWorkerHours (más abajo en este archivo): el
-    // roster usa "Persona5"/"Persona2" pero balancesData en Mongo guarda
-    // "Persona5 Gula"/"Persona2 Gula" — una comparación exacta nunca los
-    // cruza. Sin esta normalización, un trabajador con saldo real (ej.
-    // Persona5: 872€, bolsa de 80h consumida) aparecía con +0,00€ y sin
-    // desglose en su propia tarjeta de Saldos & Acuerdos.
+    // roster usa nombres cortos ("Persona5", "Persona2") pero balancesData
+    // en Mongo guarda el nombre completo ("Persona5 Gula", "Persona2 Gula")
+    // — una comparación exacta nunca los cruza. Sin esta normalización, un
+    // trabajador con saldo real (ej. Persona5: 872€, bolsa de 80h
+    // consumida) aparecía con +0,00€ y sin desglose en su propia tarjeta de
+    // Saldos & Acuerdos. El `ff→f` en concreto venía de un typo real que
+    // hubo un tiempo entre "Persona5" (roster) y "Persona5" (Mongo,
+    // corregido el 20/09) — se deja como red de seguridad aunque ya no
+    // debería hacer falta, no rompe nada tenerlo.
     const normalizedRosterName = worker.name.trim().toLowerCase().replace(/ff/g, 'f');
     const existing = (rawBalancesData.workers || []).find(w => {
       const normalizedBalanceName = (w.name || '').trim().toLowerCase().replace(/ff/g, 'f');
@@ -355,8 +359,9 @@ export default function PartnerDashboardView({
   // workersList (ej. "Persona2"), pero balancesData.workers usa "Nombre
   // Apellido" (ej. "Persona2 Gula") — coincidencia exacta nunca los cruza.
   // Busca por prefijo de palabra completa para tolerar ese sufijo.
-  // La normalización de "ff"→"f" es lo que permite cruzar "Persona5 Gula"
-  // (ficha de Saldos) con "Persona5" (roster), que antes no coincidían.
+  // La normalización de "ff"→"f" viene de un typo real que hubo entre
+  // "Persona5" (Saldos) y "Persona5" (roster), corregido el 20/09 — se
+  // deja como red de seguridad, es inofensivo aunque ya no haga falta.
   const findWorkerHours = (balanceWorkerName) => {
     if (!balanceWorkerName) return null;
     const normalized = balanceWorkerName.trim().toLowerCase().replace(/ff/g, 'f');
