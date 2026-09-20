@@ -8,6 +8,7 @@
 - Sync: Actualizar `CONTEXTO.md`/`PENDIENTES.md` en el mismo commit si el cambio afecta al negocio o deja algo a medias.
 
 ## DATA SCHEMA
+- `meta.dateRange` de la semana: texto legible tipo `Del 15 al 20 de Septiembre de 2026` — de él salen las fechas reales de cada tarea (`taskPlanning.js`); si no se puede leer, no se auto-marca ni se tacha nada. `sundayMonday.tasks` es una sola lista domingo+lunes: usar `targetDay` ('Domingo'/'Lunes'); sin él cuenta como lunes.
 - Task ID: string corta manual por día (`m1`, `mi2`, `v1c`...), sin sistema de migración — al insertar una tarea nueva, elegir un id que no choque con los del mismo día.
 - Week ID: `week_<Date.now()>` al crear semana nueva; `week_3` es la semilla base (no renombrar sin actualizar `server/src/data/logisticsData.js` y el bootstrap de Mongo).
 - WorkerBalance ID: `nombre.toLowerCase().replace(/\s+/g, '-')` — cambiar el nombre de un trabajador sin actualizar este id rompe el vínculo con sus fichajes/saldos.

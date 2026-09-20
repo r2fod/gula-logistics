@@ -22,6 +22,7 @@ import {
   PackagePlus,
   PackageCheck
 } from 'lucide-react';
+import { getDayLabel, getWeddingsBadge } from '../data/taskPlanning';
 
 // Categoriza una tarea por su texto para darle un icono/color propio en el
 // grafo — pura ayuda visual para distinguir de un vistazo qué tipo de
@@ -68,18 +69,18 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
     // 1. Time / Day Nodes — título/badge reales de la semana activa cuando
     // existen, con el texto de siempre como respaldo si faltan.
     const dayFallback = {
-      martes: { label: 'Martes 15', sub: 'Arranque Flota' },
-      miercoles: { label: 'Miércoles 16', sub: 'Descarga Fincas' },
-      jueves: { label: 'Jueves 17', sub: 'Eventos' },
-      viernes: { label: 'Viernes 18', sub: 'Cierre Crítico' }
+      martes: { label: getDayLabel(activeWeekData, 'martes'), sub: 'Arranque Flota' },
+      miercoles: { label: getDayLabel(activeWeekData, 'miercoles'), sub: 'Descarga Fincas' },
+      jueves: { label: getDayLabel(activeWeekData, 'jueves'), sub: 'Eventos' },
+      viernes: { label: getDayLabel(activeWeekData, 'viernes'), sub: 'Cierre Crítico' }
     };
     const days = [
       { id: 'day_martes', dayKey: 'martes', color: 'border-blue-500 bg-blue-500/10 text-blue-400' },
       { id: 'day_miercoles', dayKey: 'miercoles', color: 'border-cyan-500 bg-cyan-500/10 text-cyan-400' },
       { id: 'day_jueves', dayKey: 'jueves', color: 'border-purple-500 bg-purple-500/10 text-purple-400' },
       { id: 'day_viernes', dayKey: 'viernes', color: 'border-amber-500 bg-amber-500/10 text-amber-400' },
-      { id: 'day_sabado', dayKey: 'saturdaySpecial', label: activeWeekData?.saturdaySpecial?.title || 'Sábado 19', sub: '3 Bodas Simultáneas', color: 'border-rose-500 bg-rose-500/10 text-rose-400' },
-      { id: 'day_domingo', dayKey: 'sundayMonday', label: activeWeekData?.sundayMonday?.title || 'Domingo 20 & Lunes 21', sub: 'Logística Inversa', color: 'border-emerald-500 bg-emerald-500/10 text-emerald-400' }
+      { id: 'day_sabado', dayKey: 'saturdaySpecial', label: activeWeekData?.saturdaySpecial?.title || getDayLabel(activeWeekData, 'sabado'), sub: getWeddingsBadge(activeWeekData), color: 'border-rose-500 bg-rose-500/10 text-rose-400' },
+      { id: 'day_domingo', dayKey: 'sundayMonday', label: activeWeekData?.sundayMonday?.title || `${getDayLabel(activeWeekData, 'domingo')} y ${getDayLabel(activeWeekData, 'lunes')}`, sub: 'Logística Inversa', color: 'border-emerald-500 bg-emerald-500/10 text-emerald-400' }
     ].map(d => ({
       ...d,
       label: d.label || activeWeekData?.schedule?.[d.dayKey]?.title || dayFallback[d.dayKey]?.label || d.dayKey,
@@ -336,12 +337,12 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
               className="bg-slate-950 border border-slate-800 text-slate-200 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none w-full"
             >
               <option value="all">📅 Todos los Días</option>
-              <option value="day_martes">Martes 15</option>
-              <option value="day_miercoles">Miércoles 16</option>
-              <option value="day_jueves">Jueves 17</option>
-              <option value="day_viernes">Viernes 18</option>
-              <option value="day_sabado">Sábado 19 (Bodas)</option>
-              <option value="day_domingo">Domingo 20</option>
+              <option value="day_martes">{getDayLabel(activeWeekData, 'martes')}</option>
+              <option value="day_miercoles">{getDayLabel(activeWeekData, 'miercoles')}</option>
+              <option value="day_jueves">{getDayLabel(activeWeekData, 'jueves')}</option>
+              <option value="day_viernes">{getDayLabel(activeWeekData, 'viernes')}</option>
+              <option value="day_sabado">{getDayLabel(activeWeekData, 'sabado')} (Bodas)</option>
+              <option value="day_domingo">{getDayLabel(activeWeekData, 'domingo')} y {getDayLabel(activeWeekData, 'lunes')}</option>
             </select>
 
             {/* Truck Filter */}

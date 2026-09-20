@@ -16,7 +16,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { pairShiftsFromEntries, isZombieShift } from '../data/shiftCalculations';
-import { getTaskListForDay, isTaskChronologicallyPast, TASK_COMPLETION_GRACE_MINUTES } from '../data/taskPlanning';
+import { getTaskListForDay, isTaskPast, TASK_COMPLETION_GRACE_MINUTES } from '../data/taskPlanning';
 
 export default function LiveMonitorPanel({
   workersList = [],
@@ -106,15 +106,12 @@ export default function LiveMonitorPanel({
     const matches = allMatches.filter(t => {
       if (typeof t !== 'object') return true; // Simple strings are assumed incomplete unless mapped to obj
       if (t.completed) return false; // Explicitly marked as done
-      // Mismo alias domingo/lunes que arriba, más el targetDay por tarea
-      // que ya usa autoCompletePastTasks (useWeeks.js) — sin esto, una
-      // tarea de domingo/lunes evaluada en lunes comparaba con dayKey
-      // ='lunes' tal cual, perdiendo el wraparound de medianoche que sí
-      // necesitan las que de verdad cruzan de domingo a lunes.
-      const evalDayKey = dayKey === 'lunes'
-        ? (t.targetDay ? t.targetDay.toLowerCase() : 'domingo')
-        : dayKey;
-      if (isTaskChronologicallyPast(evalDayKey, t.timeFrame, currentTime, TASK_COMPLETION_GRACE_MINUTES)) return false; // Chronologically done (con margen)
+      // isTaskPast compara contra la fecha REAL de la tarea en la semana
+      // activa (meta.dateRange) y respeta su targetDay; en lunes la lista
+      // de domingo/lunes vive bajo 'domingo' (mismo alias que arriba). Una
+      // tarea sin etiquetar cuenta como lunes: no se da por terminada el
+      // domingo aunque su hora ya haya pasado.
+      if (isTaskPast(activeWeekData, dayKey === 'lunes' ? 'domingo' : dayKey, t, currentTime, TASK_COMPLETION_GRACE_MINUTES)) return false; // Ya terminó (con margen)
       return true;
     });
 

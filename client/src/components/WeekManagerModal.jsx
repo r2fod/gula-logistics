@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Calendar, Plus, X, Copy, Sparkles, RefreshCw, AlertCircle, Check, Truck, Users, PartyPopper } from 'lucide-react';
 import { generateScheduleWithGemini, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { parseWeekRange } from '../data/taskPlanning';
 
 // Asistente guiado para crear una semana nueva: en vez de dejarla en blanco
 // (o clonada a ciegas) y que el usuario tenga que organizarla tarea a
@@ -154,6 +155,12 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
                 placeholder="ej. Del 22 al 27 de Septiembre"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/60"
               />
+              {/* El marcado automático de tareas (y los números de día) salen de este texto. */}
+              {dateRange.trim() && !parseWeekRange(dateRange) && (
+                <p className="mt-1.5 text-[11px] text-amber-400">
+                  No entiendo estas fechas: sin ellas las tareas no se marcarán solas por horario. Usa el formato "Del 22 al 27 de Septiembre".
+                </p>
+              )}
             </div>
           </div>
 
