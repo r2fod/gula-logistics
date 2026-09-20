@@ -31,7 +31,7 @@ import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
-import { getTaskListForDay, resolveTaskIndexByText, isTaskTooEarlyToClockIn } from '../data/taskPlanning';
+import { getTaskListForDay, resolveTaskIndexByText, isTaskTooEarlyToClockIn, isTaskChronologicallyPast as isTaskChronologicallyPastShared } from '../data/taskPlanning';
 import { subscribeToPush } from '../data/pushService';
 
 export default function WorkerView({
@@ -145,7 +145,7 @@ export default function WorkerView({
       return text.toLowerCase().includes(nameLower);
     };
 
-    if (['martes', 'miercoles', 'jueves', 'viernes', 'lunes'].includes(dayKey)) {
+    if (['martes', 'miercoles', 'jueves', 'viernes'].includes(dayKey)) {
       const dayObj = activeWeekData.schedule?.[dayKey];
       if (dayObj && dayObj.tasks) {
         tasks = dayObj.tasks.filter(isAssigned);
@@ -158,8 +158,13 @@ export default function WorkerView({
         }
         return w.details.toLowerCase().includes(nameLower) || w.truck.toLowerCase().includes(nameLower);
       });
-    } else if (dayKey === 'domingo') {
-      tasks = getTaskListForDay(activeWeekData, dayKey).filter(isAssigned);
+    } else if (dayKey === 'domingo' || dayKey === 'lunes') {
+      // domingo y lunes comparten sundayMonday.tasks bajo un único bucket
+      // real ('domingo' es la clave de storage) — confirmado con el
+      // usuario que la pestaña "LUN" debe enseñar las mismas tareas que
+      // "DOM", no quedarse vacía como antes (buscaba en schedule.lunes,
+      // que no existe).
+      tasks = getTaskListForDay(activeWeekData, 'domingo').filter(isAssigned);
     }
 
     return { tasks, weddings, totalCount: tasks.length + weddings.length };
@@ -180,9 +185,15 @@ export default function WorkerView({
     return { ...day, ...act };
   });
 
+  // 'lunes' comparte bucket con 'domingo' (misma tarea, mismo texto) —
+  // se usa para totales/recuentos en vez de daysWithActivities directo,
+  // para no contar dos veces las tareas de domingo/lunes (una por cada
+  // pestaña). 'domingo' sí se cuenta normal, es la única entrada real.
+  const daysWithActivitiesForTotals = daysWithActivities.filter(d => d.key !== 'lunes');
+
   // Calculate total assigned tasks & completion stats across week
-  const totalAssignedTasks = daysWithActivities.reduce((acc, d) => acc + d.totalCount, 0);
-  const completedTasksCount = daysWithActivities.reduce((acc, d) => {
+  const totalAssignedTasks = daysWithActivitiesForTotals.reduce((acc, d) => acc + d.totalCount, 0);
+  const completedTasksCount = daysWithActivitiesForTotals.reduce((acc, d) => {
     const completed = d.tasks.filter(t => typeof t === 'object' && t.completed).length;
     return acc + completed;
   }, 0);
@@ -200,8 +211,11 @@ export default function WorkerView({
       };
     }
 
-    // Look for first uncompleted task across days
-    for (const day of daysWithActivities) {
+    // Look for first uncompleted task across days (daysWithActivitiesForTotals
+    // ya excluye 'lunes' para no detectar dos veces la misma tarea de
+    // domingo/lunes, ni colarla antes que las de martes-viernes por ir
+    // 'lunes' primero en weekDays).
+    for (const day of daysWithActivitiesForTotals) {
       for (const t of day.tasks) {
         const isCompleted = typeof t === 'object' ? t.completed : false;
         if (!isCompleted) {
@@ -277,9 +291,13 @@ export default function WorkerView({
     w.truck.toLowerCase().includes(currentWorkerObj.name.toLowerCase())
   );
 
-  // Filtered days list based on selected tab
-  const displayedDays = selectedDayKey === 'all' 
-    ? daysWithActivities 
+  // Filtered days list based on selected tab. En "Todos" se usa la lista
+  // sin 'lunes' (daysWithActivitiesForTotals) para no mostrar la misma
+  // tarjeta de domingo/lunes duplicada dos veces seguidas — seleccionando
+  // la pestaña "LUN" directamente sí se sigue viendo (usa la lista
+  // completa, esa sí incluye su propia entrada).
+  const displayedDays = selectedDayKey === 'all'
+    ? daysWithActivitiesForTotals
     : daysWithActivities.filter(d => d.key === selectedDayKey);
 
   const todayIndex = new Date().getDay();
@@ -294,46 +312,39 @@ export default function WorkerView({
   const todayOrdinal = weekDayOrder.indexOf(todayKey);
   const isDayInFuture = (dayKey) => {
     const ordinal = weekDayOrder.indexOf(dayKey);
-    return ordinal !== -1 && todayOrdinal !== -1 && ordinal > todayOrdinal;
+    if (ordinal === -1 || todayOrdinal === -1) return false;
+    // 'domingo' es el último elemento de weekDayOrder (ordinal más alto) —
+    // comprobado ya en lunes, `ordinal > todayOrdinal` (6 > 0) lo marcaría
+    // como "futuro" cuando en realidad fue AYER. Mismo bug que ya se
+    // corrigió en taskPlanning.js para isTaskChronologicallyPast — aquí se
+    // aplica el mismo criterio de "ayer exactamente" antes del corte.
+    const isExactlyYesterday = ((todayOrdinal - ordinal + weekDayOrder.length) % weekDayOrder.length) === 1;
+    if (isExactlyYesterday) return false;
+    return ordinal > todayOrdinal;
   };
 
-  const isTaskChronologicallyPast = (dayKey, timeFrame) => {
-    const ordinal = weekDayOrder.indexOf(dayKey);
-    if (ordinal < 0 || todayOrdinal < 0) return false;
-    if (ordinal < todayOrdinal) return true; // Past day
-    if (ordinal > todayOrdinal) return false; // Future day
-    
-    // If it's today, check the end time if available
-    if (!timeFrame) return false;
-    
-    const parts = timeFrame.split('-');
-    if (parts.length === 2) {
-      const endTimeStr = parts[1].trim(); // "16:00" or "00:30"
-      const timeParts = endTimeStr.split(':');
-      if (timeParts.length === 2) {
-        let endHours = parseInt(timeParts[0], 10);
-        const endMinutes = parseInt(timeParts[1], 10);
-        
-        // Handle after-midnight end times (e.g., 00:30 means it's past midnight of the current day's shift)
-        if (endHours < 5) {
-          endHours += 24; // Treat 00:30 as 24:30 for comparison
-        }
-        
-        let currentHours = currentTime.getHours();
-        const currentMinutes = currentTime.getMinutes();
-        
-        if (currentHours < 5) {
-           currentHours += 24; // Treat 1 AM as 25:00
-        }
-        
-        const endTotal = endHours * 60 + endMinutes;
-        const currentTotal = currentHours * 60 + currentMinutes;
-        
-        return currentTotal > endTotal;
-      }
-    }
-    return false;
+  // domingo y lunes comparten sundayMonday.tasks bajo un único bucket real
+  // ('domingo' es la clave de storage) — estos dos helpers evitan repetir
+  // esa conversión en cada sitio: toStorageDayKey para leer/escribir la
+  // lista real (findTaskIndex, toggle, taskRef), toEvalDayKey para saber
+  // si ya pasó su hora respetando el targetDay propio de cada tarea
+  // ('Domingo'/'Lunes'/indiferente), mismo criterio que ya usan
+  // autoCompletePastTasks (useWeeks.js) y LiveMonitorPanel.jsx.
+  const toStorageDayKey = (dayKey) => (dayKey === 'lunes' ? 'domingo' : dayKey);
+  const toEvalDayKey = (dayKey, task) => {
+    if (dayKey !== 'lunes' && dayKey !== 'domingo') return dayKey;
+    const targetDay = (task && typeof task === 'object' && task.targetDay) ? task.targetDay.toLowerCase() : null;
+    return targetDay || 'domingo';
   };
+
+  // Antes había una copia local de isTaskChronologicallyPast con el bug de
+  // medianoche viejo (currentHours<5 -> +24 se aplicaba a CUALQUIER tarea,
+  // no solo a las que de verdad cruzan medianoche) y sin el wraparound
+  // domingo->lunes ni el targetDay — se sustituye por la versión
+  // compartida ya corregida de taskPlanning.js, con grace=0 (igual que
+  // antes, solo tachado visual, sin margen).
+  const isTaskChronologicallyPast = (dayKey, timeFrame, task) =>
+    isTaskChronologicallyPastShared(toEvalDayKey(dayKey, task), timeFrame, currentTime);
 
   return (
     <div className="space-y-4 sm:space-y-5 animate-fadeIn w-full max-w-full overflow-x-hidden">
@@ -578,7 +589,7 @@ export default function WorkerView({
                 // semana era de un día futuro, su hora podía caer ya
                 // "pasada" hoy y se permitía iniciar jornada antes de
                 // tiempo. isTaskTooEarlyToClockIn ya comprueba el día real.
-                const isReady = !immediateTask?.dayKey || !isTaskTooEarlyToClockIn(immediateTask.dayKey, immediateTask.timeFrame);
+                const isReady = !immediateTask?.dayKey || !isTaskTooEarlyToClockIn(toEvalDayKey(immediateTask.dayKey, immediateTask.rawTask), immediateTask.timeFrame);
                 let minutesLeft = 0;
                 if (!isReady) {
                   const match = immediateTask.timeFrame.split('-')[0].trim().match(/^(\d{1,2}):(\d{2})$/);
@@ -873,7 +884,7 @@ export default function WorkerView({
                             const manuallyCompleted = typeof task === 'object' ? task.completed : false;
                             
                             // A task is considered visually completed if manually marked OR if its time has past
-                            const isCompleted = manuallyCompleted || isTaskChronologicallyPast(dayGroup.key, timeFrame);
+                            const isCompleted = manuallyCompleted || isTaskChronologicallyPast(dayGroup.key, timeFrame, task);
                             
                             const taskLabel = timeFrame
                               ? `${taskText} (${timeFrame})`
@@ -892,8 +903,9 @@ export default function WorkerView({
                                   className="flex items-start space-x-2.5 cursor-pointer hover:text-white"
                                   onClick={() => {
                                     if (onToggleTask) {
-                                      const taskIdx = resolveRealTaskIndex(dayGroup.key, taskText);
-                                      if (taskIdx !== null) onToggleTask(dayGroup.key, taskIdx);
+                                      const storageDayKey = toStorageDayKey(dayGroup.key);
+                                      const taskIdx = resolveRealTaskIndex(storageDayKey, taskText);
+                                      if (taskIdx !== null) onToggleTask(storageDayKey, taskIdx);
                                     }
                                   }}
                                 >
@@ -931,7 +943,7 @@ export default function WorkerView({
                                       <Lock className="w-3 h-3" />
                                       <span>Aún no ha llegado este día</span>
                                     </span>
-                                  ) : isTaskTooEarlyToClockIn(dayGroup.key, timeFrame) ? (
+                                  ) : isTaskTooEarlyToClockIn(toEvalDayKey(dayGroup.key, task), timeFrame) ? (
                                     // El día ya llegó, pero faltan más de 5min para la hora de
                                     // inicio de ESTA tarea concreta — evita fichar por error una
                                     // tarea de última hora del día nada más empezar la jornada.
@@ -944,8 +956,9 @@ export default function WorkerView({
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setPrefilledTask(taskLabel);
-                                        const realTaskIndex = resolveRealTaskIndex(dayGroup.key, taskText);
-                                        setTaskRef(realTaskIndex !== null ? { dayKey: dayGroup.key, taskIndex: realTaskIndex } : null);
+                                        const storageDayKey = toStorageDayKey(dayGroup.key);
+                                        const realTaskIndex = resolveRealTaskIndex(storageDayKey, taskText);
+                                        setTaskRef(realTaskIndex !== null ? { dayKey: storageDayKey, taskIndex: realTaskIndex } : null);
                                         setIsClockModalOpen(true);
                                       }}
                                       className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95"
