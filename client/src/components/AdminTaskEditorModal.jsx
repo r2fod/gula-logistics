@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Edit3, Save, Plus, Trash2, Calendar, ChevronUp, ChevronDown } from 'lucide-react';
 import { getTaskListForDay, buildTaskListPatch } from '../data/taskPlanning';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 
@@ -129,6 +130,8 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
 
     return () => container.removeEventListener('scroll', handleScroll);
   }, [localWeek, isOpen]);
+
+  useBodyScrollLock(isOpen && !!localWeek);
 
   if (!isOpen || !localWeek) return null;
 

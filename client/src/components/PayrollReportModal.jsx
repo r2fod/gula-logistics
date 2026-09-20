@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DollarSign, Clock, Users, X, Copy, Check, Trash2, Calendar, FileText, Lock, Edit3, Plus, ShieldCheck } from 'lucide-react';
 import AdminClockEditModal from './AdminClockEditModal';
 import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../data/shiftCalculations';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export default function PayrollReportModal({
   isOpen,
@@ -21,6 +22,8 @@ export default function PayrollReportModal({
   const [viewTab, setViewTab] = useState('shifts'); // 'shifts' | 'raw_entries' | 'estimated' | 'trash'
   const [editingEntry, setEditingEntry] = useState(null);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 

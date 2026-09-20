@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Clock, X, Check, Trash2, Calendar, User, DollarSign, Edit3, Plus, Lock } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export default function AdminClockEditModal({
   isOpen,
@@ -48,6 +49,8 @@ export default function AdminClockEditModal({
       setDateTimeLocal(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`);
     }
   }, [entry, isOpen, workersList]);
+
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 

@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Lock, X, KeyRound, AlertCircle, RefreshCw } from 'lucide-react';
 import { loginAdmin } from '../data/apiService';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 
