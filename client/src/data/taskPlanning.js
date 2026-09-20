@@ -122,3 +122,27 @@ export function isTaskChronologicallyPast(dayKey, timeFrame, overrideTime = new 
 
   return currentTotal > endTotal + graceMinutes;
 }
+
+// Para el botón "Fichar Esta Tarea" en la vista de trabajador: además de
+// que el día ya haya llegado (isDayInFuture en WorkerView.jsx), la tarea
+// concreta no se puede fichar hasta `earlyMinutes` antes de su hora de
+// inicio — evita fichar por error una tarea de última hora del día nada
+// más empezar la jornada. Solo mira el propio día de hoy: una tarea de un
+// día ya pasado de la semana (sin completar) no se bloquea por hora, ya
+// que el día entero quedó atrás.
+export function isTaskTooEarlyToClockIn(dayKey, timeFrame, overrideTime = new Date(), earlyMinutes = 5) {
+  if (!timeFrame) return false; // sin horario registrado, no se puede evaluar -> no bloquear
+
+  const todayKey = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'][overrideTime.getDay()];
+  if (dayKey !== todayKey) return false;
+
+  const startParts = (timeFrame.split('-')[0] || '').trim().split(':');
+  if (startParts.length !== 2) return false;
+  const startHours = parseInt(startParts[0], 10);
+  const startMinutes = parseInt(startParts[1], 10);
+  if (Number.isNaN(startHours) || Number.isNaN(startMinutes)) return false;
+
+  const startTotal = startHours * 60 + startMinutes;
+  const nowTotal = overrideTime.getHours() * 60 + overrideTime.getMinutes();
+  return nowTotal < startTotal - earlyMinutes;
+}
