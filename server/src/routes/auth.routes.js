@@ -9,11 +9,61 @@ const router = express.Router();
 
 const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days — long enough for shared "socias" links
 
+// Límite de intentos fallidos de login por IP. En memoria a propósito: el
+// servidor es un único proceso (plan gratuito de Render) y con este tráfico
+// no compensa añadir una dependencia ni un Redis. Si el proceso se reinicia
+// el contador se pierde, lo cual solo le da al atacante un margen extra
+// pequeño — el objetivo es frenar la fuerza bruta continua, no ser hermético.
+const MAX_FAILED_LOGINS = 10;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const MAX_TRACKED_IPS = 1000;
+const failedLogins = new Map(); // ip -> { count, windowStart }
+
+function getLoginBlockSecondsLeft(ip) {
+  const entry = failedLogins.get(ip);
+  if (!entry) return 0;
+  const elapsed = Date.now() - entry.windowStart;
+  if (elapsed >= LOGIN_WINDOW_MS) {
+    failedLogins.delete(ip);
+    return 0;
+  }
+  return entry.count >= MAX_FAILED_LOGINS ? Math.ceil((LOGIN_WINDOW_MS - elapsed) / 1000) : 0;
+}
+
+function registerFailedLogin(ip) {
+  const now = Date.now();
+  // Barrido de entradas caducadas solo si el mapa crece de más, para que
+  // una avalancha de IPs distintas no lo deje crecer sin límite.
+  if (failedLogins.size >= MAX_TRACKED_IPS) {
+    for (const [key, value] of failedLogins) {
+      if (now - value.windowStart >= LOGIN_WINDOW_MS) failedLogins.delete(key);
+    }
+  }
+  const entry = failedLogins.get(ip);
+  if (!entry || now - entry.windowStart >= LOGIN_WINDOW_MS) {
+    failedLogins.set(ip, { count: 1, windowStart: now });
+  } else {
+    entry.count += 1;
+  }
+}
+
 // POST /api/auth/login — verifies the admin password and issues a signed token.
 // The password itself is never stored in this repo: it lives hashed in MongoDB
 // (AdminConfig), seeded once from ADMIN_BOOTSTRAP_PASSWORD (server env only).
 router.post('/login', async (req, res) => {
   try {
+    const ip = req.ip;
+
+    // Se comprueba ANTES de hacer el bcrypt.compare (coste 12, caro): una
+    // IP bloqueada tampoco debe poder gastar CPU del servidor.
+    const secondsLeft = getLoginBlockSecondsLeft(ip);
+    if (secondsLeft > 0) {
+      res.set('Retry-After', String(secondsLeft));
+      return res.status(429).json({
+        error: `Demasiados intentos fallidos. Vuelve a intentarlo en ${Math.ceil(secondsLeft / 60)} minuto(s).`
+      });
+    }
+
     const { password } = req.body;
     if (!password || typeof password !== 'string') {
       return res.status(400).json({ error: 'Falta la contraseña' });
@@ -40,6 +90,7 @@ router.post('/login', async (req, res) => {
 
       const valid = await bcrypt.compare(password, config.passwordHash);
       if (!valid) {
+        registerFailedLogin(ip);
         return res.status(401).json({ error: 'Contraseña incorrecta' });
       }
       tokenVersion = config.tokenVersion;
@@ -49,9 +100,14 @@ router.post('/login', async (req, res) => {
       // this app's in-memory fallback mode.
       const bootstrapPassword = process.env.ADMIN_BOOTSTRAP_PASSWORD;
       if (!bootstrapPassword || !timingSafeStringEqual(password, bootstrapPassword)) {
+        registerFailedLogin(ip);
         return res.status(401).json({ error: 'Contraseña incorrecta' });
       }
     }
+
+    // Un login correcto borra el contador de esa IP: quien acierta tras unas
+    // erratas no debe arrastrar esos intentos hacia un bloqueo.
+    failedLogins.delete(ip);
 
     const token = signToken({ role: 'admin', v: tokenVersion }, TOKEN_TTL_SECONDS);
     return res.json({ token, expiresAt: Date.now() + TOKEN_TTL_SECONDS * 1000 });

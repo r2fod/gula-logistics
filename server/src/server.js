@@ -18,6 +18,17 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Render reenvía las peticiones con la IP real del cliente en
+// X-Forwarded-For — sin esto, req.ip siempre devolvería la IP del propio
+// proxy, y el rate-limiting de /api/auth/login por IP (ver auth.routes.js)
+// trataría a todo el mundo como una sola IP.
+// Se confía en UN salto (1) y no en `true`: con `true` Express toma la IP
+// más a la izquierda de X-Forwarded-For, que el propio cliente puede
+// falsificar mandando esa cabecera — bastaría rotarla en cada intento para
+// saltarse el límite. Con 1 se usa la que añade el proxy de Render, que el
+// cliente no controla.
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
