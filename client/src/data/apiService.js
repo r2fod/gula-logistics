@@ -287,9 +287,12 @@ export async function clearAllClockEntriesInAPI() {
 
 /**
  * Helper to check whether a balances dataset has real numbers/breakdowns
- * and is not just an empty placeholder template of zeroes.
+ * and is not just an empty placeholder template of zeroes. Exportada para
+ * que useBalances.js use exactamente el mismo criterio al leer su propia
+ * caché en localStorage, en vez de una comprobación parecida pero no
+ * idéntica hecha aparte.
  */
-function hasRealBalancesData(data) {
+export function hasRealBalancesData(data) {
   if (!data || !Array.isArray(data.workers) || data.workers.length === 0) return false;
   return data.workers.some(w => 
     (Array.isArray(w.breakdown) && w.breakdown.length > 0) || 
