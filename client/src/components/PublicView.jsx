@@ -4,31 +4,29 @@ import {
   Users, 
   Calendar, 
   Activity, 
-  CheckCircle2, 
   ShieldCheck, 
   PackageCheck, 
   Search, 
   Sparkles,
   Share2,
   Check,
-  ListTodo,
   AlertCircle
 } from 'lucide-react';
 
 import LiveMonitorPanel from './LiveMonitorPanel';
+import { getTaskListForDay } from '../data/taskPlanning';
 
 export default function PublicView({ 
   data = {}, 
   workersList = [], 
   clockEntries = [], 
-  onToggleTask, 
   onOpenLogin,
   onClockEntryCreated,
   onOpenClockModal
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
-  const [mobileTab, setMobileTab] = useState('all'); // 'all' | 'live' | 'trucks' | 'team' | 'tasks'
+  const [mobileTab, setMobileTab] = useState('all'); // 'all' | 'live' | 'trucks' | 'team'
 
   const handleShareLink = () => {
     const publicUrl = `${window.location.origin}${window.location.pathname}?view=public`;
@@ -37,7 +35,6 @@ export default function PublicView({
     setTimeout(() => setCopiedLink(false), 3000);
   };
 
-  const tasks = (data.tasks || []).filter(t => !t.isPrivate);
   const trucks = (data.trucks && data.trucks.length > 0) ? data.trucks : [
     { name: "Camión Gula", tag: "Propio (Gula)", status: "Operativo — Propiedad Gula Logística" },
     { name: "Camión Covey", tag: "Alquiler Covey", status: "Operativo — Vehículo de Alquiler" },
@@ -45,8 +42,15 @@ export default function PublicView({
   ];
   const team = data.team || [];
 
-  const completedTasksCount = tasks.filter(t => t.completed).length;
-  const taskProgressPercent = tasks.length > 0 ? Math.round((completedTasksCount / tasks.length) * 100) : 0;
+  // Progreso real de la semana: antes esto leía `data.tasks` (un campo plano
+  // que ya no existe — las tareas viven por día en schedule[día].tasks,
+  // sundayMonday.tasks y saturdaySpecial.weddings), así que el tile
+  // "Progreso Tareas" marcaba 0% siempre. getTaskListForDay ya resuelve
+  // dónde vive cada día (incluido el caso domingo/lunes y las bodas).
+  const allWeekTasks = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
+    .flatMap(dayKey => getTaskListForDay(data, dayKey));
+  const completedTasksCount = allWeekTasks.filter(t => t && typeof t === 'object' && t.completed).length;
+  const taskProgressPercent = allWeekTasks.length > 0 ? Math.round((completedTasksCount / allWeekTasks.length) * 100) : 0;
 
   const filteredTeam = team.filter(item => 
     item.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -165,14 +169,6 @@ export default function PublicView({
         >
           Camiones ({trucks.length})
         </button>
-        <button
-          onClick={() => setMobileTab('tasks')}
-          className={`flex-1 py-2 px-3 text-xs font-semibold rounded-xl whitespace-nowrap transition-colors ${
-            mobileTab === 'tasks' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'
-          }`}
-        >
-          Checklist ({tasks.length})
-        </button>
       </div>
 
       {/* Section 1: Flota de Camiones (3 Camiones) */}
@@ -227,75 +223,7 @@ export default function PublicView({
         </div>
       )}
 
-      {/* Section 2: Checklist & Tareas Operativas */}
-      {(mobileTab === 'all' || mobileTab === 'tasks') && tasks.length > 0 && (
-        <div className="space-y-4 bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 backdrop-blur-md">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <div className="flex items-center space-x-2">
-              <ListTodo className="w-5 h-5 text-amber-400" />
-              <h3 className="text-xl font-bold text-white tracking-tight font-['Outfit']">
-                Checklist & Tareas Operativas
-              </h3>
-            </div>
-
-            <div className="text-xs text-slate-400">
-              <span className="text-amber-400 font-bold">{completedTasksCount}</span> de <span className="text-white font-bold">{tasks.length}</span> completadas
-            </div>
-          </div>
-
-          {/* Progress Bar */}
-          <div className="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-            <div 
-              className="h-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-500"
-              style={{ width: `${taskProgressPercent}%` }}
-            ></div>
-          </div>
-
-          {/* Task Items */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
-            {tasks.map((task) => (
-              <div
-                key={task.id}
-                onClick={() => onToggleTask(task.id)}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between gap-3 ${
-                  task.completed
-                    ? 'bg-slate-950/60 border-slate-800/80 text-slate-400'
-                    : 'bg-slate-900 hover:border-amber-500/40 text-slate-100 shadow-md'
-                }`}
-              >
-                <div className="flex items-center space-x-3 min-w-0 flex-1">
-                  <div 
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center border transition-colors shrink-0 ${
-                      task.completed 
-                        ? 'bg-emerald-500 border-emerald-400 text-slate-950' 
-                        : 'border-slate-700 text-transparent hover:border-amber-500'
-                    }`}
-                  >
-                    <CheckCircle2 className="w-4 h-4 stroke-[3]" />
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className={`text-sm font-medium break-words ${task.completed ? 'line-through text-slate-400' : 'text-white'}`}>
-                      {task.text}
-                    </p>
-                    <span className="text-[11px] text-slate-400 font-normal truncate block">
-                      📌 {task.assignedTo}
-                    </span>
-                  </div>
-                </div>
-
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                  task.priority === 'Alta' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-slate-800 text-slate-400'
-                }`}>
-                  {task.priority}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Section 3: Equipo de Logística */}
+      {/* Section 2: Equipo de Logística */}
       {(mobileTab === 'all' || mobileTab === 'team') && (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
