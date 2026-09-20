@@ -165,11 +165,15 @@ export default function PartnerDashboardView({
   const mergedBalancesData = { ...rawBalancesData };
   mergedBalancesData.workers = workersList.map(worker => {
     // Mismo problema que findWorkerHours (más abajo en este archivo): el
-    // roster usa "Jeferson"/"Ricardo" pero balancesData en Mongo guarda
-    // "Jefferson Gula"/"Ricardo Gula" — una comparación exacta nunca los
-    // cruza. Sin esta normalización, un trabajador con saldo real (ej.
-    // Jefferson: 872€, bolsa de 80h consumida) aparecía con +0,00€ y sin
-    // desglose en su propia tarjeta de Saldos & Acuerdos.
+    // roster usa nombres cortos ("Jeferson", "Ricardo") pero balancesData
+    // en Mongo guarda el nombre completo ("Jeferson Gula", "Ricardo Gula")
+    // — una comparación exacta nunca los cruza. Sin esta normalización, un
+    // trabajador con saldo real (ej. Jeferson: 872€, bolsa de 80h
+    // consumida) aparecía con +0,00€ y sin desglose en su propia tarjeta de
+    // Saldos & Acuerdos. El `ff→f` en concreto venía de un typo real que
+    // hubo un tiempo entre "Jeferson" (roster) y "Jefferson" (Mongo,
+    // corregido el 20/09) — se deja como red de seguridad aunque ya no
+    // debería hacer falta, no rompe nada tenerlo.
     const normalizedRosterName = worker.name.trim().toLowerCase().replace(/ff/g, 'f');
     const existing = (rawBalancesData.workers || []).find(w => {
       const normalizedBalanceName = (w.name || '').trim().toLowerCase().replace(/ff/g, 'f');
@@ -355,8 +359,9 @@ export default function PartnerDashboardView({
   // workersList (ej. "Ricardo"), pero balancesData.workers usa "Nombre
   // Apellido" (ej. "Ricardo Gula") — coincidencia exacta nunca los cruza.
   // Busca por prefijo de palabra completa para tolerar ese sufijo.
-  // La normalización de "ff"→"f" es lo que permite cruzar "Jefferson Gula"
-  // (ficha de Saldos) con "Jeferson" (roster), que antes no coincidían.
+  // La normalización de "ff"→"f" viene de un typo real que hubo entre
+  // "Jefferson" (Saldos) y "Jeferson" (roster), corregido el 20/09 — se
+  // deja como red de seguridad, es inofensivo aunque ya no haga falta.
   const findWorkerHours = (balanceWorkerName) => {
     if (!balanceWorkerName) return null;
     const normalized = balanceWorkerName.trim().toLowerCase().replace(/ff/g, 'f');

@@ -452,7 +452,7 @@ export default function TeamBalancesTab({
                       </div>
                     )}
 
-                    {/* Special Jefferson Purse Box */}
+                    {/* Special Jeferson Purse Box */}
                     {worker.isSpecialPurse && worker.purseInfo && (
                       <div className="mt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
                         <div className="flex items-center justify-between text-xs">
