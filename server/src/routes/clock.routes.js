@@ -46,6 +46,19 @@ router.post('/', async (req, res) => {
     memoryClockEntries.push(newEntryData);
     return res.status(201).json(newEntryData);
   } catch (error) {
+    // id duplicado (índice único) = este fichaje YA se guardó antes — lo
+    // más probable es que el móvil no recibiera la respuesta original (sin
+    // cobertura) y esté reintentando el mismo POST. Sin este caso, ese
+    // reintento (necesario para no perder fichajes offline, ver
+    // retryPendingClockEntries en el cliente) se quedaría reintentando para
+    // siempre contra un 500 genérico. Se devuelve 200 con el documento que
+    // ya existe, en vez de fallar — el fichaje nunca se duplica gracias al
+    // índice único de `id`, esto solo evita tratar un guardado que sí
+    // funcionó como un fallo.
+    if (error.code === 11000) {
+      const existing = await ClockEntry.findOne({ id: req.body.id });
+      if (existing) return res.status(200).json(existing);
+    }
     console.error('Error al registrar fichaje:', error);
     return res.status(500).json({ error: error.message || 'Error al guardar fichaje en base de datos' });
   }

@@ -91,9 +91,22 @@ export async function fetchClockEntriesFromAPI() {
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const data = await res.json();
     if (Array.isArray(data)) {
-      // Sync local storage cache
-      localStorage.setItem('gula_clock_entries_v1', JSON.stringify(data));
-      return data;
+      // Fusionar con lo que siga pendiente de sincronizar (fichado sin
+      // cobertura, ver saveClockEntryToAPI) en vez de sobrescribirlo a
+      // ciegas — si no, en cuanto volvía la conexión este GET traía la
+      // lista de Mongo (que todavía no incluye ese fichaje) y lo borraba
+      // sin dejar rastro, tanto del estado como del propio localStorage.
+      const pendingAll = getPendingClockEntries();
+      const pending = pendingAll.filter(p => !data.some(d => d.id === p.id));
+      if (pending.length !== pendingAll.length) {
+        // Alguno de los pendientes ya está confirmado en el servidor
+        // (llegó por otra vía, ej. retryPendingClockEntries) — sacarlo de
+        // la cola para no reintentarlo de más.
+        setPendingClockEntries(pending);
+      }
+      const merged = pending.length > 0 ? [...data, ...pending] : data;
+      localStorage.setItem('gula_clock_entries_v1', JSON.stringify(merged));
+      return merged;
     }
   } catch (err) {
     console.warn('Backend API disconnected, using localStorage fallback for clock entries:', err.message);
@@ -111,6 +124,42 @@ export async function fetchClockEntriesFromAPI() {
 /**
  * Create new clock entry in MongoDB / Backend API
  */
+// Fichajes que se crearon en el cliente pero no se ha confirmado que
+// llegaran al servidor (sin cobertura, típico en fincas de boda, o con el
+// servidor caído). Antes se perdían en silencio: en cuanto volvía la
+// cobertura, el polling de 20s traía la lista de Mongo (sin ese fichaje) y
+// SOBRESCRIBÍA tanto el estado como el propio localStorage con ella. Esta
+// cola aparte + retryPendingClockEntries() es lo que evita perderlos.
+const PENDING_CLOCK_SYNC_KEY = 'gula_pending_clock_sync_v1';
+
+function getPendingClockEntries() {
+  try {
+    const saved = localStorage.getItem(PENDING_CLOCK_SYNC_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+}
+
+function setPendingClockEntries(list) {
+  try {
+    localStorage.setItem(PENDING_CLOCK_SYNC_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// Fichajes todavía sin confirmar que hay que fusionar con lo que traiga el
+// servidor (en vez de dejar que el poll los borre). Ver App.jsx.
+export function getPendingClockEntriesSnapshot() {
+  return getPendingClockEntries();
+}
+
+/**
+ * Create new clock entry in MongoDB / Backend API. Devuelve el documento
+ * guardado si funciona, o `null` si no (el fichaje queda en la cola de
+ * pendientes para reintentarlo más tarde, no se pierde).
+ */
 export async function saveClockEntryToAPI(entry) {
   try {
     const res = await fetch(`${API_BASE}/clock`, {
@@ -119,12 +168,52 @@ export async function saveClockEntryToAPI(entry) {
       body: JSON.stringify(entry)
     });
     if (res.ok) {
+      // Por si este fichaje ya estaba en la cola de una sesión/pestaña
+      // anterior y ahora se guarda por la vía normal.
+      setPendingClockEntries(getPendingClockEntries().filter(e => e.id !== entry.id));
       return await res.json();
     }
   } catch (err) {
     console.warn('Backend API disconnected, saving clock entry to localStorage fallback:', err.message);
   }
-  return entry;
+  const pending = getPendingClockEntries();
+  if (!pending.some(e => e.id === entry.id)) {
+    setPendingClockEntries([...pending, entry]);
+  }
+  return null;
+}
+
+/**
+ * Reintenta guardar cada fichaje pendiente de sincronizar. El servidor es
+ * idempotente por `id` (índice único en ClockEntry — ver clock.routes.js),
+ * así que reintentar uno que en realidad SÍ se guardó la primera vez (solo
+ * que la respuesta no llegó) nunca lo duplica, solo confirma que ya existe.
+ * Se llama desde el polling normal de App.jsx y al recuperar conexión.
+ */
+export async function retryPendingClockEntries() {
+  const pending = getPendingClockEntries();
+  if (pending.length === 0) return [];
+
+  const stillPending = [];
+  const synced = [];
+  for (const entry of pending) {
+    try {
+      const res = await fetch(`${API_BASE}/clock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(entry)
+      });
+      if (res.ok) {
+        synced.push(entry);
+      } else {
+        stillPending.push(entry);
+      }
+    } catch {
+      stillPending.push(entry);
+    }
+  }
+  setPendingClockEntries(stillPending);
+  return synced;
 }
 
 /**
