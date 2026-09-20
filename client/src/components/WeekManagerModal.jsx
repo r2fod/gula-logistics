@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, Plus, X, Copy, Sparkles, RefreshCw, AlertCircle, Check, Truck, Users, PartyPopper } from 'lucide-react';
 import { generateScheduleWithGemini, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 // Asistente guiado para crear una semana nueva: en vez de dejarla en blanco
 // (o clonada a ciegas) y que el usuario tenga que organizarla tarea a
@@ -22,6 +23,8 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [generatedJson, setGeneratedJson] = useState(null);
+
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Play, Square, X, CheckCircle2, User, DollarSign, ShieldCheck, Lock } from 'lucide-react';
 import { getActiveShiftForWorker } from '../data/shiftCalculations';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export default function ClockInModal({
   isOpen,
@@ -39,6 +40,8 @@ export default function ClockInModal({
   // devuelve los más recientes primero, así que "el último del array" no
   // es "el más reciente" — ver getActiveShiftForWorker).
   const activeShift = getActiveShiftForWorker(clockEntries, selectedWorker);
+
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 

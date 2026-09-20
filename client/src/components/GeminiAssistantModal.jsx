@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Send, X, Bot, Check, AlertCircle, RefreshCw, Key, Wand2 } from 'lucide-react';
 import { generateScheduleWithGemini, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export default function GeminiAssistantModal({ isOpen, onClose, onApplyGeneratedSchedule, activeWeekData }) {
   const [prompt, setPrompt] = useState('');
@@ -9,6 +10,8 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
   const [loading, setLoading] = useState(false);
   const [generatedJson, setGeneratedJson] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 

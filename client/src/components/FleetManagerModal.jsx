@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { X, Plus, Trash2, Upload, FileText, Truck, AlertCircle } from 'lucide-react';
 import { uploadRentalPdf } from '../data/apiService';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onUpdateWeek }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+
+  useBodyScrollLock(isOpen && !!activeWeekData);
 
   if (!isOpen || !activeWeekData) return null;
 

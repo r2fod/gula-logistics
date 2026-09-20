@@ -47,6 +47,7 @@ import LiveMonitorPanel from './LiveMonitorPanel';
 import AdminClockEditModal from './AdminClockEditModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminSettingsModal from './AdminSettingsModal';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export default function PartnerDashboardView({ 
   activeWeekData, 
@@ -105,6 +106,12 @@ export default function PartnerDashboardView({
 
   const [isNotifyModalOpen, setIsNotifyModalOpen] = useState(false);
   const [selectedWorkersToNotify, setSelectedWorkersToNotify] = useState([]);
+
+  // Bloquea el scroll del fondo mientras cualquiera de los dos overlays
+  // propios de este componente (drawer móvil, modal de avisar cambios)
+  // está abierto — los demás modales (AdminSettingsModal, AdminClockEditModal...)
+  // ya gestionan el suyo por su cuenta.
+  useBodyScrollLock(isMobileDrawerOpen || isNotifyModalOpen);
 
   const handleOpenNotifyModal = () => {
     setSelectedWorkersToNotify([]);

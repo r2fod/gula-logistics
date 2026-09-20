@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Lock, X, KeyRound, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { changeAdminPassword } from '../data/apiService';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export default function AdminSettingsModal({ isOpen, onClose }) {
   const [currentPassword, setCurrentPassword] = useState('');
@@ -19,6 +20,8 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
       setError('');
     }
   }, [isOpen]);
+
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 

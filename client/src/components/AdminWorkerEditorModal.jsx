@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { X, Users, Save, Trash2 } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = [], onAddWorker, onRemoveWorker }) {
   const [name, setName] = useState('');
   const [role, setRole] = useState('Conductor Extra');
   const [avatar, setAvatar] = useState('🚚');
   const [confirmRemove, setConfirmRemove] = useState(null); // nombre pendiente de confirmar
+
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 
