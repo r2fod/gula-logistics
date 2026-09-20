@@ -296,14 +296,42 @@ export function getTaskStartDateTime(weekData, dayKey, task, now = new Date()) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), Number(m[1]), Number(m[2]));
 }
 
-// "Fichar esta tarea" solo se habilita desde `earlyMinutes` antes de que
-// EMPIECE la tarea, contando por fecha real: antes se comparaba solo si la
-// tarea era del día de hoy por día de la semana, así que una tarea de
-// lunes sin etiquetar se podía fichar el domingo de madrugada (y en
-// cualquier semana futura). Sin fecha o sin hora legible NO se bloquea
-// (mejor dejar fichar que impedir trabajar por un dato mal escrito).
+// Próximo momento en que EMPIEZA una tarea (Date) o null si ya no puede
+// ocurrir / no se sabe. Para una tarea con día fijo es el suyo. Una tarea de
+// la lista domingo/lunes SIN etiquetar puede ser de cualquiera de los dos:
+// se toma la primera ocurrencia que todavía no ha terminado (a las 14:00 del
+// domingo, una de 09:00 es la del lunes; a las 08:00 del domingo, la del
+// mismo domingo). Así una tarea sin etiquetar ni bloquea el domingo ni se
+// puede fichar de madrugada del lunes por una hora que ya pasó ayer.
+export function getNextTaskStart(weekData, dayKey, task, now = new Date()) {
+  const range = getWeekRange(weekData, now);
+  const timeFrame = (task && typeof task === 'object') ? task.timeFrame : null;
+  if (!range || typeof timeFrame !== 'string') return null;
+  const sharedList = dayKey === 'domingo' || dayKey === 'lunes' || dayKey === 'sundayMonday';
+  const ambiguous = sharedList && !['domingo', 'lunes'].includes(String(task?.targetDay || '').toLowerCase());
+  const days = ambiguous ? ['domingo', 'lunes'] : [resolveTaskEvalDay(dayKey, task)];
+
+  let best = null;
+  for (const day of days) {
+    const date = resolveTaskDate(range, day);
+    const start = date && getTaskStartDateTime(weekData, day, { ...task, targetDay: day }, now);
+    const end = date && parseEndDateTime(date, timeFrame);
+    if (!start || !end || end.getTime() <= now.getTime()) continue;
+    if (!best || start < best) best = start;
+  }
+  return best;
+}
+
+// La jornada solo se puede EMPEZAR (primer fichaje del día) desde
+// `earlyMinutes` antes de que empiece la primera tarea — evita fichar de
+// madrugada una tarea de las 09:00. NO se aplica tarea a tarea: quien ya
+// está trabajando puede cambiar de tarea cuando quiera. Por fecha real: antes
+// solo se miraba si la tarea era "de hoy" por día de la semana, así que una
+// de lunes sin etiquetar se podía fichar el domingo, o cualquiera de una
+// semana futura. Sin fecha u hora legible NO se bloquea (mejor dejar fichar
+// que impedir trabajar por un dato mal escrito).
 export function isTaskTooEarlyToStart(weekData, dayKey, task, now = new Date(), earlyMinutes = 5) {
-  const start = getTaskStartDateTime(weekData, dayKey, task, now);
+  const start = getNextTaskStart(weekData, dayKey, task, now);
   if (!start) return false;
   return now.getTime() < start.getTime() - earlyMinutes * 60 * 1000;
 }
