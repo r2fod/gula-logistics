@@ -31,7 +31,7 @@ import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
-import { getTaskListForDay, resolveTaskIndexByText, isTaskTooEarlyToClockIn, isTaskChronologicallyPast as isTaskChronologicallyPastShared } from '../data/taskPlanning';
+import { getTaskListForDay, resolveTaskIndexByText, isTaskTooEarlyToClockIn, isTaskPast, getDayLabel, getWeddingsBadge } from '../data/taskPlanning';
 import { subscribeToPush } from '../data/pushService';
 
 export default function WorkerView({
@@ -121,14 +121,22 @@ export default function WorkerView({
   }, 0);
 
   // Standard 7 Days Definition
+  // Títulos y números de día salen de meta.dateRange de la semana activa
+  // (getDayLabel) — antes estaban escritos a mano ("Lunes 14"... "Domingo
+  // 20") y la semana siguiente habrían enseñado fechas de la anterior. El
+  // 'lunes' de esta lista es el de COLA de la semana (día siguiente al
+  // domingo), no el que la abre. 'domingo' agrupa domingo Y lunes (misma
+  // lista), y su título lo dice.
+  const dayLabel = (key) => getDayLabel(activeWeekData, key, currentTime);
+  const dayNumber = (key) => dayLabel(key).replace(/^\D+/, '');
   const weekDays = [
-    { key: 'lunes', label: 'LUN', date: '14', title: 'Lunes 14', badge: 'Preparación Base' },
-    { key: 'martes', label: 'MAR', date: '15', title: activeWeekData.schedule?.martes?.title || 'Martes 15', badge: activeWeekData.schedule?.martes?.badge || 'Arranque Flota' },
-    { key: 'miercoles', label: 'MIÉ', date: '16', title: activeWeekData.schedule?.miercoles?.title || 'Miércoles 16', badge: activeWeekData.schedule?.miercoles?.badge || 'Descarga Fincas' },
-    { key: 'jueves', label: 'JUE', date: '17', title: activeWeekData.schedule?.jueves?.title || 'Jueves 17', badge: activeWeekData.schedule?.jueves?.badge || 'Eventos' },
-    { key: 'viernes', label: 'VIE', date: '18', title: activeWeekData.schedule?.viernes?.title || 'Viernes 18', badge: activeWeekData.schedule?.viernes?.badge || 'Cierre Crítico' },
-    { key: 'sabado', label: 'SÁB', date: '19', title: 'Sábado 19', badge: '3 Bodas Simultáneas' },
-    { key: 'domingo', label: 'DOM', date: '20', title: 'Domingo 20', badge: 'Descarga & Vajilla' }
+    { key: 'lunes', label: 'LUN', date: dayNumber('lunes'), title: dayLabel('lunes'), badge: 'Devoluciones & Limpieza' },
+    { key: 'martes', label: 'MAR', date: dayNumber('martes'), title: activeWeekData.schedule?.martes?.title || dayLabel('martes'), badge: activeWeekData.schedule?.martes?.badge || 'Arranque Flota' },
+    { key: 'miercoles', label: 'MIÉ', date: dayNumber('miercoles'), title: activeWeekData.schedule?.miercoles?.title || dayLabel('miercoles'), badge: activeWeekData.schedule?.miercoles?.badge || 'Descarga Fincas' },
+    { key: 'jueves', label: 'JUE', date: dayNumber('jueves'), title: activeWeekData.schedule?.jueves?.title || dayLabel('jueves'), badge: activeWeekData.schedule?.jueves?.badge || 'Eventos' },
+    { key: 'viernes', label: 'VIE', date: dayNumber('viernes'), title: activeWeekData.schedule?.viernes?.title || dayLabel('viernes'), badge: activeWeekData.schedule?.viernes?.badge || 'Cierre Crítico' },
+    { key: 'sabado', label: 'SÁB', date: dayNumber('sabado'), title: dayLabel('sabado'), badge: getWeddingsBadge(activeWeekData) },
+    { key: 'domingo', label: 'DOM', date: dayNumber('domingo'), title: `${dayLabel('domingo')} y ${dayLabel('lunes')}`, badge: 'Descarga & Vajilla' }
   ];
 
   // Helper to extract assigned tasks & weddings for a day for current worker
@@ -165,6 +173,12 @@ export default function WorkerView({
       // "DOM", no quedarse vacía como antes (buscaba en schedule.lunes,
       // que no existe).
       tasks = getTaskListForDay(activeWeekData, 'domingo').filter(isAssigned);
+      // Una tarea etiquetada "Domingo" (targetDay) no es del lunes: sin este
+      // filtro la pestaña LUN enseñaba p.ej. la recogida del domingo bajo
+      // "Lunes". Las sin etiquetar siguen en ambas (no se sabe cuál es).
+      if (dayKey === 'lunes') {
+        tasks = tasks.filter(t => !(typeof t === 'object' && String(t.targetDay || '').toLowerCase() === 'domingo'));
+      }
     }
 
     return { tasks, weddings, totalCount: tasks.length + weddings.length };
@@ -327,9 +341,8 @@ export default function WorkerView({
   // ('domingo' es la clave de storage) — estos dos helpers evitan repetir
   // esa conversión en cada sitio: toStorageDayKey para leer/escribir la
   // lista real (findTaskIndex, toggle, taskRef), toEvalDayKey para saber
-  // si ya pasó su hora respetando el targetDay propio de cada tarea
-  // ('Domingo'/'Lunes'/indiferente), mismo criterio que ya usan
-  // autoCompletePastTasks (useWeeks.js) y LiveMonitorPanel.jsx.
+  // si es demasiado pronto para fichar (isTaskTooEarlyToClockIn), respetando
+  // el targetDay propio de cada tarea ('Domingo'/'Lunes'/indiferente).
   const toStorageDayKey = (dayKey) => (dayKey === 'lunes' ? 'domingo' : dayKey);
   const toEvalDayKey = (dayKey, task) => {
     if (dayKey !== 'lunes' && dayKey !== 'domingo') return dayKey;
@@ -337,14 +350,12 @@ export default function WorkerView({
     return targetDay || 'domingo';
   };
 
-  // Antes había una copia local de isTaskChronologicallyPast con el bug de
-  // medianoche viejo (currentHours<5 -> +24 se aplicaba a CUALQUIER tarea,
-  // no solo a las que de verdad cruzan medianoche) y sin el wraparound
-  // domingo->lunes ni el targetDay — se sustituye por la versión
-  // compartida ya corregida de taskPlanning.js, con grace=0 (igual que
-  // antes, solo tachado visual, sin margen).
-  const isTaskChronologicallyPast = (dayKey, timeFrame, task) =>
-    isTaskChronologicallyPastShared(toEvalDayKey(dayKey, task), timeFrame, currentTime);
+  // Solo tachado visual (grace 0). isTaskPast compara contra la FECHA REAL
+  // de la tarea dentro de la semana (meta.dateRange) y respeta el targetDay
+  // de las de domingo/lunes; una sin etiquetar cuenta como lunes, así que no
+  // se tacha el domingo. Sustituye a una copia local con el bug de
+  // medianoche viejo y a la comparación por día de la semana suelto.
+  const isTaskDone = (dayKey, task) => isTaskPast(activeWeekData, dayKey, task, currentTime);
 
   return (
     <div className="space-y-4 sm:space-y-5 animate-fadeIn w-full max-w-full overflow-x-hidden">
@@ -884,7 +895,7 @@ export default function WorkerView({
                             const manuallyCompleted = typeof task === 'object' ? task.completed : false;
                             
                             // A task is considered visually completed if manually marked OR if its time has past
-                            const isCompleted = manuallyCompleted || isTaskChronologicallyPast(dayGroup.key, timeFrame, task);
+                            const isCompleted = manuallyCompleted || isTaskDone(dayGroup.key, task);
                             
                             const taskLabel = timeFrame
                               ? `${taskText} (${timeFrame})`
@@ -913,6 +924,15 @@ export default function WorkerView({
                                   <span className={`font-medium ${isCompleted ? 'line-through opacity-70' : ''}`}>
                                     {taskLabel}
                                   </span>
+                                  {typeof task === 'object' && task.targetDay && (
+                                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md whitespace-nowrap shrink-0 border ${
+                                      task.targetDay === 'Domingo'
+                                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                        : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
+                                    }`}>
+                                      {task.targetDay.toUpperCase()}
+                                    </span>
+                                  )}
                                 </div>
                                 
                                 {/* Location Badge if available */}
@@ -986,7 +1006,7 @@ export default function WorkerView({
                             // El campo real es `timeFrame` (así lo guarda AdminTaskEditorModal
                             // y así llega de Mongo) — `w.time` no existe en ninguna boda real,
                             // así que esto nunca se daba por pasada ni mostraba su horario.
-                            const isCompleted = manuallyCompleted || isTaskChronologicallyPast('sabado', w.timeFrame);
+                            const isCompleted = manuallyCompleted || isTaskDone('sabado', w);
                             
                             return (
                               <div key={idx} className={`p-3 sm:p-3.5 rounded-xl border space-y-1 transition-all ${

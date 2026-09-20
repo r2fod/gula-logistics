@@ -132,6 +132,196 @@ export function isTaskChronologicallyPast(dayKey, timeFrame, overrideTime = new 
   return currentTotal > endTotal + graceMinutes;
 }
 
+// ─── Evaluación por FECHA REAL de la semana ─────────────────────────────────
+// isTaskChronologicallyPast (arriba) compara solo el DÍA DE LA SEMANA de hoy
+// contra el de la tarea, sin saber a qué semana del calendario pertenece el
+// planning. Eso causaba marcados falsos de tareas como "hechas":
+//   · Una semana futura (p.ej. la que se prepara el domingo para la
+//     siguiente) tenía martes-sábado "ya pasados" desde el minuto uno,
+//     porque hoy es domingo — y autoCompletePastTasks las marcaba en Mongo.
+//   · domingo/lunes comparten lista (sundayMonday.tasks); sin `targetDay`
+//     una tarea se evaluaba siempre como DOMINGO, así que las devoluciones
+//     del lunes se marcaban hechas el propio domingo por la mañana.
+// Aquí se resuelve la fecha exacta de cada tarea a partir del texto de
+// meta.dateRange de la semana y se compara contra "ahora" — sin ordinales,
+// sin wraparound. Si no se puede determinar la fecha (dateRange ilegible),
+// NO se marca ni se tacha nada: dejar una tarea pendiente de más es
+// inocuo, darla por hecha sin estarlo no.
+
+const MONTHS = {
+  enero: 0, ene: 0, febrero: 1, feb: 1, marzo: 2, mar: 2, abril: 3, abr: 3,
+  mayo: 4, may: 4, junio: 5, jun: 5, julio: 6, jul: 6, agosto: 7, ago: 7,
+  septiembre: 8, setiembre: 8, sept: 8, sep: 8, octubre: 9, oct: 9,
+  noviembre: 10, nov: 10, diciembre: 11, dic: 11,
+};
+const MONTH_WORDS = Object.keys(MONTHS).sort((a, b) => b.length - a.length).join('|');
+const JS_WEEKDAY = { domingo: 0, lunes: 1, martes: 2, miercoles: 3, jueves: 4, viernes: 5, sabado: 6 };
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function addDays(date, n) {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+function buildDate(year, month, day) {
+  const d = new Date(year, month, day);
+  return d.getMonth() === month && d.getDate() === day ? d : null;
+}
+
+// Devuelve { start, end } (Date a las 00:00 locales) o null si no se puede
+// determinar con seguridad. Acepta "Del 15 al 20 de Septiembre de 2026",
+// "Del 22 al 27 de Septiembre" (año = el que deje la fecha más cerca de
+// ahora) y "Del 29 de Septiembre al 4 de Octubre". Se valida que el rango
+// dure entre 3 y 8 días: un texto raro que se leyera mal (p.ej. "Semana 4,
+// del 22 al 27") NO debe dar unas fechas inventadas.
+export function parseWeekRange(dateRange, now = new Date()) {
+  if (typeof dateRange !== 'string') return null;
+  const text = dateRange.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  const yearMatch = text.match(/\b(20\d{2})\b/);
+  const body = yearMatch ? text.replace(yearMatch[0], ' ') : text;
+
+  const numbers = [...body.matchAll(/\b(\d{1,2})\b/g)].map(m => Number(m[1]));
+  const months = [...body.matchAll(new RegExp(`\\b(${MONTH_WORDS})\\b`, 'g'))].map(m => MONTHS[m[1]]);
+  if (numbers.length < 2 || months.length < 1) return null;
+
+  const [d1, d2] = numbers;
+  const m1 = months[0];
+  const m2 = months.length > 1 ? months[1] : m1;
+
+  const crossesYear = m2 < m1;
+  // Con año explícito ("... al 3 de Enero de 2027") ese año es el del FINAL
+  // del rango; sin año se prueban los vecinos y gana el más cercano a hoy.
+  const candidateStartYears = yearMatch
+    ? [Number(yearMatch[1]) - (crossesYear ? 1 : 0)]
+    : [now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
+
+  let best = null;
+  for (const y of candidateStartYears) {
+    const start = buildDate(y, m1, d1);
+    const end = buildDate(crossesYear ? y + 1 : y, m2, d2);
+    if (!start || !end) continue;
+    const span = Math.round((end - start) / DAY_MS);
+    if (span < 3 || span > 8) continue;
+    if (!best || Math.abs(start - now) < Math.abs(best.start - now)) best = { start, end };
+  }
+  return best;
+}
+
+export function getWeekRange(weekData, now = new Date()) {
+  return parseWeekRange(weekData?.meta?.dateRange, now);
+}
+
+// Fecha real (Date a las 00:00) de un dayKey dentro de la semana. 'lunes' es
+// el lunes que SIGUE al domingo de esa semana (la lista domingo/lunes es la
+// cola de la semana, no su inicio).
+export function resolveTaskDate(range, dayKey) {
+  if (!range || !(dayKey in JS_WEEKDAY)) return null;
+  const offsetTo = (weekday) => (weekday - range.start.getDay() + 7) % 7;
+  if (dayKey === 'lunes') return addDays(range.start, offsetTo(0) + 1);
+  return addDays(range.start, offsetTo(JS_WEEKDAY[dayKey]));
+}
+
+// "3 Bodas" para la cabecera del sábado: cuenta FINCAS distintas, no filas
+// (una boda suele tener varias: montaje por la mañana y evento por la noche).
+export function getWeddingsBadge(weekData) {
+  const n = new Set((weekData?.saturdaySpecial?.weddings || []).map(w => w?.location)).size;
+  if (n === 0) return 'Sin bodas';
+  return n === 1 ? '1 Boda' : `${n} Bodas`;
+}
+
+const DAY_NAMES = { lunes: 'Lunes', martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes', sabado: 'Sábado', domingo: 'Domingo' };
+
+// "Martes 15" con el número REAL del día según meta.dateRange de la semana
+// activa. Sin fechas legibles devuelve solo el nombre ("Martes"): mejor no
+// poner número que poner el de otra semana (había "Lunes 14 ... Domingo 20"
+// escritos a mano en WorkerView y TaskFlowGraphView).
+export function getDayLabel(weekData, dayKey, now = new Date()) {
+  const name = DAY_NAMES[dayKey];
+  if (!name) return dayKey;
+  const date = resolveTaskDate(getWeekRange(weekData, now), dayKey);
+  return date ? `${name} ${date.getDate()}` : name;
+}
+
+// Día de calendario REAL con el que hay que evaluar una tarea. Para días
+// normales y bodas es el propio dayKey. Para la lista compartida
+// domingo/lunes manda el `targetDay` de la tarea; SIN targetDay es ambiguo
+// (puede ser domingo o lunes) y se evalúa como LUNES — el último día
+// posible — porque marcar como hecha una tarea que no lo está es peor que
+// dejarla pendiente un poco más (un trabajador o el admin siempre puede
+// marcarla a mano, o al fichar su salida).
+export function resolveTaskEvalDay(dayKey, task) {
+  if (dayKey !== 'domingo' && dayKey !== 'lunes' && dayKey !== 'sundayMonday') return dayKey;
+  const target = (task && typeof task === 'object' && task.targetDay) ? String(task.targetDay).toLowerCase() : null;
+  if (target === 'domingo' || target === 'lunes') return target;
+  return 'lunes';
+}
+
+function parseEndDateTime(date, timeFrame) {
+  const m = /^\s*(\d{1,2}):(\d{2})\s*[-–—]\s*(\d{1,2}):(\d{2})\s*$/.exec(typeof timeFrame === 'string' ? timeFrame : '');
+  if (!m) return null;
+  const [sh, sm, eh, em] = [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])];
+  if (sh > 23 || eh > 23 || sm > 59 || em > 59) return null;
+  const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), eh, em);
+  if (eh * 60 + em <= sh * 60 + sm) end.setDate(end.getDate() + 1); // cruza medianoche
+  return end;
+}
+
+// true / false = decidido por fechas reales. null = NO se puede decidir
+// (semana sin fechas legibles) — quien escribe en Mongo debe abstenerse.
+// Una tarea sin horario "HH:MM - HH:MM" utilizable devuelve false: el reloj
+// no puede decir que terminó (antes se daban por hechas al acabar el día).
+export function getTaskPastStatus(weekData, dayKey, task, now = new Date(), graceMinutes = 0) {
+  const range = getWeekRange(weekData, now);
+  if (!range) return null;
+  const date = resolveTaskDate(range, resolveTaskEvalDay(dayKey, task));
+  if (!date) return null;
+  const timeFrame = (task && typeof task === 'object') ? task.timeFrame : null;
+  const end = parseEndDateTime(date, timeFrame);
+  if (!end) return false;
+  return now.getTime() > end.getTime() + graceMinutes * 60 * 1000;
+}
+
+// Versión para PINTAR (tachado) y filtrar: solo true cuando las fechas reales
+// dicen que la tarea ya terminó. Con fechas ilegibles (null) o sin horario
+// utilizable no se da por pasada.
+export function isTaskPast(weekData, dayKey, task, now = new Date(), graceMinutes = 0) {
+  return getTaskPastStatus(weekData, dayKey, task, now, graceMinutes) === true;
+}
+
+// Añade el año al texto del rango si no lo trae ("Del 22 al 27 de Septiembre"
+// -> "... de 2026") para que dentro de meses no se lea otro año por cercanía.
+// Si el texto no se entiende, se devuelve tal cual.
+export function ensureYearInDateRange(dateRange, now = new Date()) {
+  if (typeof dateRange !== 'string' || /\b20\d{2}\b/.test(dateRange)) return dateRange;
+  const range = parseWeekRange(dateRange, now);
+  return range ? `${dateRange.trim()} de ${range.end.getFullYear()}` : dateRange;
+}
+
+// Copia de una semana con TODAS las tareas (y camiones) sin completar. Una
+// semana nueva creada clonando la actual, o generada por IA, no debe heredar
+// los "hecho" de la anterior: llegaría con todo tachado desde el minuto cero.
+export function clearWeekCompletion(weekData) {
+  const clearList = (list) => (list || []).map(t => (t && typeof t === 'object' ? { ...t, completed: false } : t));
+  const cleared = { ...weekData };
+  if (weekData.schedule) {
+    cleared.schedule = Object.fromEntries(
+      Object.entries(weekData.schedule).map(([k, day]) => [k, { ...day, tasks: clearList(day?.tasks) }])
+    );
+  }
+  if (weekData.saturdaySpecial) {
+    cleared.saturdaySpecial = { ...weekData.saturdaySpecial, weddings: clearList(weekData.saturdaySpecial.weddings) };
+  }
+  if (weekData.sundayMonday) {
+    cleared.sundayMonday = { ...weekData.sundayMonday, tasks: clearList(weekData.sundayMonday.tasks) };
+  }
+  if (Array.isArray(weekData.trucks)) {
+    cleared.trucks = weekData.trucks.map(t => ({ ...t, pickupCompleted: false, returnCompleted: false }));
+  }
+  return cleared;
+}
+
 // Para el botón "Fichar Esta Tarea" en la vista de trabajador: además de
 // que el día ya haya llegado (isDayInFuture en WorkerView.jsx), la tarea
 // concreta no se puede fichar hasta `earlyMinutes` antes de su hora de

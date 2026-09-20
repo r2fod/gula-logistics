@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { logisticsData as BASE_DATA } from '../data/logisticsData';
 import { saveWeeksToAPI, patchTaskCompletionInAPI } from '../data/apiService';
-import { getTaskListForDay, buildTaskListPatch, isTaskChronologicallyPast, TASK_COMPLETION_GRACE_MINUTES } from '../data/taskPlanning';
+import { getTaskListForDay, buildTaskListPatch, getTaskPastStatus, ensureYearInDateRange, clearWeekCompletion, TASK_COMPLETION_GRACE_MINUTES } from '../data/taskPlanning';
 
 const ALL_DAY_KEYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'domingo', 'sabado'];
 
@@ -115,28 +115,22 @@ export function useWeeks() {
   // GRACE_MINUTES) y todavía no lo estaban. markTaskCompleted ya es idempotente
   // (no hace nada si una tarea ya estaba completada), así que llamar a esto
   // varias veces seguidas es seguro — no vuelve a desmarcar nada.
+  //
+  // Es lo ÚNICO que escribe "completada" sin que nadie lo pulse, así que es
+  // deliberadamente prudente: getTaskPastStatus compara contra la FECHA REAL
+  // de cada tarea (rango de meta.dateRange), no contra el día de la semana
+  // suelto, y solo se marca con `=== true` — null (dateRange ilegible) o
+  // false (sin horario utilizable, día futuro, semana futura) no tocan nada.
+  // Una tarea de la lista domingo/lunes sin `targetDay` se evalúa como lunes
+  // (ver resolveTaskEvalDay). markTaskCompleted recibe el dayKey original
+  // ('domingo'), que es donde de verdad vive guardada la tarea.
   const autoCompletePastTasks = () => {
     const now = new Date();
     ALL_DAY_KEYS.forEach(dayKey => {
       const list = getTaskListForDay(activeWeek, dayKey);
       list.forEach((task, idx) => {
-        const isObj = typeof task === 'object' && task !== null;
-        if (isObj && task.completed) return;
-        const timeFrame = isObj ? task.timeFrame : null;
-        // domingo y lunes comparten sundayMonday.tasks bajo dayKey='domingo'
-        // (ver taskPlanning.js) — una tarea concreta puede llevar su propio
-        // targetDay ('Domingo'/'Lunes', puesto desde AdminTaskEditorModal)
-        // para saber su día REAL a la hora de evaluar el horario, igual que
-        // ya hace ScheduleTab.jsx para pintarla tachada. Sin esto, una tarea
-        // "Solo Lunes" se evaluaba siempre como si fuera del domingo — y
-        // tras arreglar el wraparound domingo->lunes (20/09), eso la habría
-        // dado por pasada desde el minuto 0 del lunes, sin haber ni
-        // empezado. markTaskCompleted sigue recibiendo el dayKey original
-        // ('domingo'), que es donde de verdad vive guardada la tarea.
-        const evalDayKey = (dayKey === 'domingo' && isObj && task.targetDay)
-          ? task.targetDay.toLowerCase()
-          : dayKey;
-        if (isTaskChronologicallyPast(evalDayKey, timeFrame, now, TASK_COMPLETION_GRACE_MINUTES)) {
+        if (typeof task === 'object' && task !== null && task.completed) return;
+        if (getTaskPastStatus(activeWeek, dayKey, task, now, TASK_COMPLETION_GRACE_MINUTES) === true) {
           markTaskCompleted(dayKey, idx);
         }
       });
@@ -153,7 +147,11 @@ export function useWeeks() {
     const newId = `week_${Date.now()}`;
     const template = cloneCurrent ? JSON.parse(JSON.stringify(activeWeek)) : JSON.parse(JSON.stringify(BASE_WEEK_3));
 
-    const newWeekObj = {
+    // clearWeekCompletion: una semana clonada o generada por IA no debe
+    // heredar los "completada" de la anterior (llegaría toda tachada), y
+    // ensureYearInDateRange fija el año en el texto para que las fechas de
+    // las tareas se resuelvan siempre contra la semana correcta.
+    const newWeekObj = clearWeekCompletion({
       ...template,
       id: newId,
       name,
@@ -161,22 +159,25 @@ export function useWeeks() {
         ...template.meta,
         ...(aiGeneratedJson?.meta || {}),
         week: name,
-        dateRange,
+        dateRange: ensureYearInDateRange(dateRange),
         status: "Operativa Activa"
       },
       schedule: aiGeneratedJson?.schedule || template.schedule,
       saturdaySpecial: aiGeneratedJson?.saturdaySpecial || template.saturdaySpecial,
       sundayMonday: aiGeneratedJson?.sundayMonday || template.sundayMonday
-    };
+    });
 
     updateWeeks({ ...allWeeks, [newId]: newWeekObj });
     setActiveWeekId(newId);
   };
 
   const handleApplyGeminiSchedule = (aiGeneratedJson) => {
+    // dateRange se conserva: el JSON de la IA trae un texto de relleno
+    // ("Fechas...") que dejaría la semana sin fechas legibles y desactivaría
+    // el marcado/tachado de tareas por horario.
     const updatedWeek = {
       ...activeWeek,
-      meta: { ...activeWeek.meta, ...aiGeneratedJson.meta },
+      meta: { ...activeWeek.meta, ...aiGeneratedJson.meta, dateRange: activeWeek.meta?.dateRange },
       schedule: aiGeneratedJson.schedule || activeWeek.schedule,
       saturdaySpecial: aiGeneratedJson.saturdaySpecial || activeWeek.saturdaySpecial,
       sundayMonday: aiGeneratedJson.sundayMonday || activeWeek.sundayMonday

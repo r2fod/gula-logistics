@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Users, Calendar, Clock, Check, Sparkles } from 'lucide-react';
-import { isTaskChronologicallyPast } from '../../data/taskPlanning';
+import { isTaskPast, getDayLabel } from '../../data/taskPlanning';
 
 export default function ScheduleTab({ activeWeekData, workersList, onToggleTask, onUpdateWeek }) {
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
@@ -55,7 +55,9 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
   };
 
   const renderDynamicTask = (task, idx, dayKey) => {
-    const isCompleted = task.completed || isTaskChronologicallyPast(dayKey, task.timeFrame, currentTime);
+    // El día de una tarea de flota es explícito (pickupDay/returnDay): en
+    // domingo/lunes se fija como targetDay para que no se trate como ambigua.
+    const isCompleted = task.completed || isTaskPast(activeWeekData, dayKey, { ...task, targetDay: dayKey }, currentTime);
     
     return (
       <li 
@@ -99,6 +101,61 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
       </li>
     );
   };
+
+  // Tarea de la lista compartida domingo/lunes. isTaskPast usa el targetDay
+  // de la tarea y, si no lo tiene, la evalúa como lunes (no se tacha el
+  // domingo una tarea que puede ser del lunes).
+  const renderSharedTask = (task, idx) => {
+    const taskText = typeof task === 'object' ? task.text : task;
+    const timeFrame = typeof task === 'object' ? task.timeFrame : null;
+    const manuallyCompleted = typeof task === 'object' ? !!task.completed : false;
+    const isCompleted = manuallyCompleted || isTaskPast(activeWeekData, 'domingo', task, currentTime);
+
+    const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
+    const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
+
+    return (
+      <div key={idx} className={`p-4 rounded-2xl border leading-relaxed transition-all ${
+        isCompleted
+          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 line-through opacity-60'
+          : !matchesFilter 
+            ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-850 text-slate-500' 
+            : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
+      }`}>
+        <span>
+          {isCompleted && <Check className="w-4 h-4 inline mr-1 text-emerald-400" />}
+          {taskText}
+        </span>
+        {timeFrame && (
+          <span className="mt-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded flex items-center gap-1 w-fit whitespace-nowrap">
+            <Clock className="w-3 h-3" />
+            {timeFrame}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  const sharedTasks = (activeWeekData?.sundayMonday?.tasks || []).map((task, idx) => ({ task, idx }));
+  const targetDayOf = (task) => (typeof task === 'object' && task.targetDay ? task.targetDay.toLowerCase() : null);
+  const sharedGroups = [
+    {
+      key: 'domingo', dynamicKey: 'domingo', title: getDayLabel(activeWeekData, 'domingo', currentTime),
+      chip: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+      tasks: sharedTasks.filter(({ task }) => targetDayOf(task) === 'domingo'),
+    },
+    {
+      key: 'lunes', dynamicKey: 'lunes', title: getDayLabel(activeWeekData, 'lunes', currentTime),
+      chip: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20',
+      tasks: sharedTasks.filter(({ task }) => targetDayOf(task) === 'lunes'),
+    },
+    {
+      key: 'sin-dia', title: 'Sin día fijado (domingo o lunes)',
+      hint: 'Ábrelas en el editor y elige "Día Específico" para colocarlas.',
+      chip: 'bg-slate-800/80 text-slate-300 border-slate-700',
+      tasks: sharedTasks.filter(({ task }) => !targetDayOf(task)),
+    },
+  ].filter(g => g.tasks.length > 0 || (g.dynamicKey && dynamicTasksByDay[g.dynamicKey]?.length > 0));
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -176,10 +233,9 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
               <ul className="space-y-2.5 text-xs text-slate-300">
                 {(day.tasks || []).map((task, idx) => {
                   const taskText = typeof task === 'object' ? task.text : task;
-                  const timeFrame = typeof task === 'object' ? task.timeFrame : null;
                   const manuallyCompleted = typeof task === 'object' ? !!task.completed : false;
                   
-                  const isCompleted = manuallyCompleted || isTaskChronologicallyPast(key, timeFrame, currentTime);
+                  const isCompleted = manuallyCompleted || isTaskPast(activeWeekData, key, task, currentTime);
                   
                   const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
                   const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
@@ -241,7 +297,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
             {(activeWeekData.saturdaySpecial.weddings || []).map((w, idx) => {
               const manuallyCompleted = !!w.completed;
-              const isCompleted = manuallyCompleted || isTaskChronologicallyPast('sabado', w.timeFrame, currentTime);
+              const isCompleted = manuallyCompleted || isTaskPast(activeWeekData, 'sabado', w, currentTime);
               const wAssigned = w.assigned || [];
               const matchesFilter = !selectedWorkerFilter || wAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
 
@@ -285,89 +341,30 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
 
       {/* Sunday / Monday Section */}
       {activeWeekData?.sundayMonday && (
-        <section className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 shadow-xl space-y-3.5">
+        <section className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 shadow-xl space-y-4">
           <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
             <Calendar className="text-amber-400 w-4 h-4" /> {activeWeekData.sundayMonday.title}
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs sm:text-sm text-slate-300">
-            {(activeWeekData.sundayMonday.tasks || []).map((task, idx) => {
-              const taskText = typeof task === 'object' ? task.text : task;
-              const timeFrame = typeof task === 'object' ? task.timeFrame : null;
-              
-              // For Domingo/Lunes tasks, we use the specific day if mentioned in targetDay, otherwise default to 'domingo'
-              const taskDayKey = (typeof task === 'object' && task.targetDay) 
-                ? task.targetDay.toLowerCase() 
-                : 'domingo';
-                
-              const manuallyCompleted = typeof task === 'object' ? !!task.completed : false;
-              const isCompleted = manuallyCompleted || isTaskChronologicallyPast(taskDayKey, timeFrame, currentTime);
-              
-              const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
-              const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
-
-              return (
-                <div key={idx} className={`p-4 rounded-2xl border leading-relaxed transition-all ${
-                  isCompleted
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 line-through opacity-60'
-                    : !matchesFilter 
-                      ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-850 text-slate-500' 
-                      : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
-                }`}>
-                  <div className="flex items-start justify-between gap-2">
-                    <span>
-                      {isCompleted && <Check className="w-4 h-4 inline mr-1 text-emerald-400" />}
-                      {taskText}
-                    </span>
-                    {typeof task === 'object' && task.targetDay && (
-                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-lg whitespace-nowrap shrink-0 border ${
-                        task.targetDay === 'Domingo' 
-                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' 
-                          : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
-                      }`}>
-                        {task.targetDay.toUpperCase()}
-                      </span>
-                    )}
+          {/* Una sola lista guarda domingo Y lunes: se separan aquí por el
+              "Día Específico" (targetDay) de cada tarea. Las que no lo tienen
+              van aparte, para que se vea cuáles faltan por asignar día. */}
+          {sharedGroups.map(group => (
+            <div key={group.key} className="space-y-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-lg border ${group.chip}`}>{group.title}</span>
+                {group.hint && <span className="text-[11px] text-slate-500">{group.hint}</span>}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs sm:text-sm text-slate-300">
+                {group.tasks.map(({ task, idx }) => renderSharedTask(task, idx))}
+                {group.dynamicKey && dynamicTasksByDay[group.dynamicKey]?.map((task, idx) => (
+                  <div key={`${group.dynamicKey}-${idx}`} className="p-4 rounded-2xl border bg-amber-500/5 border-amber-500/20 hover:border-amber-400/50 transition-all">
+                    <ul className="m-0 p-0 list-none">{renderDynamicTask(task, idx, group.dynamicKey)}</ul>
                   </div>
-                  {timeFrame && (
-                    <span className="mt-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 align-middle whitespace-nowrap">
-                      <Clock className="w-3 h-3" />
-                      {timeFrame}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-
-            {dynamicTasksByDay['domingo']?.map((task, idx) => {
-              // Hack the renderer a bit to add the targetDay label so it matches the UI
-              const renderedLi = renderDynamicTask(task, idx, 'domingo');
-              return (
-                <div key={`dom-${idx}`} className="p-4 rounded-2xl border bg-amber-500/5 border-amber-500/20 hover:border-amber-400/50 transition-all">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg whitespace-nowrap shrink-0 border bg-amber-500/10 text-amber-400 border-amber-500/20">
-                      DOMINGO
-                    </span>
-                  </div>
-                  <ul className="m-0 p-0 list-none">{renderedLi}</ul>
-                </div>
-              );
-            })}
-
-            {dynamicTasksByDay['lunes']?.map((task, idx) => {
-              const renderedLi = renderDynamicTask(task, idx, 'lunes');
-              return (
-                <div key={`lun-${idx}`} className="p-4 rounded-2xl border bg-amber-500/5 border-amber-500/20 hover:border-amber-400/50 transition-all">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-lg whitespace-nowrap shrink-0 border bg-indigo-500/10 text-indigo-300 border-indigo-500/20">
-                      LUNES
-                    </span>
-                  </div>
-                  <ul className="m-0 p-0 list-none">{renderedLi}</ul>
-                </div>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </section>
       )}
     </div>

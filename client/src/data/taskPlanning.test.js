@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { getTaskListForDay, resolveTaskIndexByText, buildTaskListPatch, isTaskChronologicallyPast, isTaskTooEarlyToClockIn } from './taskPlanning';
+import {
+  getTaskListForDay, resolveTaskIndexByText, buildTaskListPatch, isTaskChronologicallyPast, isTaskTooEarlyToClockIn,
+  parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge,
+} from './taskPlanning';
 
 const weekData = {
   schedule: {
@@ -192,5 +195,187 @@ describe('isTaskTooEarlyToClockIn', () => {
   it('un día distinto a hoy (pasado) no se bloquea por hora', () => {
     const lunesSiguiente = new Date(2026, 8, 21, 6, 0); // lunes 06:00
     expect(isTaskTooEarlyToClockIn('domingo', '09:00-10:00', lunesSiguiente)).toBe(false); // domingo ya no es "hoy"
+  });
+});
+
+// Semana real de producción: martes 15 -> domingo 20 (+ lunes 21 de cola).
+const semana = (dateRange) => ({ meta: { dateRange } });
+const SEMANA_ACTUAL = semana('Del 15 al 20 de Septiembre de 2026');
+const at = (y, m, d, h = 0, min = 0) => new Date(y, m - 1, d, h, min);
+
+describe('parseWeekRange', () => {
+  const now = at(2026, 9, 20, 20, 17);
+  const ymd = (d) => d && `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+
+  it('lee "Del 15 al 20 de Septiembre de 2026"', () => {
+    const r = parseWeekRange('Del 15 al 20 de Septiembre de 2026', now);
+    expect([ymd(r.start), ymd(r.end)]).toEqual(['2026-9-15', '2026-9-20']);
+  });
+
+  it('sin año elige el más cercano a hoy (el placeholder del asistente no lleva año)', () => {
+    const r = parseWeekRange('Del 22 al 27 de Septiembre', now);
+    expect([ymd(r.start), ymd(r.end)]).toEqual(['2026-9-22', '2026-9-27']);
+  });
+
+  it('rango que cruza de mes: "Del 29 de Septiembre al 4 de Octubre"', () => {
+    const r = parseWeekRange('Del 29 de Septiembre al 4 de Octubre', now);
+    expect([ymd(r.start), ymd(r.end)]).toEqual(['2026-9-29', '2026-10-4']);
+  });
+
+  it('rango que cruza de AÑO con año explícito: el año es el del final', () => {
+    const r = parseWeekRange('Del 29 de Diciembre al 3 de Enero de 2027', now);
+    expect([ymd(r.start), ymd(r.end)]).toEqual(['2026-12-29', '2027-1-3']);
+  });
+
+  it('devuelve null (no inventa fechas) con texto ilegible o rangos absurdos', () => {
+    expect(parseWeekRange('Fechas generadas por Asistente Gemini AI', now)).toBeNull();
+    expect(parseWeekRange('Sin datos cargados todavía', now)).toBeNull();
+    expect(parseWeekRange('Semana 4, del 22 al 27 de Septiembre', now)).toBeNull(); // 4 se lee como día
+    expect(parseWeekRange('Del 1 al 30 de Septiembre', now)).toBeNull(); // 29 días: no es una semana
+    expect(parseWeekRange(undefined, now)).toBeNull();
+  });
+});
+
+describe('resolveTaskDate', () => {
+  const range = parseWeekRange('Del 15 al 20 de Septiembre de 2026', at(2026, 9, 20));
+  const dia = (k) => resolveTaskDate(range, k).getDate();
+
+  it('martes 15 ... sábado 19, domingo 20 y el lunes 21 de cola', () => {
+    expect(['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'].map(dia)).toEqual([15, 16, 17, 18, 19, 20, 21]);
+  });
+});
+
+describe('resolveTaskEvalDay', () => {
+  it('días normales y sábado: el propio dayKey', () => {
+    expect(resolveTaskEvalDay('martes', { text: 'x' })).toBe('martes');
+    expect(resolveTaskEvalDay('sabado', { location: 'Finca' })).toBe('sabado');
+  });
+
+  it('lista compartida con targetDay: manda el targetDay', () => {
+    expect(resolveTaskEvalDay('domingo', { targetDay: 'Domingo' })).toBe('domingo');
+    expect(resolveTaskEvalDay('domingo', { targetDay: 'Lunes' })).toBe('lunes');
+  });
+
+  it('lista compartida SIN targetDay (o "indiferente"): el último día posible, lunes', () => {
+    expect(resolveTaskEvalDay('domingo', { text: 'x' })).toBe('lunes');
+    expect(resolveTaskEvalDay('domingo', { targetDay: '' })).toBe('lunes');
+    expect(resolveTaskEvalDay('sundayMonday', 'texto plano')).toBe('lunes');
+  });
+});
+
+describe('getTaskPastStatus / isTaskPast — bugs reales del 20/09', () => {
+  const GRACE = 45;
+  const devolucionLunes = { text: 'Devolución Camión Albacar', timeFrame: '13:00 - 13:30' };
+  const recogidaDomingo = { text: 'Recogida Refranys', timeFrame: '15:00 - 17:00', targetDay: 'Domingo' };
+  const recogidaSinEtiqueta = { text: 'Recogida Refranys', timeFrame: '15:00 - 17:00' };
+
+  it('BUG: una devolución del lunes sin etiquetar NO se da por hecha el domingo por la mañana', () => {
+    expect(isTaskPast(SEMANA_ACTUAL, 'domingo', devolucionLunes, at(2026, 9, 20, 20, 17), GRACE)).toBe(false);
+    expect(isTaskPast(SEMANA_ACTUAL, 'domingo', devolucionLunes, at(2026, 9, 21, 10, 46), GRACE)).toBe(false);
+  });
+
+  it('una tarea sin etiquetar tampoco se marca el domingo por la tarde, aunque su hora de domingo ya haya pasado', () => {
+    expect(isTaskPast(SEMANA_ACTUAL, 'domingo', recogidaSinEtiqueta, at(2026, 9, 20, 20, 17), GRACE)).toBe(false);
+  });
+
+  it('con targetDay "Domingo" sí termina el domingo, pero no antes de hora + margen', () => {
+    expect(isTaskPast(SEMANA_ACTUAL, 'domingo', recogidaDomingo, at(2026, 9, 20, 17, 30), GRACE)).toBe(false);
+    expect(isTaskPast(SEMANA_ACTUAL, 'domingo', recogidaDomingo, at(2026, 9, 20, 17, 46), GRACE)).toBe(true);
+  });
+
+  it('la tarea del lunes termina el lunes a su hora (sin arrastrar el domingo)', () => {
+    expect(isTaskPast(SEMANA_ACTUAL, 'domingo', devolucionLunes, at(2026, 9, 21, 13, 40), GRACE)).toBe(false);
+    expect(isTaskPast(SEMANA_ACTUAL, 'domingo', devolucionLunes, at(2026, 9, 21, 14, 16), GRACE)).toBe(true);
+  });
+
+  it('BUG: una SEMANA FUTURA no tiene nada pasado, aunque hoy (domingo) sea "posterior" a su martes-sábado por día de la semana', () => {
+    const proxima = semana('Del 22 al 27 de Septiembre de 2026');
+    const ahora = at(2026, 9, 20, 20, 17);
+    for (const dia of ['martes', 'miercoles', 'jueves', 'viernes']) {
+      expect(isTaskPast(proxima, dia, { timeFrame: '09:00 - 10:00' }, ahora, GRACE)).toBe(false);
+    }
+    expect(isTaskPast(proxima, 'sabado', { timeFrame: '20:30 - 00:30' }, ahora, GRACE)).toBe(false);
+  });
+
+  it('una semana ya terminada sí tiene pasado todo lo que tenga horario', () => {
+    expect(isTaskPast(SEMANA_ACTUAL, 'martes', { timeFrame: '09:00 - 10:00' }, at(2026, 9, 22, 8), GRACE)).toBe(true);
+  });
+
+  it('boda de sábado que cruza medianoche: sigue vigente de madrugada del domingo y termina con el margen', () => {
+    const boda = { location: 'Finca', timeFrame: '20:30 - 00:30' };
+    expect(isTaskPast(SEMANA_ACTUAL, 'sabado', boda, at(2026, 9, 19, 23, 0), GRACE)).toBe(false);
+    expect(isTaskPast(SEMANA_ACTUAL, 'sabado', boda, at(2026, 9, 20, 0, 40), GRACE)).toBe(false);
+    expect(isTaskPast(SEMANA_ACTUAL, 'sabado', boda, at(2026, 9, 20, 1, 20), GRACE)).toBe(true);
+  });
+
+  it('sin horario utilizable NO se da por pasada solo porque el día terminó', () => {
+    expect(isTaskPast(SEMANA_ACTUAL, 'martes', { text: 'Sin hora' }, at(2026, 9, 25, 12), GRACE)).toBe(false);
+    expect(isTaskPast(SEMANA_ACTUAL, 'martes', 'texto plano', at(2026, 9, 25, 12), GRACE)).toBe(false);
+    expect(isTaskPast(SEMANA_ACTUAL, 'martes', { timeFrame: 'todo el día' }, at(2026, 9, 25, 12), GRACE)).toBe(false);
+  });
+
+  it('con dateRange ilegible devuelve null y isTaskPast false: quien escribe en Mongo se abstiene', () => {
+    const rara = semana('Fechas generadas por Asistente Gemini AI');
+    const t = { timeFrame: '09:00 - 10:00' };
+    expect(getTaskPastStatus(rara, 'martes', t, at(2026, 9, 25, 12), GRACE)).toBeNull();
+    expect(isTaskPast(rara, 'martes', t, at(2026, 9, 25, 12), GRACE)).toBe(false);
+    expect(isTaskPast(null, 'martes', t, at(2026, 9, 25, 12), GRACE)).toBe(false);
+  });
+});
+
+describe('ensureYearInDateRange', () => {
+  const now = at(2026, 9, 20);
+  it('añade el año si falta y el texto se entiende', () => {
+    expect(ensureYearInDateRange('Del 22 al 27 de Septiembre', now)).toBe('Del 22 al 27 de Septiembre de 2026');
+  });
+  it('no toca textos que ya traen año o que no se entienden', () => {
+    expect(ensureYearInDateRange('Del 15 al 20 de Septiembre de 2026', now)).toBe('Del 15 al 20 de Septiembre de 2026');
+    expect(ensureYearInDateRange('la semana que viene', now)).toBe('la semana que viene');
+  });
+});
+
+describe('clearWeekCompletion', () => {
+  it('deja todas las tareas y camiones sin completar, sin mutar la semana original', () => {
+    const original = {
+      schedule: { martes: { title: 'Martes', tasks: [{ text: 'a', completed: true }, 'plano'] } },
+      saturdaySpecial: { weddings: [{ location: 'Finca', completed: true }] },
+      sundayMonday: { title: 'D/L', tasks: [{ text: 'b', completed: true, targetDay: 'Lunes' }] },
+      trucks: [{ name: 'Albacar', pickupCompleted: true, returnCompleted: true }],
+    };
+    const limpia = clearWeekCompletion(original);
+    expect(limpia.schedule.martes.tasks).toEqual([{ text: 'a', completed: false }, 'plano']);
+    expect(limpia.saturdaySpecial.weddings[0].completed).toBe(false);
+    expect(limpia.sundayMonday.tasks[0]).toEqual({ text: 'b', completed: false, targetDay: 'Lunes' });
+    expect(limpia.trucks[0]).toMatchObject({ pickupCompleted: false, returnCompleted: false });
+    expect(original.sundayMonday.tasks[0].completed).toBe(true);
+  });
+});
+
+describe('getDayLabel', () => {
+  const ahora = at(2026, 9, 20);
+  it('pone el número REAL del día según dateRange (el lunes es el de cola)', () => {
+    expect(getDayLabel(SEMANA_ACTUAL, 'martes', ahora)).toBe('Martes 15');
+    expect(getDayLabel(SEMANA_ACTUAL, 'miercoles', ahora)).toBe('Miércoles 16');
+    expect(getDayLabel(SEMANA_ACTUAL, 'domingo', ahora)).toBe('Domingo 20');
+    expect(getDayLabel(SEMANA_ACTUAL, 'lunes', ahora)).toBe('Lunes 21');
+  });
+  it('la semana siguiente lleva SUS números, no los de la anterior', () => {
+    const proxima = semana('Del 22 al 27 de Septiembre de 2026');
+    expect(getDayLabel(proxima, 'martes', ahora)).toBe('Martes 22');
+    expect(getDayLabel(proxima, 'lunes', ahora)).toBe('Lunes 28');
+  });
+  it('sin fechas legibles, solo el nombre (nunca un número inventado)', () => {
+    expect(getDayLabel(semana('Fechas raras'), 'jueves', ahora)).toBe('Jueves');
+    expect(getDayLabel(null, 'sabado', ahora)).toBe('Sábado');
+  });
+});
+
+describe('getWeddingsBadge', () => {
+  it('cuenta fincas distintas, no filas (montaje + evento de la misma finca = 1)', () => {
+    const w = { saturdaySpecial: { weddings: [{ location: 'A' }, { location: 'B' }, { location: 'B' }, { location: 'C' }, { location: 'C' }] } };
+    expect(getWeddingsBadge(w)).toBe('3 Bodas');
+    expect(getWeddingsBadge({ saturdaySpecial: { weddings: [{ location: 'A' }, { location: 'A' }] } })).toBe('1 Boda');
+    expect(getWeddingsBadge({ saturdaySpecial: { weddings: [] } })).toBe('Sin bodas');
+    expect(getWeddingsBadge(null)).toBe('Sin bodas');
   });
 });

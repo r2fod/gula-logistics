@@ -187,3 +187,17 @@ Sesión con dos IAs tocando el proyecto a la vez (el usuario avisó expresamente
 **Metodología que vale la pena repetir:** verificar cada hallazgo contra la URL real desplegada, no solo contra el código o un servidor local — la previsualización local falló repetidamente por procesos zombis de la sesión anterior de Gemini en los mismos puertos, así que la verificación se hizo abriendo pestañas nuevas contra `https://r2fod.github.io/gula-logistics` tras cada deploy, incluyendo comprobar la consola sin errores y ejercitar de verdad la funcionalidad tocada (ej. abrir el editor de domingo/lunes y hacer un toggle de asignación real, sin guardar, para probar el refactor sin tocar datos de producción).
 
 **Pendiente real de esta sesión:** la Bolsa Mensual (`purseInfo`) no cuenta las horas ya consumidas a mano al calcular la tarifa de los turnos fichados por la app (ver `PENDIENTES.md`) — necesitaba confirmar la regla de negocio con el usuario antes de tocar dinero. Sigue sin empezar: animaciones de iconos por página, revisión responsive sistemática 320–1920px.
+
+## Tareas marcadas como hechas sin estarlo — causa raíz y cómo se evita en la semana siguiente (20/09/2026)
+
+Tres fallos distintos daban el mismo síntoma ("la app marca tareas hechas que no lo están"): la lista compartida domingo/lunes evaluada siempre como domingo, la comparación por día de la semana sin saber de qué semana del calendario es el planning, y las tareas sin horario dadas por hechas al acabar el día. Lo peor no era el tachado en pantalla, sino que `autoCompletePastTasks` lo **guardaba en Mongo**, y desde ahí ya nadie distingue "hecha de verdad" de "hecha por error".
+
+**Lecciones que valen para cualquier estado derivado del reloj:**
+- Comparar contra la **fecha real**, nunca contra el día de la semana suelto: un "martes" existe en todas las semanas, incluidas las futuras.
+- Ante la duda (fechas ilegibles, día ambiguo, sin horario) **no escribir**: una tarea pendiente de más se corrige con un clic, una tarea hecha por error esconde trabajo sin hacer.
+- Toda lógica de "¿ya pasó?" vive en UN sitio (`taskPlanning.js`) y todas las vistas la llaman: hasta hoy había cuatro copias que se arreglaban por separado.
+- Lo que crea una semana nueva (clonar, IA) debe resetear el estado de ejecución (`completed`), no solo copiar la planificación.
+- Los rótulos de fecha ("Lunes 14"…) no se escriben a mano en la UI: salen de `meta.dateRange`.
+
+**Comprobación de la semana siguiente (checklist):** escribir el rango como "Del 22 al 27 de Septiembre de 2026" (el asistente avisa si no lo entiende); tras crearla, comprobar que ninguna tarea sale tachada antes de su día; poner "Día Específico" a las tareas de domingo/lunes; y no dar por buena la vista solo porque compile.
+
