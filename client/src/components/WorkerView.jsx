@@ -31,8 +31,22 @@ import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
-import { getTaskListForDay, resolveTaskIndexByText, isTaskPast, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskStartDateTime, isTaskTooEarlyToStart } from '../data/taskPlanning';
+import { getTaskListForDay, resolveTaskIndexByText, isTaskPast, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart } from '../data/taskPlanning';
 import { subscribeToPush } from '../data/pushService';
+
+// Texto del botón de empezar la jornada: se elige uno al azar al abrir la
+// vista (no en cada render, para que no cambie cada segundo). Todas dicen
+// claramente lo que hace el botón.
+const START_JORNADA_LABELS = [
+  '🟢 INICIAR JORNADA AHORA',
+  '🚚 ¡ARRANCAMOS! INICIAR JORNADA',
+  '💪 ¡A POR EL DÍA! INICIAR JORNADA',
+  '🔥 ¡VAMOS ALLÁ! INICIAR JORNADA',
+  '☕ CAFÉ TOMADO: INICIAR JORNADA',
+  '📦 ¡A MOVER CAJAS! INICIAR JORNADA',
+  '🛣️ ¡A LA CARRETERA! INICIAR JORNADA',
+  '🎯 ¡CON GANAS! INICIAR JORNADA',
+];
 
 export default function WorkerView({
   workerName,
@@ -51,6 +65,7 @@ export default function WorkerView({
   const [prefilledTask, setPrefilledTask] = useState(null); // for task-level clock-in
   const [taskRef, setTaskRef] = useState(null); // { dayKey, taskIndex } — para marcar la tarea como hecha al fichar salida
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [startLabel] = useState(() => START_JORNADA_LABELS[Math.floor(Math.random() * START_JORNADA_LABELS.length)]);
   const [selectedDayKey, setSelectedDayKey] = useState('all');
   const [viewModeType, setViewModeType] = useState('calendar'); // 'calendar' | 'graph'
   const [workerTab, setWorkerTab] = useState('tasks'); // 'tasks' | 'history'
@@ -248,7 +263,7 @@ export default function WorkerView({
         candidates.push({ day, t: w, isWedding: true });
       }
     }
-    const startOf = ({ day, t }) => getTaskStartDateTime(activeWeekData, day.key, t, currentTime)?.getTime() ?? Infinity;
+    const startOf = ({ day, t }) => getNextTaskStart(activeWeekData, day.key, t, currentTime)?.getTime() ?? Infinity;
     candidates.sort((a, b) => {
       const sa = startOf(a);
       const sb = startOf(b);
@@ -367,15 +382,24 @@ export default function WorkerView({
   // conversión al leer/escribir la lista real (findTaskIndex, toggle,
   // taskRef).
   const toStorageDayKey = (dayKey) => (dayKey === 'lunes' ? 'domingo' : dayKey);
-  // Fichar una tarea solo se habilita desde 5 min antes de que EMPIECE, por
-  // fecha real (ver isTaskTooEarlyToStart). tooEarly y su texto salen del
-  // mismo cálculo; si la tarea no es de hoy el texto dice el día.
-  const isTooEarlyToClockIn = (dayKey, task) => isTaskTooEarlyToStart(activeWeekData, dayKey, task, currentTime);
-  const availabilityText = (dayKey, task) => {
-    const start = getTaskStartDateTime(activeWeekData, dayKey, task, currentTime);
-    const hhmm = String(task?.timeFrame || '').split('-')[0].trim();
-    if (!start || start.toDateString() === currentTime.toDateString()) return `Disponible a partir de las ${hhmm}`;
-    return `Disponible el ${getDayLabel(activeWeekData, resolveTaskEvalDay(dayKey, task), currentTime)} a las ${hhmm}`;
+  // La jornada solo se puede EMPEZAR desde 5 min antes de que empiece la
+  // primera tarea (isTaskTooEarlyToStart) — NO tarea a tarea: quien ya ha
+  // fichado hoy (o está en turno) puede cambiar de tarea cuando quiera. Es
+  // la misma puerta para el botón de iniciar jornada y para los "Fichar esta
+  // tarea" mientras no se haya fichado ninguna entrada hoy.
+  const clockedInToday = myEntries.some(e =>
+    e.type === 'entrada' && !e.deleted && new Date(e.timestamp).toDateString() === currentTime.toDateString());
+  const jornadaStarted = !!activeShift || clockedInToday;
+  const firstTaskStart = jornadaStarted || !immediateTask?.dayKey
+    ? null
+    : getNextTaskStart(activeWeekData, immediateTask.dayKey, immediateTask.rawTask, currentTime);
+  const jornadaGateClosed = !!firstTaskStart && isTaskTooEarlyToStart(activeWeekData, immediateTask.dayKey, immediateTask.rawTask, currentTime);
+  const gateText = () => {
+    const opens = new Date(firstTaskStart.getTime() - 5 * 60 * 1000);
+    const hhmm = opens.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
+    return opens.toDateString() === currentTime.toDateString()
+      ? `Podrás fichar a partir de las ${hhmm}`
+      : `Podrás fichar el ${opens.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric' })} a las ${hhmm}`;
   };
 
   // Solo tachado visual (grace 0). isTaskPast compara contra la FECHA REAL
@@ -622,18 +646,11 @@ export default function WorkerView({
               </div>
 
               {(() => {
-                // Antes esto calculaba la hora de la tarea SIEMPRE sobre la
-                // fecha de HOY, sin comprobar que immediateTask fuera de
-                // verdad de hoy — si la primera tarea pendiente de la
-                // semana era de un día futuro, su hora podía caer ya
-                // "pasada" hoy y se permitía iniciar jornada antes de
-                // tiempo. isTooEarlyToClockIn ya comprueba la fecha real.
-                const isReady = !immediateTask?.dayKey || !isTooEarlyToClockIn(immediateTask.dayKey, immediateTask.rawTask);
-                let minutesLeft = 0;
-                if (!isReady) {
-                  const start = getTaskStartDateTime(activeWeekData, immediateTask.dayKey, immediateTask.rawTask, currentTime);
-                  if (start) minutesLeft = Math.max(1, Math.ceil((start.getTime() - currentTime.getTime()) / 60000 - 5));
-                }
+                // La puerta (jornadaGateClosed) mira la fecha REAL de la primera
+                // tarea, no solo la hora de hoy: una tarea de un día futuro no
+                // deja iniciar jornada antes de tiempo.
+                const isReady = !jornadaGateClosed;
+                const minutesLeft = isReady ? 0 : Math.max(1, Math.ceil((firstTaskStart.getTime() - currentTime.getTime()) / 60000 - 5));
                 const waitText = minutesLeft >= 60 ? `${Math.floor(minutesLeft / 60)} h ${minutesLeft % 60} min` : `${minutesLeft} min`;
 
                 return (
@@ -666,7 +683,7 @@ export default function WorkerView({
                     {isReady ? (
                       <>
                         <Play className="w-4 h-4 fill-current" />
-                        <span>🟢 INICIAR JORNADA AHORA</span>
+                        <span>{startLabel}</span>
                       </>
                     ) : (
                       <>
@@ -987,13 +1004,13 @@ export default function WorkerView({
                                       <Lock className="w-3 h-3" />
                                       <span>Aún no ha llegado este día</span>
                                     </span>
-                                  ) : isTooEarlyToClockIn(dayGroup.key, task) ? (
+                                  ) : jornadaGateClosed ? (
                                     // El día ya llegó, pero faltan más de 5min para la hora de
                                     // inicio de ESTA tarea concreta — evita fichar por error una
                                     // tarea de última hora del día nada más empezar la jornada.
                                     <span className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed">
                                       <Lock className="w-3 h-3" />
-                                      <span>{availabilityText(dayGroup.key, task)}</span>
+                                      <span>{gateText()}</span>
                                     </span>
                                   ) : (
                                     <button
@@ -1088,10 +1105,10 @@ export default function WorkerView({
                                         <Lock className="w-3 h-3" />
                                         <span>Aún no ha llegado este día</span>
                                       </span>
-                                    ) : isTooEarlyToClockIn('sabado', w) ? (
+                                    ) : jornadaGateClosed ? (
                                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed">
                                         <Lock className="w-3 h-3" />
-                                        <span>{availabilityText('sabado', w)}</span>
+                                        <span>{gateText()}</span>
                                       </span>
                                     ) : (
                                       <button

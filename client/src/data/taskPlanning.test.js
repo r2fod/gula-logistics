@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getTaskListForDay, resolveTaskIndexByText, buildTaskListPatch, isTaskChronologicallyPast, isTaskTooEarlyToClockIn,
-  parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, isTaskTooEarlyToStart,
+  parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, getNextTaskStart, isTaskTooEarlyToStart,
 } from './taskPlanning';
 
 const weekData = {
@@ -408,5 +408,32 @@ describe('isTaskTooEarlyToStart — fichar solo desde 5 min antes, por fecha rea
     expect(isTaskTooEarlyToStart(semana('Fechas raras'), 'martes', { timeFrame: '09:00 - 10:00' }, at(2026, 9, 15, 1, 0))).toBe(false);
     expect(isTaskTooEarlyToStart(SEMANA_ACTUAL, 'martes', { text: 'sin hora' }, at(2026, 9, 15, 1, 0))).toBe(false);
     expect(getTaskStartDateTime(SEMANA_ACTUAL, 'martes', 'texto plano', at(2026, 9, 15))).toBeNull();
+  });
+});
+
+describe('getNextTaskStart — tareas sin etiquetar domingo/lunes', () => {
+  const sofa = { text: 'Devolución Sofá', timeFrame: '09:00 - 09:30' };
+  const refranys = { text: 'Recogida Refranys', timeFrame: '15:00-17:00' };
+  const hhmm = (d) => d && `${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+  it('el domingo a las 14:00: la de las 15:00 es la del domingo y la de las 09:00 la del lunes', () => {
+    const ahora = at(2026, 9, 20, 14, 0);
+    expect(hhmm(getNextTaskStart(SEMANA_ACTUAL, 'domingo', refranys, ahora))).toBe('20 15:00');
+    expect(hhmm(getNextTaskStart(SEMANA_ACTUAL, 'domingo', sofa, ahora))).toBe('21 9:00');
+  });
+
+  it('el domingo a las 08:00 la de las 09:00 es la del propio domingo (se puede fichar desde las 08:55)', () => {
+    expect(hhmm(getNextTaskStart(SEMANA_ACTUAL, 'domingo', sofa, at(2026, 9, 20, 8, 0)))).toBe('20 9:00');
+    expect(isTaskTooEarlyToStart(SEMANA_ACTUAL, 'domingo', sofa, at(2026, 9, 20, 8, 56))).toBe(false);
+  });
+
+  it('el lunes de madrugada la de las 09:00 es la del lunes (BUG de la captura: se podía fichar a la 01:34)', () => {
+    expect(hhmm(getNextTaskStart(SEMANA_ACTUAL, 'domingo', sofa, at(2026, 9, 21, 1, 34)))).toBe('21 9:00');
+  });
+
+  it('con etiqueta manda su día; ya terminada del todo -> null', () => {
+    expect(hhmm(getNextTaskStart(SEMANA_ACTUAL, 'domingo', { ...sofa, targetDay: 'Lunes' }, at(2026, 9, 20, 10, 0)))).toBe('21 9:00');
+    expect(getNextTaskStart(SEMANA_ACTUAL, 'domingo', { ...sofa, targetDay: 'Domingo' }, at(2026, 9, 21, 1, 0))).toBeNull();
+    expect(getNextTaskStart(SEMANA_ACTUAL, 'domingo', sofa, at(2026, 9, 21, 12, 0))).toBeNull();
   });
 });
