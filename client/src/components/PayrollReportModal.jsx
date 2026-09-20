@@ -51,23 +51,27 @@ export default function PayrollReportModal({
     ? deletedEntries
     : deletedEntries.filter(e => e.workerName === filterWorker);
 
-  // Summary Metrics (using aggregated logic to respect bolsa and totals)
+  // Summary Metrics — se filtran por filterWorker igual que filteredShifts/
+  // filteredRawEntries de abajo. Antes de este fix, estas tarjetas siempre
+  // mostraban el total de todo el equipo aunque se filtrara por un
+  // trabajador concreto en el desplegable.
   let totalExtraCost = 0;
   let totalPayrollValuation = 0;
   let totalExtraHours = 0;
 
-  Object.values(workerBalances).forEach(bucket => {
-    // If they have purse info (isSpecialPurse), the cost is calculated differently, but PayrollReportModal
-    // typically doesn't have purseInfo unless we pass it, but wait! The aggregate logic inside Dashboard did it!
-    // For simplicity, we stick to the basic calculation here unless we want to replicate it.
-    if (bucket.isPayroll) {
-      totalPayrollValuation += bucket.totalCost;
-    } else {
-      totalExtraCost += bucket.totalCost;
-      totalExtraHours += bucket.totalHours;
-    }
-  });
-  const activeClockedInCount = Object.keys(activeWorkerShifts).length;
+  Object.values(workerBalances)
+    .filter(bucket => filterWorker === 'all' || bucket.name === filterWorker)
+    .forEach(bucket => {
+      if (bucket.isPayroll) {
+        totalPayrollValuation += bucket.totalCost;
+      } else {
+        totalExtraCost += bucket.totalCost;
+        totalExtraHours += bucket.totalHours;
+      }
+    });
+  const activeClockedInCount = filterWorker === 'all'
+    ? Object.keys(activeWorkerShifts).length
+    : (activeWorkerShifts[filterWorker] ? 1 : 0);
 
   // Estimación a partir del planning (horario de las tareas), NO de fichajes
   // reales — solo de referencia, nunca entra en las cifras de arriba.
@@ -163,12 +167,27 @@ export default function PayrollReportModal({
     summaryText += `⏱️ *Total Horas Trabajadas:* ${totalExtraHours.toFixed(1)} h\n`;
     summaryText += `----------------------------------------\n\n`;
 
-    shifts.forEach(s => {
+    filteredShifts.forEach(s => {
       summaryText += `👤 *${s.workerName}* (${s.isSalaried ? 'Nómina (Control 14€/h)' : '10€/h'})\n`;
       summaryText += `  • Horario: ${s.startTime} ➔ ${s.endTime} (${s.startDate})\n`;
       summaryText += `  • Duración: ${s.durationFormatted}\n`;
       summaryText += `  • Coste: ${s.isSalaried ? `${s.cost.toFixed(2)} € (Control Interno)` : `${s.cost.toFixed(2)} €`}\n\n`;
     });
+
+    // Sección "Estimado (Planning)" — antes no se incluía en absoluto en el
+    // copiado, solo se veía en la pestaña de la pantalla. Igual que ahí, se
+    // deja claro que es una estimación a partir del horario planificado, no
+    // de fichajes reales, para no confundirla con las cifras de arriba.
+    if (filteredEstimatedSummary.length > 0) {
+      summaryText += `----------------------------------------\n\n`;
+      summaryText += `📅 *ESTIMADO SEGÚN PLANNING (no son fichajes reales)*\n`;
+      summaryText += `⏱️ *Horas Estimadas (extras):* ${totalEstimatedExtraHours.toFixed(1)} h\n`;
+      summaryText += `💶 *Coste Estimado (extras):* ${totalEstimatedExtraCost.toFixed(2)} €\n\n`;
+      filteredEstimatedSummary.forEach(e => {
+        summaryText += `👤 *${e.workerName}* (${e.isSalaried ? 'Nómina Fija' : `${e.rate.toFixed(2)} €/h`}): ${e.hours.toFixed(1)} h${e.isSalaried ? '' : ` — ${e.cost.toFixed(2)} €`}\n`;
+      });
+      summaryText += `\n`;
+    }
 
     navigator.clipboard.writeText(summaryText);
     setCopied(true);
@@ -277,7 +296,7 @@ export default function PayrollReportModal({
             <p className="text-2xl font-bold text-emerald-400 mt-1 font-['Outfit']">
               {totalExtraHours.toFixed(1)} h
             </p>
-            <p className="text-[10px] text-slate-500 mt-0.5">{shifts.length} jornadas completadas</p>
+            <p className="text-[10px] text-slate-500 mt-0.5">{filteredShifts.length} jornadas completadas</p>
           </div>
 
           <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
