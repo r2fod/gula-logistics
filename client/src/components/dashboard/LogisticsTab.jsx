@@ -38,8 +38,16 @@ export default function LogisticsTab({ activeWeekData, adminUnlocked, onUpdateWe
             <p className="text-xs text-slate-400 leading-relaxed">{w.details}</p>
           </div>
         ))}
+        {/* "Eventos Clave" son las tareas del jueves con un id manual tipo
+            j1/j2/j3... (convención de CLAUDE.md: id corta manual por día).
+            Antes la lista de ids a mostrar estaba fijada a mano (['j1','j2'])
+            y se desincronizaba cada vez que se añadía una nueva desde el
+            editor — encontrado en producción con 'j3' (Recogida Evento
+            TOUS) ya añadida pero nunca mostrada aquí. Con el patrón /^j\d+$/
+            se recoge cualquier tarea con ese id sin volver a tocar este
+            archivo. */}
         {(activeWeekData?.schedule?.jueves?.tasks || [])
-          .filter((t) => ['j1', 'j2'].includes(t.id))
+          .filter((t) => /^j\d+$/.test(t.id || ''))
           .map((t) => (
             <div key={`jueves-${t.id}`} className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-2">
               <span className="font-extrabold text-amber-300 block text-base font-['Outfit']">🏔️ {t.location}</span>
