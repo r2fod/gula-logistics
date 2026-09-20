@@ -225,8 +225,28 @@ export function aggregateShiftsByWorker(shifts, workersList = []) {
   });
 
   shifts.forEach(shift => {
-    const bucket = workerBalances[shift.workerName];
-    if (!bucket) return;
+    let bucket = workerBalances[shift.workerName];
+    if (!bucket) {
+      // Alguien que ya no está en el roster actual (quitado, o un fichaje
+      // con el nombre mal escrito) pero tiene fichajes reales — antes esto
+      // se descartaba en silencio y sus horas/coste desaparecían de golpe
+      // de Resumen Financiero y Saldos & Acuerdos en cuanto se le quitaba
+      // del equipo. Se crea un bucket con los datos que trae el propio
+      // fichaje (tarifa, si es nómina) para no perder ese histórico.
+      bucket = {
+        name: shift.workerName,
+        role: 'Ya no está en el equipo',
+        avatar: '❔',
+        isPayroll: shift.isSalaried,
+        rate: shift.rate,
+        totalHours: 0,
+        totalCost: 0,
+        completedShifts: 0,
+        shifts: [],
+        isOrphaned: true
+      };
+      workerBalances[shift.workerName] = bucket;
+    }
     bucket.totalHours += shift.durationHours;
     bucket.totalCost += shift.cost;
     
