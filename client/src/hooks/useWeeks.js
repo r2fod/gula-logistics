@@ -40,8 +40,33 @@ export function useWeeks() {
   const updateWeeks = async (newWeeks) => {
     applyLocalWeeksState(newWeeks);
     const result = await saveWeeksToAPI(newWeeks);
+
+    if (result?.conflict) {
+      // Alguien más ha guardado esta semana desde que se abrió para editar
+      // (control de concurrencia por `updatedAt` en logistics.routes.js) —
+      // NO reintentar a ciegas, eso perdería ese otro cambio otra vez.
+      // Se refresca con la versión real del servidor (fusionada sobre lo
+      // que ya había en local, para no perder otras semanas que el
+      // servidor no tenga en su caché) y se avisa para repetir el cambio
+      // a mano sobre esa base si todavía hace falta.
+      if (result.data) {
+        applyLocalWeeksState({ ...newWeeks, ...result.data });
+      }
+      alert(result.message || '⚠️ Alguien más ha guardado cambios en esta semana mientras la editabas. Se ha recargado la versión más reciente — revisa y repite tu cambio si todavía hace falta.');
+      return;
+    }
+
     if (!result) {
       alert('⚠️ No se pudo guardar en el servidor (posible sesión de administrador caducada). El cambio se ve aquí pero puede desaparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite el cambio.');
+      return;
+    }
+
+    // Éxito: sincronizar el `updatedAt` real que ha quedado en el servidor
+    // tras guardar — si no, el siguiente guardado de esta misma sesión
+    // compararía contra el `updatedAt` viejo que todavía tendría el estado
+    // local y se autoconflictuaría contra su propio guardado anterior.
+    if (result.data) {
+      applyLocalWeeksState({ ...newWeeks, ...result.data });
     }
   };
 

@@ -387,6 +387,16 @@ export async function saveWeeksToAPI(weeksPayload) {
     if (res.ok) {
       return await res.json();
     }
+    if (res.status === 409) {
+      // Guardado concurrente: alguien más ha guardado esta semana desde que
+      // se abrió para editar (control de concurrencia por `updatedAt` en
+      // logistics.routes.js). Se distingue de un fallo cualquiera para que
+      // quien llama pueda avisar del motivo real en vez de un genérico
+      // "no se pudo guardar" — y sobre todo, para NO reintentar a ciegas
+      // (eso perdería el cambio ajeno otra vez).
+      const body = await res.json().catch(() => ({}));
+      return { conflict: true, message: body.message, data: body.data };
+    }
   } catch (err) {
     console.warn('Backend API weeks save failed:', err.message);
   }

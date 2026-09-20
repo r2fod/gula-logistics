@@ -4,6 +4,7 @@ import {
   retryPendingClockEntries,
   fetchClockEntriesFromAPI,
   getPendingClockEntriesSnapshot,
+  saveWeeksToAPI,
 } from './apiService';
 
 // Fichaje mínimo de prueba: entra si el worker/type/timestamp bastan para
@@ -124,5 +125,29 @@ describe('fetchClockEntriesFromAPI (fusión con pendientes)', () => {
     const result = await fetchClockEntriesFromAPI();
 
     expect(result.filter(e => e.id === 'e8')).toHaveLength(1);
+  });
+});
+
+describe('saveWeeksToAPI (control de concurrencia)', () => {
+  it('en éxito, devuelve el cuerpo normal de la respuesta', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, data: { week_3: {} } }) });
+    const result = await saveWeeksToAPI({ week_3: {} });
+    expect(result).toEqual({ success: true, data: { week_3: {} } });
+  });
+
+  it('en 409 (guardado concurrente), devuelve { conflict: true, ... } en vez de null — para que quien llama no lo trate como un fallo cualquiera', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 409,
+      json: async () => ({ success: false, conflict: true, message: 'Alguien más lo guardó', data: { week_3: { updatedAt: 'nuevo' } } }),
+    });
+    const result = await saveWeeksToAPI({ week_3: { updatedAt: 'viejo' } });
+    expect(result).toEqual({ conflict: true, message: 'Alguien más lo guardó', data: { week_3: { updatedAt: 'nuevo' } } });
+  });
+
+  it('en otro error (500, red caída), sigue devolviendo null como siempre', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+    const result = await saveWeeksToAPI({ week_3: {} });
+    expect(result).toBeNull();
   });
 });
