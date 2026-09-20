@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { Calendar, Plus, X, Copy, Sparkles, RefreshCw, AlertCircle, Check, Truck, Users, PartyPopper } from 'lucide-react';
-import { generateScheduleWithGemini, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
+import { Calendar, Plus, X, Copy, Sparkles, RefreshCw, AlertCircle, Check, Truck, Users, PartyPopper, Trash2 } from 'lucide-react';
+import { generateScheduleWithGemini, buildWeekPrompt, WEEK_EVENT_DAYS, WEEK_EVENT_KINDS, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { parseWeekRange } from '../data/taskPlanning';
+import { parseWeekRange, getDayLabel } from '../data/taskPlanning';
 
 // Asistente guiado para crear una semana nueva: en vez de dejarla en blanco
 // (o clonada a ciegas) y que el usuario tenga que organizarla tarea a
 // tarea, se le pregunta lo esencial (camiones, quién está disponible,
-// cuántas bodas hay el sábado) y con eso se arma un prompt para el mismo
+// qué bodas y eventos hay cada día) y con eso se arma un prompt para el mismo
 // motor de Gemini que ya usaba el Asistente AI suelto — sustituye al
 // formulario simple de antes (solo nombre + fechas + clonar).
 export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, currentWeekName, currentWeekTrucks = [], workersList = [] }) {
@@ -17,8 +17,8 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
   const [selectedTrucks, setSelectedTrucks] = useState(() => new Set(currentWeekTrucks.map(t => t.name)));
   const [extraTruck, setExtraTruck] = useState('');
   const [selectedWorkers, setSelectedWorkers] = useState(() => new Set(workersList.map(w => w.name)));
-  const [weddingCount, setWeddingCount] = useState(0);
-  const [weddingDetails, setWeddingDetails] = useState('');
+  // Bodas y eventos de la semana, uno por fila: { id, day, kind, place, time }.
+  const [events, setEvents] = useState([]);
   const [extraNotes, setExtraNotes] = useState('');
   const [apiKey] = useState(() => localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '');
   const [loading, setLoading] = useState(false);
@@ -32,8 +32,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
   const resetAndClose = () => {
     setWeekName('');
     setDateRange('');
-    setWeddingCount(0);
-    setWeddingDetails('');
+    setEvents([]);
     setExtraNotes('');
     setGeneratedJson(null);
     setErrorMsg('');
@@ -56,20 +55,25 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
     });
   };
 
-  const buildPrompt = () => {
-    const trucks = [...selectedTrucks, ...(extraTruck.trim() ? [extraTruck.trim()] : [])];
-    const workers = [...selectedWorkers];
-    const parts = [
-      `Genera la planificación completa de la semana "${weekName}" (${dateRange}).`,
-      trucks.length > 0 ? `Camiones disponibles esta semana: ${trucks.join(', ')}.` : 'No hay camiones marcados como disponibles — avisa en las tareas que dependan de reparto de camión.',
-      workers.length > 0 ? `Trabajadores disponibles esta semana: ${workers.join(', ')}.` : '',
-      weddingCount > 0
-        ? `El sábado hay ${weddingCount} boda${weddingCount === 1 ? '' : 's'} simultánea${weddingCount === 1 ? '' : 's'}${weddingDetails.trim() ? `: ${weddingDetails.trim()}` : ', reparte camiones y personal entre ellas de forma equilibrada'}.`
-        : 'El sábado no hay bodas esta semana — no generes saturdaySpecial.weddings, o déjalo vacío.',
-      extraNotes.trim() ? `Notas adicionales: ${extraNotes.trim()}` : ''
-    ];
-    return parts.filter(Boolean).join(' ');
+  const addEvent = () => {
+    // El día por defecto es el sábado (el caso más habitual) pero se cambia en el selector.
+    setEvents(prev => [...prev, { id: crypto.randomUUID(), day: 'sabado', kind: 'Boda', place: '', time: '' }]);
   };
+  const updateEvent = (id, field, value) => setEvents(prev => prev.map(e => (e.id === id ? { ...e, [field]: value } : e)));
+  const removeEvent = (id) => setEvents(prev => prev.filter(e => e.id !== id));
+
+  // Con el rango de fechas escrito, los días salen con su número real ("Martes 22").
+  const dayLabel = (key) => getDayLabel({ meta: { dateRange } }, key);
+
+  const buildPrompt = () => buildWeekPrompt({
+    weekName,
+    dateRange,
+    trucks: [...selectedTrucks, ...(extraTruck.trim() ? [extraTruck.trim()] : [])],
+    workers: [...selectedWorkers],
+    events,
+    extraNotes,
+    dayLabel,
+  });
 
   const handleGenerate = async () => {
     if (!weekName.trim() || !dateRange.trim()) return;
@@ -230,35 +234,73 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-              <PartyPopper className="w-3.5 h-3.5 text-amber-400" /> ¿Cuántas bodas hay el sábado?
+            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <PartyPopper className="w-3.5 h-3.5 text-amber-400" /> ¿Qué bodas y eventos hay esta semana?
             </label>
-            <div className="flex items-center gap-3 mb-2">
-              <button
-                type="button"
-                onClick={() => setWeddingCount(c => Math.max(0, c - 1))}
-                className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm"
-              >
-                −
-              </button>
-              <span className="text-lg font-bold font-mono w-6 text-center">{weddingCount}</span>
-              <button
-                type="button"
-                onClick={() => setWeddingCount(c => Math.min(5, c + 1))}
-                className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm"
-              >
-                +
-              </button>
+            <p className="text-[11px] text-slate-500 mb-2.5">
+              Añade cada uno con su día: la IA planifica la carga, la ruta, el montaje y la recogida de todos.
+            </p>
+
+            <div className="space-y-2.5">
+              {events.map(ev => (
+                <div key={ev.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      id={`ev-day-${ev.id}`}
+                      aria-label="Día del evento"
+                      value={ev.day}
+                      onChange={(e) => updateEvent(ev.id, 'day', e.target.value)}
+                      className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/60"
+                    >
+                      {WEEK_EVENT_DAYS.map(d => <option key={d.key} value={d.key}>{dayLabel(d.key)}</option>)}
+                    </select>
+                    <select
+                      id={`ev-kind-${ev.id}`}
+                      aria-label="Tipo de evento"
+                      value={ev.kind}
+                      onChange={(e) => updateEvent(ev.id, 'kind', e.target.value)}
+                      className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/60"
+                    >
+                      {WEEK_EVENT_KINDS.map(k => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                  </div>
+                  <input
+                    id={`ev-place-${ev.id}`}
+                    type="text"
+                    value={ev.place}
+                    onChange={(e) => updateEvent(ev.id, 'place', e.target.value)}
+                    placeholder="Nombre o lugar (ej. Boda Rocío — Mas dels Refranys)"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/60"
+                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      id={`ev-time-${ev.id}`}
+                      type="text"
+                      value={ev.time}
+                      onChange={(e) => updateEvent(ev.id, 'time', e.target.value)}
+                      placeholder="Horario si lo sabes (ej. 20:30 - 00:30)"
+                      className="min-w-0 flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/60"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeEvent(ev.id)}
+                      aria-label="Quitar este evento"
+                      className="shrink-0 p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-            {weddingCount > 0 && (
-              <input
-                type="text"
-                value={weddingDetails}
-                onChange={(e) => setWeddingDetails(e.target.value)}
-                placeholder="Ubicaciones/detalles si los sabes (ej: Sot de Chera y Mas dels Refranys) — opcional"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/60"
-              />
-            )}
+
+            <button
+              type="button"
+              onClick={addEvent}
+              className="mt-2.5 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-dashed border-amber-500/40 text-amber-400 hover:bg-amber-500/10 text-xs font-semibold transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Añadir boda o evento
+            </button>
           </div>
 
           <div>

@@ -6,6 +6,47 @@
 // desincronizado en cuanto alguien ajustara una sola copia.
 export const GEMINI_API_KEY_STORAGE_KEY = 'gula_gemini_api_key';
 
+// Días y tipos que se pueden elegir al listar los eventos de la semana en el
+// asistente de "Crear Nueva Semana" (WeekManagerModal.jsx).
+export const WEEK_EVENT_DAYS = [
+  { key: 'martes', label: 'Martes' },
+  { key: 'miercoles', label: 'Miércoles' },
+  { key: 'jueves', label: 'Jueves' },
+  { key: 'viernes', label: 'Viernes' },
+  { key: 'sabado', label: 'Sábado' },
+  { key: 'domingo', label: 'Domingo' },
+  { key: 'lunes', label: 'Lunes' },
+];
+export const WEEK_EVENT_KINDS = ['Boda', 'Evento'];
+
+// Prompt del asistente guiado. Los eventos son una lista por día (antes solo
+// se preguntaba "cuántas bodas hay el sábado", y una boda de viernes o dos
+// eventos de martes no tenían dónde ir). `dayLabel(key)` devuelve el nombre
+// del día, con su número si se conoce ("Martes 22").
+export function buildWeekPrompt({ weekName, dateRange, trucks = [], workers = [], events = [], extraNotes = '', dayLabel = (k) => k }) {
+  const clean = events
+    .map(e => ({ ...e, place: (e.place || '').trim(), time: (e.time || '').trim() }))
+    .filter(e => WEEK_EVENT_DAYS.some(d => d.key === e.day));
+  const order = WEEK_EVENT_DAYS.map(d => d.key);
+  clean.sort((a, b) => order.indexOf(a.day) - order.indexOf(b.day));
+
+  const eventLines = clean.map(e =>
+    `- ${dayLabel(e.day)}: ${e.kind || 'Evento'}${e.place ? ` — ${e.place}` : ''}${e.time ? ` (${e.time})` : ''}.`);
+  const hasSaturday = clean.some(e => e.day === 'sabado');
+
+  const parts = [
+    `Genera la planificación completa de la semana "${weekName}" (${dateRange}).`,
+    trucks.length > 0 ? `Camiones disponibles esta semana: ${trucks.join(', ')}.` : 'No hay camiones marcados como disponibles — avisa en las tareas que dependan de reparto de camión.',
+    workers.length > 0 ? `Trabajadores disponibles esta semana: ${workers.join(', ')}.` : '',
+    eventLines.length > 0
+      ? `Bodas y eventos de la semana — para CADA uno planifica, en el día que toque, la carga (el día anterior o por la mañana), la ruta, la descarga con montaje de estructura y la recogida posterior, repartiendo camiones y personal entre los que coincidan:\n${eventLines.join('\n')}\nLos de sábado van en saturdaySpecial.weddings; los de cualquier otro día se reflejan como tareas de ese día (y de los anteriores si hay que preparar o cargar antes).`
+      : 'No hay bodas ni eventos esta semana — planifica solo la operativa de flota, almacén y recogidas.',
+    hasSaturday ? '' : 'El sábado no hay bodas esta semana — no generes saturdaySpecial.weddings, o déjalo vacío.',
+    extraNotes.trim() ? `Notas adicionales: ${extraNotes.trim()}` : ''
+  ];
+  return parts.filter(Boolean).join(' ');
+}
+
 function buildSystemPrompt(activeWeekData) {
   return `Eres el Asistente Experto en Logística de "Gula Logística".
 REGLAS DE NEGOCIO IMPORTANTES:
@@ -15,7 +56,8 @@ REGLAS DE NEGOCIO IMPORTANTES:
 4. Cuando se descargue en un evento, ten en cuenta que también hay MONTAJE DE ESTRUCTURA. Esto debe reflejarse en el texto y el tiempo estimado de la tarea.
 5. Genera las tareas como OBJETOS, intentando siempre separar el texto de la tarea (ej: "Recoger material") del horario (ej: "09:00 - 11:30") y de la ubicación (ej: "Dealde").
 6. Para cada tarea, si es fuera de la base, GENERA UN ENLACE DE GOOGLE MAPS válido para la ubicación usando este formato exacto: "https://www.google.com/maps/search/?api=1&query=Nombre+Del+Sitio". Si es en la base, déjalo vacío "".
-7. Te pasaré la SEMANA ACTUAL en formato JSON. Si el usuario te pide un cambio o ajuste, MODIFICA el JSON actual de forma inteligente, preservando lo que no cambie, y devuelve el JSON completo actualizado.
+7. En "sundayMonday.tasks" (domingo y lunes comparten lista) pon SIEMPRE "targetDay": "Domingo" o "Lunes" según el día real de cada tarea; sin él la app no sabe a qué día pertenece.
+8. Te pasaré la SEMANA ACTUAL en formato JSON. Si el usuario te pide un cambio o ajuste, MODIFICA el JSON actual de forma inteligente, preservando lo que no cambie, y devuelve el JSON completo actualizado.
 
 Este es el JSON ACTUAL de la semana (únelo con los cambios que pide el usuario):
 ${JSON.stringify(activeWeekData || {}, null, 2)}
@@ -35,7 +77,7 @@ Genera una respuesta EXCLUSIVAMENTE en formato JSON válido sin texto previo ni 
   },
   "sundayMonday": {
     "title": "Domingo & Lunes — Logística Inversa",
-    "tasks": [{ "id": "sl1", "text": "Texto", "location": "Almacén", "timeFrame": "09:00 - 14:00", "mapsUrl": "", "assigned": ["Jeferson"], "completed": false }]
+    "tasks": [{ "id": "sl1", "text": "Texto", "location": "Almacén", "timeFrame": "09:00 - 14:00", "mapsUrl": "", "assigned": ["Jeferson"], "targetDay": "Domingo", "completed": false }]
   }
 }`;
 }
