@@ -92,7 +92,16 @@ export function isTaskChronologicallyPast(dayKey, timeFrame, overrideTime = new 
 
   let endHours = parseInt(timeParts[0], 10);
   const endMinutes = parseInt(timeParts[1], 10);
-  if (endHours < 5) endHours += 24; // "00:30" -> "24:30" (cruza medianoche)
+  // BUG real (encontrado en vivo — autoCompletePastTasks marcó TODAS las
+  // tareas de domingo/lunes como completadas de madrugada sin haber pasado
+  // su hora): esta condición debe mirar si la PROPIA tarea cruza medianoche
+  // (su hora de fin es de madrugada), no aplicarse a cualquier tarea solo
+  // porque "ahora" sea de madrugada. Antes bastaba con comprobar el reloj
+  // actual, así que una tarea normal de tarde (ej. "15:00-17:00")
+  // comprobada a las 02:00 del mismo día se marcaba como pasada por error
+  // (currentHours pasaba a 26, muy por encima de endTotal).
+  const endCrossesMidnight = endHours < 5;
+  if (endCrossesMidnight) endHours += 24; // "00:30" -> "24:30" (cruza medianoche)
   const endTotal = endHours * 60 + endMinutes;
 
   // currentTotal en la misma escala que endTotal (minutos desde la
@@ -103,7 +112,10 @@ export function isTaskChronologicallyPast(dayKey, timeFrame, overrideTime = new 
   const currentMinutes = overrideTime.getMinutes();
   if (isExactlyYesterday) {
     currentHours += 24;
-  } else if (currentHours < 5) {
+  } else if (endCrossesMidnight && currentHours < 5) {
+    // Solo si la PROPIA tarea cruza medianoche y "ahora" cae en la franja
+    // de madrugada de ese mismo turno (ej. tarea 20:30-00:30 comprobada a
+    // las 00:15) — nunca para una tarea normal de tarde.
     currentHours += 24;
   }
   const currentTotal = currentHours * 60 + currentMinutes;
