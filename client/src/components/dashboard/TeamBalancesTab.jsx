@@ -179,9 +179,28 @@ export default function TeamBalancesTab({
   const handleDeleteConcept = async (worker, idx) => {
     setSavingBalanceId(worker.id);
     try {
+      const deletedItem = (worker.breakdown || [])[idx];
       const newBreakdown = (worker.breakdown || []).filter((_, i) => i !== idx);
       const newBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
-      await persistWorkerBalance(worker.id, { breakdown: newBreakdown, currentBalance: newBalance });
+      const updates = { breakdown: newBreakdown, currentBalance: newBalance };
+
+      // "Valor Acumulado Horas Bolsa" es una línea ÚNICA que se sobrescribe
+      // (no se añade una por turno, ver handleAddShift) con el total
+      // acumulado de la bolsa. Si se borra sin más, purseInfo.consumedHours
+      // se queda con el valor viejo para siempre, desconectado del
+      // desglose — el próximo turno de bolsa que se añadiera partiría de
+      // ese valor fantasma en vez de reiniciar desde cero.
+      if (worker.isSpecialPurse && worker.purseInfo && deletedItem?.concept?.startsWith('Valor Acumulado Horas Bolsa')) {
+        updates.purseInfo = {
+          ...worker.purseInfo,
+          consumedHours: 0,
+          consumedValue: 0,
+          remainingHoursForExtra: worker.purseInfo.totalHours,
+          shifts: []
+        };
+      }
+
+      await persistWorkerBalance(worker.id, updates);
     } finally {
       setSavingBalanceId(null);
     }
