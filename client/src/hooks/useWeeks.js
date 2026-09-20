@@ -143,20 +143,30 @@ export function useWeeks() {
     });
   };
 
-  const handleCreateWeek = ({ name, dateRange, cloneCurrent }) => {
+  // aiGeneratedJson (opcional): viene del asistente guiado de
+  // WeekManagerModal.jsx, que le pide a Gemini la planificación completa a
+  // partir de las respuestas del usuario (camiones, disponibilidad,
+  // bodas...). Cuando viene, sustituye schedule/saturdaySpecial/sundayMonday
+  // del template — el template (clonado o base) solo aporta trucks/team si
+  // no los trae el propio JSON generado.
+  const handleCreateWeek = ({ name, dateRange, cloneCurrent, aiGeneratedJson }) => {
     const newId = `week_${Date.now()}`;
     const template = cloneCurrent ? JSON.parse(JSON.stringify(activeWeek)) : JSON.parse(JSON.stringify(BASE_WEEK_3));
-    
+
     const newWeekObj = {
       ...template,
       id: newId,
       name,
       meta: {
         ...template.meta,
+        ...(aiGeneratedJson?.meta || {}),
         week: name,
         dateRange,
         status: "Operativa Activa"
-      }
+      },
+      schedule: aiGeneratedJson?.schedule || template.schedule,
+      saturdaySpecial: aiGeneratedJson?.saturdaySpecial || template.saturdaySpecial,
+      sundayMonday: aiGeneratedJson?.sundayMonday || template.sundayMonday
     };
 
     updateWeeks({ ...allWeeks, [newId]: newWeekObj });
