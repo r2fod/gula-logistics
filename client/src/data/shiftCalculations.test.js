@@ -4,6 +4,7 @@ import {
   getActiveShiftForWorker,
   pairShiftsFromEntries,
   aggregateShiftsByWorker,
+  isZombieShift,
 } from './shiftCalculations';
 
 // Helper para no repetir campos en cada fichaje de prueba.
@@ -235,5 +236,31 @@ describe('aggregateShiftsByWorker', () => {
     const shifts = [{ workerName: 'Ex-trabajador', durationHours: 5, cost: 50 }];
     expect(() => aggregateShiftsByWorker(shifts, workersList)).not.toThrow();
     expect(Object.keys(aggregateShiftsByWorker(shifts, workersList))).toEqual(['Ricardo', 'Irene']);
+  });
+});
+
+describe('isZombieShift', () => {
+  it('un turno recién abierto no es zombi', () => {
+    const now = new Date('2026-09-19T20:00:00.000Z');
+    const entrada = { timestamp: '2026-09-19T19:00:00.000Z' }; // 1h abierto
+    expect(isZombieShift(entrada, now)).toBe(false);
+  });
+
+  it('un turno de 15h abierto todavía no es zombi (dentro de lo normal en una boda larga)', () => {
+    const now = new Date('2026-09-20T08:00:00.000Z');
+    const entrada = { timestamp: '2026-09-19T17:00:00.000Z' }; // 15h abierto
+    expect(isZombieShift(entrada, now)).toBe(false);
+  });
+
+  it('un turno abierto más de 16h es zombi (probable olvido de fichar salida)', () => {
+    const now = new Date('2026-09-20T12:00:00.000Z');
+    const entrada = { timestamp: '2026-09-19T19:00:00.000Z' }; // 17h abierto
+    expect(isZombieShift(entrada, now)).toBe(true);
+  });
+
+  it('sin fichaje activo (null/undefined), no es zombi', () => {
+    expect(isZombieShift(null)).toBe(false);
+    expect(isZombieShift(undefined)).toBe(false);
+    expect(isZombieShift({})).toBe(false); // sin timestamp
   });
 });

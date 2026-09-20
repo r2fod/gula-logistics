@@ -15,7 +15,7 @@ import {
   AlertCircle,
   RefreshCw
 } from 'lucide-react';
-import { pairShiftsFromEntries } from '../data/shiftCalculations';
+import { pairShiftsFromEntries, isZombieShift } from '../data/shiftCalculations';
 import { getTaskListForDay, isTaskChronologicallyPast, TASK_COMPLETION_GRACE_MINUTES } from '../data/taskPlanning';
 
 export default function LiveMonitorPanel({
@@ -183,6 +183,7 @@ export default function LiveMonitorPanel({
     return {
       ...w,
       isClockedIn,
+      isZombie: isClockedIn && isZombieShift(clockEntry, currentTime),
       clockEntry,
       elapsedTimeFormatted,
       currentTask: currentTaskToDisplay,
@@ -329,14 +330,18 @@ export default function LiveMonitorPanel({
             <div 
               key={worker.name}
               className={`relative overflow-hidden rounded-3xl p-5 border transition-all duration-300 shadow-lg flex flex-col justify-between space-y-4 ${
-                worker.isClockedIn 
-                  ? 'bg-slate-900/90 border-emerald-500/50 shadow-emerald-500/10 ring-1 ring-emerald-500/30' 
+                worker.isZombie
+                  ? 'bg-slate-900/90 border-amber-500/60 shadow-amber-500/10 ring-1 ring-amber-500/40'
+                  : worker.isClockedIn
+                  ? 'bg-slate-900/90 border-emerald-500/50 shadow-emerald-500/10 ring-1 ring-emerald-500/30'
                   : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700'
               }`}
             >
               {/* Active glowing accent strip */}
               {worker.isClockedIn && (
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-400 animate-pulse"></div>
+                <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r animate-pulse ${
+                  worker.isZombie ? 'from-amber-400 via-amber-500 to-orange-400' : 'from-emerald-400 via-emerald-500 to-teal-400'
+                }`}></div>
               )}
 
               <div>
@@ -353,7 +358,14 @@ export default function LiveMonitorPanel({
                   </div>
 
                   {/* Status Badge */}
-                  {worker.isClockedIn ? (
+                  {worker.isZombie ? (
+                    <span
+                      className="px-2.5 py-1 text-[10px] font-extrabold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center space-x-1 shrink-0"
+                      title="Lleva más de 16h fichado sin fichar salida — probablemente se olvidó. Revisar y cerrar desde el editor de fichajes."
+                    >
+                      <span>⚠️ REVISAR</span>
+                    </span>
+                  ) : worker.isClockedIn ? (
                     <span className="px-2.5 py-1 text-[10px] font-extrabold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1 shrink-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
                       <span>EN TURNO</span>

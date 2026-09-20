@@ -1,3 +1,19 @@
+// Un turno abierto (fichada entrada, sin salida todavía) que lleva más de
+// esto sin cerrarse casi seguro que es porque el trabajador se olvidó de
+// fichar salida (frecuente acabando de madrugada en una boda), no un turno
+// real en curso. No se cierra solo — eso lo decide un admin a propósito
+// desde el editor de fichajes — esto solo sirve para SEÑALARLO en vez de
+// dejarlo indefinidamente como "en turno" con un cronómetro absurdo.
+export const ZOMBIE_SHIFT_HOURS = 16;
+
+// `activeEntry` es el fichaje de entrada abierto (lo que devuelve
+// getActiveShiftForWorker, o activeShifts[worker] de pairShiftsFromEntries).
+export function isZombieShift(activeEntry, now = new Date()) {
+  if (!activeEntry?.timestamp) return false;
+  const elapsedHours = (now - new Date(activeEntry.timestamp)) / (1000 * 60 * 60);
+  return elapsedHours > ZOMBIE_SHIFT_HOURS;
+}
+
 // El servidor devuelve los fichajes más recientes primero (para que el
 // historial se vea así en la UI), pero emparejar entrada/salida y saber
 // "quién está fichado ahora" necesita procesarlos en orden cronológico —
