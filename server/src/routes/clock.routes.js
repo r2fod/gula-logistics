@@ -1,5 +1,6 @@
 import express from 'express';
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 import { ClockEntry } from '../models/ClockEntry.model.js';
 import { requireAdmin } from '../middleware/requireAdmin.js';
 
@@ -35,7 +36,7 @@ router.post('/', async (req, res) => {
   try {
     const newEntryData = { ...req.body };
     if (!newEntryData.id) {
-      newEntryData.id = Date.now().toString();
+      newEntryData.id = crypto.randomUUID();
     }
 
     // Este endpoint es intencionalmente público (los trabajadores fichan

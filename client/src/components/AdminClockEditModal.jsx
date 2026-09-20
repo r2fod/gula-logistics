@@ -67,7 +67,7 @@ export default function AdminClockEditModal({
     const workerObj = workersList.find(w => w.name === workerName) || { role: 'Operativa', isPayroll: false };
 
     const entryData = {
-      id: entry ? entry.id : Date.now().toString(),
+      id: entry ? entry.id : crypto.randomUUID(),
       workerName,
       role: workerObj.role || 'Operativa',
       isPayroll: workerObj.isPayroll || false,
