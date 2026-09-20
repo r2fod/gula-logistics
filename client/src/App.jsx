@@ -34,7 +34,8 @@ import {
   fetchWeeksFromAPI,
   saveWeeksToAPI,
   patchTaskCompletionInAPI,
-  saveWorkerBalanceToAPI
+  saveWorkerBalanceToAPI,
+  retryPendingClockEntries
 } from './data/apiService';
 import { initialBalancesData } from './data/balancesData';
 import { getActiveShiftForWorker } from './data/shiftCalculations';
@@ -233,7 +234,17 @@ export default function App() {
     if (getStoredAdminToken()) {
       autoCompletePastTasks();
     }
+    // En cuanto el móvil recupera cobertura, reintentar YA los fichajes
+    // pendientes en vez de esperar hasta 20s al siguiente tick del
+    // intervalo — importante en fincas de boda con cobertura intermitente.
+    const handleOnline = () => { retryPendingClockEntries(); };
+    window.addEventListener('online', handleOnline);
+
     const interval = setInterval(() => {
+      // Reintentar fichajes que se crearon sin cobertura o con el servidor
+      // caído (para todos, no solo admin — cualquier trabajador puede
+      // tener fichajes pendientes en su propio móvil).
+      retryPendingClockEntries();
       fetchClockEntriesFromAPI().then(remoteEntries => {
         if (remoteEntries && Array.isArray(remoteEntries)) {
           setClockEntries(remoteEntries);
@@ -256,7 +267,10 @@ export default function App() {
         autoCompletePastTasks();
       }
     }, 20000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', handleOnline);
+    };
   }, []);
 
 
