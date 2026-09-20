@@ -70,6 +70,7 @@ _Actualizado tras dos sesiones de trabajo en paralelo (Gemini/Antigravity + Clau
 - [ ] **Filtro "Trabajador" del Informe de Fichajes** no aplica a las 3 tarjetas resumen (Gasto Extras / Horas Extras / Activos), que siguen mostrando el total de todo el equipo.
 - [ ] **Pestaña "Estimado (Planning)"** no se incluye en el texto de "Copiar WhatsApp".
 - [ ] Ricardo tiene dos recogidas la misma mañana del martes (Dealde + apoyo en Albacar con Johan) — posible solape, sin confirmar si es intencional.
+- [ ] **Las tareas de `sundayMonday.tasks` con `targetDay: "Lunes"` se evalúan siempre como si fueran de "domingo"** _(encontrado revisando el margen de 5min de Kerly/Jose: su tarea "Lunes — Limpieza de vajilla" vive bajo el dayKey 'domingo' porque domingo y lunes comparten una sola lista)_. Ni `isTaskChronologicallyPast` ni `isTaskTooEarlyToClockIn` miran el campo `targetDay` de la tarea — solo el dayKey genérico 'domingo'. En la práctica hoy no cambia mucho (ambos días son consecutivos y comparten fichaje), pero una tarea marcada específicamente "Solo Lunes" podría fichar/completarse en domingo sin que el código lo distinga.
 
 ## 🟢 Bajo impacto / pulido — pendiente
 
