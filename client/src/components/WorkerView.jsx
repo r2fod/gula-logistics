@@ -382,14 +382,13 @@ export default function WorkerView({
   // conversión al leer/escribir la lista real (findTaskIndex, toggle,
   // taskRef).
   const toStorageDayKey = (dayKey) => (dayKey === 'lunes' ? 'domingo' : dayKey);
-  // La jornada solo se puede EMPEZAR desde 5 min antes de que empiece la
-  // primera tarea (isTaskTooEarlyToStart) — NO tarea a tarea: quien ya ha
-  // fichado hoy (o está en turno) puede cambiar de tarea cuando quiera. Es
-  // la misma puerta para el botón de iniciar jornada y para los "Fichar esta
-  // tarea" mientras no se haya fichado ninguna entrada hoy.
-  const clockedInToday = myEntries.some(e =>
-    e.type === 'entrada' && !e.deleted && new Date(e.timestamp).toDateString() === currentTime.toDateString());
-  const jornadaStarted = !!activeShift || clockedInToday;
+  // Un turno solo se puede EMPEZAR desde 5 min antes de que empiece la
+  // siguiente tarea (isTaskTooEarlyToStart): el primero del día Y el de cada
+  // vuelta de una jornada partida (tras la pausa, la primera tarea del
+  // siguiente tramo). NO tarea a tarea: con un turno en curso se puede
+  // cambiar de tarea cuando se quiera. Es la misma puerta para el botón de
+  // iniciar jornada y para los "Fichar esta tarea" mientras no haya turno.
+  const jornadaStarted = !!activeShift;
   const firstTaskStart = jornadaStarted || !immediateTask?.dayKey
     ? null
     : getNextTaskStart(activeWeekData, immediateTask.dayKey, immediateTask.rawTask, currentTime);
