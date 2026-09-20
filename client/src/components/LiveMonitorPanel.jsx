@@ -64,8 +64,14 @@ export default function LiveMonitorPanel({
     const days = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const todayIndex = currentTime.getDay();
     const dayKey = days[todayIndex];
-
-    const tasks = getTaskListForDay(activeWeekData, dayKey);
+    // domingo y lunes comparten sundayMonday.tasks bajo dayKey='domingo'
+    // (ver taskPlanning.js) — getTaskListForDay solo alía 'domingo'/
+    // 'sundayMonday', nunca 'lunes' literal. En lunes esto devolvía
+    // siempre [] (buscaba en schedule.lunes.tasks, que no existe), así que
+    // nadie veía su tarea real de domingo/lunes ese día — caía siempre al
+    // texto genérico por trabajador.
+    const listDayKey = dayKey === 'lunes' ? 'domingo' : dayKey;
+    const tasks = getTaskListForDay(activeWeekData, listDayKey);
 
     const nameLower = workerName.toLowerCase();
     return tasks.filter(t => {
@@ -100,7 +106,15 @@ export default function LiveMonitorPanel({
     const matches = allMatches.filter(t => {
       if (typeof t !== 'object') return true; // Simple strings are assumed incomplete unless mapped to obj
       if (t.completed) return false; // Explicitly marked as done
-      if (isTaskChronologicallyPast(dayKey, t.timeFrame, currentTime, TASK_COMPLETION_GRACE_MINUTES)) return false; // Chronologically done (con margen)
+      // Mismo alias domingo/lunes que arriba, más el targetDay por tarea
+      // que ya usa autoCompletePastTasks (useWeeks.js) — sin esto, una
+      // tarea de domingo/lunes evaluada en lunes comparaba con dayKey
+      // ='lunes' tal cual, perdiendo el wraparound de medianoche que sí
+      // necesitan las que de verdad cruzan de domingo a lunes.
+      const evalDayKey = dayKey === 'lunes'
+        ? (t.targetDay ? t.targetDay.toLowerCase() : 'domingo')
+        : dayKey;
+      if (isTaskChronologicallyPast(evalDayKey, t.timeFrame, currentTime, TASK_COMPLETION_GRACE_MINUTES)) return false; // Chronologically done (con margen)
       return true;
     });
 
