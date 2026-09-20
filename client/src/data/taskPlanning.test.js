@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getTaskListForDay, resolveTaskIndexByText, buildTaskListPatch, isTaskChronologicallyPast } from './taskPlanning';
+import { getTaskListForDay, resolveTaskIndexByText, buildTaskListPatch, isTaskChronologicallyPast, isTaskTooEarlyToClockIn } from './taskPlanning';
 
 const weekData = {
   schedule: {
@@ -123,5 +123,43 @@ describe('isTaskChronologicallyPast', () => {
     expect(isTaskChronologicallyPast('domingo', '22:00-02:00', mismoDia0100)).toBe(false); // 01:00 < 02:00, en curso
     const mismoDia0230 = new Date(2026, 8, 20, 2, 30);
     expect(isTaskChronologicallyPast('domingo', '22:00-02:00', mismoDia0230)).toBe(true); // 02:30 > 02:00, pasada
+  });
+});
+
+describe('isTaskTooEarlyToClockIn', () => {
+  it('bloquea si faltan más de 5min para la hora de inicio (mismo día)', () => {
+    const now = new Date(2026, 8, 20, 8, 0); // domingo 08:00
+    expect(isTaskTooEarlyToClockIn('domingo', '09:00-10:00', now)).toBe(true); // faltan 60min
+  });
+
+  it('permite fichar dentro del margen de 5min antes', () => {
+    const now = new Date(2026, 8, 20, 8, 56); // faltan 4min
+    expect(isTaskTooEarlyToClockIn('domingo', '09:00-10:00', now)).toBe(false);
+  });
+
+  it('permite fichar una vez llegada la hora (o pasada)', () => {
+    const now = new Date(2026, 8, 20, 9, 0);
+    expect(isTaskTooEarlyToClockIn('domingo', '09:00-10:00', now)).toBe(false);
+  });
+
+  it('BUG real: no debe aplicar la hora de una tarea de un día FUTURO sobre el reloj de hoy', () => {
+    // La tarea "inmediata" (primera pendiente de la semana) es del jueves,
+    // pero hoy es domingo — antes, el cálculo casero de WorkerView.jsx
+    // ponía la hora de esa tarea sobre la fecha de HOY sin comprobar el
+    // día, así que una tarea de jueves a las 09:00 parecía "ya pasada" un
+    // domingo por la tarde y dejaba iniciar jornada antes de tiempo.
+    const domingoTarde = new Date(2026, 8, 20, 18, 0);
+    expect(isTaskTooEarlyToClockIn('jueves', '09:00-10:00', domingoTarde)).toBe(false); // jueves no es "hoy" -> no se evalúa por hora
+  });
+
+  it('sin horario registrado, no bloquea (no se puede evaluar)', () => {
+    const now = new Date(2026, 8, 20, 8, 0);
+    expect(isTaskTooEarlyToClockIn('domingo', null, now)).toBe(false);
+    expect(isTaskTooEarlyToClockIn('domingo', '', now)).toBe(false);
+  });
+
+  it('un día distinto a hoy (pasado) no se bloquea por hora', () => {
+    const lunesSiguiente = new Date(2026, 8, 21, 6, 0); // lunes 06:00
+    expect(isTaskTooEarlyToClockIn('domingo', '09:00-10:00', lunesSiguiente)).toBe(false); // domingo ya no es "hoy"
   });
 });

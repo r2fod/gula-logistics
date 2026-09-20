@@ -31,7 +31,7 @@ import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
-import { getTaskListForDay, resolveTaskIndexByText } from '../data/taskPlanning';
+import { getTaskListForDay, resolveTaskIndexByText, isTaskTooEarlyToClockIn } from '../data/taskPlanning';
 import { subscribeToPush } from '../data/pushService';
 
 export default function WorkerView({
@@ -569,22 +569,21 @@ export default function WorkerView({
               </div>
 
               {(() => {
-                let isReady = true;
+                // Antes esto calculaba la hora de la tarea SIEMPRE sobre la
+                // fecha de HOY, sin comprobar que immediateTask fuera de
+                // verdad de hoy — si la primera tarea pendiente de la
+                // semana era de un día futuro, su hora podía caer ya
+                // "pasada" hoy y se permitía iniciar jornada antes de
+                // tiempo. isTaskTooEarlyToClockIn ya comprueba el día real.
+                const isReady = !immediateTask?.dayKey || !isTaskTooEarlyToClockIn(immediateTask.dayKey, immediateTask.timeFrame);
                 let minutesLeft = 0;
-                if (immediateTask?.timeFrame) {
-                  const parts = immediateTask.timeFrame.split('-');
-                  if (parts.length > 0) {
-                    const match = parts[0].trim().match(/^(\d{1,2}):(\d{2})$/);
-                    if (match) {
-                      const now = new Date();
-                      const taskTime = new Date();
-                      taskTime.setHours(parseInt(match[1], 10), parseInt(match[2], 10), 0, 0);
-                      const diffMins = (taskTime.getTime() - now.getTime()) / (1000 * 60);
-                      if (diffMins > 5) {
-                        isReady = false;
-                        minutesLeft = Math.ceil(diffMins - 5);
-                      }
-                    }
+                if (!isReady) {
+                  const match = immediateTask.timeFrame.split('-')[0].trim().match(/^(\d{1,2}):(\d{2})$/);
+                  if (match) {
+                    const now = new Date();
+                    const taskTime = new Date();
+                    taskTime.setHours(parseInt(match[1], 10), parseInt(match[2], 10), 0, 0);
+                    minutesLeft = Math.max(1, Math.ceil((taskTime.getTime() - now.getTime()) / (1000 * 60) - 5));
                   }
                 }
 
@@ -929,6 +928,14 @@ export default function WorkerView({
                                       <Lock className="w-3 h-3" />
                                       <span>Aún no ha llegado este día</span>
                                     </span>
+                                  ) : isTaskTooEarlyToClockIn(dayGroup.key, timeFrame) ? (
+                                    // El día ya llegó, pero faltan más de 5min para la hora de
+                                    // inicio de ESTA tarea concreta — evita fichar por error una
+                                    // tarea de última hora del día nada más empezar la jornada.
+                                    <span className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed">
+                                      <Lock className="w-3 h-3" />
+                                      <span>Disponible a partir de las {timeFrame.split('-')[0].trim()}</span>
+                                    </span>
                                   ) : (
                                     <button
                                       onClick={(e) => {
@@ -960,7 +967,10 @@ export default function WorkerView({
                           </span>
                           {dayGroup.weddings.map((w, idx) => {
                             const manuallyCompleted = w.completed;
-                            const isCompleted = manuallyCompleted || isTaskChronologicallyPast('sabado', w.time);
+                            // El campo real es `timeFrame` (así lo guarda AdminTaskEditorModal
+                            // y así llega de Mongo) — `w.time` no existe en ninguna boda real,
+                            // así que esto nunca se daba por pasada ni mostraba su horario.
+                            const isCompleted = manuallyCompleted || isTaskChronologicallyPast('sabado', w.timeFrame);
                             
                             return (
                               <div key={idx} className={`p-3 sm:p-3.5 rounded-xl border space-y-1 transition-all ${
@@ -984,10 +994,10 @@ export default function WorkerView({
                                         <span className={`font-black text-sm ${isCompleted ? 'line-through opacity-70' : 'text-white'}`}>
                                           🏔️ {w.location}
                                         </span>
-                                        {w.time && (
+                                        {w.timeFrame && (
                                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">
                                             <Clock className="w-3 h-3 inline mr-1" />
-                                            {w.time}
+                                            {w.timeFrame}
                                           </span>
                                         )}
                                       </div>
@@ -1017,6 +1027,11 @@ export default function WorkerView({
                                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed">
                                         <Lock className="w-3 h-3" />
                                         <span>Aún no ha llegado este día</span>
+                                      </span>
+                                    ) : isTaskTooEarlyToClockIn('sabado', w.timeFrame) ? (
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed">
+                                        <Lock className="w-3 h-3" />
+                                        <span>Disponible a partir de las {w.timeFrame.split('-')[0].trim()}</span>
                                       </span>
                                     ) : (
                                       <button
