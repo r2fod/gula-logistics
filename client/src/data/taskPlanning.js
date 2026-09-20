@@ -67,7 +67,6 @@ export function isTaskChronologicallyPast(dayKey, timeFrame, overrideTime = new 
   const ordinal = weekDayOrder.indexOf(dayKey);
 
   if (ordinal < 0 || todayOrdinal < 0) return false;
-  if (ordinal > todayOrdinal) return false; // Future day
 
   // "Ayer exactamente" (con wraparound: lunes es "el día después" de
   // domingo) es el único caso ambiguo con margen — un turno de ayer que
@@ -75,6 +74,16 @@ export function isTaskChronologicallyPast(dayKey, timeFrame, overrideTime = new 
   // entrado el día siguiente. Dos o más días atrás no tiene ambigüedad
   // posible, se da por pasada sin más (igual que siempre).
   const isExactlyYesterday = ((todayOrdinal - ordinal + 7) % 7) === 1;
+
+  // BUG real (encontrado el 20/09): 'domingo' es el ÚLTIMO elemento de
+  // weekDayOrder (ordinal 6, el más alto), así que al comprobar una tarea
+  // de domingo ya en lunes, `ordinal > todayOrdinal` (6 > 0) se cumplía y
+  // cortaba aquí ANTES de llegar a isExactlyYesterday — una boda de domingo
+  // que cruza medianoche se trataba como "día futuro" para siempre, nunca
+  // se marcaba pasada ni fichando ya el lunes. Con sábado->domingo (5 y 6)
+  // no pasaba porque 5 no es mayor que 6 — por eso ese caso sí estaba
+  // cubierto por los tests existentes y este no se detectó antes.
+  if (ordinal > todayOrdinal && !isExactlyYesterday) return false; // Future day
   if (ordinal < todayOrdinal && !isExactlyYesterday) return true;
 
   if (!timeFrame) {

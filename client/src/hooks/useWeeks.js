@@ -123,7 +123,20 @@ export function useWeeks() {
         const isObj = typeof task === 'object' && task !== null;
         if (isObj && task.completed) return;
         const timeFrame = isObj ? task.timeFrame : null;
-        if (isTaskChronologicallyPast(dayKey, timeFrame, now, TASK_COMPLETION_GRACE_MINUTES)) {
+        // domingo y lunes comparten sundayMonday.tasks bajo dayKey='domingo'
+        // (ver taskPlanning.js) — una tarea concreta puede llevar su propio
+        // targetDay ('Domingo'/'Lunes', puesto desde AdminTaskEditorModal)
+        // para saber su día REAL a la hora de evaluar el horario, igual que
+        // ya hace ScheduleTab.jsx para pintarla tachada. Sin esto, una tarea
+        // "Solo Lunes" se evaluaba siempre como si fuera del domingo — y
+        // tras arreglar el wraparound domingo->lunes (20/09), eso la habría
+        // dado por pasada desde el minuto 0 del lunes, sin haber ni
+        // empezado. markTaskCompleted sigue recibiendo el dayKey original
+        // ('domingo'), que es donde de verdad vive guardada la tarea.
+        const evalDayKey = (dayKey === 'domingo' && isObj && task.targetDay)
+          ? task.targetDay.toLowerCase()
+          : dayKey;
+        if (isTaskChronologicallyPast(evalDayKey, timeFrame, now, TASK_COMPLETION_GRACE_MINUTES)) {
           markTaskCompleted(dayKey, idx);
         }
       });
