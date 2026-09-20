@@ -4,6 +4,7 @@ import PushSubscription from '../models/PushSubscription.js';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { requireAdmin } from '../middleware/requireAdmin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,16 +25,6 @@ try {
 } catch (e) {
   console.warn('⚠️ Error setting VAPID details:', e.message);
 }
-
-// Helper middleware (can be moved later)
-const requireAdmin = (req, res, next) => {
-  const adminToken = req.headers['authorization'];
-  if (adminToken && adminToken === `Bearer ${process.env.ADMIN_TOKEN || 'gula_admin_secret_2024'}`) {
-    next();
-  } else {
-    res.status(401).json({ error: 'Unauthorized: Solo admin' });
-  }
-};
 
 // POST /api/notifications/subscribe - Save a push subscription
 router.post('/subscribe', async (req, res) => {

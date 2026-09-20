@@ -19,8 +19,15 @@ vi.mock('../models/PushSubscription.js', () => ({
     deleteOne: vi.fn()
   }
 }));
+// requireAdmin consulta AdminConfig para la revocación por cambio de
+// contraseña; la simulamos "sin config" para que ese chequeo no interfiera
+// (mismo patrón que logistics.routes.test.js/balances.routes.test.js).
+vi.mock('../models/AdminConfig.model.js', () => ({
+  AdminConfig: { findOne: vi.fn().mockResolvedValue(null) },
+}));
 
 const notificationsRoutes = (await import('./notifications.routes.js')).default;
+const { signToken } = await import('../utils/authToken.js');
 
 function buildApp() {
   const app = express();
@@ -29,7 +36,12 @@ function buildApp() {
   return app;
 }
 
+function adminAuthHeader() {
+  return `Bearer ${signToken({ role: 'admin', v: 1 })}`;
+}
+
 beforeEach(() => {
+  process.env.AUTH_TOKEN_SECRET = 'secreto-de-test-no-real';
   vi.clearAllMocks();
 });
 
@@ -73,7 +85,7 @@ describe('POST /api/notifications/notify', () => {
       .send({ title: 'T', body: 'B' });
 
     expect(res.status).toBe(401);
-    expect(res.body.error).toMatch(/Unauthorized/);
+    expect(res.body.error).toMatch(/Acceso restringido|sesión de Administrador/);
   });
 
   it('sends notifications to all subscribers', async () => {
@@ -84,7 +96,7 @@ describe('POST /api/notifications/notify', () => {
     const app = buildApp();
     const res = await request(app)
       .post('/api/notifications/notify')
-      .set('Authorization', `Bearer ${process.env.ADMIN_TOKEN || 'gula_admin_secret_2024'}`)
+      .set('Authorization', adminAuthHeader())
       .send({ title: 'Alerta', body: 'Turnos' });
 
     expect(res.status).toBe(200);
@@ -98,7 +110,7 @@ describe('POST /api/notifications/notify', () => {
     const app = buildApp();
     const res = await request(app)
       .post('/api/notifications/notify')
-      .set('Authorization', `Bearer ${process.env.ADMIN_TOKEN || 'gula_admin_secret_2024'}`)
+      .set('Authorization', adminAuthHeader())
       .send({ title: 'Alerta', body: 'Turnos' });
 
     expect(res.status).toBe(200);
