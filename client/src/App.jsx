@@ -199,6 +199,22 @@ export default function App() {
     if (tokenParam) {
       setStoredAdminToken(tokenParam, Date.now() + 30 * 24 * 60 * 60 * 1000);
       setIsAdminUnlocked(true);
+      // Ya está guardado en localStorage — quitarlo de la barra de
+      // direcciones ahora mismo. Sin esto, el token seguía viajando en la
+      // URL visible (capturas de pantalla, historial del navegador) y, si
+      // alguien pulsaba un enlace saliente de la propia app (ej. Google
+      // Maps de una tarea) antes de que <meta name="referrer"> existiera,
+      // se filtraba entero en la cabecera Referer de esa petición externa.
+      // Se quita solo `token`/`key` (no clearUrlParams(), que borra TODOS
+      // los parámetros) para no perder otros como ?week= en el mismo enlace.
+      try {
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('token');
+        cleanUrl.searchParams.delete('key');
+        window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
+      } catch (e) {
+        console.error(e);
+      }
     }
     if (hasSociasFlag || hasAdminFlag || roleParam === 'socias' || roleParam === 'admin' || !!tokenParam) {
       setIsPartnerMode(true);

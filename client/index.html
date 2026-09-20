@@ -11,6 +11,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Logística Gula" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- El enlace de socias lleva ?token=... en la URL, y varias tareas
+         tienen enlaces salientes a Google Maps — sin esto, el navegador
+         manda la URL completa (con el token) como Referer al pulsar
+         cualquiera de esos enlaces. -->
+    <meta name="referrer" content="no-referrer" />
     <title>Gula Logistics - Dashboard Operativo</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
