@@ -3,7 +3,7 @@ import { Users, Calendar, Clock, Check, Sparkles } from 'lucide-react';
 import { isTaskEffectivelyDone, getDayLabel } from '../../data/taskPlanning';
 import TaskTextWithEvent from '../TaskTextWithEvent';
 
-export default function ScheduleTab({ activeWeekData, workersList, onToggleTask, onUpdateWeek }) {
+export default function ScheduleTab({ activeWeekData, workersList, onToggleTask, onUpdateWeek, vispera = null }) {
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
 
   // Auto-completion logic based on time
@@ -107,10 +107,12 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
   // Tarea de la lista compartida domingo/lunes. isTaskEffectivelyDone usa el targetDay
   // de la tarea y, si no lo tiene, la evalúa como lunes (no se tacha el
   // domingo una tarea que puede ser del lunes).
-  const renderSharedTask = (task, idx) => {
+  // `semana` es la semana a la que pertenece la tarea: la activa, o la anterior cuando
+  // se enseña la víspera (data/vispera.js).
+  const renderSharedTask = (task, idx, semana = activeWeekData) => {
     const taskText = typeof task === 'object' ? task.text : task;
     const timeFrame = typeof task === 'object' ? task.timeFrame : null;
-    const isCompleted = isTaskEffectivelyDone(activeWeekData, 'domingo', task, currentTime);
+    const isCompleted = isTaskEffectivelyDone(semana, 'domingo', task, currentTime);
 
     const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
     const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
@@ -219,6 +221,25 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
 
       {/* Schedule Days Grid - 4 Columns Across Widescreen */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+        {/* El lunes anterior a la semana (la cola de la anterior): la carga de los eventos del martes se hace ese día */}
+        {vispera && (
+          <div className="bg-slate-900/90 border border-indigo-500/30 rounded-3xl p-5 shadow-xl backdrop-blur-xl space-y-3 animate-aparecer motion-reduce:animate-none">
+            <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-800/80">
+              <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
+                <Calendar className="text-indigo-300 w-4 h-4" /> Lunes {vispera.fecha.getDate()}
+              </h3>
+              <span className="text-[10px] bg-indigo-500/10 text-indigo-300 font-bold px-2.5 py-1 rounded-xl border border-indigo-500/20">
+                Víspera
+              </span>
+            </div>
+            <p className="text-[11px] leading-snug text-slate-500">
+              Preparativos del lunes para los eventos de esta semana. Están guardados en la {vispera.semana.name}, donde se editan.
+            </p>
+            <div className="space-y-2.5 text-xs text-slate-300">
+              {vispera.tareas.map(({ task, idx }) => renderSharedTask(task, `vispera-${idx}`, vispera.semana))}
+            </div>
+          </div>
+        )}
         {Object.entries(activeWeekData?.schedule || {}).map(([key, day]) => (
           <div key={key} className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-5 shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-4">
             <div>
