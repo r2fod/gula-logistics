@@ -124,3 +124,28 @@ describe('useWeeks — semanas terminadas', () => {
     expect(patch).not.toHaveBeenCalledWith('week_3', 'domingo', 1, true, false); // en proceso
   });
 });
+
+describe('useWeeks — semana con la que se abre', () => {
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+
+  const conSemanas = (semanas) => vi.stubGlobal('localStorage', { store: { gula_logistics_all_weeks_v10: JSON.stringify(semanas) }, getItem(k) { return this.store[k] ?? null; }, setItem(k, v) { this.store[k] = v; }, removeItem(k) { delete this.store[k]; } });
+  const w = (id, dateRange) => ({ ...semana(), id, name: id, meta: { dateRange, status: 'Operativa Activa' } });
+
+  it('abre la semana de hoy, no siempre la 3', () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 24, 10, 0)); // jueves de la semana 4
+    conSemanas({ week_3: w('week_3', 'Del 15 al 20 de Septiembre de 2026'), week_4: w('week_4', 'Del 22 al 27 de Septiembre de 2026') });
+    expect(renderHook(() => useWeeks()).result.current.activeWeekId).toBe('week_4');
+  });
+
+  it('BUG evitado: el lunes por la noche, con la semana 3 terminada, abre la 4 en el primer pintado', () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 21, 20, 30));
+    conSemanas({ week_3: { ...w('week_3', 'Del 15 al 20 de Septiembre de 2026'), sundayMonday: { tasks: [{ text: 'x', timeFrame: '09:30 - 10:00', targetDay: 'Lunes', completed: true, assigned: ['Ana'] }] } }, week_4: w('week_4', 'Del 22 al 27 de Septiembre de 2026') });
+    expect(renderHook(() => useWeeks()).result.current.activeWeekId).toBe('week_4');
+  });
+
+  it('sin semanas legibles se queda en la semana base', () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 24, 10, 0));
+    conSemanas({ x: w('x', 'fechas raras') });
+    expect(renderHook(() => useWeeks()).result.current.activeWeekId).toBe('week_3');
+  });
+});

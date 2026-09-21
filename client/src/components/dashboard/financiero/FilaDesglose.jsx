@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useEntrada } from '../../../hooks/useAnimaciones';
+import Desplegable from '../../ui/Desplegable';
 import { formatearEuros, formatearHoras, formatearPorcentaje } from '../../../data/formatoFinanciero';
 
 // Fila de una lista de desglose (por evento o por trabajador): título, coste y
@@ -56,23 +57,21 @@ export default function FilaDesglose({ icono = null, titulo, insignia = null, no
       </button>
 
       {hayDetalle && (
-        <div className={`grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none ${abierta ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`} aria-hidden={!abierta}>
-          <div className="overflow-hidden">
-            <ul className="mx-3.5 sm:mx-5 mb-3 space-y-1 rounded-xl bg-slate-950/60 p-2.5 border border-slate-800/70">
-              {detalle.map(d => (
-                <li key={d.nombre} className="flex items-center justify-between gap-3 text-xs">
-                  <span className="min-w-0 flex items-center gap-1.5 text-slate-300">
-                    {d.icono && <span aria-hidden="true">{d.icono}</span>}
-                    <span className="truncate">{d.nombre}</span>
-                  </span>
-                  <span className="shrink-0 tabular-nums text-slate-400">
-                    {formatearHoras(d.horas)} <span className="text-slate-600">·</span> <span className="font-semibold text-slate-200">{formatearEuros(d.coste)}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+        <Desplegable abierto={abierta}>
+          <ul className="mx-3.5 sm:mx-5 mb-3 space-y-1 rounded-xl bg-slate-950/60 p-2.5 border border-slate-800/70">
+            {detalle.map(d => (
+              <li key={d.nombre} className="flex items-center justify-between gap-3 text-xs">
+                <span className="min-w-0 flex items-center gap-1.5 text-slate-300">
+                  {d.icono && <span aria-hidden="true">{d.icono}</span>}
+                  <span className="truncate">{d.nombre}</span>
+                </span>
+                <span className="shrink-0 tabular-nums text-slate-400">
+                  {formatearHoras(d.horas)} <span className="text-slate-600">·</span> <span className="font-semibold text-slate-200">{formatearEuros(d.coste)}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Desplegable>
       )}
     </li>
   );

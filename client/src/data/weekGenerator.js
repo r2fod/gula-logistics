@@ -225,7 +225,7 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
       if (vispera && idx > 0) {
         cargaDia = vispera; cargaIni = 16 * 60; cargaFin = 17 * 60 + 30;
       } else {
-        avisos.push(`${e.nombre}: empieza a las ${hhmm(H)}, hay que cargar el día anterior (cae en la semana anterior).`);
+        avisos.push(`${e.nombre}: empieza a las ${hhmm(H)}, hay que cargar el lunes ${sumarDias(inicioMartes, -1).getDate()} (víspera): esa tarea va en la cola de lunes de la semana anterior, no en el martes de esta.`);
         cargaDia = null;
       }
     } else {

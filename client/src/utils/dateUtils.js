@@ -33,3 +33,12 @@ export const parseDateString = (dateString) => {
   if (!dateString) return null;
   return new Date(dateString);
 };
+
+// Duración legible: 45 min · 2 h · 2 h 10 min. Negativos y no numéricos -> "0 min".
+export const formatDuration = (ms) => {
+  const minutos = Number.isFinite(ms) && ms > 0 ? Math.round(ms / 60000) : 0;
+  const h = Math.floor(minutos / 60);
+  const m = minutos % 60;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h} h` : `${h} h ${m} min`;
+};
