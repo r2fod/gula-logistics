@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseEventAndTask, getEventName, inferCategory, buildEventName, normalizeGeneratedEvents, collectEventNames, splitEventNames } from './eventNaming';
+import { parseEventAndTask, getEventName, inferCategory, buildEventName, normalizeGeneratedEvents, collectEventNames, splitEventNames, buildPaxRegistry, getEventShares } from './eventNaming';
 
 describe('parseEventAndTask', () => {
   it('"Evento - Tarea" explícito: separa por el guion normal', () => {
@@ -130,5 +130,32 @@ describe('tareas de varios eventos', () => {
       ['Boda Ana y Luis', 'Boda Eva y Pau', 'Boda Otra']
     );
     expect(out.schedule.martes.tasks[0].text).toBe('Boda Ana y Luis + Boda Eva y Pau - Recoger material Dealde Boda Ana y Luis y Boda Eva y Pau');
+  });
+});
+
+describe('pax: buildPaxRegistry y getEventShares', () => {
+  it('junta los pax de todas las semanas, sin distinguir mayúsculas y sin valores inválidos', () => {
+    const reg = buildPaxRegistry({
+      w1: { events: [{ name: 'Boda Ana y Luis', pax: 120 }, { name: 'Boda Sin Pax', pax: null }, { name: 'Boda Cero', pax: 0 }] },
+      w2: { events: [{ name: ' Evento Catering ', pax: '80' }] },
+      w3: {},
+    });
+    expect(reg).toEqual({ 'boda ana y luis': 120, 'evento catering': 80 });
+    expect(buildPaxRegistry(null)).toEqual({});
+  });
+
+  it('un solo evento se lleva todo; varios se reparten por pax si TODOS lo tienen', () => {
+    const reg = { 'boda a': 150, 'boda b': 50 };
+    expect(getEventShares(['Boda A'], reg)).toEqual([1]);
+    expect(getEventShares(['Boda A', 'Boda B'], reg)).toEqual([0.75, 0.25]);
+  });
+
+  it('si a algún evento le falta el pax, a partes iguales (no se inventa un peso)', () => {
+    expect(getEventShares(['Boda A', 'Boda B'], { 'boda a': 150 })).toEqual([0.5, 0.5]);
+    expect(getEventShares(['Boda A', 'Boda B', 'Boda C'], {})).toEqual([1 / 3, 1 / 3, 1 / 3]);
+  });
+
+  it('collectEventNames incluye los eventos registrados en la semana aunque aún no tengan tareas', () => {
+    expect(collectEventNames({ events: [{ name: 'Boda Nueva', pax: 90 }] })).toContain('Boda Nueva');
   });
 });

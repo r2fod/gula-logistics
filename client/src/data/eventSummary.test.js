@@ -40,3 +40,24 @@ describe('summarizeByEvent', () => {
     expect(summarizeByEvent([turno('Ana', [sub(undefined, 1, 10)])], roster)[0].eventName).toBe('Sin Asignar / Extra');
   });
 });
+
+describe('summarizeByEvent — reparto por pax', () => {
+  it('una boda de 150 pax y otra de 50 se reparten 75% / 25% de una tarea compartida', () => {
+    const lista = summarizeByEvent(
+      [turno('Ana', [sub('Boda Grande + Boda Pequeña', 2, 20)])],
+      roster,
+      { 'boda grande': 150, 'boda pequeña': 50 }
+    );
+    const grande = lista.find(e => e.eventName === 'Boda Grande');
+    const pequena = lista.find(e => e.eventName === 'Boda Pequeña');
+    expect(grande).toMatchObject({ totalCost: 15, totalHours: 1.5, pax: 150 });
+    expect(pequena).toMatchObject({ totalCost: 5, totalHours: 0.5, pax: 50 });
+    expect(grande.workers.Ana.cost).toBe(15);
+  });
+
+  it('con un solo pax anotado se reparte a partes iguales, y los totales siempre cuadran', () => {
+    const lista = summarizeByEvent([turno('Ana', [sub('Boda A + Boda B', 2, 20)])], roster, { 'boda a': 100 });
+    expect(lista.map(e => e.totalCost)).toEqual([10, 10]);
+    expect(lista.reduce((a, e) => a + e.totalCost, 0)).toBe(20);
+  });
+});

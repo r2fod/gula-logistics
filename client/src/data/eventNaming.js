@@ -85,6 +85,31 @@ export function splitEventNames(eventName) {
     .filter(Boolean);
 }
 
+// Pax (invitados) por evento, sacados del campo `events` de cada semana
+// ([{ name, pax }]): { "boda ana y luis": 120 }. Sirve para repartir el
+// coste de una tarea de varios eventos en proporción a su tamaño.
+export function buildPaxRegistry(weeksMap = {}) {
+  const registry = {};
+  Object.values(weeksMap || {}).forEach(week => (week?.events || []).forEach(ev => {
+    const pax = Number(ev?.pax);
+    if (ev?.name && pax > 0) registry[String(ev.name).trim().toLowerCase()] = pax;
+  }));
+  return registry;
+}
+
+// Cuánto le toca a cada evento de una tarea compartida (suman 1). Por pax si
+// TODOS los eventos de la tarea lo tienen anotado; si falta el de alguno, a
+// partes iguales (no se inventa un peso).
+export function getEventShares(eventNames, paxByEvent = {}) {
+  if (eventNames.length <= 1) return eventNames.map(() => 1);
+  const pax = eventNames.map(n => Number(paxByEvent[String(n).trim().toLowerCase()]));
+  if (pax.every(p => p > 0)) {
+    const total = pax.reduce((a, b) => a + b, 0);
+    return pax.map(p => p / total);
+  }
+  return eventNames.map(() => 1 / eventNames.length);
+}
+
 // Nombres de los eventos de la semana tal como los escribe el usuario en el
 // asistente de nueva semana: "Boda Finca Norte". Sin lugar, se usa el día.
 export function buildEventName(event, dayLabel = (k) => k) {
@@ -138,6 +163,7 @@ export function collectEventNames(weekData) {
   });
   Object.values(weekData?.schedule || {}).forEach(d => add(d?.tasks));
   add(weekData?.sundayMonday?.tasks);
+  (weekData?.events || []).forEach(ev => ev?.name && names.add(ev.name));
   EVENT_CATEGORIES.forEach(c => names.add(c));
   return [...names];
 }

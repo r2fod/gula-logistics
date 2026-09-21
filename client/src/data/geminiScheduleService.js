@@ -32,7 +32,11 @@ export function buildWeekPrompt({ weekName, dateRange, trucks = [], workers = []
   const order = WEEK_EVENT_DAYS.map(d => d.key);
   clean.sort((a, b) => order.indexOf(a.day) - order.indexOf(b.day));
 
-  const eventLines = clean.map(e => `- ${dayLabel(e.day)}: ${buildEventName(e, dayLabel)}${e.time ? ` (${e.time})` : ''}.`);
+  const eventLines = clean.map(e => {
+    const pax = Number(e.pax) > 0 ? `${Math.round(Number(e.pax))} pax` : '';
+    const detalle = [e.time, pax].filter(Boolean).join(', ');
+    return `- ${dayLabel(e.day)}: ${buildEventName(e, dayLabel)}${detalle ? ` (${detalle})` : ''}.`;
+  });
   const eventNames = [...new Set(clean.map(e => buildEventName(e, dayLabel)))];
   const hasSaturday = clean.some(e => e.day === 'sabado');
 
@@ -41,7 +45,7 @@ export function buildWeekPrompt({ weekName, dateRange, trucks = [], workers = []
     trucks.length > 0 ? `Camiones disponibles esta semana: ${trucks.join(', ')}.` : 'No hay camiones marcados como disponibles — avisa en las tareas que dependan de reparto de camión.',
     workers.length > 0 ? `Trabajadores disponibles esta semana: ${workers.join(', ')}.` : '',
     eventLines.length > 0
-      ? `Bodas y eventos de la semana — para CADA uno planifica, en el día que toque, la carga (el día anterior o por la mañana), la ruta, la descarga con montaje de estructura y la recogida posterior, repartiendo camiones y personal entre los que coincidan:\n${eventLines.join('\n')}\nLos de sábado van en saturdaySpecial.weddings; los de cualquier otro día se reflejan como tareas de ese día (y de los anteriores si hay que preparar o cargar antes).\nEscribe el texto de cada tarea como "EVENTO - Tarea" usando EXACTAMENTE estos nombres de evento: ${eventNames.join(', ')}. Para la logística que no es de un evento concreto usa "Logística Preparación", "Logística Carga" o "Limpieza Eventos".`
+      ? `Bodas y eventos de la semana — para CADA uno planifica (dimensiona personal y camiones según sus pax cuando se indiquen), en el día que toque, la carga (el día anterior o por la mañana), la ruta, la descarga con montaje de estructura y la recogida posterior, repartiendo camiones y personal entre los que coincidan:\n${eventLines.join('\n')}\nLos de sábado van en saturdaySpecial.weddings; los de cualquier otro día se reflejan como tareas de ese día (y de los anteriores si hay que preparar o cargar antes).\nEscribe el texto de cada tarea como "EVENTO - Tarea" usando EXACTAMENTE estos nombres de evento: ${eventNames.join(', ')}. Para la logística que no es de un evento concreto usa "Logística Preparación", "Logística Carga" o "Limpieza Eventos".`
       : 'No hay bodas ni eventos esta semana — planifica solo la operativa de flota, almacén y recogidas.',
     hasSaturday ? '' : 'El sábado no hay bodas esta semana — no generes saturdaySpecial.weddings, o déjalo vacío.',
     extraNotes.trim() ? `Notas adicionales: ${extraNotes.trim()}` : ''

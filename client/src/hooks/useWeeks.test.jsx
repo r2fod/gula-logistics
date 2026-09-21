@@ -70,3 +70,24 @@ describe('useWeeks — marcar y desmarcar tareas', () => {
     expect(patch).not.toHaveBeenCalledWith('week_3', 'domingo', 0, true, false);
   });
 });
+
+describe('useWeeks — crear semana con eventos', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('la semana nueva lleva SUS eventos con pax y una clonada no hereda los de la anterior', () => {
+    const { result } = montar();
+    const anterior = { ...semana(), events: [{ name: 'Boda Vieja', pax: 200 }] };
+    act(() => result.current.setAllWeeks({ week_3: anterior }));
+
+    act(() => result.current.handleCreateWeek({
+      name: 'Semana 4', dateRange: 'Del 22 al 27 de septiembre', cloneCurrent: true,
+      events: [{ name: 'Boda Nueva', pax: 90 }],
+    }));
+    const creada = Object.values(result.current.allWeeks).find(w => w.name === 'Semana 4');
+    expect(creada.events).toEqual([{ name: 'Boda Nueva', pax: 90 }]);
+
+    act(() => result.current.handleCreateWeek({ name: 'Semana 5', dateRange: 'Del 29 de septiembre al 4 de octubre', cloneCurrent: true }));
+    const sinEventos = Object.values(result.current.allWeeks).find(w => w.name === 'Semana 5');
+    expect(sinEventos.events).toEqual([]);
+  });
+});

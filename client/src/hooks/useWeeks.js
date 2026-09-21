@@ -153,7 +153,7 @@ export function useWeeks() {
   // bodas...). Cuando viene, sustituye schedule/saturdaySpecial/sundayMonday
   // del template — el template (clonado o base) solo aporta trucks/team si
   // no los trae el propio JSON generado.
-  const handleCreateWeek = ({ name, dateRange, cloneCurrent, aiGeneratedJson }) => {
+  const handleCreateWeek = ({ name, dateRange, cloneCurrent, aiGeneratedJson, events = [] }) => {
     const newId = `week_${Date.now()}`;
     const template = cloneCurrent ? JSON.parse(JSON.stringify(activeWeek)) : JSON.parse(JSON.stringify(BASE_WEEK_3));
 
@@ -172,6 +172,9 @@ export function useWeeks() {
         dateRange: ensureYearInDateRange(dateRange),
         status: "Operativa Activa"
       },
+      // Bodas y eventos de la semana con sus pax ([{ name, pax }]). Siempre los
+      // de ESTA semana: una semana clonada no hereda los eventos de la anterior.
+      events,
       schedule: aiGeneratedJson?.schedule || template.schedule,
       saturdaySpecial: aiGeneratedJson?.saturdaySpecial || template.saturdaySpecial,
       sundayMonday: aiGeneratedJson?.sundayMonday || template.sundayMonday
