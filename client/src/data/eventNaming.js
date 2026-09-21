@@ -75,12 +75,13 @@ export const getEventName = (taskName) => parseEventAndTask(taskName).eventName;
 // Una tarea puede servir a VARIOS eventos a la vez (ej. recoger material en
 // Dealde para dos bodas). Se escriben separados por " + " antes del guion:
 // "Boda Ana y Luis + Boda Eva y Pau - Recoger material Dealde". También se
-// entiende "Boda A y Boda B" (así se escribió antes de existir el separador):
-// una " y " solo separa si lo que sigue empieza por "Boda" o "Evento", para no
-// partir "Boda Ana y Luis". Devuelve la lista de eventos sin vacíos.
+// entiende "Boda A y Boda B" (así se escribió antes de existir el separador).
+// Un " + " o una " y " solo separan si lo que sigue empieza por "Boda" o
+// "Evento": así no se parte "Boda Ana y Luis" ni un evento cuyo nombre lleva
+// un "+" ("Evento Coffee + Comida Aitana", tal como está en el calendario). Devuelve la lista de eventos sin vacíos.
 export function splitEventNames(eventName) {
   return String(eventName || '')
-    .split(/\s+\+\s+|\s+y\s+(?=(?:boda|evento)\s)/i)
+    .split(/\s+[+y]\s+(?=(?:boda|evento)\s)/i)
     .map(n => n.trim())
     .filter(Boolean);
 }
@@ -108,6 +109,36 @@ export function getEventShares(eventNames, paxByEvent = {}) {
     return pax.map(p => p / total);
   }
   return eventNames.map(() => 1 / eventNames.length);
+}
+
+// Resolutor "texto de tarea/fichaje -> evento" a partir del PLANNING de las
+// semanas. Sirve para las tareas que no llevan el evento en el texto (todas las
+// anteriores al formato "Evento - Tarea"): cambiar sus textos desligaría los
+// fichajes ya hechos, que guardan el texto tal cual, así que el evento se anota
+// aparte en `task.event` (o `wedding.event`) y aquí se enlaza por el texto.
+// Prioridad: evento escrito en el texto > `event` de la tarea. Devuelve null si
+// el texto no es de ninguna tarea conocida (jornada general, tareas libres...).
+const normLabel = (s) => plain(s)
+  .replace(/\s*\(\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}\)\s*$/, '')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+export function buildTaskEventResolver(weeksMap = {}) {
+  const byLabel = new Map();
+  const add = (label, event) => { if (label && event) byLabel.set(normLabel(label), event); };
+
+  Object.values(weeksMap || {}).forEach(week => {
+    const lists = [...Object.values(week?.schedule || {}).map(d => d?.tasks), week?.sundayMonday?.tasks];
+    lists.forEach(list => (list || []).forEach(t => {
+      if (!t || typeof t !== 'object' || !t.text) return;
+      const parsed = parseEventAndTask(t.text);
+      add(t.text, parsed.explicit ? parsed.eventName : t.event);
+    }));
+    // Las bodas del sábado se fichan como "Boda: lugar (camión)".
+    (week?.saturdaySpecial?.weddings || []).forEach(w => add(`Boda: ${w.location} (${w.truck})`, w.event));
+  });
+
+  return (taskName) => byLabel.get(normLabel(taskName)) || null;
 }
 
 // Nombres de los eventos de la semana tal como los escribe el usuario en el

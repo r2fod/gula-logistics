@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { summarizeByEvent } from './eventSummary';
+import { buildTaskEventResolver } from './eventNaming';
 
 const turno = (workerName, subTasks) => ({ workerName, subTasks });
 const sub = (eventName, durationHours, cost) => ({ eventName, durationHours, cost });
@@ -59,5 +60,23 @@ describe('summarizeByEvent — reparto por pax', () => {
     const lista = summarizeByEvent([turno('Ana', [sub('Boda A + Boda B', 2, 20)])], roster, { 'boda a': 100 });
     expect(lista.map(e => e.totalCost)).toEqual([10, 10]);
     expect(lista.reduce((a, e) => a + e.totalCost, 0)).toBe(20);
+  });
+});
+
+describe('summarizeByEvent — evento del planning', () => {
+  const semanas = { w: { schedule: { martes: { tasks: [{ text: 'Descarga Refranys — recogida de material', event: 'Boda Rocío' }] } } } };
+  const resolver = buildTaskEventResolver(semanas);
+
+  it('un fichaje con el texto de una tarea anotada va al evento del planning y los totales no cambian', () => {
+    const turnos = [turno('Ana', [
+      { taskName: 'Descarga Refranys — recogida de material (10:30-16:00)', eventName: 'Logística Preparación', durationHours: 4, cost: 40 },
+      { taskName: 'Tarea suelta', eventName: 'Tarea suelta', durationHours: 1, cost: 10 },
+    ])];
+    const sin = summarizeByEvent(turnos, roster);
+    const con = summarizeByEvent(turnos, roster, {}, resolver);
+
+    expect(sin.map(e => e.eventName).sort()).toEqual(['Logística Preparación', 'Tarea suelta']);
+    expect(con.map(e => e.eventName).sort()).toEqual(['Boda Rocío', 'Tarea suelta']);
+    expect(con.reduce((a, e) => a + e.totalCost, 0)).toBe(sin.reduce((a, e) => a + e.totalCost, 0));
   });
 });

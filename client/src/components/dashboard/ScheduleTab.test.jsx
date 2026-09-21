@@ -99,3 +99,16 @@ describe('ScheduleTab — tarea de varios eventos', () => {
     expect(screen.getByText(/Recoger material Dealde/)).toBeInTheDocument();
   });
 });
+
+describe('ScheduleTab — evento anotado aparte (planning anterior al formato)', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('una tarea con task.event muestra su etiqueta y conserva su texto tal cual', () => {
+    vi.setSystemTime(new Date(2026, 8, 20, 12, 0));
+    renderTab(semana([{ text: 'Recoger material Dealde', event: 'Boda Ana y Luis + Boda Eva y Pau', timeFrame: '09:00-10:00', targetDay: 'Domingo', assigned: ['Ana'], completed: false }]));
+    expect(screen.getByText('Boda Ana y Luis')).toBeInTheDocument();
+    expect(screen.getByText('Boda Eva y Pau')).toBeInTheDocument();
+    expect(screen.getByText(/Recoger material Dealde/)).toBeInTheDocument();
+  });
+});

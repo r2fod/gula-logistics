@@ -5,9 +5,12 @@ import { parseEventAndTask, splitEventNames } from '../data/eventNaming';
 // la hoja de planing (una etiqueta por evento si la tarea es de varios). Solo
 // cambia cómo se ve: el texto guardado sigue siendo "Evento - Tarea". Sin
 // evento explícito se muestra tal cual.
-export default function TaskTextWithEvent({ text }) {
-  const { eventName, specificTaskName, explicit } = parseEventAndTask(text);
-  if (!explicit) return <>{text}</>;
+export default function TaskTextWithEvent({ text, event }) {
+  const parsed = parseEventAndTask(text);
+  // `event`: evento anotado aparte en la tarea (planning anterior al formato "Evento - Tarea").
+  const eventName = parsed.explicit ? parsed.eventName : event;
+  const specificTaskName = parsed.explicit ? parsed.specificTaskName : text;
+  if (!eventName) return <>{text}</>;
   return (
     <>
       {splitEventNames(eventName).map(name => (
