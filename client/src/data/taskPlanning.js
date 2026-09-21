@@ -359,7 +359,43 @@ export function isTaskEffectivelyDone(weekData, dayKey, task, now = new Date(), 
     if (task.completed) return true;
     if (task.reopened) return false;
   }
+  // Una semana TERMINADA lo tiene todo hecho, también lo que no tiene horario
+  // (el reloj no puede decir que terminó) o lo tiene mal escrito.
+  if (isWeekFinished(weekData, now, graceMinutes)) return true;
   return isTaskPast(weekData, dayKey, task, now, graceMinutes);
+}
+
+// ¿Ha terminado la semana? Sí cuando ya pasó su último día (el domingo del
+// rango) y NO queda ninguna tarea con horario por hacer (el lunes de cola sigue
+// vivo hasta que pasan sus horas + margen). Un borrador nunca termina. Sin
+// fechas legibles, no se puede decir: false.
+const TIENE_HORARIO = /^\s*\d{1,2}:\d{2}\s*[-–—]\s*\d{1,2}:\d{2}\s*$/;
+const cacheFinalizada = new WeakMap();
+
+function todasLasTareas(weekData) {
+  const out = [];
+  Object.entries(weekData?.schedule || {}).forEach(([dia, d]) => (d?.tasks || []).forEach(t => out.push(['' + dia, t])));
+  (weekData?.saturdaySpecial?.weddings || []).forEach(t => out.push(['sabado', t]));
+  (weekData?.sundayMonday?.tasks || []).forEach(t => out.push(['domingo', t]));
+  return out;
+}
+
+export function isWeekFinished(weekData, now = new Date(), graceMinutes = TASK_COMPLETION_GRACE_MINUTES) {
+  if (!weekData || weekData.meta?.status === 'Borrador') return false;
+  const minuto = Math.floor(now.getTime() / 60000);
+  const cache = cacheFinalizada.get(weekData);
+  if (cache && cache.minuto === minuto && cache.grace === graceMinutes) return cache.valor;
+
+  let valor = false;
+  const range = getWeekRange(weekData, now);
+  if (range) {
+    const lunesDeCola = addDays(range.end, 1);
+    const yaPasoElDomingo = now.getTime() >= lunesDeCola.getTime();
+    valor = yaPasoElDomingo && !todasLasTareas(weekData).some(([dia, t]) =>
+      t && typeof t === 'object' && TIENE_HORARIO.test(String(t.timeFrame || '')) && getTaskPastStatus(weekData, dia, t, now, graceMinutes) === false);
+  }
+  cacheFinalizada.set(weekData, { minuto, grace: graceMinutes, valor });
+  return valor;
 }
 
 // Añade el año al texto del rango si no lo trae ("Del 22 al 27 de Septiembre"

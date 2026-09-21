@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { logisticsData as BASE_DATA } from '../data/logisticsData';
 import { saveWeeksToAPI, patchTaskCompletionInAPI } from '../data/apiService';
-import { getTaskListForDay, buildTaskListPatch, getTaskPastStatus, isTaskEffectivelyDone, ensureYearInDateRange, clearWeekCompletion, TASK_COMPLETION_GRACE_MINUTES } from '../data/taskPlanning';
+import { getTaskListForDay, buildTaskListPatch, getTaskPastStatus, isTaskEffectivelyDone, isWeekFinished, ensureYearInDateRange, clearWeekCompletion, TASK_COMPLETION_GRACE_MINUTES } from '../data/taskPlanning';
 
 const ALL_DAY_KEYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'domingo', 'sabado'];
 
@@ -114,6 +114,37 @@ export function useWeeks() {
     patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, true, false);
   };
 
+  // Una semana TERMINADA lo tiene todo hecho: además de mostrarlo así
+  // (isTaskEffectivelyDone), se guarda en Mongo lo que quede sin marcar — tareas
+  // sin horario, mal escritas... — en cualquier semana terminada, no solo la
+  // activa. Respeta lo desmarcado a propósito (`reopened`). Idempotente: el
+  // servidor no escribe si la tarea ya estaba marcada.
+  const cerrarSemanasTerminadas = (now = new Date(), inProgressKeys = new Set()) => {
+    let cambios = false;
+    const semanas = { ...allWeeks };
+    Object.entries(allWeeks).forEach(([weekId, week]) => {
+      if (!isWeekFinished(week, now)) return;
+      let semana = week;
+      ALL_DAY_KEYS.forEach(dayKey => {
+        const lista = [...getTaskListForDay(semana, dayKey)];
+        let tocada = false;
+        lista.forEach((task, idx) => {
+          if (typeof task !== 'object' || task === null || task.completed || task.reopened) return;
+          if (weekId === activeWeekId && inProgressKeys.has(`${dayKey}:${idx}`)) return; // alguien está fichado en ella
+          lista[idx] = { ...task, completed: true, reopened: false };
+          patchTaskCompletionInAPI(weekId, dayKey, idx, true, false);
+          tocada = true;
+        });
+        if (tocada) { semana = { ...semana, ...buildTaskListPatch(semana, dayKey, lista) }; cambios = true; }
+      });
+      semanas[weekId] = semana;
+    });
+    if (cambios) {
+      applyLocalWeeksState(semanas);
+      lastLocalEditRef.current = Date.now();
+    }
+  };
+
   // Recorre TODAS las tareas de la semana activa (días normales, domingo/
   // lunes, y bodas de sábado) y marca como completadas de verdad en Mongo
   // las que ya pasaron su horario con margen de sobra (TASK_COMPLETION_
@@ -135,6 +166,10 @@ export function useWeeks() {
   // las que hay alguien fichado ahora mismo (ver getInProgressTaskKeys).
   const autoCompletePastTasks = (inProgressKeys = new Set()) => {
     const now = new Date();
+    cerrarSemanasTerminadas(now, inProgressKeys);
+    // Si la activa ya está terminada, lo de arriba lo ha cerrado todo: seguir con
+    // el repaso tarea a tarea repetiría los PATCH y pisaría ese estado local.
+    if (isWeekFinished(activeWeek, now)) return;
     ALL_DAY_KEYS.forEach(dayKey => {
       const list = getTaskListForDay(activeWeek, dayKey);
       list.forEach((task, idx) => {

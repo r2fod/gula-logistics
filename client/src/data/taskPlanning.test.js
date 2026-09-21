@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getTaskListForDay, resolveTaskIndexByText, buildTaskListPatch, isTaskChronologicallyPast, isTaskTooEarlyToClockIn,
-  parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, getNextTaskStart, isTaskTooEarlyToStart, isTaskEffectivelyDone,
+  parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, getNextTaskStart, isTaskTooEarlyToStart, isTaskEffectivelyDone, isWeekFinished,
 } from './taskPlanning';
 
 const weekData = {
@@ -441,10 +441,13 @@ describe('getNextTaskStart — tareas sin etiquetar domingo/lunes', () => {
 describe('isTaskEffectivelyDone — lo que se ve, lo que hace el clic y lo que se guarda', () => {
   const generador = { text: 'Devolución Generador', timeFrame: '09:30 - 10:00', targetDay: 'Lunes', completed: false };
 
+  // La tarea está DENTRO de la semana, como en la realidad (si no, no habría nada que retenerla).
+  const semanaConGenerador = { ...SEMANA_ACTUAL, sundayMonday: { tasks: [generador] } };
+
   it('BUG evitado: a las 10:03 (captura) NO se ve hecha una tarea de 09:30-10:00: hasta las 10:45 (margen de 45 min)', () => {
-    expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'domingo', generador, at(2026, 9, 21, 10, 3))).toBe(false);
-    expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'domingo', generador, at(2026, 9, 21, 10, 44))).toBe(false);
-    expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'domingo', generador, at(2026, 9, 21, 10, 46))).toBe(true);
+    expect(isTaskEffectivelyDone(semanaConGenerador, 'domingo', generador, at(2026, 9, 21, 10, 3))).toBe(false);
+    expect(isTaskEffectivelyDone(semanaConGenerador, 'domingo', generador, at(2026, 9, 21, 10, 44))).toBe(false);
+    expect(isTaskEffectivelyDone(semanaConGenerador, 'domingo', generador, at(2026, 9, 21, 10, 46))).toBe(true);
   });
 
   it('completed:true siempre está hecha', () => {
@@ -458,13 +461,52 @@ describe('isTaskEffectivelyDone — lo que se ve, lo que hace el clic y lo que s
     expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'domingo', { ...reabierta, completed: true }, at(2026, 9, 21, 12, 0))).toBe(true);
   });
 
-  it('texto plano y tareas sin horario no se dan por hechas por el reloj', () => {
-    expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'martes', 'texto', at(2026, 9, 25, 12, 0))).toBe(false);
-    expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'martes', { text: 'sin hora' }, at(2026, 9, 25, 12, 0))).toBe(false);
+  it('con la semana en curso, texto plano y tareas sin horario no se dan por hechas por el reloj', () => {
+    const viernes = at(2026, 9, 18, 12, 0); // dentro de la semana 15-20
+    expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'martes', 'texto', viernes)).toBe(false);
+    expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'martes', { text: 'sin hora' }, viernes)).toBe(false);
   });
 
   it('clearWeekCompletion también quita el desmarcado a mano', () => {
     const w = { sundayMonday: { tasks: [{ text: 'a', completed: false, reopened: true }] } };
     expect(clearWeekCompletion(w).sundayMonday.tasks[0]).toEqual({ text: 'a', completed: false });
+  });
+});
+
+describe('isWeekFinished — una semana terminada lo tiene TODO hecho', () => {
+  const semana = () => ({
+    meta: { dateRange: 'Del 15 al 20 de Septiembre de 2026' },
+    schedule: { martes: { tasks: [{ text: 'Con hora', timeFrame: '09:00-10:00' }, { text: 'Sin hora' }, { text: 'Hora rara', timeFrame: 'por la tarde' }] } },
+    saturdaySpecial: { weddings: [{ location: 'Finca', truck: 'Camión', timeFrame: '20:30-00:30' }] },
+    sundayMonday: { tasks: [{ text: 'Devolución', timeFrame: '11:30-12:30', targetDay: 'Lunes' }] },
+  });
+
+  it('BUG evitado: lo que no tiene horario (o lo tiene mal escrito) también queda hecho cuando la semana termina', () => {
+    const w = semana();
+    const lunesTarde = at(2026, 9, 21, 16, 0); // ya pasó el lunes de cola
+    expect(isWeekFinished(w, lunesTarde)).toBe(true);
+    expect(isTaskEffectivelyDone(w, 'martes', w.schedule.martes.tasks[1], lunesTarde)).toBe(true); // sin hora
+    expect(isTaskEffectivelyDone(w, 'martes', w.schedule.martes.tasks[2], lunesTarde)).toBe(true); // hora rara
+  });
+
+  it('no termina antes: el domingo por la noche, o el lunes mientras queden tareas con horario por hacer', () => {
+    expect(isWeekFinished(semana(), at(2026, 9, 20, 23, 0))).toBe(false);
+    expect(isWeekFinished(semana(), at(2026, 9, 21, 10, 0))).toBe(false); // la devolución del lunes es a las 11:30
+    expect(isWeekFinished(semana(), at(2026, 9, 21, 13, 0))).toBe(false); // termina 12:30 + 45 min
+    expect(isWeekFinished(semana(), at(2026, 9, 21, 13, 20))).toBe(true);
+  });
+
+  it('un borrador no termina nunca, ni una semana con fechas ilegibles', () => {
+    expect(isWeekFinished({ ...semana(), meta: { ...semana().meta, status: 'Borrador' } }, at(2026, 10, 5))).toBe(false);
+    expect(isWeekFinished({ meta: { dateRange: 'fechas raras' }, schedule: {} }, at(2026, 10, 5))).toBe(false);
+  });
+
+  it('lo desmarcado a propósito (reopened) sigue mandando aunque la semana haya terminado', () => {
+    const w = semana();
+    expect(isTaskEffectivelyDone(w, 'martes', { text: 'x', reopened: true }, at(2026, 9, 25, 12, 0))).toBe(false);
+  });
+
+  it('una semana futura no está terminada', () => {
+    expect(isWeekFinished(semana(), at(2026, 9, 10))).toBe(false);
   });
 });

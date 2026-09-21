@@ -91,3 +91,36 @@ describe('useWeeks — crear semana con eventos', () => {
     expect(sinEventos.events).toEqual([]);
   });
 });
+
+describe('useWeeks — semanas terminadas', () => {
+  beforeEach(() => { vi.useFakeTimers(); patch.mockReset(); });
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+
+  it('al terminar la semana se guarda como hecho lo que quede sin marcar (también sin horario), y no se repite', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 16, 0)); // lunes tarde: la semana 15-20 ya terminó
+    const w = semana();
+    w.sundayMonday.tasks.push({ text: 'Sin horario', assigned: ['Ana'], completed: false });
+    vi.stubGlobal('localStorage', { store: { gula_logistics_all_weeks_v10: JSON.stringify({ week_3: w }) }, getItem(k) { return this.store[k] ?? null; }, setItem(k, v) { this.store[k] = v; }, removeItem(k) { delete this.store[k]; } });
+    const { result } = renderHook(() => useWeeks());
+
+    act(() => result.current.autoCompletePastTasks());
+    const indices = patch.mock.calls.filter(c => c[3] === true).map(c => c[2]).sort();
+    expect(indices).toEqual([0, 1, 2]); // las tres, incluida la que no tiene horario
+    expect(result.current.activeWeek.sundayMonday.tasks.every(t => t.completed)).toBe(true);
+
+    patch.mockReset();
+    act(() => result.current.autoCompletePastTasks());
+    expect(patch).not.toHaveBeenCalled(); // ya cerrada: no vuelve a escribir
+  });
+
+  it('respeta lo desmarcado a propósito y las tareas en proceso', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 16, 0));
+    const w = semana();
+    w.sundayMonday.tasks[0].reopened = true;
+    vi.stubGlobal('localStorage', { store: { gula_logistics_all_weeks_v10: JSON.stringify({ week_3: w }) }, getItem(k) { return this.store[k] ?? null; }, setItem(k, v) { this.store[k] = v; }, removeItem(k) { delete this.store[k]; } });
+    const { result } = renderHook(() => useWeeks());
+    act(() => result.current.autoCompletePastTasks(new Set(['domingo:1'])));
+    expect(patch).not.toHaveBeenCalledWith('week_3', 'domingo', 0, true, false); // reabierta
+    expect(patch).not.toHaveBeenCalledWith('week_3', 'domingo', 1, true, false); // en proceso
+  });
+});
