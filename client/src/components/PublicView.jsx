@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 import LiveMonitorPanel from './LiveMonitorPanel';
-import { getTaskListForDay } from '../data/taskPlanning';
+import { getTaskListForDay, isTaskEffectivelyDone } from '../data/taskPlanning';
 
 export default function PublicView({ 
   data = {}, 
@@ -47,9 +47,13 @@ export default function PublicView({
   // sundayMonday.tasks y saturdaySpecial.weddings), así que el tile
   // "Progreso Tareas" marcaba 0% siempre. getTaskListForDay ya resuelve
   // dónde vive cada día (incluido el caso domingo/lunes y las bodas).
+  // "Hecha" con la misma regla que el resto de vistas (marcada, o pasada su hora
+  // + margen): sin esto, una semana ya terminada sin nadie con la app de admin
+  // abierta seguía marcando un progreso menor al real.
+  const ahora = new Date();
   const allWeekTasks = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
-    .flatMap(dayKey => getTaskListForDay(data, dayKey));
-  const completedTasksCount = allWeekTasks.filter(t => t && typeof t === 'object' && t.completed).length;
+    .flatMap(dayKey => getTaskListForDay(data, dayKey).map(t => ({ dayKey, t })));
+  const completedTasksCount = allWeekTasks.filter(({ dayKey, t }) => isTaskEffectivelyDone(data, dayKey, t, ahora)).length;
   const taskProgressPercent = allWeekTasks.length > 0 ? Math.round((completedTasksCount / allWeekTasks.length) * 100) : 0;
 
   const filteredTeam = team.filter(item => 

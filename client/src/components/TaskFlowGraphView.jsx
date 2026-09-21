@@ -22,7 +22,7 @@ import {
   PackagePlus,
   PackageCheck
 } from 'lucide-react';
-import { getDayLabel, getWeddingsBadge } from '../data/taskPlanning';
+import { getDayLabel, getWeddingsBadge, isTaskEffectivelyDone } from '../data/taskPlanning';
 
 // Categoriza una tarea por su texto para darle un icono/color propio en el
 // grafo — pura ayuda visual para distinguir de un vistazo qué tipo de
@@ -62,6 +62,8 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
   const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   const slug = (s) => normalize(s).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 
+  // Cambia cada minuto: el grafo se recalcula cuando pasa la hora de una tarea.
+  const minutoActual = Math.floor(Date.now() / 60000);
   const graphData = useMemo(() => {
     const nodes = [];
     const links = [];
@@ -152,6 +154,12 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
     };
 
     // 4. Task Nodes & Links
+    // Una tarea cuenta como hecha con la MISMA regla que el resto de vistas
+    // (marcada, o pasada su hora + margen y no desmarcada a propósito). Antes
+    // aquí solo se leía la casilla guardada — y a las bodas del sábado y a las
+    // tareas de domingo/lunes ni siquiera se les calculaba —, así que una
+    // semana ya terminada seguía enseñando tareas pendientes en el grafo.
+    const ahora = new Date();
     const rawSchedule = activeWeekData?.schedule || {};
 
     const dayConfigs = [
@@ -166,7 +174,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
       dayTasks.forEach((tItem, idx) => {
         const id = `task_${dayKey}_${idx}`;
         const textStr = typeof tItem === 'object' ? tItem.text : tItem;
-        const completed = typeof tItem === 'object' ? !!tItem.completed : false;
+        const completed = isTaskEffectivelyDone(activeWeekData, dayKey, tItem, ahora);
         const assigned = typeof tItem === 'object' ? tItem.assigned : [];
         const truck = typeof tItem === 'object' ? tItem.truck : null;
         const timeFrame = typeof tItem === 'object' ? tItem.timeFrame : null;
@@ -183,7 +191,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
 
     weddings.forEach((w, idx) => {
       const id = `task_sabado_${idx}`;
-      nodes.push({ id, type: 'task', label: `💒 ${w.location}`, sub: w.details, timeFrame: w.timeFrame, dayId: 'day_sabado', dayKey: 'saturdaySpecial', idx });
+      nodes.push({ id, type: 'task', label: `💒 ${w.location}`, sub: w.details, timeFrame: w.timeFrame, completed: isTaskEffectivelyDone(activeWeekData, 'sabado', w, ahora), dayId: 'day_sabado', dayKey: 'saturdaySpecial', idx });
       links.push({ source: 'day_sabado', target: id });
 
       if (w.truck) {
@@ -203,7 +211,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
       const assigned = typeof tItem === 'object' ? tItem.assigned : [];
       const truck = typeof tItem === 'object' ? tItem.truck : null;
       const timeFrame = typeof tItem === 'object' ? tItem.timeFrame : null;
-      nodes.push({ id, type: 'task', label: textStr, timeFrame, dayId: 'day_domingo', dayKey: 'sundayMonday', idx });
+      nodes.push({ id, type: 'task', label: textStr, timeFrame, completed: isTaskEffectivelyDone(activeWeekData, 'domingo', tItem, ahora), dayId: 'day_domingo', dayKey: 'sundayMonday', idx });
       links.push({ source: 'day_domingo', target: id });
 
       linkTruck(id, truck, textStr);
@@ -237,7 +245,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
     }
 
     return { nodes, links };
-  }, [activeWeekData, workersList, restrictToWorkerName]);
+  }, [activeWeekData, workersList, restrictToWorkerName, minutoActual]);
 
   // Connected node IDs calculation when a node is hovered/clicked.
   const connectedNodeIds = useMemo(() => {
