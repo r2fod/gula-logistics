@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Edit3, Save, Plus, Trash2, Calendar, ChevronUp, ChevronDown } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronUp, Edit3, MapPin, Plus, Save, Trash2, Users } from 'lucide-react';
 import { getTaskListForDay, buildTaskListPatch } from '../data/taskPlanning';
 import { collectEventNames, splitEventNames, parseEventAndTask, EVENT_CATEGORIES } from '../data/eventNaming';
 import Modal from './ui/Modal';
@@ -425,7 +425,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
           return (
             <details className="bg-slate-950/50 rounded-2xl border border-slate-800 mt-3">
               <summary className="cursor-pointer px-4 py-3 text-xs font-extrabold text-amber-300">
-                👥 Pax por boda/evento (para repartir costes)
+                <Users className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Pax por boda/evento (para repartir costes)
               </summary>
               <div className="px-4 pb-4 space-y-2">
                 <p className="text-[11px] text-slate-500">
@@ -624,7 +624,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                           />
                           {mapsValue && (
                             <a href={mapsValue} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:text-blue-300 underline mt-1 inline-block">
-                              📍 Abrir en Google Maps
+                              <MapPin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Abrir en Google Maps
                             </a>
                           )}
                         </div>

@@ -1,22 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Clock,
-  CheckCircle2,
-  Calendar,
-  MapPin,
-  Lock,
-  Play,
-  Square,
-  CheckSquare,
-  BarChart3,
-  Award,
-  Zap,
-  Target,
-  Users,
-  Car,
-  Bell,
-  Settings
-} from 'lucide-react';
+import { Award, BarChart3, Bell, Calendar, Car, CheckCircle2, CheckSquare, Clock, ListTodo, Lock, MapPin, Pin, Play, Plus, Settings, Square, Target, Users, Zap } from 'lucide-react';
 import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
@@ -35,14 +18,14 @@ import EstadoVacio from './ui/EstadoVacio';
 // vista (no en cada render, para que no cambie cada segundo). Todas dicen
 // claramente lo que hace el botón.
 const START_JORNADA_LABELS = [
-  '🟢 INICIAR JORNADA AHORA',
-  '🚚 ¡ARRANCAMOS! INICIAR JORNADA',
-  '💪 ¡A POR EL DÍA! INICIAR JORNADA',
-  '🔥 ¡VAMOS ALLÁ! INICIAR JORNADA',
-  '☕ CAFÉ TOMADO: INICIAR JORNADA',
-  '📦 ¡A MOVER CAJAS! INICIAR JORNADA',
-  '🛣️ ¡A LA CARRETERA! INICIAR JORNADA',
-  '🎯 ¡CON GANAS! INICIAR JORNADA',
+  'INICIAR JORNADA AHORA',
+  '¡ARRANCAMOS! INICIAR JORNADA',
+  '¡A POR EL DÍA! INICIAR JORNADA',
+  '¡VAMOS ALLÁ! INICIAR JORNADA',
+  'CAFÉ TOMADO: INICIAR JORNADA',
+  '¡A MOVER CAJAS! INICIAR JORNADA',
+  '¡A LA CARRETERA! INICIAR JORNADA',
+  '¡CON GANAS! INICIAR JORNADA',
 ];
 
 // Aviso gris con candado: la acción todavía no se puede hacer (el día no ha llegado o aún
@@ -495,13 +478,13 @@ export default function WorkerView({
                   </span>
                 </div>
                 <span className="text-sm sm:text-base font-extrabold font-mono text-emerald-400 bg-slate-900 px-2.5 py-0.5 rounded-lg border border-slate-800">
-                  ⏱️ {elapsedTimeFormatted}
+                  <Clock className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{elapsedTimeFormatted}
                 </span>
               </div>
 
               <div>
                 <p className="text-sm sm:text-base font-extrabold text-white font-['Outfit']">
-                  📌 {activeShift.taskName === 'JORNADA' ? 'Jornada Laboral Iniciada' : (activeShift.taskName || 'Turno Operativo General')}
+                  <Pin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{activeShift.taskName === 'JORNADA' ? 'Jornada Laboral Iniciada' : (activeShift.taskName || 'Turno Operativo General')}
                 </p>
               </div>
 
@@ -546,12 +529,12 @@ export default function WorkerView({
                             {isLocked ? (
                               <>
                                 <Lock className="w-3.5 h-3.5" />
-                                <span>🔒 Esperando día...</span>
+                                <span>Esperando día...</span>
                               </>
                             ) : (
                               <>
                                 <CheckSquare className="w-3.5 h-3.5" />
-                                <span>☑️ Marcar Tarea como COMPLETADA</span>
+                                <span>Marcar Tarea como COMPLETADA</span>
                               </>
                             )}
                           </button>
@@ -575,7 +558,7 @@ export default function WorkerView({
                 className="w-full py-3.5 px-4 rounded-xl text-sm font-extrabold bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center space-x-2 transition-all shadow-xl shadow-rose-600/30 active:scale-95"
               >
                 <Square className="w-4 h-4" />
-                <span>{activeShift.taskName === 'JORNADA' ? '🔴 FINALIZAR JORNADA' : '🔴 Fichar Salida / Finalizar Turno'}</span>
+                <span>{activeShift.taskName === 'JORNADA' ? 'FINALIZAR JORNADA' : 'Fichar Salida / Finalizar Turno'}</span>
               </button>
 
               {/* BOTÓN DESHACER: Disponible solo durante los primeros 15 min */}
@@ -665,10 +648,10 @@ export default function WorkerView({
               }}
               className="hover:text-amber-400 text-slate-300 underline decoration-slate-700 hover:decoration-amber-400 transition-colors"
             >
-              ➕ O fichar otra tarea libre
+              <Plus className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />O fichar otra tarea libre
             </button>
             <span className="text-[10px] text-slate-500">
-              🔒 Registro seguro
+              <Lock className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Registro seguro
             </span>
           </div>
         </div>
@@ -715,7 +698,7 @@ export default function WorkerView({
           }`}
         >
           <Calendar className="w-3.5 h-3.5" />
-          <span>📋 Mis Tareas ({totalAssignedTasks})</span>
+          <span>Mis Tareas ({totalAssignedTasks})</span>
         </button>
 
         <button
@@ -727,7 +710,7 @@ export default function WorkerView({
           }`}
         >
           <Clock className="w-3.5 h-3.5" />
-          <span>⏱️ Mis Fichajes ({myEntries.length})</span>
+          <span>Mis Fichajes ({myEntries.length})</span>
         </button>
       </div>
 
@@ -760,7 +743,7 @@ export default function WorkerView({
                   : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
               }`}
             >
-              📅 Calendario
+              <Calendar className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Calendario
             </button>
 
             <button
@@ -772,7 +755,7 @@ export default function WorkerView({
               }`}
             >
               <Zap className="w-3.5 h-3.5 text-amber-400 inline mr-1" />
-              <span>🕸️ Grafo</span>
+              <span>Grafo</span>
             </button>
           </div>
         </div>
@@ -791,7 +774,7 @@ export default function WorkerView({
                     : 'bg-slate-950 text-slate-200 border-slate-800 hover:text-white'
                 }`}
               >
-                <span>⚡ Hoy ({weekDays.find(d => d.key === todayKey)?.label || 'Hoy'})</span>
+                <span><Zap className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Hoy ({weekDays.find(d => d.key === todayKey)?.label || 'Hoy'})</span>
               </button>
 
               <button
@@ -802,7 +785,7 @@ export default function WorkerView({
                     : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
                 }`}
               >
-                📋 Toda la Semana ({totalAssignedTasks})
+                <ListTodo className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Toda la Semana ({totalAssignedTasks})
               </button>
 
               {daysWithActivities.map((day) => {
@@ -876,7 +859,7 @@ export default function WorkerView({
                       <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
                         <div>
                           <h4 className="font-extrabold text-amber-300 text-sm sm:text-base font-['Outfit']">
-                            📅 {dayGroup.title}
+                            <Calendar className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{dayGroup.title}
                           </h4>
                           <span className="text-[11px] text-slate-400 block mt-0.5">{dayGroup.badge}</span>
                         </div>
@@ -977,7 +960,7 @@ export default function WorkerView({
                                       className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95"
                                     >
                                       <Play className="w-3 h-3" />
-                                      <span>⏱️ Fichar Esta Tarea</span>
+                                      <span>Fichar Esta Tarea</span>
                                     </button>
                                   )
                                 )}
@@ -1020,7 +1003,7 @@ export default function WorkerView({
                                     <div>
                                       <div className="flex items-center flex-wrap gap-2">
                                         <span className={`font-black text-sm ${isCompleted ? 'line-through opacity-70' : 'text-white'}`}>
-                                          🏔️ {w.location}
+                                          <MapPin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{w.location}
                                         </span>
                                         {w.timeFrame && (
                                           <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">
@@ -1067,7 +1050,7 @@ export default function WorkerView({
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95 mt-1"
                                       >
                                         <Play className="w-3 h-3" />
-                                        <span>⏱️ Fichar Boda Sábado</span>
+                                        <span>Fichar Boda Sábado</span>
                                       </button>
                                     )}
                                   </div>
@@ -1137,7 +1120,7 @@ export default function WorkerView({
                     )}
                   </div>
                   <p className="text-xs text-slate-300 font-medium">
-                    📌 {entry.taskName || entry.note || 'Turno General'}
+                    <Pin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{entry.taskName || entry.note || 'Turno General'}
                   </p>
                   <div className="flex items-center justify-between pt-2 border-t border-slate-800/60 mt-1">
                     <span className="text-[10px] text-slate-400">

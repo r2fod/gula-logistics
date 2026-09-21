@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Play, Square, Lock } from 'lucide-react';
+import { Briefcase, Clock, Euro, Lock, Pin, Play, Square } from 'lucide-react';
 import { getActiveShiftForWorker } from '../data/shiftCalculations';
 import { crearFichaje } from '../data/fichajes';
 import { formatTime, formatDateLong } from '../utils/dateUtils';
@@ -107,11 +107,11 @@ export default function ClockInModal({
           <span className="text-slate-400">Tipo de Contrato:</span>
           {currentWorkerObj.isPayroll ? (
             <span className="font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-              💼 Nómina Fija (Irene / Raúl)
+              <Briefcase className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Nómina Fija (Irene / Raúl)
             </span>
           ) : (
             <span className="font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-              💶 Extra 10,00 € / hora
+              <Euro className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Extra 10,00 € / hora
             </span>
           )}
         </div>
@@ -128,7 +128,7 @@ export default function ClockInModal({
             </div>
             {activeShift.taskName && (
               <p className="text-[11px] text-slate-300 font-medium pt-1 border-t border-emerald-500/20">
-                📌 <b>Tarea:</b> {activeShift.taskName}
+                <Pin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" /><b>Tarea:</b> {activeShift.taskName}
               </p>
             )}
           </div>
@@ -189,7 +189,7 @@ export default function ClockInModal({
           }`}
         >
           <Play className="w-4 h-4 fill-current" />
-          <span>🟢 Fichar Entrada</span>
+          <span>Fichar Entrada</span>
         </button>
 
         <button
@@ -202,7 +202,7 @@ export default function ClockInModal({
           }`}
         >
           <Square className="w-4 h-4 fill-current" />
-          <span>🔴 Fichar Salida</span>
+          <span>Fichar Salida</span>
         </button>
       </div>
     </Modal>

@@ -1,22 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import {
-  Calendar,
-  Truck,
-  Users,
-  Clock,
-  CheckCircle2,
-  Circle,
-  Filter,
-  Layers,
-  Sparkles,
-  Zap,
-  PartyPopper,
-  Undo2,
-  ClipboardList,
-  PackageMinus,
-  PackagePlus,
-  PackageCheck
-} from 'lucide-react';
+import { BarChart3, Calendar, Check, CheckCircle2, Circle, ClipboardList, Clock, Filter, Globe, Layers, ListTodo, PackageCheck, PackageMinus, PackagePlus, PartyPopper, Share2, Sparkles, Truck, Undo2, Users, Zap } from 'lucide-react';
 import { getDayLabel, getWeddingsBadge, isTaskEffectivelyDone } from '../data/taskPlanning';
 import { Selector } from './ui/Campo';
 import Tarjeta from './ui/Tarjeta';
@@ -378,7 +361,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                 viewMode === 'graph' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
               }`}
             >
-              🕸️ Grafo
+              <Share2 className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Grafo
             </button>
             <button
               onClick={() => setViewMode('gantt')}
@@ -386,7 +369,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                 viewMode === 'gantt' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
               }`}
             >
-              📊 Gantt
+              <BarChart3 className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Gantt
             </button>
           </div>
         </div>
@@ -408,7 +391,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                   : 'bg-slate-900 text-slate-400 border-slate-800'
               }`}
             >
-              🌐 Vista Completa
+              <Globe className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Vista Completa
             </button>
             <button
               onClick={() => setMobileColumn('days')}
@@ -418,7 +401,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                   : 'bg-slate-900 text-slate-400 border-slate-800'
               }`}
             >
-              📅 Días ({dayNodes.length})
+              <Calendar className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Días ({dayNodes.length})
             </button>
             <button
               onClick={() => setMobileColumn('tasks')}
@@ -428,7 +411,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                   : 'bg-slate-900 text-slate-400 border-slate-800'
               }`}
             >
-              📋 Tareas ({taskNodes.length})
+              <ListTodo className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Tareas ({taskNodes.length})
             </button>
             <button
               onClick={() => setMobileColumn('trucks')}
@@ -438,7 +421,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                   : 'bg-slate-900 text-slate-400 border-slate-800'
               }`}
             >
-              🚚 Camiones ({truckNodes.length})
+              <Truck className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Camiones ({truckNodes.length})
             </button>
             <button
               onClick={() => setMobileColumn('workers')}
@@ -448,7 +431,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                   : 'bg-slate-900 text-slate-400 border-slate-800'
               }`}
             >
-              👥 Personal ({workerNodes.length})
+              <Users className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Personal ({workerNodes.length})
             </button>
           </div>
 
@@ -485,7 +468,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                 {connectedRouteDetails?.connectedDays.length > 0 && (
                   <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-[10px] font-bold uppercase text-blue-400 block mb-1">📅 Días Involucrados</span>
+                    <span className="text-[10px] font-bold uppercase text-blue-400 block mb-1"><Calendar className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Días Involucrados</span>
                     <div className="flex flex-wrap gap-1">
                       {connectedRouteDetails.connectedDays.map(d => (
                         <span key={d.id} className="text-[11px] font-semibold text-slate-200 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-md">
@@ -498,7 +481,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
 
                 {connectedRouteDetails?.connectedTrucks.length > 0 && (
                   <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-[10px] font-bold uppercase text-emerald-400 block mb-1">🚚 Flota Asignada</span>
+                    <span className="text-[10px] font-bold uppercase text-emerald-400 block mb-1"><Truck className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Flota Asignada</span>
                     <div className="flex flex-wrap gap-1">
                       {connectedRouteDetails.connectedTrucks.map(tr => (
                         <span key={tr.id} className="text-[11px] font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
@@ -511,7 +494,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
 
                 {connectedRouteDetails?.connectedWorkers.length > 0 && (
                   <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-[10px] font-bold uppercase text-purple-400 block mb-1">👥 Personal en Ruta</span>
+                    <span className="text-[10px] font-bold uppercase text-purple-400 block mb-1"><Users className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Personal en Ruta</span>
                     <div className="flex flex-wrap gap-1">
                       {connectedRouteDetails.connectedWorkers.map(w => (
                         <span key={w.id} className="text-[11px] font-semibold text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-md">
@@ -527,7 +510,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
               {selectedNodeObj.type !== 'task' && connectedRouteDetails?.connectedTasks.length > 0 && (
                 <div className="pt-2 border-t border-slate-800/80">
                   <span className="text-[10px] font-bold uppercase text-amber-400 block mb-1.5">
-                    📋 Tareas en este Flujo ({connectedRouteDetails.connectedTasks.length})
+                    <ListTodo className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Tareas en este Flujo ({connectedRouteDetails.connectedTasks.length})
                   </span>
                   <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
                     {connectedRouteDetails.connectedTasks.map(ct => (
@@ -537,7 +520,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                         </span>
                         {ct.completed && (
                           <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
-                            ✓ Hecho
+                            <Check className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Hecho
                           </span>
                         )}
                       </div>

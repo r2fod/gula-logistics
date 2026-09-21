@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DollarSign, Clock, Copy, Check, Trash2, Calendar, Lock, Edit3, Plus, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Calendar, Check, Clock, Copy, Crown, DollarSign, Edit3, ListChecks, Lock, Plus, ShieldCheck, Trash2 } from 'lucide-react';
 import AdminClockEditModal from './AdminClockEditModal';
 import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../data/shiftCalculations';
 import { horaDeFichaje, fechaDeFichaje } from '../data/fichajes';
@@ -272,11 +272,11 @@ export default function PayrollReportModal({
           </div>
           {isAdmin ? (
             <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-1 rounded-md font-bold shrink-0">
-              👑 Modo Admin Activo
+              <Crown className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Modo Admin Activo
             </span>
           ) : (
             <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-1 rounded-md font-bold shrink-0">
-              🔒 Vista Trabajador
+              <Lock className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Vista Trabajador
             </span>
           )}
         </div>
@@ -334,7 +334,7 @@ export default function PayrollReportModal({
                 viewTab === 'raw_entries' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
               }`}
             >
-              ⚙️ Fichajes Individuales ({entries.length})
+              <ListChecks className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Fichajes Individuales ({entries.length})
             </button>
             <button
               onClick={() => setViewTab('estimated')}
@@ -342,7 +342,7 @@ export default function PayrollReportModal({
                 viewTab === 'estimated' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
               }`}
             >
-              📅 Estimado (Planning)
+              <Calendar className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Estimado (Planning)
             </button>
             {isAdmin && (
               <button
@@ -351,7 +351,7 @@ export default function PayrollReportModal({
                   viewTab === 'trash' ? 'bg-rose-500 text-slate-950' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                🗑️ Papelera ({deletedEntries.length})
+                <Trash2 className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Papelera ({deletedEntries.length})
               </button>
             )}
           </div>
@@ -495,7 +495,7 @@ export default function PayrollReportModal({
                           </div>
                           {s.isAnomalous && (
                             <div className="text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1 py-0.5 rounded mt-1 inline-flex items-center gap-1" title="El sistema ha capado este turno a 14h automáticamente por seguridad. Revisa las horas reales.">
-                              ⚠️ Capado 14h
+                              <AlertTriangle className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Capado 14h
                             </div>
                           )}
                         </td>
@@ -684,7 +684,7 @@ export default function PayrollReportModal({
             {filteredUnestimableTasks.length > 0 && (
               <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-3">
                 <p className="text-[11px] font-semibold text-slate-300 mb-2">
-                  ⚠️ {filteredUnestimableTasks.length} tarea{filteredUnestimableTasks.length === 1 ? '' : 's'} con gente asignada pero sin horario completo (no se ha podido estimar su duración):
+                  <AlertTriangle className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{filteredUnestimableTasks.length} tarea{filteredUnestimableTasks.length === 1 ? '' : 's'} con gente asignada pero sin horario completo (no se ha podido estimar su duración):
                 </p>
                 <ul className="space-y-1 max-h-40 overflow-y-auto pr-1">
                   {filteredUnestimableTasks.map((t, idx) => (

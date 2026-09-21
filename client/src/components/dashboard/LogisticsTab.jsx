@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Truck, Settings } from 'lucide-react';
+import { MapPin, Settings, Truck } from 'lucide-react';
 import FleetManagerModal from '../FleetManagerModal';
 import Tarjeta from '../ui/Tarjeta';
 
@@ -7,7 +7,7 @@ import Tarjeta from '../ui/Tarjeta';
 function TarjetaEvento({ lugar, camion, detalle }) {
   return (
     <Tarjeta className="p-5 space-y-2">
-      <span className="font-extrabold text-amber-300 block text-base font-['Outfit']">🏔️ {lugar}</span>
+      <span className="font-extrabold text-amber-300 block text-base font-['Outfit']"><MapPin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{lugar}</span>
       <span className="text-slate-200 block font-semibold">{camion}</span>
       <p className="text-xs text-slate-400 leading-relaxed">{detalle}</p>
     </Tarjeta>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, KeyRound, AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, KeyRound, Lightbulb, RefreshCw, ShieldCheck } from 'lucide-react';
 import { loginAdmin } from '../data/apiService';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
@@ -88,7 +88,7 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
       </form>
 
       <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 leading-relaxed space-y-1">
-        <p>💡 <b>Nota:</b> El Panel de Administrador permite editar/borrar fichajes, crear semanas, lanzar Gemini AI y distribuir links de WhatsApp a la plantilla y socias.</p>
+        <p><Lightbulb className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" /><b>Nota:</b> El Panel de Administrador permite editar/borrar fichajes, crear semanas, lanzar Gemini AI y distribuir links de WhatsApp a la plantilla y socias.</p>
       </div>
     </Modal>
   );
