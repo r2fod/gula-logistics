@@ -296,6 +296,18 @@ export function getTaskStartDateTime(weekData, dayKey, task, now = new Date()) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate(), Number(m[1]), Number(m[2]));
 }
 
+// Tramo REAL { start, end } (Date) de una tarea: la fecha de su día más su
+// horario "HH:MM - HH:MM" (si acaba antes de empezar, cruza medianoche). null
+// si no se puede saber (fechas de la semana ilegibles u horario sin "HH:MM").
+export function getTaskInterval(weekData, dayKey, task, now = new Date()) {
+  const start = getTaskStartDateTime(weekData, dayKey, task, now);
+  const range = getWeekRange(weekData, now);
+  if (!start || !range) return null;
+  const date = resolveTaskDate(range, resolveTaskEvalDay(dayKey, task));
+  const end = parseEndDateTime(date, task.timeFrame);
+  return end ? { start, end } : null;
+}
+
 // Próximo momento en que EMPIEZA una tarea (Date) o null si ya no puede
 // ocurrir / no se sabe. Para una tarea con día fijo es el suyo. Una tarea de
 // la lista domingo/lunes SIN etiquetar puede ser de cualquiera de los dos:
