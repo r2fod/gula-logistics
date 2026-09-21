@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { Users, Calendar, Clock, Check, Sparkles } from 'lucide-react';
 import { isTaskEffectivelyDone, getDayLabel } from '../../data/taskPlanning';
 import TaskTextWithEvent from '../TaskTextWithEvent';
+import TarjetaDia from './TarjetaDia';
+import TareaDiaItem from './TareaDiaItem';
 import { rejillaDeDias } from './rejillaDias';
+import { formatearHoras } from '../../data/formatoFinanciero';
 
 export default function ScheduleTab({ activeWeekData, workersList, onToggleTask, onUpdateWeek, vispera = null }) {
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
@@ -108,12 +111,10 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
   // Tarea de la lista compartida domingo/lunes. isTaskEffectivelyDone usa el targetDay
   // de la tarea y, si no lo tiene, la evalúa como lunes (no se tacha el
   // domingo una tarea que puede ser del lunes).
-  // `semana` es la semana a la que pertenece la tarea: la activa, o la anterior cuando
-  // se enseña la víspera (data/vispera.js).
-  const renderSharedTask = (task, idx, semana = activeWeekData) => {
+  const renderSharedTask = (task, idx) => {
     const taskText = typeof task === 'object' ? task.text : task;
     const timeFrame = typeof task === 'object' ? task.timeFrame : null;
-    const isCompleted = isTaskEffectivelyDone(semana, 'domingo', task, currentTime);
+    const isCompleted = isTaskEffectivelyDone(activeWeekData, 'domingo', task, currentTime);
 
     const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
     const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
@@ -227,82 +228,49 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
       <div className={`grid gap-5 ${rejilla.contenedor}`}>
         {/* El lunes anterior a la semana (la cola de la anterior): la carga de los eventos del martes se hace ese día */}
         {vispera && (
-          <div className="bg-slate-900/90 border border-indigo-500/30 rounded-3xl p-5 shadow-xl backdrop-blur-xl space-y-3 animate-aparecer motion-reduce:animate-none">
-            <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-800/80">
-              <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
-                <Calendar className="text-indigo-300 w-4 h-4" /> Lunes {vispera.fecha.getDate()}
-              </h3>
-              <span className="text-[10px] bg-indigo-500/10 text-indigo-300 font-bold px-2.5 py-1 rounded-xl border border-indigo-500/20">
-                Víspera
-              </span>
-            </div>
-            <p className="text-[11px] leading-snug text-slate-500">
-              Preparativos del lunes para los eventos de esta semana. Están guardados en la {vispera.semana.name}, donde se editan.
+          <TarjetaDia titulo={`Lunes ${vispera.fecha.getDate()}`} insignia="Víspera" colorInsignia="text-indigo-300">
+            <ul className="space-y-2.5 text-xs text-slate-300">
+              {vispera.tareas.map(({ task, idx }) => (
+                <TareaDiaItem
+                  key={`vispera-${idx}`}
+                  task={task}
+                  hecha={isTaskEffectivelyDone(vispera.semana, 'domingo', task, currentTime)}
+                  filtro={selectedWorkerFilter}
+                />
+              ))}
+            </ul>
+            <p className="mt-3 text-[11px] leading-snug text-slate-500">
+              Todo lo del lunes: devoluciones de la semana anterior y preparativos de los eventos de esta. Está guardado en la {vispera.semana.name}, donde se edita.
             </p>
-            <div className="space-y-2.5 text-xs text-slate-300">
-              {vispera.tareas.map(({ task, idx }) => renderSharedTask(task, `vispera-${idx}`, vispera.semana))}
-            </div>
-          </div>
+            {vispera.fichados?.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-slate-800/80">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Fichados ese día</p>
+                <ul className="flex flex-wrap gap-1.5">
+                  {vispera.fichados.map(f => (
+                    <li key={f.nombre} className="text-[11px] font-semibold bg-slate-950 border border-slate-800 text-slate-300 px-2.5 py-1 rounded-lg tabular-nums">
+                      {f.nombre} <span className="text-amber-400">{formatearHoras(f.horas)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </TarjetaDia>
         )}
         {diasSemana.map(([key, day], posicion) => (
-          <div key={key} className={`bg-slate-900/90 border border-slate-800/90 rounded-3xl p-5 shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-4 ${posicion === diasSemana.length - 1 ? rejilla.ultima : ''}`}>
-            <div>
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800/80">
-                <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
-                  <Calendar className="text-amber-400 w-4 h-4" /> {day.title}
-                </h3>
-                <span className="text-[10px] bg-slate-950 text-amber-300 font-bold px-2.5 py-1 rounded-xl border border-slate-800">
-                  {day.badge}
-                </span>
-              </div>
-
-              <ul className="space-y-2.5 text-xs text-slate-300">
-                {(day.tasks || []).map((task, idx) => {
-                  const taskText = typeof task === 'object' ? task.text : task;
-                  const isCompleted = isTaskEffectivelyDone(activeWeekData, key, task, currentTime);
-                  
-                  const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
-                  const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
-
-                  return (
-                    <li 
-                      key={idx} 
-                      onClick={() => onToggleTask && onToggleTask(key, idx)}
-                      className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
-                        isCompleted 
-                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 line-through opacity-60' 
-                          : matchesFilter && selectedWorkerFilter
-                            ? 'bg-amber-500/10 border-amber-500/60 ring-1 ring-amber-500/40 text-white font-medium shadow-sm'
-                            : !matchesFilter && selectedWorkerFilter
-                              ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-850 text-slate-400'
-                              : 'bg-slate-950/80 border-slate-800/80 hover:border-slate-700 text-slate-200'
-                      }`}
-                    >
-                      <div className="mt-0.5 shrink-0">
-                        {isCompleted ? (
-                          <div className="w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center">
-                            <Check className="w-2.5 h-2.5 text-emerald-400" />
-                          </div>
-                        ) : (
-                          <Clock className="text-amber-400 w-4 h-4" />
-                        )}
-                      </div>
-                      <div className="flex-1 leading-relaxed">
-                        <span className={isCompleted ? 'line-through' : ''}><TaskTextWithEvent text={taskText} event={typeof task === 'object' ? task.event : undefined} /></span>
-                        {typeof task === 'object' && task.timeFrame && (
-                          <span className="ml-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 align-middle whitespace-nowrap">
-                            <Clock className="w-3 h-3" />
-                            {task.timeFrame}
-                          </span>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-                {dynamicTasksByDay[key]?.map((task, idx) => renderDynamicTask(task, idx, key))}
-              </ul>
-            </div>
-          </div>
+          <TarjetaDia key={key} titulo={day.title} insignia={day.badge} className={posicion === diasSemana.length - 1 ? rejilla.ultima : ''}>
+            <ul className="space-y-2.5 text-xs text-slate-300">
+              {(day.tasks || []).map((task, idx) => (
+                <TareaDiaItem
+                  key={idx}
+                  task={task}
+                  hecha={isTaskEffectivelyDone(activeWeekData, key, task, currentTime)}
+                  filtro={selectedWorkerFilter}
+                  alPulsar={onToggleTask ? () => onToggleTask(key, idx) : null}
+                />
+              ))}
+              {dynamicTasksByDay[key]?.map((task, idx) => renderDynamicTask(task, idx, key))}
+            </ul>
+          </TarjetaDia>
         ))}
       </div>
 

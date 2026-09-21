@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Wallet, Banknote, Users, Clock, Inbox, Layers, BarChart3, PieChart, Info, TrendingUp, TrendingDown } from 'lucide-react';
 import { aggregateShiftsByWorker } from '../../data/shiftCalculations';
 import { buildPaxRegistry, buildTaskContextResolver } from '../../data/eventNaming';
@@ -14,8 +14,8 @@ import FilaDesglose from './financiero/FilaDesglose';
 import GraficoEvolucion from './financiero/GraficoEvolucion';
 import DonutHoras from './financiero/DonutHoras';
 
-// Con el planning de la semana abierta como punto de partida; si no tiene fechas
-// legibles, la semana de hoy.
+// Con el planning de la semana abierta (la del selector de arriba) como punto de
+// partida; si no tiene fechas legibles, la semana de hoy.
 const anclaInicial = (semana) => getWeekRange(semana)?.start || new Date();
 
 const TITULO_SERIE = { semana: 'Coste por día', mes: 'Coste por semana', anio: 'Coste por mes', todo: 'Coste por mes' };
@@ -43,6 +43,12 @@ const TotalPie = ({ horas, coste }) => (
 export default function FinancialSummaryTab({ shifts = [], workersList = [], allWeeks = {}, activeWeekData = null }) {
   const [modo, setModo] = useState('semana');
   const [ancla, setAncla] = useState(() => anclaInicial(activeWeekData));
+
+  // El resumen sigue a la semana que se elige arriba: al cambiarla, el periodo pasa a
+  // ser esa semana (o el mes o año que la contiene). Las flechas y los botones de
+  // periodo siguen funcionando después, a partir de ahí.
+  const inicioActiva = getWeekRange(activeWeekData)?.start?.getTime() ?? null;
+  useEffect(() => { setAncla(inicioActiva ? new Date(inicioActiva) : new Date()); }, [inicioActiva]);
 
   const rango = useMemo(() => rangoDePeriodo(modo, ancla, allWeeks), [modo, ancla, allWeeks]);
   const turnos = useMemo(() => turnosDelPeriodo(shifts, rango), [shifts, rango]);
@@ -80,9 +86,10 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
     return tiempos.length ? new Date(Math.max(...tiempos)) : null;
   }, [shifts]);
 
+  // Pulsar Semana, Mes o Año enseña siempre los números de la semana elegida arriba (o
+  // de su mes o año), aunque se hubiera ido a otro periodo con las flechas.
   const cambiarModo = (nuevo) => {
-    // Al pasar de "todo" a un periodo concreto se vuelve a la semana abierta.
-    if (modo === 'todo') setAncla(anclaInicial(activeWeekData));
+    setAncla(anclaInicial(activeWeekData));
     setModo(nuevo);
   };
   const siguienteEsFuturo = modo !== 'todo' && rangoDePeriodo(modo, moverPeriodo(modo, ancla, 1), allWeeks).desde > new Date();
