@@ -1,12 +1,24 @@
 import React, { useState } from 'react';
 import { Truck, Settings } from 'lucide-react';
 import FleetManagerModal from '../FleetManagerModal';
+import Tarjeta from '../ui/Tarjeta';
+
+// Un evento de la flota: dónde es, con qué camión y en qué consiste.
+function TarjetaEvento({ lugar, camion, detalle }) {
+  return (
+    <Tarjeta className="p-5 space-y-2">
+      <span className="font-extrabold text-amber-300 block text-base font-['Outfit']">🏔️ {lugar}</span>
+      <span className="text-slate-200 block font-semibold">{camion}</span>
+      <p className="text-xs text-slate-400 leading-relaxed">{detalle}</p>
+    </Tarjeta>
+  );
+}
 
 export default function LogisticsTab({ activeWeekData, adminUnlocked, onUpdateWeek }) {
   const [isFleetManagerOpen, setIsFleetManagerOpen] = useState(false);
 
   return (
-    <div className="bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-xl space-y-4 animate-fadeIn">
+    <Tarjeta variante="panel" className="p-6 space-y-4 animate-fadeIn">
       <div className="flex justify-between items-center flex-wrap gap-4">
         <h4 className="font-bold text-white text-lg flex items-center space-x-2 font-['Outfit']">
           <Truck className="w-6 h-6 text-amber-400" />
@@ -32,11 +44,7 @@ export default function LogisticsTab({ activeWeekData, adminUnlocked, onUpdateWe
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
         {(activeWeekData?.saturdaySpecial?.weddings || []).map((w, idx) => (
-          <div key={`boda-${idx}`} className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-2">
-            <span className="font-extrabold text-amber-300 block text-base font-['Outfit']">🏔️ {w.location}</span>
-            <span className="text-slate-200 block font-semibold">{w.truck}</span>
-            <p className="text-xs text-slate-400 leading-relaxed">{w.details}</p>
-          </div>
+          <TarjetaEvento key={`boda-${idx}`} lugar={w.location} camion={w.truck} detalle={w.details} />
         ))}
         {/* "Eventos Clave" son las tareas del jueves con un id manual tipo
             j1/j2/j3... (convención de CLAUDE.md: id corta manual por día).
@@ -49,13 +57,9 @@ export default function LogisticsTab({ activeWeekData, adminUnlocked, onUpdateWe
         {(activeWeekData?.schedule?.jueves?.tasks || [])
           .filter((t) => /^j\d+$/.test(t.id || ''))
           .map((t) => (
-            <div key={`jueves-${t.id}`} className="bg-slate-950 border border-slate-800 p-5 rounded-2xl space-y-2">
-              <span className="font-extrabold text-amber-300 block text-base font-['Outfit']">🏔️ {t.location}</span>
-              <span className="text-slate-200 block font-semibold">{t.truck || 'Sin camión asignado'}</span>
-              <p className="text-xs text-slate-400 leading-relaxed">{t.text}</p>
-            </div>
+            <TarjetaEvento key={`jueves-${t.id}`} lugar={t.location} camion={t.truck || 'Sin camión asignado'} detalle={t.text} />
           ))}
       </div>
-    </div>
+    </Tarjeta>
   );
 }

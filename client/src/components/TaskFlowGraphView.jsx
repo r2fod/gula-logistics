@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { getDayLabel, getWeddingsBadge, isTaskEffectivelyDone } from '../data/taskPlanning';
 import { Selector } from './ui/Campo';
+import Tarjeta from './ui/Tarjeta';
 
 // Categoriza una tarea por su texto para darle un icono/color propio en el
 // grafo — pura ayuda visual para distinguir de un vistazo qué tipo de
@@ -398,7 +399,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
 
       {/* Main Interactive Node Graph Area */}
       {viewMode === 'graph' ? (
-        <div className="relative bg-slate-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-2xl min-h-[480px]">
+        <Tarjeta variante="lienzo" className="relative p-3.5 sm:p-6 min-h-[480px]">
           {/* Subtle Grid Canvas Background */}
           <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none rounded-2xl sm:rounded-3xl" />
 
@@ -718,10 +719,10 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
             </div>
 
           </div>
-        </div>
+        </Tarjeta>
       ) : (
         /* GANTT TIMELINE VIEW */
-        <div className="bg-slate-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4">
+        <Tarjeta variante="lienzo" className="p-4 sm:p-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-3 border-b border-slate-800">
             <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
               <Layers className="w-4 h-4 text-amber-400" />
@@ -777,7 +778,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
               );
             })}
           </div>
-        </div>
+        </Tarjeta>
       )}
     </div>
   );

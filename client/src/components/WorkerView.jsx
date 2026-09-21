@@ -26,6 +26,7 @@ import { getTaskListForDay, resolveTaskIndexByText, isTaskEffectivelyDone, getDa
 import { subscribeToPush } from '../data/pushService';import { crearFichaje, horaDeFichaje, fechaDeFichaje } from '../data/fichajes';
 import { formatTimeShort, formatWeekdayDay } from '../utils/dateUtils';
 import { formatearHoras } from '../data/formatoFinanciero';
+import EstadoVacio from './ui/EstadoVacio';
 
 
 // Texto del botón de empezar la jornada: se elige uno al azar al abrir la
@@ -1125,10 +1126,7 @@ export default function WorkerView({
         </div>
 
         {myEntries.length === 0 ? (
-          <div className="text-center py-8 bg-slate-950/60 rounded-2xl border border-slate-800">
-            <Clock className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-            <p className="text-xs text-slate-400">Aún no has registrado ningún fichaje de entrada o salida esta semana.</p>
-          </div>
+          <EstadoVacio icono={Clock} titulo="Aún no has registrado ningún fichaje de entrada o salida esta semana." className="py-8 bg-slate-950/60" />
         ) : (
           <>
             {/* Mobile Card Layout (sm:hidden) */}
