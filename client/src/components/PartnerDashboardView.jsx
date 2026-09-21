@@ -1,39 +1,28 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  ShieldCheck, 
-  DollarSign, 
-  Users, 
-  Truck, 
-  Calendar, 
-  Copy, 
-  Check, 
-  Clock, 
-  TrendingUp, 
-  MessageCircle,
-  Bus,
-  ChevronDown,
-  ChevronUp,
+import {
+  ShieldCheck,
+  DollarSign,
+  Users,
+  Truck,
+  Calendar,
+  Copy,
+  Check,
+  Clock,
+  TrendingUp,
   Radio,
-  Sparkles,
   Wand2,
   Share2,
   Plus,
-  Activity,
-  AlertTriangle,
-  ListTodo,
   Eye,
   Lock,
   Edit3,
-  LayoutDashboard,
-  Trash2,
   KeyRound,
   Zap,
   Menu,
   X,
-  Save,
   Bell
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
+import { Bar } from 'recharts';
 import { initialBalancesData } from '../data/balancesData';
 import { fetchBalancesFromAPI, saveWorkerBalanceToAPI } from '../data/apiService';
 import { sendPushNotification } from '../data/pushService';

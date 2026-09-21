@@ -1,19 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Activity, 
-  Clock, 
-  MapPin, 
-  Truck, 
-  Package, 
-  Broom, 
-  ShieldCheck, 
-  UserCheck,
+import {
+  Activity,
+  Clock,
+  MapPin,
   Play,
   Square,
-  Radio,
-  CheckCircle2,
-  AlertCircle,
-  RefreshCw
+  Radio
 } from 'lucide-react';
 import { pairShiftsFromEntries, isZombieShift } from '../data/shiftCalculations';
 import { getTaskListForDay, isTaskEffectivelyDone } from '../data/taskPlanning';
