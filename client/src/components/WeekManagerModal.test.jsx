@@ -146,3 +146,25 @@ describe('WeekManagerModal — pax de cada evento', () => {
     ]);
   });
 });
+
+describe('WeekManagerModal — recogidas y devoluciones de alquiler', () => {
+  it('se añaden con día, hora y qué, y llegan al prompt; se pueden quitar', async () => {
+    renderModal();
+    fireEvent.change(screen.getByPlaceholderText('ej. Semana 4'), { target: { value: 'Semana 4' } });
+    fireEvent.change(screen.getByPlaceholderText('ej. Del 22 al 27 de Septiembre'), { target: { value: 'Del 22 al 27 de septiembre' } });
+
+    const add = screen.getByRole('button', { name: /Añadir recogida o devolución/ });
+    fireEvent.click(add);
+    fireEvent.click(add);
+    expect(screen.getAllByLabelText('Día de la recogida o devolución')).toHaveLength(2);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Quitar esta recogida o devolución' })[1]);
+    expect(screen.getAllByLabelText('Día de la recogida o devolución')).toHaveLength(1);
+
+    fireEvent.change(screen.getByLabelText('Qué hay que recoger o devolver'), { target: { value: 'Recoger generadores 7K y furgo Albacar' } });
+    fireEvent.change(screen.getByLabelText('Hora de la recogida o devolución'), { target: { value: '18:00' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Generar Planificación Inteligente/ }));
+    await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
+    expect(generate.mock.calls[0][0].prompt).toContain('- Viernes 25: Recoger generadores 7K y furgo Albacar (18:00).');
+  });
+});
