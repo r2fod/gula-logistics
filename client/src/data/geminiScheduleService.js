@@ -82,65 +82,32 @@ Genera una respuesta EXCLUSIVAMENTE en formato JSON válido sin texto previo ni 
 }`;
 }
 
-// Ejemplo de demostración: mismo fallback que ya usaba GeminiAssistantModal
-// cuando no hay API key configurada, para no dejar al usuario sin ver nada
-// (ni aquí ni en el asistente guiado) si todavía no ha metido su clave.
-function buildMockSchedule() {
-  return {
-    meta: {
-      week: "Semana (IA Generada)",
-      dateRange: "Fechas generadas por Asistente Gemini AI",
-      status: "Operativa Activa (IA)"
-    },
-    schedule: {
-      martes: {
-        title: "Martes", badge: "IA Flota",
-        tasks: [
-          { id: "ia1", text: "Revisión de combustible en Camión Gula y Covey.", location: "Nave Base Gula", timeFrame: "09:00 - 10:30", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Paterna", assigned: ["Gonzalo"], completed: false },
-          { id: "ia2", text: "Recogida de Camión Albacar y flejado de cargas.", location: "Albacar Rent", timeFrame: "11:30 - 13:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Albacar+Alquiler+Camiones", assigned: ["Ricardo"], completed: false }
-        ]
-      },
-      miercoles: {
-        title: "Miércoles", badge: "IA Pre-carga",
-        tasks: [
-          { id: "ia3", text: "Carga en frío y menaje para eventos.", location: "Almacén Principal", timeFrame: "10:00 - 14:00", mapsUrl: "", assigned: ["Johan", "Jeferson"], completed: false }
-        ]
-      },
-      jueves: {
-        title: "Jueves", badge: "IA Logística",
-        tasks: [
-          { id: "ia4", text: "Control y validación de albaranes de salida.", location: "Almacén Principal", timeFrame: "15:00 - 17:00", mapsUrl: "", assigned: ["Raúl", "Irene"], completed: false }
-        ]
-      },
-      viernes: {
-        title: "Viernes", badge: "IA Cierre",
-        tasks: [
-          { id: "ia5", text: "Carga final y precintado de los 3 camiones.", location: "Base Logística", timeFrame: "16:00 - 21:00", mapsUrl: "", assigned: ["Gonzalo", "Ricardo", "Johan"], completed: false }
-        ]
-      }
-    },
-    saturdaySpecial: {
-      title: "Sábado — Eventos Simultáneos (Gemini AI)",
-      weddings: [
-        { location: "Sot de Chera", truck: "Camión 1 (Gula)", details: "Conduce: Ricardo | Apoyo: Jeferson.", assigned: ["Ricardo", "Jeferson"], timeFrame: "09:00 - 02:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Sot+de+Chera" },
-        { location: "Mas dels Refranys", truck: "Camión 2 (Covey)", details: "Conduce: Gonzalo | Apoyo: Johan.", assigned: ["Gonzalo", "Johan"], timeFrame: "11:00 - 01:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Mas+dels+Refranys" },
-        { location: "Evento Especial 3", truck: "Camión 3 (Albacar)", details: "Conduce: Johan.", assigned: ["Johan"], timeFrame: "13:00 - 00:00", mapsUrl: "" }
-      ]
-    },
-    sundayMonday: {
-      title: "Domingo & Lunes — Logística Inversa (IA)",
-      tasks: [
-        { id: "ias1", text: "Descarga completa en almacén y limpieza de vajilla.", location: "Almacén", timeFrame: "09:00 - 14:00", mapsUrl: "", assigned: ["Jeferson", "Johan"], completed: false },
-        { id: "ias2", text: "Devolución de Camión Albacar y material de alquiler.", location: "Dealde", timeFrame: "10:00 - 13:00", mapsUrl: "https://www.google.com/maps/search/?api=1&query=Dealde+Paterna", assigned: ["Gonzalo", "Ricardo"], completed: false }
-      ]
-    }
-  };
+// Modelos a probar por orden. El código llevaba `gemini-1.5-flash`, ya retirado
+// por Google: la llamada fallaba siempre y el fallback enseñaba una demo.
+// `gemini-2.5-flash` es el estable vigente (sin fecha de retirada anunciada) y
+// `gemini-flash-latest` es un alias al Flash más reciente, por si el primero
+// se retira: solo se pasa al siguiente si el modelo no existe (404).
+export const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest'];
+
+// Comprobación mínima de que lo que devolvió la IA tiene forma de semana.
+// Devuelve un texto de error, o '' si es válido.
+export function validateGeneratedSchedule(json) {
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return 'La respuesta de Gemini no tiene el formato esperado.';
+  const { schedule, saturdaySpecial, sundayMonday } = json;
+  if (!schedule && !saturdaySpecial && !sundayMonday) return 'La respuesta de Gemini no trae ninguna planificación (schedule, sábado o domingo/lunes).';
+  if (schedule && (typeof schedule !== 'object' || Array.isArray(schedule))) return 'El campo schedule de la respuesta de Gemini no es válido.';
+  if (sundayMonday?.tasks && !Array.isArray(sundayMonday.tasks)) return 'Las tareas de domingo/lunes de la respuesta de Gemini no son una lista.';
+  if (saturdaySpecial?.weddings && !Array.isArray(saturdaySpecial.weddings)) return 'Las bodas de la respuesta de Gemini no son una lista.';
+  return '';
 }
 
-// Devuelve { generatedJson } en éxito, o { generatedJson: mock, errorMsg }
-// si Gemini falla o no hay API key — nunca lanza, para que quien llama
-// pueda mostrar siempre algo (el mock de demostración) en vez de un
-// formulario roto.
+// Devuelve { generatedJson, errorMsg }: en éxito el JSON y errorMsg vacío; en
+// cualquier fallo generatedJson es null y errorMsg explica qué pasó — nunca
+// lanza. ANTES devolvía una demo con fincas y tareas de una semana pasada
+// (sin clave, sin aviso alguno; o tras un error, con un aviso pequeño) y la
+// interfaz dejaba "Crear la Semana con esta Planificación": el usuario
+// generaba la semana nueva y salía con los eventos de la anterior. Un dato
+// inventado que parece real es peor que un error claro.
 export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData }) {
   // Sin fallback a import.meta.env.VITE_GEMINI_API_KEY a propósito:
   // cualquier variable con prefijo VITE_ se compila tal cual en el JS
@@ -152,38 +119,51 @@ export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekDat
   const activeApiKey = (apiKey || '').trim();
 
   if (!activeApiKey) {
-    await new Promise(resolve => setTimeout(resolve, 1200));
-    return { generatedJson: buildMockSchedule(), errorMsg: '' };
+    return {
+      generatedJson: null,
+      errorMsg: 'Falta la clave de Gemini en este dispositivo (se guarda solo en este navegador, así que hay que pegarla en cada móvil u ordenador). Pégala en el campo de arriba y vuelve a generar. No se ha creado nada.'
+    };
   }
 
+  const systemPrompt = buildSystemPrompt(activeWeekData);
+  const body = JSON.stringify({
+    contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\nSolicitud del usuario: ${prompt}` }] }],
+    generationConfig: { responseMimeType: 'application/json' }
+  });
+
   try {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeApiKey}`;
-    const systemPrompt = buildSystemPrompt(activeWeekData);
+    let res = null;
+    for (const model of GEMINI_MODELS) {
+      // La clave va en la cabecera (no en la URL) para que no quede en
+      // historiales ni registros de red.
+      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': activeApiKey },
+        body
+      });
+      if (res.status !== 404) break;
+    }
 
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
-          { role: 'user', parts: [{ text: `${systemPrompt}\n\nSolicitud del usuario: ${prompt}` }] }
-        ]
-      })
-    });
-
-    if (!res.ok) throw new Error(`Error Gemini API (${res.status})`);
+    if (!res.ok) {
+      const hint = res.status === 400 || res.status === 403 ? ' — comprueba que la clave es correcta' : res.status === 429 ? ' — demasiadas peticiones, espera un minuto' : '';
+      throw new Error(`Error Gemini API (${res.status})${hint}`);
+    }
 
     const data = await res.json();
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('La respuesta de Gemini no contenía un JSON válido.');
 
-    return { generatedJson: JSON.parse(jsonMatch[0]), errorMsg: '' };
+    const generatedJson = JSON.parse(jsonMatch[0]);
+    const invalid = validateGeneratedSchedule(generatedJson);
+    if (invalid) throw new Error(invalid);
+
+    return { generatedJson, errorMsg: '' };
   } catch (err) {
     console.error(err);
     return {
-      generatedJson: buildMockSchedule(),
-      errorMsg: `Error al conectar con Gemini: ${err.message}. Mostrando vista previa demostrativa.`
+      generatedJson: null,
+      errorMsg: `No se pudo generar con Gemini: ${err.message}. No se ha creado nada; inténtalo de nuevo.`
     };
   }
 }
