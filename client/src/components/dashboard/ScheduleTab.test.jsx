@@ -86,3 +86,16 @@ describe('ScheduleTab — evento de cada tarea', () => {
     expect(screen.getByText('Recoger material sin evento')).toBeInTheDocument();
   });
 });
+
+describe('ScheduleTab — tarea de varios eventos', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('muestra una etiqueta por evento', () => {
+    vi.setSystemTime(new Date(2026, 8, 20, 12, 0));
+    renderTab(semana([{ text: 'Boda Ana y Luis + Boda Eva y Pau - Recoger material Dealde', timeFrame: '09:00-10:00', targetDay: 'Domingo', assigned: ['Ana'], completed: false }]));
+    expect(screen.getByText('Boda Ana y Luis')).toBeInTheDocument();
+    expect(screen.getByText('Boda Eva y Pau')).toBeInTheDocument();
+    expect(screen.getByText(/Recoger material Dealde/)).toBeInTheDocument();
+  });
+});

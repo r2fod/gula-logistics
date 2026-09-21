@@ -72,6 +72,19 @@ export function parseEventAndTask(taskName) {
 // Nombre de evento de un nombre de tarea/fichaje.
 export const getEventName = (taskName) => parseEventAndTask(taskName).eventName;
 
+// Una tarea puede servir a VARIOS eventos a la vez (ej. recoger material en
+// Dealde para dos bodas). Se escriben separados por " + " antes del guion:
+// "Boda Ana y Luis + Boda Eva y Pau - Recoger material Dealde". También se
+// entiende "Boda A y Boda B" (así se escribió antes de existir el separador):
+// una " y " solo separa si lo que sigue empieza por "Boda" o "Evento", para no
+// partir "Boda Ana y Luis". Devuelve la lista de eventos sin vacíos.
+export function splitEventNames(eventName) {
+  return String(eventName || '')
+    .split(/\s+\+\s+|\s+y\s+(?=(?:boda|evento)\s)/i)
+    .map(n => n.trim())
+    .filter(Boolean);
+}
+
 // Nombres de los eventos de la semana tal como los escribe el usuario en el
 // asistente de nueva semana: "Boda Finca Norte". Sin lugar, se usa el día.
 export function buildEventName(event, dayLabel = (k) => k) {
@@ -95,8 +108,11 @@ export function normalizeGeneratedEvents(json, knownEventNames = []) {
     if (typeof text !== 'string' || !text.trim()) return text;
     if (parseEventAndTask(text).explicit) return text;
     const t = plain(text);
-    const hit = known.find(k => t.includes(k.full)) || known.find(k => k.place.length >= 3 && t.includes(k.place));
-    return `${hit ? hit.name : (inferCategory(text) || DEFAULT_CATEGORY)} - ${text.trim()}`;
+    // Todos los eventos conocidos que aparecen en el texto (una recogida para
+    // dos bodas nombra las dos): se unen con " + " y el coste se reparte.
+    const hits = known.filter(k => t.includes(k.full) || (k.place.length >= 3 && t.includes(k.place)));
+    const event = hits.length > 0 ? hits.map(k => k.name).join(' + ') : (inferCategory(text) || DEFAULT_CATEGORY);
+    return `${event} - ${text.trim()}`;
   };
 
   const fixTasks = (list) => (Array.isArray(list) ? list.map(t => (t && typeof t === 'object' ? { ...t, text: withEvent(t.text) } : t)) : list);
@@ -118,7 +134,7 @@ export function collectEventNames(weekData) {
   const add = (list) => (list || []).forEach(t => {
     const text = t && typeof t === 'object' ? t.text : t;
     const parsed = parseEventAndTask(text);
-    if (parsed.explicit) names.add(parsed.eventName);
+    if (parsed.explicit) splitEventNames(parsed.eventName).forEach(n => names.add(n));
   });
   Object.values(weekData?.schedule || {}).forEach(d => add(d?.tasks));
   add(weekData?.sundayMonday?.tasks);

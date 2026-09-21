@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseEventAndTask, getEventName, inferCategory, buildEventName, normalizeGeneratedEvents, collectEventNames } from './eventNaming';
+import { parseEventAndTask, getEventName, inferCategory, buildEventName, normalizeGeneratedEvents, collectEventNames, splitEventNames } from './eventNaming';
 
 describe('parseEventAndTask', () => {
   it('"Evento - Tarea" explícito: separa por el guion normal', () => {
@@ -99,5 +99,36 @@ describe('collectEventNames', () => {
     expect(names).toEqual(expect.arrayContaining(['Boda Ana y Luis', 'Evento Catering Uno', 'Logística Preparación', 'Logística Carga', 'Limpieza Eventos']));
     expect(names.filter(n => n === 'Boda Ana y Luis')).toHaveLength(1);
     expect(names).not.toContain('Sin evento');
+  });
+});
+
+describe('tareas de varios eventos', () => {
+  it('splitEventNames: " + " separa; "y Boda"/"y Evento" también, pero no parte "Boda Ana y Luis"', () => {
+    expect(splitEventNames('Boda Ana y Luis + Boda Eva y Pau')).toEqual(['Boda Ana y Luis', 'Boda Eva y Pau']);
+    expect(splitEventNames('Boda Joaquín y Maria y Boda Rocio')).toEqual(['Boda Joaquín y Maria', 'Boda Rocio']);
+    expect(splitEventNames('Evento Catering Uno y Evento Catering Dos')).toEqual(['Evento Catering Uno', 'Evento Catering Dos']);
+    expect(splitEventNames('Boda Ana y Luis')).toEqual(['Boda Ana y Luis']);
+    expect(splitEventNames('')).toEqual([]);
+  });
+
+  it('"A + B - Tarea" se lee como un solo texto con dos eventos', () => {
+    const r = parseEventAndTask('Boda Ana y Luis + Boda Eva y Pau - Recoger material Dealde');
+    expect(r).toEqual({ eventName: 'Boda Ana y Luis + Boda Eva y Pau', specificTaskName: 'Recoger material Dealde', explicit: true });
+    expect(splitEventNames(r.eventName)).toHaveLength(2);
+  });
+
+  it('collectEventNames sugiere cada evento suelto, no la combinación', () => {
+    const w = { schedule: { martes: { tasks: [{ text: 'Boda Ana y Luis + Boda Eva y Pau - Recoger material' }] } } };
+    const names = collectEventNames(w);
+    expect(names).toEqual(expect.arrayContaining(['Boda Ana y Luis', 'Boda Eva y Pau']));
+    expect(names).not.toContain('Boda Ana y Luis + Boda Eva y Pau');
+  });
+
+  it('normalizeGeneratedEvents une con " + " todos los eventos conocidos que nombra el texto', () => {
+    const out = normalizeGeneratedEvents(
+      { schedule: { martes: { tasks: [{ text: 'Recoger material Dealde Boda Ana y Luis y Boda Eva y Pau' }] } } },
+      ['Boda Ana y Luis', 'Boda Eva y Pau', 'Boda Otra']
+    );
+    expect(out.schedule.martes.tasks[0].text).toBe('Boda Ana y Luis + Boda Eva y Pau - Recoger material Dealde Boda Ana y Luis y Boda Eva y Pau');
   });
 });
