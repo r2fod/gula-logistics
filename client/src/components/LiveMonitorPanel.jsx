@@ -1,12 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Activity,
-  Clock,
-  MapPin,
-  Play,
-  Square,
-  Radio
-} from 'lucide-react';
+import { Activity, AlertTriangle, Clock, MapPin, Package, Play, Radio, Square, Truck } from 'lucide-react';
 import { pairShiftsFromEntries, isZombieShift } from '../data/shiftCalculations';
 import { getTaskListForDay, isTaskEffectivelyDone, isTaskAssignedTo, getTaskText } from '../data/taskPlanning';
 import { crearFichaje } from '../data/fichajes';
@@ -291,7 +284,7 @@ export default function LiveMonitorPanel({
               filterStatus === 'trucks' ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
             }`}
           >
-            🚚 Conductores Flota
+            <Truck className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Conductores Flota
           </button>
 
           <button
@@ -300,7 +293,7 @@ export default function LiveMonitorPanel({
               filterStatus === 'base' ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
             }`}
           >
-            📦 Base & Preparación
+            <Package className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Base & Preparación
           </button>
         </div>
       </div>
@@ -354,7 +347,7 @@ export default function LiveMonitorPanel({
                       className="px-2.5 py-1 text-[10px] font-extrabold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center space-x-1 shrink-0"
                       title="Lleva más de 16h fichado sin fichar salida — probablemente se olvidó. Revisar y cerrar desde el editor de fichajes."
                     >
-                      <span>⚠️ REVISAR</span>
+                      <span><AlertTriangle className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />REVISAR</span>
                     </span>
                   ) : worker.isClockedIn ? (
                     <span className="px-2.5 py-1 text-[10px] font-extrabold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1 shrink-0">

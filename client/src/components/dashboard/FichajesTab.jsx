@@ -152,7 +152,7 @@ export default function FichajesTab({
                   <td className="py-3.5 px-4">
                     <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 inline-flex items-center space-x-1">
                       <Lock className="w-3 h-3 text-amber-400" />
-                      <span>🔒 Registrado</span>
+                      <span>Registrado</span>
                     </span>
                   </td>
                   {adminUnlocked && (

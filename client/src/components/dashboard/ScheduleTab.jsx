@@ -310,7 +310,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
                   <div className="flex items-start justify-between">
                     <span className={`font-extrabold block text-sm sm:text-base font-['Outfit'] ${isCompleted ? 'line-through' : !matchesFilter ? 'text-amber-500/50' : 'text-amber-300'}`}>
                       {isCompleted && <Check className="w-4 h-4 inline mr-1 text-emerald-400" />}
-                      🏔️ {w.location}
+                      {w.location}
                     </span>
                     {w.timeFrame && (
                       <span className="text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1">

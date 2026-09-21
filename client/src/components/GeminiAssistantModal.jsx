@@ -124,7 +124,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
                 onClick={() => setPrompt(sp)}
                 className="text-left text-xs bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 p-2.5 rounded-xl transition-colors"
               >
-                ✨ {sp}
+                <Sparkles className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{sp}
               </button>
             ))}
           </div>
@@ -184,7 +184,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
             className="w-full py-3.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center space-x-2"
           >
             <Sparkles className="w-4 h-4" />
-            <span>✨ Aplicar esta Planificación a la App</span>
+            <span>Aplicar esta Planificación a la App</span>
           </button>
         </div>
       )}

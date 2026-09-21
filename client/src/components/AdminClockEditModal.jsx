@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Check, Trash2, User, Lock } from 'lucide-react';
+import { AlertTriangle, Check, Lock, ShieldCheck, Trash2, User } from 'lucide-react';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input, Selector, AreaTexto } from './ui/Campo';
@@ -185,7 +185,7 @@ export default function AdminClockEditModal({
               <p className="text-xs text-rose-300 font-bold mb-2">¿Seguro que quieres borrar este fichaje?</p>
               {pairedEntry && (
                 <p className="text-[10px] text-rose-400 mb-3 bg-rose-500/20 p-2 rounded">
-                  ⚠️ <b>¡Ojo!</b> Este fichaje está emparejado con una <b>{pairedEntry.type.toUpperCase()}</b> a las <b>{pairedEntry.timeFormatted}</b>. 
+                  <AlertTriangle className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" /><b>¡Ojo!</b> Este fichaje está emparejado con una <b>{pairedEntry.type.toUpperCase()}</b> a las <b>{pairedEntry.timeFormatted}</b>. 
                   Si borras esto, el turno quedará descuadrado. Deberías borrar también su pareja.
                 </p>
               )}

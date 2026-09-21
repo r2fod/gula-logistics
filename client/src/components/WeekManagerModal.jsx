@@ -214,7 +214,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
                 }`}
               >
-                🚚 {t.name}
+                <Truck className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{t.name}
               </button>
             ))}
           </div>

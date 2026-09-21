@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TrendingUp, Share2, Bus, Clock, ChevronUp, ChevronDown, Trash2, Plus, MessageCircle } from 'lucide-react';
+import { AlertTriangle, Banknote, Bus, ChevronDown, ChevronUp, Clock, Edit3, Lightbulb, MessageCircle, Plus, ScrollText, Share2, Trash2, TrendingUp } from 'lucide-react';
 import { formatearEuros, formatearEurosConSigno, formatearHoras, formatearNumero } from '../../data/formatoFinanciero';
 import { Input } from '../ui/Campo';
 import BarraProgreso from '../ui/BarraProgreso';
@@ -309,7 +309,7 @@ export default function TeamBalancesTab({
                 className="py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs flex items-center space-x-2 shadow-lg shadow-blue-600/30 transition-all active:scale-95"
               >
                 <Share2 className="w-4 h-4" />
-                <span>🔗 Generar Enlaces (WhatsApp)</span>
+                <span>Generar Enlaces (WhatsApp)</span>
               </button>
 
               <span className="text-xs text-slate-400 font-semibold bg-slate-900 px-3 py-2 rounded-xl border border-slate-800 hidden md:inline">
@@ -510,7 +510,7 @@ export default function TeamBalancesTab({
                     {worker.agreements && worker.agreements.length > 0 && (
                       <div className="mt-3.5 p-3 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1">
                         <span className="text-[10px] font-bold text-amber-400/90 uppercase tracking-wider block">
-                          📜 Acuerdos & Condiciones
+                          <ScrollText className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Acuerdos & Condiciones
                         </span>
                         {worker.agreements.map((agr, aIdx) => (
                           <p key={aIdx} className="text-xs text-slate-300 flex items-start gap-1.5 leading-snug">
@@ -570,7 +570,7 @@ export default function TeamBalancesTab({
                                   newConceptMode === 'turno' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
                                 }`}
                               >
-                                🕒 Turno
+                                <Clock className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Turno
                               </button>
                               <button
                                 onClick={() => setNewConceptMode('manual')}
@@ -578,7 +578,7 @@ export default function TeamBalancesTab({
                                   newConceptMode === 'manual' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
                                 }`}
                               >
-                                ✏️ Ajuste
+                                <Edit3 className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Ajuste
                               </button>
                               <button
                                 onClick={() => setNewConceptMode('pago')}
@@ -586,7 +586,7 @@ export default function TeamBalancesTab({
                                   newConceptMode === 'pago' ? 'bg-rose-500 text-white' : 'text-slate-400 hover:text-white'
                                 }`}
                               >
-                                💸 Adelanto
+                                <Banknote className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Adelanto
                               </button>
                             </div>
 
@@ -633,7 +633,7 @@ export default function TeamBalancesTab({
                                       const other = findOtherTransportBonusOnDate(worker, computeShiftPreview(worker)?.dateLabel);
                                       return other ? (
                                         <div className="text-[11px] text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-lg p-2">
-                                          🚌 <b>{other.name}</b> también tiene transporte añadido ese mismo día — si fuisteis en el mismo coche, desmarca la casilla de arriba para no pagarlo dos veces.
+                                          <Bus className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" /><b>{other.name}</b> también tiene transporte añadido ese mismo día — si fuisteis en el mismo coche, desmarca la casilla de arriba para no pagarlo dos veces.
                                         </div>
                                       ) : null;
                                     })()}
@@ -644,7 +644,7 @@ export default function TeamBalancesTab({
                                     )}
                                     {preview && hasRealShiftOnDate(worker, newShiftDate) && (
                                       <div className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2">
-                                        ⚠️ Ya hay fichajes reales de {worker.name} ese mismo día — si son las mismas horas, esto las sumaría por duplicado. Revisa el desglose antes de guardar.
+                                        <AlertTriangle className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Ya hay fichajes reales de {worker.name} ese mismo día — si son las mismas horas, esto las sumaría por duplicado. Revisa el desglose antes de guardar.
                                       </div>
                                     )}
                                     <div className="flex gap-2">
@@ -759,7 +759,7 @@ export default function TeamBalancesTab({
                     {worker.notes && (
                       <div className="mt-2.5 px-2 py-1.5 rounded-xl bg-slate-950/40 border border-slate-800/60">
                         <p className="text-[11px] text-slate-400 italic">
-                          💡 {worker.notes}
+                          <Lightbulb className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{worker.notes}
                         </p>
                       </div>
                     )}
