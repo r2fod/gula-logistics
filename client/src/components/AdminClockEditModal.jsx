@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Clock, X, Check, Trash2, Calendar, User, DollarSign, Edit3, Plus, Lock } from 'lucide-react';
-import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { ShieldCheck, Check, Trash2, User, Lock } from 'lucide-react';
+import Modal from './ui/Modal';
+import CabeceraModal from './ui/CabeceraModal';
+import { Campo, Input, Selector, AreaTexto } from './ui/Campo';
 
 export default function AdminClockEditModal({
   isOpen,
@@ -49,8 +51,6 @@ export default function AdminClockEditModal({
       setDateTimeLocal(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`);
     }
   }, [entry, isOpen, workersList]);
-
-  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 
@@ -104,196 +104,143 @@ export default function AdminClockEditModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-2xl text-white max-h-[92vh] overflow-y-auto">
-        
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
+    <Modal onCerrar={onClose} ancho="lg" capa={60}>
+      <CabeceraModal
+        icono={ShieldCheck}
+        tono={isAdmin ? 'amber' : 'emerald'}
+        titulo={entry ? 'Modificar Fichaje' : 'Nuevo Fichaje Manual'}
+        subtitulo={isAdmin
+          ? 'Solo Administradores y Socias pueden alterar fichajes registrados.'
+          : 'Añade un fichaje que se te olvidó registrar.'}
+        insignia={isAdmin && (
+          <span className="px-2 py-0.5 text-[9px] font-extrabold bg-amber-500 text-slate-950 rounded-md">
+            ADMIN ONLY
+          </span>
+        )}
+        className="mb-6"
+      />
 
-        {/* Modal Title */}
-        <div className="flex items-center space-x-3 mb-6">
-          <div className={`w-12 h-12 rounded-2xl ${isAdmin ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'} flex items-center justify-center border`}>
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h3 className="text-xl font-bold font-['Outfit']">
-                {entry ? 'Modificar Fichaje' : 'Nuevo Fichaje Manual'}
-              </h3>
-              {isAdmin && (
-                <span className="px-2 py-0.5 text-[9px] font-extrabold bg-amber-500 text-slate-950 rounded-md">
-                  ADMIN ONLY
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {isAdmin
-                ? 'Solo Administradores y Socias pueden alterar fichajes registrados.'
-                : 'Añade un fichaje que se te olvidó registrar.'}
-            </p>
-          </div>
+      {/* Notice */}
+      {isAdmin ? (
+        <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl mb-5 flex items-center space-x-2.5 text-xs text-amber-300">
+          <Lock className="w-4 h-4 shrink-0 text-amber-400" />
+          <span>
+            <b>Control de Integridad:</b> Este registro fue bloqueado al crearse por el trabajador. Solo la dirección puede modificar horas o importes.
+          </span>
+        </div>
+      ) : (
+        <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl mb-5 flex items-center space-x-2.5 text-xs text-emerald-300">
+          <User className="w-4 h-4 shrink-0 text-emerald-400" />
+          <span>
+            <b>Aviso:</b> Esto crea un fichaje nuevo. Para corregir uno que ya enviaste, pide a Administración/Socias.
+          </span>
+        </div>
+      )}
+
+      <div className="space-y-4 mb-6">
+        {/* Worker Selector */}
+        <Campo etiqueta="Trabajador">
+          <Selector value={workerName} onChange={handleWorkerChange} className="w-full font-medium">
+            {workersList.map((w) => (
+              <option key={w.name} value={w.name}>
+                {w.avatar} {w.name} — {w.role} ({w.isPayroll ? 'Nómina 14€/h' : 'Extra 10€/h'})
+              </option>
+            ))}
+          </Selector>
+        </Campo>
+
+        {/* Type & Rate */}
+        <div className="grid grid-cols-2 gap-3">
+          <Campo etiqueta="Tipo de Registro">
+            <Selector value={type} onChange={(e) => setType(e.target.value)} tamano="md" className="w-full font-medium">
+              <option value="entrada">🟢 Entrada (Inicio)</option>
+              <option value="salida">🔴 Salida (Fin)</option>
+            </Selector>
+          </Campo>
+
+          <Campo etiqueta="Tarifa Hora (€/h)">
+            <Input type="number" value={rate} onChange={(e) => setRate(e.target.value)} tamano="md" texto="ambar" />
+          </Campo>
         </div>
 
-        {/* Notice */}
-        {isAdmin ? (
-          <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl mb-5 flex items-center space-x-2.5 text-xs text-amber-300">
-            <Lock className="w-4 h-4 shrink-0 text-amber-400" />
-            <span>
-              <b>Control de Integridad:</b> Este registro fue bloqueado al crearse por el trabajador. Solo la dirección puede modificar horas o importes.
-            </span>
-          </div>
+        {/* Date & Time Picker */}
+        <Campo etiqueta="Fecha y Hora Exacta">
+          <Input type="datetime-local" value={dateTimeLocal} onChange={(e) => setDateTimeLocal(e.target.value)} className="w-full font-mono" />
+        </Campo>
+
+        {/* Task / Note */}
+        <Campo etiqueta="Concepto / Tarea / Nota de Modificación">
+          <AreaTexto
+            rows="2"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Motivo del ajuste o tarea realizada..."
+            tamano="md"
+            className="w-full resize-none"
+          />
+        </Campo>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 mt-8">
+        {entry ? (
+          confirmDelete ? (
+            <div className="flex-1 w-full bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl animate-fadeIn">
+              <p className="text-xs text-rose-300 font-bold mb-2">¿Seguro que quieres borrar este fichaje?</p>
+              {pairedEntry && (
+                <p className="text-[10px] text-rose-400 mb-3 bg-rose-500/20 p-2 rounded">
+                  ⚠️ <b>¡Ojo!</b> Este fichaje está emparejado con una <b>{pairedEntry.type.toUpperCase()}</b> a las <b>{pairedEntry.timeFormatted}</b>. 
+                  Si borras esto, el turno quedará descuadrado. Deberías borrar también su pareja.
+                </p>
+              )}
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="flex-1 px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-lg shadow-md shadow-rose-600/20"
+                >
+                  Sí, Eliminar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="w-full sm:w-auto px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-all"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Eliminar Fichaje</span>
+            </button>
+          )
         ) : (
-          <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl mb-5 flex items-center space-x-2.5 text-xs text-emerald-300">
-            <User className="w-4 h-4 shrink-0 text-emerald-400" />
-            <span>
-              <b>Aviso:</b> Esto crea un fichaje nuevo. Para corregir uno que ya enviaste, pide a Administración/Socias.
-            </span>
-          </div>
+          <div></div>
         )}
 
-        <div className="space-y-4 mb-6">
-          {/* Worker Selector */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Trabajador
-            </label>
-            <select
-              value={workerName}
-              onChange={handleWorkerChange}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white font-medium focus:outline-none focus:border-amber-500"
+        {!confirmDelete && (
+          <div className="flex items-center space-x-2.5 w-full sm:w-auto justify-end">
+            <button
+              onClick={onClose}
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
             >
-              {workersList.map((w) => (
-                <option key={w.name} value={w.name}>
-                  {w.avatar} {w.name} — {w.role} ({w.isPayroll ? 'Nómina 14€/h' : 'Extra 10€/h'})
-                </option>
-              ))}
-            </select>
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-slate-950 text-xs font-extrabold flex items-center justify-center space-x-1.5 shadow-lg transition-all ${
+                isAdmin ? 'bg-amber-500 hover:bg-amber-400 shadow-amber-500/20' : 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20'
+              }`}
+            >
+              <Check className="w-4 h-4" />
+              <span>{entry ? 'Guardar Cambios' : 'Crear Fichaje'}</span>
+            </button>
           </div>
-
-          {/* Type & Rate */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Tipo de Registro
-              </label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white font-medium focus:outline-none focus:border-amber-500"
-              >
-                <option value="entrada">🟢 Entrada (Inicio)</option>
-                <option value="salida">🔴 Salida (Fin)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Tarifa Hora (€/h)
-              </label>
-              <input
-                type="number"
-                value={rate}
-                onChange={(e) => setRate(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-amber-400 font-bold focus:outline-none focus:border-amber-500"
-              />
-            </div>
-          </div>
-
-          {/* Date & Time Picker */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Fecha y Hora Exacta
-            </label>
-            <input
-              type="datetime-local"
-              value={dateTimeLocal}
-              onChange={(e) => setDateTimeLocal(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white font-mono focus:outline-none focus:border-amber-500"
-            />
-          </div>
-
-          {/* Task / Note */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Concepto / Tarea / Nota de Modificación
-            </label>
-            <textarea
-              rows="2"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Motivo del ajuste o tarea realizada..."
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500 resize-none"
-            />
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 mt-8">
-          {entry ? (
-            confirmDelete ? (
-              <div className="flex-1 w-full bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl animate-fadeIn">
-                <p className="text-xs text-rose-300 font-bold mb-2">¿Seguro que quieres borrar este fichaje?</p>
-                {pairedEntry && (
-                  <p className="text-[10px] text-rose-400 mb-3 bg-rose-500/20 p-2 rounded">
-                    ⚠️ <b>¡Ojo!</b> Este fichaje está emparejado con una <b>{pairedEntry.type.toUpperCase()}</b> a las <b>{pairedEntry.timeFormatted}</b>. 
-                    Si borras esto, el turno quedará descuadrado. Deberías borrar también su pareja.
-                  </p>
-                )}
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setConfirmDelete(false)}
-                    className="flex-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-lg"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    className="flex-1 px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-lg shadow-md shadow-rose-600/20"
-                  >
-                    Sí, Eliminar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="w-full sm:w-auto px-4 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-all"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Eliminar Fichaje</span>
-              </button>
-            )
-          ) : (
-            <div></div>
-          )}
-
-          {!confirmDelete && (
-            <div className="flex items-center space-x-2.5 w-full sm:w-auto justify-end">
-              <button
-                onClick={onClose}
-                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSave}
-                className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-slate-950 text-xs font-extrabold flex items-center justify-center space-x-1.5 shadow-lg transition-all ${
-                  isAdmin ? 'bg-amber-500 hover:bg-amber-400 shadow-amber-500/20' : 'bg-emerald-500 hover:bg-emerald-400 shadow-emerald-500/20'
-                }`}
-              >
-                <Check className="w-4 h-4" />
-                <span>{entry ? 'Guardar Cambios' : 'Crear Fichaje'}</span>
-              </button>
-            </div>
-          )}
-        </div>
-
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }
