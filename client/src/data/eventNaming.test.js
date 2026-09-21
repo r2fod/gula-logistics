@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseEventAndTask, getEventName, inferCategory, buildEventName, normalizeGeneratedEvents, collectEventNames, splitEventNames, buildPaxRegistry, getEventShares, buildTaskEventResolver } from './eventNaming';
+import { parseEventAndTask, getEventName, inferCategory, buildEventName, normalizeGeneratedEvents, collectEventNames, splitEventNames, buildPaxRegistry, getEventShares, buildTaskEventResolver, buildTaskContextResolver } from './eventNaming';
 
 describe('parseEventAndTask', () => {
   it('"Evento - Tarea" explícito: separa por el guion normal', () => {
@@ -195,5 +195,32 @@ describe('buildTaskEventResolver — evento anotado en el planning, sin tocar el
     expect(resolve('Recoger sofá')).toBeNull();
     expect(resolve('Inicio de Jornada')).toBeNull();
     expect(buildTaskEventResolver(null)('x')).toBeNull();
+  });
+});
+
+describe('los BORRADORES no alteran los números de las semanas reales', () => {
+  const real = { events: [{ name: 'Evento Delta', pax: 100 }], schedule: { martes: { tasks: [{ text: 'Recogida Delta', event: 'Evento Delta' }] } } };
+  const borrador = { meta: { status: 'Borrador' }, events: [{ name: 'Evento Delta', pax: 55 }, { name: 'Boda Nueva', pax: 300 }], schedule: { martes: { tasks: [{ text: 'Boda Nueva - Carga' }] } } };
+
+  it('BUG evitado: crear un borrador con el mismo evento NO pisa los pax de la semana real (100 -> 55)', () => {
+    expect(buildPaxRegistry({ w3: real, w4: borrador })).toEqual({ 'evento delta': 100 });
+  });
+
+  it('el resolutor ignora las tareas de los borradores', () => {
+    const r = buildTaskEventResolver({ w3: real, w4: borrador });
+    expect(r('Recogida Delta')).toBe('Evento Delta');
+    expect(r('Boda Nueva - Carga')).toBeNull();
+  });
+
+  it('un evento que se repite en semanas ACEPTADAS suma sus pax (las horas también se agrupan por nombre)', () => {
+    const w5 = { events: [{ name: 'Evento Delta', pax: 55 }] };
+    expect(buildPaxRegistry({ w3: real, w5 })).toEqual({ 'evento delta': 155 });
+  });
+
+  it('el contexto de una tarea trae los pax de SU semana, no los de otra', () => {
+    const w5 = { events: [{ name: 'Evento Delta', pax: 55 }], schedule: { martes: { tasks: [{ text: 'Evento Delta - Montaje' }] } } };
+    const ctx = buildTaskContextResolver({ w3: real, w5 });
+    expect(ctx('Recogida Delta')).toEqual({ event: 'Evento Delta', pax: { 'evento delta': 100 } });
+    expect(ctx('Evento Delta - Montaje')).toEqual({ event: 'Evento Delta', pax: { 'evento delta': 55 } });
   });
 });

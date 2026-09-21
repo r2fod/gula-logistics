@@ -89,12 +89,29 @@ export function splitEventNames(eventName) {
 // Pax (invitados) por evento, sacados del campo `events` de cada semana
 // ([{ name, pax }]): { "boda ana y luis": 120 }. Sirve para repartir el
 // coste de una tarea de varios eventos en proporción a su tamaño.
-export function buildPaxRegistry(weeksMap = {}) {
+const esBorradorSemana = (w) => w?.meta?.status === 'Borrador';
+
+// Pax de cada evento dentro de UNA semana: { "boda ana": 120 }.
+function paxDeSemana(week) {
   const registry = {};
-  Object.values(weeksMap || {}).forEach(week => (week?.events || []).forEach(ev => {
+  (week?.events || []).forEach(ev => {
     const pax = Number(ev?.pax);
     if (ev?.name && pax > 0) registry[String(ev.name).trim().toLowerCase()] = pax;
-  }));
+  });
+  return registry;
+}
+
+// Pax por evento sumando las semanas NO borrador. Un evento que se repite
+// (mismo cliente cada semana) suma sus pax: el desglose de costes agrupa por
+// nombre las horas de todas las semanas, así que los pax también van juntos.
+// Los BORRADORES no cuentan: son una propuesta y no deben alterar los números
+// de las semanas reales (antes, al crear un borrador, sus pax pisaban a los de
+// la semana anterior con el mismo evento).
+export function buildPaxRegistry(weeksMap = {}) {
+  const registry = {};
+  Object.values(weeksMap || {}).filter(w => !esBorradorSemana(w)).forEach(week => {
+    Object.entries(paxDeSemana(week)).forEach(([k, pax]) => { registry[k] = (registry[k] || 0) + pax; });
+  });
   return registry;
 }
 
@@ -123,22 +140,31 @@ const normLabel = (s) => plain(s)
   .replace(/\s+/g, ' ')
   .trim();
 
-export function buildTaskEventResolver(weeksMap = {}) {
+// Devuelve (taskName) => { event, pax } | null, donde `pax` son los pax de los
+// eventos de LA SEMANA a la que pertenece esa tarea (el reparto de una tarea de
+// varios eventos usa los de su semana, no los de otra donde el mismo evento
+// tuviera otro tamaño). Los borradores se ignoran.
+export function buildTaskContextResolver(weeksMap = {}) {
   const byLabel = new Map();
-  const add = (label, event) => { if (label && event) byLabel.set(normLabel(label), event); };
+  const add = (label, event, week) => { if (label && event) byLabel.set(normLabel(label), { event, pax: paxDeSemana(week) }); };
 
-  Object.values(weeksMap || {}).forEach(week => {
+  Object.values(weeksMap || {}).filter(w => !esBorradorSemana(w)).forEach(week => {
     const lists = [...Object.values(week?.schedule || {}).map(d => d?.tasks), week?.sundayMonday?.tasks];
     lists.forEach(list => (list || []).forEach(t => {
       if (!t || typeof t !== 'object' || !t.text) return;
       const parsed = parseEventAndTask(t.text);
-      add(t.text, parsed.explicit ? parsed.eventName : t.event);
+      add(t.text, parsed.explicit ? parsed.eventName : t.event, week);
     }));
     // Las bodas del sábado se fichan como "Boda: lugar (camión)".
-    (week?.saturdaySpecial?.weddings || []).forEach(w => add(`Boda: ${w.location} (${w.truck})`, w.event));
+    (week?.saturdaySpecial?.weddings || []).forEach(w => add(`Boda: ${w.location} (${w.truck})`, w.event, week));
   });
 
   return (taskName) => byLabel.get(normLabel(taskName)) || null;
+}
+
+export function buildTaskEventResolver(weeksMap = {}) {
+  const contexto = buildTaskContextResolver(weeksMap);
+  return (taskName) => contexto(taskName)?.event || null;
 }
 
 // Nombres de los eventos de la semana tal como los escribe el usuario en el

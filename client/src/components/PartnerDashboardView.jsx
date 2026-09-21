@@ -48,7 +48,7 @@ import AdminClockEditModal from './AdminClockEditModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminSettingsModal from './AdminSettingsModal';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { parseEventAndTask, buildPaxRegistry, buildTaskEventResolver } from '../data/eventNaming';
+import { parseEventAndTask, buildPaxRegistry, buildTaskContextResolver } from '../data/eventNaming';
 import { summarizeByEvent } from '../data/eventSummary';
 import { esBorrador } from '../data/anticipacion';
 import SemanaBorradorBanner from './SemanaBorradorBanner';
@@ -270,7 +270,7 @@ export default function PartnerDashboardView({
 
   // Desglose por evento (una tarea de varios eventos reparte su coste entre ellos).
   const paxByEvent = useMemo(() => buildPaxRegistry(allWeeks), [allWeeks]);
-  const resolveEvent = useMemo(() => buildTaskEventResolver(allWeeks), [allWeeks]);
+  const resolveEvent = useMemo(() => buildTaskContextResolver(allWeeks), [allWeeks]);
   const eventsList = useMemo(() => summarizeByEvent(paidShifts, workersList, paxByEvent, resolveEvent), [paidShifts, workersList, paxByEvent, resolveEvent]);
 
   // Generate Master Table Rows (Operativa Logística)

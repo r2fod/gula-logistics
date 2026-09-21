@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Edit3, Save, Plus, Trash2, Calendar, ChevronUp, ChevronDown } from 'lucide-react';
 import { getTaskListForDay, buildTaskListPatch } from '../data/taskPlanning';
-import { collectEventNames, splitEventNames, EVENT_CATEGORIES } from '../data/eventNaming';
+import { collectEventNames, splitEventNames, parseEventAndTask, EVENT_CATEGORIES } from '../data/eventNaming';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
@@ -535,7 +535,21 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                               specificTask = parts.slice(1).join(' - ');
                             }
 
+                            // Tarea de una semana anterior al formato "Evento - Tarea" que ya lleva su
+                            // evento en el campo `event` (sin él en el texto): el evento se edita EN ESE
+                            // CAMPO y el texto no se toca. Los fichajes ya hechos guardan el texto tal
+                            // cual, así que reescribirlo (poniéndole "Evento - " delante) los desligaba
+                            // de la tarea y de su evento.
+                            const modoCampo = typeof task === 'object' && task !== null && !parseEventAndTask(textValue || '').explicit
+                              && typeof task.event === 'string'; // aunque se vacíe: sigue siendo una tarea de "campo"
+                            if (modoCampo) eventName = task.event;
+
                             const handleSplitChange = (newEv, newTk) => {
+                              if (modoCampo) {
+                                if (newTk !== textValue) handleTaskChange(dayKey, idx, newTk);
+                                if (newEv !== eventName) handleTaskMetadataChange(dayKey, idx, 'event', newEv);
+                                return;
+                              }
                               const combined = newEv.trim() ? `${newEv} - ${newTk}` : newTk;
                               handleTaskChange(dayKey, idx, combined);
                             };
