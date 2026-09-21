@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { summarizeByEvent } from './eventSummary';
-import { buildTaskEventResolver } from './eventNaming';
+import { buildTaskEventResolver, buildTaskContextResolver } from './eventNaming';
 
 const turno = (workerName, subTasks) => ({ workerName, subTasks });
 const sub = (eventName, durationHours, cost) => ({ eventName, durationHours, cost });
@@ -78,5 +78,20 @@ describe('summarizeByEvent — evento del planning', () => {
     expect(sin.map(e => e.eventName).sort()).toEqual(['Logística Preparación', 'Tarea suelta']);
     expect(con.map(e => e.eventName).sort()).toEqual(['Boda Marta', 'Tarea suelta']);
     expect(con.reduce((a, e) => a + e.totalCost, 0)).toBe(sin.reduce((a, e) => a + e.totalCost, 0));
+  });
+});
+
+describe('summarizeByEvent — reparto con los pax de la semana de la tarea', () => {
+  it('una tarea de dos eventos se reparte con los pax de SU semana aunque otra semana tenga el mismo evento con otro tamaño', () => {
+    const semanas = {
+      w3: { events: [{ name: 'Boda A', pax: 150 }, { name: 'Boda B', pax: 50 }], schedule: { martes: { tasks: [{ text: 'Recoger material', event: 'Boda A + Boda B' }] } } },
+      w4: { events: [{ name: 'Boda A', pax: 10 }] }, // misma boda "A" en otra semana, muy distinta
+    };
+    const lista = summarizeByEvent(
+      [turno('Ana', [{ taskName: 'Recoger material', eventName: 'Logística Preparación', durationHours: 2, cost: 20 }])],
+      roster, {}, buildTaskContextResolver(semanas)
+    );
+    expect(lista.find(e => e.eventName === 'Boda A').totalCost).toBe(15); // 150/(150+50), no 10/(10+50)
+    expect(lista.find(e => e.eventName === 'Boda B').totalCost).toBe(5);
   });
 });

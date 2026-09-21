@@ -15,10 +15,12 @@ export function summarizeByEvent(shifts = [], workersList = [], paxByEvent = {},
   shifts.forEach(shift => {
     (shift.subTasks || []).forEach(subTask => {
       // El evento anotado en el planning manda sobre el deducido del texto.
-      const planned = resolveEvent ? resolveEvent(subTask.taskName) : null;
+      const ctx = resolveEvent ? resolveEvent(subTask.taskName) : null;
+      const planned = typeof ctx === 'string' ? ctx : ctx?.event;
+      const paxLocal = ctx && typeof ctx === 'object' ? ctx.pax : null; // pax de la semana de la tarea
       const names = splitEventNames(planned || subTask.eventName || 'Sin Asignar / Extra');
       const eventNames = names.length > 0 ? names : ['Sin Asignar / Extra'];
-      const shares = getEventShares(eventNames, paxByEvent);
+      const shares = getEventShares(eventNames, paxLocal || paxByEvent);
 
       eventNames.forEach((eventName, i) => {
         const cost = (subTask.cost || 0) * shares[i];

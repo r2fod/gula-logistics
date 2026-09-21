@@ -71,3 +71,32 @@ describe('AdminTaskEditorModal — pax por evento', () => {
     expect(screen.queryByLabelText('Pax de Logística Carga')).not.toBeInTheDocument();
   });
 });
+
+describe('AdminTaskEditorModal — tareas anteriores al formato (evento en el campo event)', () => {
+  const legado = () => ({
+    ...semana(),
+    events: [{ name: 'Boda Ana y Luis', pax: 100 }],
+    schedule: { martes: { title: 'Martes 15', tasks: [{ id: 'm1', text: 'Recoger sillas Proveedor', event: 'Logística Preparación', timeFrame: '11:00-12:00', assigned: [], completed: false }] } },
+  });
+
+  it('BUG evitado: tocar un chip NO reescribe el texto de la tarea (desligaba sus fichajes): cambia solo el campo event', () => {
+    render(<AdminTaskEditorModal isOpen onClose={() => {}} activeWeekData={legado()} workersList={[]} onSaveWeekData={(w) => { guardado = w; }} />);
+    const entrada = screen.getByPlaceholderText('Dejar vacío si es una Tarea General');
+    expect(entrada.value).toBe('Logística Preparación'); // muestra el evento del campo
+    const contenedor = entrada.closest('div.flex.flex-col.gap-2');
+    fireEvent.click(Array.from(contenedor.querySelectorAll('button[aria-pressed]')).find(b => b.textContent === 'Logística Preparación')); // quitarlo
+    fireEvent.click(Array.from(contenedor.querySelectorAll('button[aria-pressed]')).find(b => b.textContent === 'Boda Ana y Luis')); // ponerlo
+    fireEvent.click(screen.getByRole('button', { name: /Guardar y Actualizar Planning/ }));
+
+    const tarea = guardado.schedule.martes.tasks[0];
+    expect(tarea.text).toBe('Recoger sillas Proveedor'); // el texto NO cambia
+    expect(tarea.event).toBe('Boda Ana y Luis');
+  });
+
+  it('editar la descripción de una de estas tareas cambia el texto pero no le mete el evento delante', () => {
+    render(<AdminTaskEditorModal isOpen onClose={() => {}} activeWeekData={legado()} workersList={[]} onSaveWeekData={(w) => { guardado = w; }} />);
+    fireEvent.change(screen.getByPlaceholderText(/Carga de camión y montaje/), { target: { value: 'Recoger sillas nuevas' } });
+    fireEvent.click(screen.getByRole('button', { name: /Guardar y Actualizar Planning/ }));
+    expect(guardado.schedule.martes.tasks[0]).toMatchObject({ text: 'Recoger sillas nuevas', event: 'Logística Preparación' });
+  });
+});
