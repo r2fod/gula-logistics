@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Edit3, Save, Plus, Trash2, Calendar, ChevronUp, ChevronDown } from 'lucide-react';
 import { getTaskListForDay, buildTaskListPatch } from '../data/taskPlanning';
+import { collectEventNames } from '../data/eventNaming';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
@@ -327,6 +328,10 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-1 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
       <div className="relative w-full max-w-6xl bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl text-white max-h-[94vh] flex flex-col">
+        {/* Sugerencias de evento para el campo "Nombre del Evento" de cada tarea */}
+        <datalist id="gula-event-suggestions">
+          {collectEventNames(localWeek).map(n => <option key={n} value={n} />)}
+        </datalist>
         {/* Header */}
         <div className="p-3 sm:p-6 border-b border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3">
@@ -500,6 +505,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                                   <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Nombre del Evento (Ej: Boda Soto)</label>
                                   <input
                                     type="text"
+                                    list="gula-event-suggestions"
                                     value={eventName}
                                     onChange={(e) => handleSplitChange(e.target.value, specificTask)}
                                     placeholder="Dejar vacío si es una Tarea General"

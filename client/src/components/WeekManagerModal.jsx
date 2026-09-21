@@ -3,6 +3,7 @@ import { Calendar, Plus, X, Copy, Sparkles, RefreshCw, AlertCircle, Check, Truck
 import { generateScheduleWithGemini, buildWeekPrompt, WEEK_EVENT_DAYS, WEEK_EVENT_KINDS, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { parseWeekRange, getDayLabel } from '../data/taskPlanning';
+import { buildEventName } from '../data/eventNaming';
 
 // Asistente guiado para crear una semana nueva: en vez de dejarla en blanco
 // (o clonada a ciegas) y que el usuario tenga que organizarla tarea a
@@ -101,7 +102,8 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
     // haría si se le pasara activeWeekData con contenido real.
     const { generatedJson: result, errorMsg: err } = await generateScheduleWithGemini({
       prompt: buildPrompt(),
-      apiKey
+      apiKey,
+      eventNames: events.map(e => buildEventName(e, dayLabel))
     });
 
     setGeneratedJson(result);

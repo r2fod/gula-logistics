@@ -56,10 +56,12 @@ describe('WeekManagerModal — bodas y eventos por día', () => {
     await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
 
     const { prompt } = generate.mock.calls[0][0];
-    expect(prompt).toContain('- Martes 22: Evento — Catering Uno.');
-    expect(prompt).toContain('- Martes 22: Evento — Catering Dos.');
-    expect(prompt).toContain('- Viernes 25: Boda — Finca Norte.');
+    expect(prompt).toContain('- Martes 22: Evento Catering Uno.');
+    expect(prompt).toContain('- Martes 22: Evento Catering Dos.');
+    expect(prompt).toContain('- Viernes 25: Boda Finca Norte.');
     expect(prompt).toContain('El sábado no hay bodas esta semana');
+    // los nombres de evento que verá la IA son los mismos que el usuario escribió
+    expect(generate.mock.calls[0][0].eventNames).toEqual(['Evento Catering Uno', 'Evento Catering Dos', 'Boda Finca Norte']);
   });
 
   it('un evento se puede quitar', () => {

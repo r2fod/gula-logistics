@@ -4,6 +4,8 @@
 // "Crear Nueva Semana" (WeekManagerModal.jsx) necesita la misma llamada,
 // con las mismas reglas de negocio — mantenerlas en dos sitios las habría
 // desincronizado en cuanto alguien ajustara una sola copia.
+import { EVENT_CATEGORIES, buildEventName, normalizeGeneratedEvents } from './eventNaming';
+
 export const GEMINI_API_KEY_STORAGE_KEY = 'gula_gemini_api_key';
 
 // Días y tipos que se pueden elegir al listar los eventos de la semana en el
@@ -30,8 +32,8 @@ export function buildWeekPrompt({ weekName, dateRange, trucks = [], workers = []
   const order = WEEK_EVENT_DAYS.map(d => d.key);
   clean.sort((a, b) => order.indexOf(a.day) - order.indexOf(b.day));
 
-  const eventLines = clean.map(e =>
-    `- ${dayLabel(e.day)}: ${e.kind || 'Evento'}${e.place ? ` — ${e.place}` : ''}${e.time ? ` (${e.time})` : ''}.`);
+  const eventLines = clean.map(e => `- ${dayLabel(e.day)}: ${buildEventName(e, dayLabel)}${e.time ? ` (${e.time})` : ''}.`);
+  const eventNames = [...new Set(clean.map(e => buildEventName(e, dayLabel)))];
   const hasSaturday = clean.some(e => e.day === 'sabado');
 
   const parts = [
@@ -39,7 +41,7 @@ export function buildWeekPrompt({ weekName, dateRange, trucks = [], workers = []
     trucks.length > 0 ? `Camiones disponibles esta semana: ${trucks.join(', ')}.` : 'No hay camiones marcados como disponibles — avisa en las tareas que dependan de reparto de camión.',
     workers.length > 0 ? `Trabajadores disponibles esta semana: ${workers.join(', ')}.` : '',
     eventLines.length > 0
-      ? `Bodas y eventos de la semana — para CADA uno planifica, en el día que toque, la carga (el día anterior o por la mañana), la ruta, la descarga con montaje de estructura y la recogida posterior, repartiendo camiones y personal entre los que coincidan:\n${eventLines.join('\n')}\nLos de sábado van en saturdaySpecial.weddings; los de cualquier otro día se reflejan como tareas de ese día (y de los anteriores si hay que preparar o cargar antes).`
+      ? `Bodas y eventos de la semana — para CADA uno planifica, en el día que toque, la carga (el día anterior o por la mañana), la ruta, la descarga con montaje de estructura y la recogida posterior, repartiendo camiones y personal entre los que coincidan:\n${eventLines.join('\n')}\nLos de sábado van en saturdaySpecial.weddings; los de cualquier otro día se reflejan como tareas de ese día (y de los anteriores si hay que preparar o cargar antes).\nEscribe el texto de cada tarea como "EVENTO - Tarea" usando EXACTAMENTE estos nombres de evento: ${eventNames.join(', ')}. Para la logística que no es de un evento concreto usa "Logística Preparación", "Logística Carga" o "Limpieza Eventos".`
       : 'No hay bodas ni eventos esta semana — planifica solo la operativa de flota, almacén y recogidas.',
     hasSaturday ? '' : 'El sábado no hay bodas esta semana — no generes saturdaySpecial.weddings, o déjalo vacío.',
     extraNotes.trim() ? `Notas adicionales: ${extraNotes.trim()}` : ''
@@ -57,7 +59,8 @@ REGLAS DE NEGOCIO IMPORTANTES:
 5. Genera las tareas como OBJETOS, intentando siempre separar el texto de la tarea (ej: "Recoger material") del horario (ej: "09:00 - 11:30") y de la ubicación (ej: "Dealde").
 6. Para cada tarea, si es fuera de la base, GENERA UN ENLACE DE GOOGLE MAPS válido para la ubicación usando este formato exacto: "https://www.google.com/maps/search/?api=1&query=Nombre+Del+Sitio". Si es en la base, déjalo vacío "".
 7. En "sundayMonday.tasks" (domingo y lunes comparten lista) pon SIEMPRE "targetDay": "Domingo" o "Lunes" según el día real de cada tarea; sin él la app no sabe a qué día pertenece.
-8. Te pasaré la SEMANA ACTUAL en formato JSON. Si el usuario te pide un cambio o ajuste, MODIFICA el JSON actual de forma inteligente, preservando lo que no cambie, y devuelve el JSON completo actualizado.
+8. FORMATO DEL TEXTO DE CADA TAREA (de él salen los costes por evento y por persona): "EVENTO - Tarea", con un guion normal entre espacios UNA sola vez. EVENTO es el nombre exacto de la boda o evento (ej. "Boda Ana y Luis", "Evento Catering Norte") cuando la tarea es de ese evento; si es logística general, una de estas categorías: ${EVENT_CATEGORIES.map(c => `"${c}"`).join(', ')} ("Logística Preparación" = recogidas y devoluciones de camión o material, preparación de material, supervisión; "Logística Carga" = cargas de camión; "Limpieza Eventos" = limpieza de vajilla y utensilios). La parte "Tarea" es corta y concreta, sin guiones con espacios ni horas ni nombres de personas (van en timeFrame y assigned). Ejemplos: "Boda Ana y Luis - Descarga + Montaje Estructura", "Boda Ana y Luis - Recoger generador", "Boda Ana y Luis - Logística Cierre", "Boda Ana y Luis - Supervisión", "Logística Preparación - Recogida Camión Covey", "Logística Preparación - Devolución Dealde", "Logística Carga - Carga Camión Miércoles", "Limpieza Eventos - Limpieza eventos".
+9. Te pasaré la SEMANA ACTUAL en formato JSON. Si el usuario te pide un cambio o ajuste, MODIFICA el JSON actual de forma inteligente, preservando lo que no cambie, y devuelve el JSON completo actualizado.
 
 Este es el JSON ACTUAL de la semana (únelo con los cambios que pide el usuario):
 ${JSON.stringify(activeWeekData || {}, null, 2)}
@@ -108,7 +111,7 @@ export function validateGeneratedSchedule(json) {
 // interfaz dejaba "Crear la Semana con esta Planificación": el usuario
 // generaba la semana nueva y salía con los eventos de la anterior. Un dato
 // inventado que parece real es peor que un error claro.
-export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData }) {
+export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData, eventNames = [] }) {
   // Sin fallback a import.meta.env.VITE_GEMINI_API_KEY a propósito:
   // cualquier variable con prefijo VITE_ se compila tal cual en el JS
   // público del bundle (GitHub Pages), así que un "default" ahí
@@ -154,11 +157,12 @@ export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekDat
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('La respuesta de Gemini no contenía un JSON válido.');
 
-    const generatedJson = JSON.parse(jsonMatch[0]);
-    const invalid = validateGeneratedSchedule(generatedJson);
+    const parsed = JSON.parse(jsonMatch[0]);
+    const invalid = validateGeneratedSchedule(parsed);
     if (invalid) throw new Error(invalid);
 
-    return { generatedJson, errorMsg: '' };
+    // Si la IA se salta el formato "Evento - Tarea", se completa aquí.
+    return { generatedJson: normalizeGeneratedEvents(parsed, eventNames), errorMsg: '' };
   } catch (err) {
     console.error(err);
     return {
