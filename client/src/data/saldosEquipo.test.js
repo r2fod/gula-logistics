@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { fusionarSaldosConEquipo, buscarPorNombreDeSaldo } from './saldosEquipo';
 
 const equipo = [
-  { name: 'Ricardo', role: 'Conductor', avatar: '🚛', isPayroll: false },
-  { name: 'Irene', role: 'Base', avatar: '👩', isPayroll: true },
+  { name: 'Marta', role: 'Conductora', avatar: '🚛', isPayroll: false },
+  { name: 'Elena', role: 'Base', avatar: '👩', isPayroll: true },
   { name: 'Nuevo Fichaje', role: 'Apoyo', isPayroll: false },
 ];
 
@@ -11,20 +11,20 @@ describe('fusionarSaldosConEquipo', () => {
   const saldos = {
     updatedAt: 'x',
     workers: [
-      { id: 'ricardo', name: 'Ricardo Gula', currentBalance: 125.5, breakdown: [{ concept: 'a' }] },
+      { id: 'marta', name: 'Marta Gula', currentBalance: 125.5, breakdown: [{ concept: 'a' }] },
       { id: 'otro', name: 'Alguien que ya no está', currentBalance: 9 },
     ],
   };
 
   it('usa la ficha real aunque el nombre completo no coincida exactamente', () => {
     const { workers } = fusionarSaldosConEquipo(saldos, equipo);
-    expect(workers[0].id).toBe('ricardo');
+    expect(workers[0].id).toBe('marta');
     expect(workers[0].currentBalance).toBe(125.5);
   });
 
   it('crea una ficha vacía, con su acuerdo por defecto, para quien no tiene', () => {
     const { workers } = fusionarSaldosConEquipo(saldos, equipo);
-    expect(workers[1]).toMatchObject({ id: 'irene', currentBalance: 0, status: 'Sin saldo', agreements: ['Nómina Fija (Control interno)'] });
+    expect(workers[1]).toMatchObject({ id: 'elena', currentBalance: 0, status: 'Sin saldo', agreements: ['Nómina Fija (Control interno)'] });
     expect(workers[2]).toMatchObject({ id: 'nuevo-fichaje', avatar: '👤', agreements: ['Extra a 10,00 € / hora (Por Defecto)'], breakdown: [] });
   });
 
@@ -41,15 +41,15 @@ describe('fusionarSaldosConEquipo', () => {
 });
 
 describe('buscarPorNombreDeSaldo', () => {
-  const horas = { Ricardo: { hours: 4 }, Irene: { hours: 2 } };
+  const horas = { Marta: { hours: 4 }, Elena: { hours: 2 } };
 
   it('encuentra la entrada por el nombre completo de la ficha', () => {
-    expect(buscarPorNombreDeSaldo(horas, 'Ricardo Gula')).toEqual({ hours: 4 });
+    expect(buscarPorNombreDeSaldo(horas, 'Marta Gula')).toEqual({ hours: 4 });
   });
 
   it('devuelve null si no hay coincidencia o faltan datos', () => {
     expect(buscarPorNombreDeSaldo(horas, 'Luis Gula')).toBeNull();
     expect(buscarPorNombreDeSaldo(horas, '')).toBeNull();
-    expect(buscarPorNombreDeSaldo(undefined, 'Ricardo')).toBeNull();
+    expect(buscarPorNombreDeSaldo(undefined, 'Marta')).toBeNull();
   });
 });

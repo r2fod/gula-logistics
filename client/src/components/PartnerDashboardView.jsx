@@ -145,8 +145,8 @@ export default function PartnerDashboardView({
   const { shifts: paidShifts } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
   const workerBalances = useMemo(() => aggregateShiftsByWorker(paidShifts, workersList), [paidShifts, workersList]);
 
-  // Horas y turnos de quien tiene la ficha `nombreSaldo` ("Ricardo Gula"); los
-  // fichajes están indexados por el nombre corto del equipo ("Ricardo").
+  // Horas y turnos de quien tiene la ficha `nombreSaldo` ("Marta Gula"); los
+  // fichajes están indexados por el nombre corto del equipo ("Marta").
   const findWorkerHours = (nombreSaldo) => buscarPorNombreDeSaldo(workerBalances, nombreSaldo);
 
   const actualizarSemana = (weekId, partialUpdate) => {

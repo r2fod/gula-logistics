@@ -3,7 +3,7 @@ import { normalizarNombre, coincideNombre } from './nombresTrabajadores';
 
 describe('normalizarNombre', () => {
   it('quita espacios, pasa a minúsculas y unifica la doble f', () => {
-    expect(normalizarNombre('  Jefferson Gula ')).toBe('jeferson gula');
+    expect(normalizarNombre('  Steffan Gula ')).toBe('stefan gula');
   });
 
   it('tolera valores vacíos', () => {
@@ -14,15 +14,15 @@ describe('normalizarNombre', () => {
 
 describe('coincideNombre', () => {
   it('cruza el nombre corto del equipo con el completo de la ficha', () => {
-    expect(coincideNombre('Ricardo', 'Ricardo Gula')).toBe(true);
+    expect(coincideNombre('Marta', 'Marta Gula')).toBe(true);
   });
 
   it('acepta el nombre igual y sin importar mayúsculas', () => {
-    expect(coincideNombre('Irene', 'irene')).toBe(true);
+    expect(coincideNombre('Elena', 'elena')).toBe(true);
   });
 
-  it('cruza el typo histórico Jeferson / Jefferson', () => {
-    expect(coincideNombre('Jeferson', 'Jefferson Gula')).toBe(true);
+  it('cruza las dos grafías de un nombre con doble f', () => {
+    expect(coincideNombre('Stefan', 'Steffan Gula')).toBe(true);
   });
 
   it('no mezcla a personas distintas', () => {
@@ -30,7 +30,7 @@ describe('coincideNombre', () => {
   });
 
   it('un nombre vacío no coincide con nada (evita cruzar todo con todos)', () => {
-    expect(coincideNombre('', 'Ricardo Gula')).toBe(false);
-    expect(coincideNombre('Ricardo', '')).toBe(false);
+    expect(coincideNombre('', 'Marta Gula')).toBe(false);
+    expect(coincideNombre('Marta', '')).toBe(false);
   });
 });
