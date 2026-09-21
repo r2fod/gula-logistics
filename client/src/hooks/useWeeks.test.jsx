@@ -143,9 +143,34 @@ describe('useWeeks — semana con la que se abre', () => {
     expect(renderHook(() => useWeeks()).result.current.activeWeekId).toBe('week_4');
   });
 
-  it('sin semanas legibles se queda en la semana base', () => {
+  it('sin semanas legibles abre la primera que existe (no la de ejemplo del código)', () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 24, 10, 0));
     conSemanas({ x: w('x', 'fechas raras') });
-    expect(renderHook(() => useWeeks()).result.current.activeWeekId).toBe('week_3');
+    expect(renderHook(() => useWeeks()).result.current.activeWeekId).toBe('x');
+  });
+});
+
+describe('useWeeks — semana activa siempre válida', () => {
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+  const conSemanas = (semanas) => vi.stubGlobal('localStorage', { store: { gula_logistics_all_weeks_v10: JSON.stringify(semanas) }, getItem(k) { return this.store[k] ?? null; }, setItem(k, v) { this.store[k] = v; }, removeItem(k) { delete this.store[k]; } });
+
+  it('BUG evitado: un id que no existe (p. ej. el texto de una opción) no abre la semana de ejemplo, abre una real', () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 17, 10, 0));
+    const real = { ...semana(), name: 'Semana 3', meta: { dateRange: 'Del 15 al 20 de Septiembre de 2026' } }; // sin campo `id`, como la de producción
+    delete real.id;
+    conSemanas({ week_3: real });
+    const { result } = renderHook(() => useWeeks());
+    act(() => result.current.setActiveWeekId('Semana 3 (Del 15 al 20 de Septiembre de 2026)'));
+    expect(result.current.activeWeekId).toBe('week_3');
+    expect(result.current.activeWeek.name).toBe('Semana 3');
+    expect(result.current.activeWeek.meta.week).not.toBe('Semana de ejemplo');
+  });
+
+  it('elegir otra semana que sí existe sigue funcionando', () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 17, 10, 0));
+    conSemanas({ week_3: { ...semana(), name: 'Semana 3' }, week_4: { ...semana(), id: 'week_4', name: 'Semana 4', meta: { dateRange: 'Del 22 al 27 de Septiembre de 2026' } } });
+    const { result } = renderHook(() => useWeeks());
+    act(() => result.current.setActiveWeekId('week_4'));
+    expect(result.current.activeWeekId).toBe('week_4');
   });
 });
