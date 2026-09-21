@@ -112,3 +112,34 @@ describe('ScheduleTab — evento anotado aparte (planning anterior al formato)',
     expect(screen.getByText(/Recoger material Alquileres Norte/)).toBeInTheDocument();
   });
 });
+
+describe('ScheduleTab — víspera (lunes anterior a la semana)', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  const previa = { name: 'Semana anterior', meta: { dateRange: 'Del 8 al 13 de Septiembre de 2026' } };
+  const carga = { text: 'Evento Uno - Carga camión', timeFrame: '17:00-17:30', targetDay: 'Lunes', assigned: ['Ana'], completed: true };
+
+  it('enseña el lunes con sus preparativos y dice en qué semana están guardados', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 20, 0));
+    render(<ScheduleTab activeWeekData={semana([])} workersList={[]} onToggleTask={() => {}} onUpdateWeek={() => {}} vispera={{ fecha: new Date(2026, 8, 14), semana: previa, tareas: [{ task: carga, idx: 0 }] }} />);
+    expect(screen.getByText('Lunes 14')).toBeTruthy();
+    expect(screen.getByText('Víspera')).toBeTruthy();
+    expect(screen.getByText(/guardado en la Semana anterior/)).toBeTruthy();
+    expect(screen.getByText(/Carga camión/)).toBeTruthy();
+  });
+
+  it('enseña quién fichó ese día y cuántas horas', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 20, 0));
+    render(<ScheduleTab activeWeekData={semana([])} workersList={[]} onToggleTask={() => {}} onUpdateWeek={() => {}} vispera={{ fecha: new Date(2026, 8, 14), semana: previa, tareas: [{ task: carga, idx: 0 }], fichados: [{ nombre: 'Ana', horas: 5.5 }, { nombre: 'Luis', horas: 2.5 }] }} />);
+    expect(screen.getByText('Fichados ese día')).toBeTruthy();
+    expect(screen.getByText('5,5 h')).toBeTruthy();
+    expect(screen.getByText('2,5 h')).toBeTruthy();
+  });
+
+  it('sin víspera no pinta nada', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 20, 0));
+    render(<ScheduleTab activeWeekData={semana([])} workersList={[]} onToggleTask={() => {}} onUpdateWeek={() => {}} />);
+    expect(screen.queryByText('Víspera')).toBeNull();
+  });
+});

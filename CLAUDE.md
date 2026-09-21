@@ -18,7 +18,7 @@
 
 ## CODE & UX
 - Diffs mínimos. Responsive 320–1920px de verdad — hoy había overflow horizontal real en móvil en dos selectores, ver `MEJORAS.md`.
-- UI: Solo Tailwind + transiciones/animaciones nativas (`animate-fadeIn`, `animate-pulse`...). Nada de librerías de animación.
+- UI: Solo Tailwind + transiciones/animaciones nativas (`animate-fadeIn`, `animate-aparecer`, `animate-pop`, `animate-pulse`...; los keyframes viven en `client/src/index.css`). Iconos: la regla global de `index.css` ya los anima al pasar el ratón; para una animación propia, clase `icono-campana|camion|reloj|latido|destello` en el botón. Todo respeta "reducir movimiento". Nada de librerías de animación.
 - UI visual: verificar abriendo la app desplegada (https://r2fod.github.io/gula-logistics) y mirando de verdad, no solo que compile. `npm run build` en verde no significa que se vea bien.
 - Componentes base (`client/src/components/ui/`) — **usarlos antes de copiar clases**: `Modal` + `CabeceraModal` (todo modal nuevo; ya trae Escape, scroll y botón de cerrar), `Input`/`Selector`/`AreaTexto`/`Campo` (formularios), `Tarjeta`, `EstadoVacio`, `BarraProgreso`, `KpiCard`, `Seccion`. Una acción nueva del panel va en `components/panel/acciones.js` (una sola lista para escritorio, móvil y menú lateral). Importes/horas: `data/formatoFinanciero.js`; fechas y horas: `utils/dateUtils.js` (nada de `toFixed`/`toLocale*` sueltos); un fichaje nuevo: `data/fichajes.js` (`crearFichaje`). Iconos: solo lucide en botones y pestañas (los emojis de avatar son datos).
 - Tests: **no hay suite de tests automatizados en este proyecto.** Verificación = build limpio + comprobación manual en el navegador (desktop y móvil) + `curl` contra la API de Render para cambios de backend.

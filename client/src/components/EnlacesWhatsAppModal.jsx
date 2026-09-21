@@ -8,10 +8,11 @@ import CabeceraModal from './ui/CabeceraModal';
 
 // Enlaces para compartir: el de las socias (con la sesión de admin dentro si la
 // hay, para que entren sin clave) y uno por trabajador, para copiar, mandar
-// por WhatsApp o abrir.
+// por WhatsApp o abrir. El de cada trabajador es fijo (siempre el mismo, abre la
+// semana en curso), ver data/enlaces.js.
 //
-// Props: abierto, onCerrar, workersList, weekId y weekName (la semana del enlace).
-export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = [], weekId, weekName }) {
+// Props: abierto, onCerrar y workersList.
+export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = [] }) {
   const [copiadoSocias, copiarSocias] = useCopiado();
   const [copiadoTrabajador, copiarTrabajador] = useCopiado();
 
@@ -25,7 +26,7 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
   };
 
   const compartirTrabajador = (nombre) => {
-    const texto = `🚚 Hola ${nombre}, aquí tienes tu planificación y fichaje para ${weekName} de Gula Logística: ${enlaceTrabajador(weekId, nombre)}`;
+    const texto = `🚚 Hola ${nombre}, aquí tienes tu planificación y fichaje de Gula Logística: ${enlaceTrabajador(nombre)}\n\nGuarda este enlace: es siempre el mismo y se actualiza solo cada semana.`;
     window.open(enlaceWhatsApp(texto), '_blank');
   };
 
@@ -108,7 +109,7 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
 
             <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full sm:w-auto shrink-0">
               <button
-                onClick={() => copiarTrabajador(enlaceTrabajador(weekId, w.name), w.name)}
+                onClick={() => copiarTrabajador(enlaceTrabajador(w.name), w.name)}
                 className="col-span-2 sm:col-span-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
               >
                 {copiadoTrabajador === w.name ? (
@@ -133,7 +134,7 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
               </button>
 
               <button
-                onClick={() => window.open(enlaceTrabajador(weekId, w.name), '_blank')}
+                onClick={() => window.open(enlaceTrabajador(w.name), '_blank')}
                 className="col-span-1 sm:col-span-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-blue-600/20 whitespace-nowrap shrink-0"
               >
                 <ExternalLink className="w-3.5 h-3.5" />

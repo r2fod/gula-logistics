@@ -70,9 +70,9 @@ export default function BotonAccion({ accion, variante = 'barra', alPulsar }) {
   const { icono: Icono, etiqueta, etiquetaMenu, cargando, titulo, tono } = accion;
   const estilos = ESTILOS[tono] || ESTILOS.neutro;
   const claseTono = estilos[variante] || estilos.barra;
-  // Los botones de la barra de escritorio y el iniciar/avisar tienen animación en reposo;
-  // en el resto solo late el icono mientras trabaja.
-  const animacion = cargando ? 'animate-pulse' : (variante === 'barra' ? accion.animacionIcono || '' : '');
+  // El icono late mientras el botón trabaja; su animación al pasar el ratón la pone
+  // `claseIcono` en el botón (index.css).
+  const animacion = cargando ? 'animate-pulse' : '';
   const texto = variante === 'menu' ? etiquetaMenu || etiqueta : etiqueta;
 
   return (
@@ -84,7 +84,7 @@ export default function BotonAccion({ accion, variante = 'barra', alPulsar }) {
       }}
       disabled={cargando}
       title={variante === 'menu' ? undefined : titulo}
-      className={`${BASE[variante]} ${claseTono}`}
+      className={`${accion.claseIcono || ''} ${BASE[variante]} ${claseTono}`.trim()}
     >
       <Icono className={`${ICONO[variante]} shrink-0 ${accion.colorIcono || ''} ${animacion}`.trim()} aria-hidden="true" />
       <span className={variante === 'barra' || variante === 'cabecera' ? 'whitespace-nowrap truncate max-w-[120px]' : 'whitespace-nowrap'}>{texto}</span>

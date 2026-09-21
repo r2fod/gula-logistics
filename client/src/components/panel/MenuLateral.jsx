@@ -1,5 +1,5 @@
 import React from 'react';
-import { Truck, X } from 'lucide-react';
+import { Truck, X, ShieldCheck, Eye } from 'lucide-react';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import BotonAccion from './BotonAccion';
@@ -44,7 +44,9 @@ export default function MenuLateral({ abierto, onCerrar, acciones, adminUnlocked
             <div>
               <span className="text-[10px] text-slate-400 block font-medium">Modo de Acceso</span>
               <span className="text-xs font-bold text-white flex items-center gap-1 mt-0.5">
-                {adminUnlocked ? 'Administrador' : 'Socias / Lectura'}
+                {adminUnlocked
+                  ? <><ShieldCheck className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" /> Administrador</>
+                  : <><Eye className="w-3.5 h-3.5 text-blue-400" aria-hidden="true" /> Socias / lectura</>}
               </span>
             </div>
             {adminUnlocked ? (

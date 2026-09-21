@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Wallet, Banknote, Users, Clock, Inbox, Layers, BarChart3, PieChart, Info, TrendingUp, TrendingDown } from 'lucide-react';
 import { aggregateShiftsByWorker } from '../../data/shiftCalculations';
 import { buildPaxRegistry, buildTaskContextResolver } from '../../data/eventNaming';
@@ -14,8 +14,8 @@ import FilaDesglose from './financiero/FilaDesglose';
 import GraficoEvolucion from './financiero/GraficoEvolucion';
 import DonutHoras from './financiero/DonutHoras';
 
-// Con el planning de la semana abierta como punto de partida; si no tiene fechas
-// legibles, la semana de hoy.
+// Con el planning de la semana abierta (la del selector de arriba) como punto de
+// partida; si no tiene fechas legibles, la semana de hoy.
 const anclaInicial = (semana) => getWeekRange(semana)?.start || new Date();
 
 const TITULO_SERIE = { semana: 'Coste por día', mes: 'Coste por semana', anio: 'Coste por mes', todo: 'Coste por mes' };
@@ -29,9 +29,26 @@ const tarifaComun = (personal) => {
   return tarifas.length === 1 ? `a ${formatearEuros(tarifas[0])} / hora` : null;
 };
 
+// Franja de totales al pie de cada lista: las dos tarjetas de al lado miden lo mismo
+// y esta fila queda a la misma altura en las dos.
+const TotalPie = ({ horas, coste }) => (
+  <div className="flex items-center justify-between gap-3 text-xs">
+    <span className="font-bold uppercase tracking-wider text-slate-400">Total</span>
+    <span className="tabular-nums text-slate-400">
+      {formatearHoras(horas)} <span className="text-slate-600">·</span> <span className="text-sm font-extrabold text-amber-400">{formatearEuros(coste)}</span>
+    </span>
+  </div>
+);
+
 export default function FinancialSummaryTab({ shifts = [], workersList = [], allWeeks = {}, activeWeekData = null }) {
   const [modo, setModo] = useState('semana');
   const [ancla, setAncla] = useState(() => anclaInicial(activeWeekData));
+
+  // El resumen sigue a la semana que se elige arriba: al cambiarla, el periodo pasa a
+  // ser esa semana (o el mes o año que la contiene). Las flechas y los botones de
+  // periodo siguen funcionando después, a partir de ahí.
+  const inicioActiva = getWeekRange(activeWeekData)?.start?.getTime() ?? null;
+  useEffect(() => { setAncla(inicioActiva ? new Date(inicioActiva) : new Date()); }, [inicioActiva]);
 
   const rango = useMemo(() => rangoDePeriodo(modo, ancla, allWeeks), [modo, ancla, allWeeks]);
   const turnos = useMemo(() => turnosDelPeriodo(shifts, rango), [shifts, rango]);
@@ -69,9 +86,10 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
     return tiempos.length ? new Date(Math.max(...tiempos)) : null;
   }, [shifts]);
 
+  // Pulsar Semana, Mes o Año enseña siempre los números de la semana elegida arriba (o
+  // de su mes o año), aunque se hubiera ido a otro periodo con las flechas.
   const cambiarModo = (nuevo) => {
-    // Al pasar de "todo" a un periodo concreto se vuelve a la semana abierta.
-    if (modo === 'todo') setAncla(anclaInicial(activeWeekData));
+    setAncla(anclaInicial(activeWeekData));
     setModo(nuevo);
   };
   const siguienteEsFuturo = modo !== 'todo' && rangoDePeriodo(modo, moverPeriodo(modo, ancla, 1), allWeeks).desde > new Date();
@@ -184,8 +202,8 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
             </Seccion>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start">
-            <Seccion titulo="Desglose por evento" subtitulo="Pulsa un evento para ver quién trabajó en él" icono={Layers} color="text-indigo-300" retraso={420}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-stretch">
+            <Seccion titulo="Desglose por evento" subtitulo="Pulsa un evento para ver quién trabajó en él" icono={Layers} color="text-indigo-300" retraso={420} pie={<TotalPie horas={eventsList.reduce((a, e) => a + e.totalHours, 0)} coste={costeEventos} />}>
               {horasEstimadas > 0.05 && (
                 <p className="flex items-start gap-2 border-b border-slate-800 bg-slate-950/50 px-3.5 sm:px-5 py-2.5 text-[11px] leading-snug text-slate-400">
                   <Info className="mt-px h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden="true" />
@@ -195,7 +213,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
                   </span>
                 </p>
               )}
-              <ul>
+              <ul className="flex-1">
                 {eventsList.map((evt, i) => (
                   <FilaDesglose
                     key={evt.eventName}
@@ -212,8 +230,8 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
               </ul>
             </Seccion>
 
-            <Seccion titulo="Coste por trabajador" subtitulo="Pulsa a una persona para ver en qué eventos trabajó" icono={Users} color="text-emerald-300" retraso={480}>
-              <ul>
+            <Seccion titulo="Coste por trabajador" subtitulo="Pulsa a una persona para ver en qué eventos trabajó" icono={Users} color="text-emerald-300" retraso={480} pie={<TotalPie horas={totalHoras} coste={totalCoste} />}>
+              <ul className="flex-1">
                 {conHoras.map((w, i) => (
                   <FilaDesglose
                     key={w.name}

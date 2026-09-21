@@ -4,8 +4,6 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import BotonAccion from './BotonAccion';
 import CabeceraPanel from './CabeceraPanel';
 import MenuLateral from './MenuLateral';
-import BarraPestanas from './BarraPestanas';
-import NavegacionMovil from './NavegacionMovil';
 import AvisarCambiosModal from './AvisarCambiosModal';
 import { crearAcciones } from './acciones';
 
@@ -121,7 +119,7 @@ describe('MenuLateral', () => {
   it('un admin ve las tres secciones con sus acciones', () => {
     pintar();
     ['Operaciones & Turnos', 'Compartir & Accesos', 'Configuración'].forEach((t) => expect(screen.getByText(t)).toBeInTheDocument());
-    ['Registrar Fichaje', 'Editor de Planning Semanal', 'Nóminas y Horas Extra', 'Asistente IA Gemini', 'Compartir por WhatsApp', 'Claves & Configuración', 'Añadir Nueva Semana']
+    ['Registrar fichaje', 'Editor de planning semanal', 'Nóminas y horas extra', 'Asistente IA Gemini', 'Compartir por WhatsApp', 'Claves y configuración', 'Añadir nueva semana']
       .forEach((t) => expect(screen.getByRole('button', { name: t })).toBeInTheDocument());
   });
 
@@ -135,7 +133,7 @@ describe('MenuLateral', () => {
 
   it('pulsar una acción la ejecuta y cierra el menú', () => {
     const { fn, props } = pintar();
-    fireEvent.click(screen.getByRole('button', { name: 'Registrar Fichaje' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar fichaje' }));
     expect(fn.fichar).toHaveBeenCalledTimes(1);
     expect(props.onCerrar).toHaveBeenCalledTimes(1);
   });
@@ -156,32 +154,6 @@ describe('MenuLateral', () => {
     // El fondo oscuro que rodea al menú también lo cierra.
     fireEvent.click(screen.getByRole('dialog').firstElementChild);
     expect(props.onCerrar).toHaveBeenCalledTimes(3);
-  });
-});
-
-describe('BarraPestanas', () => {
-  it('marca la pestaña activa, avisa al cambiar y enseña el contador de fichajes', () => {
-    const onSeleccionar = vi.fn();
-    render(<BarraPestanas activa="graph" onSeleccionar={onSeleccionar} contadores={{ fichajes: 12 }} />);
-    expect(screen.getAllByRole('tab')).toHaveLength(7);
-    expect(screen.getByRole('tab', { name: 'Grafo & Flujo' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tab', { name: 'Cuadrante Semanal' })).toHaveAttribute('aria-selected', 'false');
-    fireEvent.click(screen.getByRole('tab', { name: 'Historial Fichajes (12)' }));
-    expect(onSeleccionar).toHaveBeenCalledWith('fichajes');
-  });
-});
-
-describe('NavegacionMovil', () => {
-  it('enseña las cuatro pestañas principales y el menú', () => {
-    const onSeleccionar = vi.fn();
-    const onAbrirMenu = vi.fn();
-    render(<NavegacionMovil activa="live" onSeleccionar={onSeleccionar} onAbrirMenu={onAbrirMenu} />);
-    ['En Vivo', 'Cuadrante', 'Saldos', 'Grafo'].forEach((t) => expect(screen.getByRole('button', { name: t })).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: 'En Vivo' })).toHaveAttribute('aria-current', 'page');
-    fireEvent.click(screen.getByRole('button', { name: 'Saldos' }));
-    expect(onSeleccionar).toHaveBeenCalledWith('balances');
-    fireEvent.click(screen.getByRole('button', { name: 'Menú' }));
-    expect(onAbrirMenu).toHaveBeenCalled();
   });
 });
 

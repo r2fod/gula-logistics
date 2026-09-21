@@ -1,50 +1,28 @@
-import { Radio, Calendar, Zap, Truck, TrendingUp, DollarSign, Lock } from 'lucide-react';
+import { Radio, Calendar, Zap, Truck, TrendingUp, Wallet, ClipboardList } from 'lucide-react';
 
-// Pestañas del panel de control, en el orden en que se ven.
+// Pestañas del panel de control, en el orden en que se ven. Es la ÚNICA lista: la
+// barra de escritorio, la barra inferior del móvil y la lectura de la URL salen de aquí.
 //
 // - id: clave interna (la que va en `?tab=`).
 // - alias: otros valores de `?tab=` / `?view=` que abren la misma pestaña.
-// - etiqueta: texto en la barra de escritorio; `etiquetaCorta`, en la barra
-//   inferior del móvil (solo las pestañas que tienen `etiquetaCorta` salen ahí).
-// - colorActiva: clases de la pestaña seleccionada (escritorio) y del texto de
-//   la barra inferior; las clases van completas para que Tailwind las detecte.
+// - etiqueta: texto en la barra de escritorio; `corta`, en el atajo de la barra
+//   inferior del móvil (ver ORDEN_MOVIL).
+// - icono: componente de lucide-react.
+// - vivo: el icono late (la pestaña de lo que pasa en directo).
+// - hover: clase de la animación propia del icono al pasar el ratón (index.css).
+// - contador: la etiqueta lleva el número de fichajes.
 export const PESTANAS = [
-  {
-    id: 'live', alias: ['directo'], icono: Radio, animacionIcono: 'animate-pulse', colorIcono: 'text-rose-400',
-    etiqueta: 'Actividad en Tiempo Real', etiquetaCorta: 'En Vivo',
-    colorActiva: 'bg-emerald-500 shadow-emerald-500/20', colorTextoMovil: 'text-emerald-400',
-  },
-  {
-    id: 'schedule', alias: ['planning', 'cuadrante'], icono: Calendar,
-    etiqueta: 'Cuadrante Semanal', etiquetaCorta: 'Cuadrante',
-    colorActiva: 'bg-amber-500 shadow-amber-500/20', colorTextoMovil: 'text-amber-400',
-  },
-  {
-    id: 'graph', alias: ['grafo'], icono: Zap, colorIcono: 'text-amber-400',
-    etiqueta: 'Grafo & Flujo', etiquetaCorta: 'Grafo',
-    colorActiva: 'bg-amber-500 shadow-amber-500/20', colorTextoMovil: 'text-amber-400',
-  },
-  {
-    id: 'logistics', alias: ['flota', 'bodas'], icono: Truck,
-    etiqueta: 'Flota & Bodas',
-    colorActiva: 'bg-amber-500 shadow-amber-500/20',
-  },
-  {
-    id: 'balances', alias: ['saldos', 'acuerdos'], icono: TrendingUp,
-    etiqueta: 'Saldos & Acuerdos', etiquetaCorta: 'Saldos',
-    colorActiva: 'bg-amber-500 shadow-amber-500/20', colorTextoMovil: 'text-amber-400',
-  },
-  {
-    id: 'financial', alias: ['financiero', 'resumen'], icono: DollarSign,
-    etiqueta: 'Resumen Financiero',
-    colorActiva: 'bg-amber-500 shadow-amber-500/20',
-  },
-  {
-    id: 'fichajes', alias: ['fichaje'], icono: Lock, colorIcono: 'text-amber-400',
-    etiqueta: 'Historial Fichajes',
-    colorActiva: 'bg-amber-500 shadow-amber-500/20',
-  },
+  { id: 'live', alias: ['directo'], etiqueta: 'Actividad en tiempo real', corta: 'En vivo', icono: Radio, vivo: true },
+  { id: 'schedule', alias: ['planning', 'cuadrante'], etiqueta: 'Cuadrante semanal', corta: 'Cuadrante', icono: Calendar },
+  { id: 'graph', alias: ['grafo'], etiqueta: 'Grafo y flujo', corta: 'Grafo', icono: Zap, hover: 'icono-destello' },
+  { id: 'logistics', alias: ['flota', 'bodas'], etiqueta: 'Flota y bodas', icono: Truck, hover: 'icono-camion' },
+  { id: 'balances', alias: ['saldos', 'acuerdos'], etiqueta: 'Saldos y acuerdos', corta: 'Saldos', icono: TrendingUp },
+  { id: 'financial', alias: ['financiero', 'resumen'], etiqueta: 'Resumen financiero', icono: Wallet },
+  { id: 'fichajes', alias: ['fichaje'], etiqueta: 'Historial de fichajes', icono: ClipboardList, contador: true },
 ];
+
+// Atajos de la barra inferior del móvil, en su orden.
+export const ORDEN_MOVIL = ['live', 'schedule', 'balances', 'graph'];
 
 export const PESTANA_INICIAL = 'live';
 

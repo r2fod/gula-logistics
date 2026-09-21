@@ -11,7 +11,7 @@ export const SECCIONES_MENU = [
 // y el menú lateral las pintan a partir de esta lista con <BotonAccion>.
 //
 // Cada acción trae:
-// - id, icono (lucide), colorIcono y animacionIcono (clase Tailwind, solo en la barra).
+// - id, icono (lucide), colorIcono y claseIcono (animación propia del icono al pasar el ratón, ver index.css: icono-reloj, icono-campana...).
 // - etiqueta (barra y chips) y etiquetaMenu (menú lateral, más descriptiva).
 // - tono: el estilo del botón (ver BotonAccion).
 // - lugares: dónde se pinta: 'barra' (escritorio), 'movil' (barra rápida del móvil),
@@ -28,53 +28,53 @@ export const SECCIONES_MENU = [
 export function crearAcciones({ admin = false, avisando = false, enlaceSociasCopiado = false } = {}, alHacer = {}) {
   const todas = [
     {
-      id: 'fichar', etiqueta: 'Fichar', etiquetaMenu: 'Registrar Fichaje', icono: Clock, tono: 'fichar',
+      id: 'fichar', etiqueta: 'Fichar', etiquetaMenu: 'Registrar fichaje', icono: Clock, claseIcono: 'icono-reloj', tono: 'fichar',
       lugares: ['barra', 'movil', 'menu'], seccion: 'operaciones', onClick: alHacer.fichar,
     },
     {
-      id: 'avisar', etiqueta: avisando ? 'Avisando...' : 'Avisar Cambios', etiquetaMenu: avisando ? 'Avisando...' : 'Avisar Cambios',
-      icono: Bell, animacionIcono: 'animate-bounce', tono: 'aviso', cargando: avisando,
+      id: 'avisar', etiqueta: avisando ? 'Avisando...' : 'Avisar Cambios', etiquetaMenu: avisando ? 'Avisando...' : 'Avisar cambios',
+      icono: Bell, claseIcono: 'icono-campana', tono: 'aviso', cargando: avisando,
       lugares: ['barra', 'menu'], seccion: 'operaciones', visible: admin, onClick: alHacer.avisar,
     },
     {
-      id: 'planning', etiqueta: 'Planning', etiquetaMenu: 'Editor de Planning Semanal', icono: Edit3, tono: 'planning',
+      id: 'planning', etiqueta: 'Planning', etiquetaMenu: 'Editor de planning semanal', icono: Edit3, tono: 'planning',
       lugares: ['barra', 'menu'], seccion: 'operaciones', visible: admin && !!alHacer.editarPlanning, onClick: alHacer.editarPlanning,
     },
     {
-      id: 'trabajador', etiqueta: 'Trabajador', etiquetaMenu: 'Gestión de Trabajadores', icono: Users, tono: 'equipo',
+      id: 'trabajador', etiqueta: 'Trabajador', etiquetaMenu: 'Gestión de trabajadores', icono: Users, tono: 'equipo',
       lugares: ['barra', 'menu'], seccion: 'operaciones', visible: admin && !!alHacer.editarEquipo, onClick: alHacer.editarEquipo,
     },
     {
-      id: 'nominas', etiqueta: 'Nóminas', etiquetaMenu: 'Nóminas y Horas Extra', icono: DollarSign, colorIcono: 'text-amber-400', tono: 'neutro',
+      id: 'nominas', etiqueta: 'Nóminas', etiquetaMenu: 'Nóminas y horas extra', icono: DollarSign, colorIcono: 'text-amber-400', tono: 'neutro',
       lugares: ['barra', 'menu'], seccion: 'operaciones', visible: admin, onClick: alHacer.nominas,
     },
     {
-      id: 'gemini', etiqueta: 'Gemini AI', etiquetaMenu: 'Asistente IA Gemini', icono: Wand2, colorIcono: 'text-amber-400', tono: 'gemini',
+      id: 'gemini', etiqueta: 'Gemini AI', etiquetaMenu: 'Asistente IA Gemini', icono: Wand2, colorIcono: 'text-amber-400', claseIcono: 'icono-destello', tono: 'gemini',
       lugares: ['barra', 'menu'], seccion: 'operaciones', visible: admin, onClick: alHacer.gemini,
     },
     {
-      id: 'whatsapp', etiqueta: 'WhatsApp', etiquetaMenu: 'Compartir por WhatsApp', icono: Share2, colorIcono: 'text-blue-400', tono: 'whatsapp',
+      id: 'whatsapp', etiqueta: 'WhatsApp', etiquetaMenu: 'Compartir por WhatsApp', icono: Share2, colorIcono: 'text-blue-400', claseIcono: 'icono-latido', tono: 'whatsapp',
       titulo: 'Enlaces de WhatsApp (Trabajadores y Socias)',
       lugares: ['barra', 'movil', 'menu'], seccion: 'compartir', visible: !!alHacer.compartir, onClick: alHacer.compartir,
     },
     {
       id: 'enlaceSocias', etiqueta: enlaceSociasCopiado ? '¡Copiado!' : 'Link Socias',
-      etiquetaMenu: enlaceSociasCopiado ? '¡Enlace Copiado!' : 'Copiar Link de Socias',
+      etiquetaMenu: enlaceSociasCopiado ? '¡Enlace copiado!' : 'Copiar link de socias',
       icono: enlaceSociasCopiado ? Check : Copy, colorIcono: enlaceSociasCopiado ? 'text-emerald-400' : 'text-amber-400', tono: 'enlace',
       titulo: 'Copiar enlace directo al Panel de Socias',
       lugares: ['barra', 'menu'], seccion: 'compartir', onClick: alHacer.copiarEnlaceSocias,
     },
     {
-      id: 'vistaPublica', etiqueta: 'Vista Pública', etiquetaMenu: 'Vista Pública de Operativa', icono: Eye, colorIcono: 'text-amber-400', tono: 'publica',
+      id: 'vistaPublica', etiqueta: 'Vista Pública', etiquetaMenu: 'Vista pública de operativa', icono: Eye, colorIcono: 'text-amber-400', tono: 'publica',
       titulo: 'Vista Pública',
       lugares: ['barra', 'menu'], seccion: 'compartir', visible: !!alHacer.vistaPublica, onClick: alHacer.vistaPublica,
     },
     {
-      id: 'claves', etiqueta: 'Clave', etiquetaMenu: 'Claves & Configuración', icono: KeyRound, colorIcono: 'text-slate-400', tono: 'claves',
+      id: 'claves', etiqueta: 'Clave', etiquetaMenu: 'Claves y configuración', icono: KeyRound, colorIcono: 'text-slate-400', tono: 'claves',
       lugares: ['cabecera', 'menu'], seccion: 'configuracion', visible: admin, onClick: alHacer.claves,
     },
     {
-      id: 'nuevaSemana', etiqueta: 'Semana', etiquetaMenu: 'Añadir Nueva Semana', icono: Plus, colorIcono: 'text-amber-400', tono: 'semana',
+      id: 'nuevaSemana', etiqueta: 'Semana', etiquetaMenu: 'Añadir nueva semana', icono: Plus, colorIcono: 'text-amber-400', tono: 'semana',
       lugares: ['cabecera', 'menu'], seccion: 'configuracion', visible: admin, onClick: alHacer.nuevaSemana,
     },
   ];

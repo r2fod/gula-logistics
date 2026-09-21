@@ -53,8 +53,8 @@ describe('crearAcciones', () => {
 
   it('tras copiar el enlace de socias enseña "¡Copiado!" con su icono verde', () => {
     const enlace = (estado) => crearAcciones({ admin: false, ...estado }, todasLasFunciones()).find((a) => a.id === 'enlaceSocias');
-    expect(enlace({ enlaceSociasCopiado: false })).toMatchObject({ etiqueta: 'Link Socias', etiquetaMenu: 'Copiar Link de Socias' });
-    expect(enlace({ enlaceSociasCopiado: true })).toMatchObject({ etiqueta: '¡Copiado!', etiquetaMenu: '¡Enlace Copiado!', colorIcono: 'text-emerald-400' });
+    expect(enlace({ enlaceSociasCopiado: false })).toMatchObject({ etiqueta: 'Link Socias', etiquetaMenu: 'Copiar link de socias' });
+    expect(enlace({ enlaceSociasCopiado: true })).toMatchObject({ etiqueta: '¡Copiado!', etiquetaMenu: '¡Enlace copiado!', colorIcono: 'text-emerald-400' });
   });
 
   it('la función de cada acción es la que se le dio', () => {

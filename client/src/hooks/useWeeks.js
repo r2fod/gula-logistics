@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { logisticsData as BASE_DATA } from '../data/logisticsData';
 import { saveWeeksToAPI, patchTaskCompletionInAPI } from '../data/apiService';
+import { semanaPorDefecto } from '../data/anticipacion';
 import { getTaskListForDay, buildTaskListPatch, getTaskPastStatus, isTaskEffectivelyDone, isWeekFinished, ensureYearInDateRange, clearWeekCompletion, TASK_COMPLETION_GRACE_MINUTES } from '../data/taskPlanning';
 
 const ALL_DAY_KEYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'domingo', 'sabado'];
@@ -21,7 +22,21 @@ export function useWeeks() {
     }
   });
 
-  const [activeWeekId, setActiveWeekId] = useState('week_3');
+  // Al abrir, la semana en la que estamos (la de hoy; si ya terminó del todo, la
+  // siguiente) según lo último que se guardó en este dispositivo: así no se ve un
+  // instante la semana 3 antes de que lleguen los datos del servidor.
+  const [semanaElegida, setActiveWeekId] = useState(() => {
+    const inicial = semanaPorDefecto(allWeeks, new Date());
+    return inicial && allWeeks[inicial] ? inicial : 'week_3';
+  });
+  // La semana activa SIEMPRE es una que existe. Si el id elegido no está entre las
+  // semanas (un selector con un valor que no es un id, una semana que aún no ha
+  // llegado del servidor...) se usa la semana de hoy, o la primera: antes se caía en
+  // la semana de ejemplo del código ("Tarea de ejemplo", sin datos) y cualquier cambio
+  // se guardaba con ese id inventado.
+  const activeWeekId = allWeeks[semanaElegida]
+    ? semanaElegida
+    : (semanaPorDefecto(allWeeks, new Date()) || Object.keys(allWeeks)[0] || semanaElegida);
   const activeWeek = allWeeks[activeWeekId] || BASE_WEEK_3;
 
   // Timestamp del último cambio local (toggle, etc.) para que el polling
