@@ -1,3 +1,5 @@
+import { getWeddingTaskName } from './eventNaming';
+
 // El domingo y el lunes comparten UNA sola lista de tareas (sundayMonday.tasks)
 // en vez de vivir cada uno en schedule.domingo/schedule.lunes — de hecho
 // schedule.domingo ni existe. Este mismo caso especial se repetía suelto en
@@ -25,7 +27,7 @@ export function getTaskListForDay(weekData, dayKey) {
 export function resolveTaskIndexByText(weekData, dayKey, taskText) {
   const list = getTaskListForDay(weekData, dayKey);
   const idx = list.findIndex(t => {
-    if (dayKey === 'sabado') return `Boda: ${t.location} (${t.truck})` === taskText || t.location === taskText;
+    if (dayKey === 'sabado') return getWeddingTaskName(t) === taskText || t.location === taskText;
     return (typeof t === 'object' ? t.text : t) === taskText;
   });
   return idx !== -1 ? idx : null;
@@ -469,4 +471,28 @@ export function isTaskTooEarlyToClockIn(dayKey, timeFrame, overrideTime = new Da
   const startTotal = startHours * 60 + startMinutes;
   const nowTotal = overrideTime.getHours() * 60 + overrideTime.getMinutes();
   return nowTotal < startTotal - earlyMinutes;
+}
+
+// Texto de una tarea normal o de una boda del sábado (para mostrarlo o buscar en él).
+export function getTaskText(task) {
+  if (typeof task === 'string') return task;
+  if (!task) return '';
+  if (typeof task.text === 'string') return task.text;
+  if (task.location) return task.truck ? getWeddingTaskName(task) : `Boda: ${task.location}`;
+  return '';
+}
+
+// ¿Es esta tarea (o boda) de esta persona? Manda la lista `assigned` de la tarea, con
+// el nombre exacto del equipo (sin distinguir mayúsculas). Solo si la tarea no trae
+// `assigned` (dato antiguo) se busca el nombre en su texto y en los datos de la boda.
+export function isTaskAssignedTo(task, workerName) {
+  const nombre = String(workerName || '').toLowerCase();
+  if (!nombre) return false;
+  if (task && typeof task === 'object' && Array.isArray(task.assigned) && task.assigned.length > 0) {
+    return task.assigned.some((a) => String(a).toLowerCase() === nombre);
+  }
+  const texto = task && typeof task === 'object'
+    ? [task.text, task.location, task.details, task.truck].filter(Boolean).join(' ')
+    : String(task || '');
+  return texto.toLowerCase().includes(nombre);
 }

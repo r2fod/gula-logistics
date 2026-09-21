@@ -1,5 +1,5 @@
 import { getTaskInterval, getWeekRange } from './taskPlanning';
-import { parseEventAndTask, EVENT_CATEGORIES, GENERAL_EVENT, paxDeSemana, esBorradorSemana } from './eventNaming';
+import { parseEventAndTask, EVENT_CATEGORIES, GENERAL_EVENT, paxDeSemana, esBorradorSemana, getWeddingTaskName } from './eventNaming';
 
 // Reparto del tiempo de jornada SIN TAREA entre los eventos del planning.
 //
@@ -59,7 +59,7 @@ export function listarTareasPlanificadas(weeksMap = {}, now = new Date()) {
     });
     (week.sundayMonday?.tasks || []).forEach(t => t?.text && anadir('domingo', t, t.text, eventoDeTarea(t.text, t.event)));
     (week.saturdaySpecial?.weddings || []).forEach(w => {
-      const texto = `Boda: ${w?.location} (${w?.truck})`;
+      const texto = getWeddingTaskName(w);
       anadir('sabado', w, texto, w?.event || eventoDeTarea(texto, null));
     });
   });

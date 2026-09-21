@@ -20,6 +20,7 @@ import {
 import { getDayLabel, getWeddingsBadge, isTaskEffectivelyDone } from '../data/taskPlanning';
 import { Selector } from './ui/Campo';
 import Tarjeta from './ui/Tarjeta';
+import BarraProgreso from './ui/BarraProgreso';
 
 // Categoriza una tarea por su texto para darle un icono/color propio en el
 // grafo — pura ayuda visual para distinguir de un vistazo qué tipo de
@@ -166,20 +167,23 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
       { dayId: 'day_viernes', dayKey: 'viernes' }
     ];
 
-    dayConfigs.forEach(({ dayId, dayKey }) => {
-      const dayTasks = rawSchedule[dayKey]?.tasks || [];
-      dayTasks.forEach((tItem, idx) => {
-        const id = `task_${dayKey}_${idx}`;
-        const textStr = typeof tItem === 'object' ? tItem.text : tItem;
-        const completed = isTaskEffectivelyDone(activeWeekData, dayKey, tItem, ahora);
-        const assigned = typeof tItem === 'object' ? tItem.assigned : [];
-        const truck = typeof tItem === 'object' ? tItem.truck : null;
-        const timeFrame = typeof tItem === 'object' ? tItem.timeFrame : null;
-        nodes.push({ id, type: 'task', label: textStr, timeFrame, completed, dayId, dayKey, idx });
-        links.push({ source: dayId, target: id });
+    // Un nodo de tarea (día normal o lista de domingo/lunes) con sus enlaces a su día,
+    // su camión y su gente. `claveDia` es el día con el que se calcula si está hecha.
+    const anadirTarea = (tItem, idx, { id, dayId, claveDia, claveNodo }) => {
+      const esObjeto = typeof tItem === 'object';
+      const textStr = esObjeto ? tItem.text : tItem;
+      nodes.push({
+        id, type: 'task', label: textStr, timeFrame: esObjeto ? tItem.timeFrame : null,
+        completed: isTaskEffectivelyDone(activeWeekData, claveDia, tItem, ahora), dayId, dayKey: claveNodo, idx
+      });
+      links.push({ source: dayId, target: id });
+      linkTruck(id, esObjeto ? tItem.truck : null, textStr);
+      linkAssignedWorkers(id, esObjeto ? tItem.assigned : []);
+    };
 
-        linkTruck(id, truck, textStr);
-        linkAssignedWorkers(id, assigned);
+    dayConfigs.forEach(({ dayId, dayKey }) => {
+      (rawSchedule[dayKey]?.tasks || []).forEach((tItem, idx) => {
+        anadirTarea(tItem, idx, { id: `task_${dayKey}_${idx}`, dayId, claveDia: dayKey, claveNodo: dayKey });
       });
     });
 
@@ -203,16 +207,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
     const domTasks = activeWeekData?.sundayMonday?.tasks || [];
 
     domTasks.forEach((tItem, idx) => {
-      const id = `task_domingo_${idx}`;
-      const textStr = typeof tItem === 'object' ? tItem.text : tItem;
-      const assigned = typeof tItem === 'object' ? tItem.assigned : [];
-      const truck = typeof tItem === 'object' ? tItem.truck : null;
-      const timeFrame = typeof tItem === 'object' ? tItem.timeFrame : null;
-      nodes.push({ id, type: 'task', label: textStr, timeFrame, completed: isTaskEffectivelyDone(activeWeekData, 'domingo', tItem, ahora), dayId: 'day_domingo', dayKey: 'sundayMonday', idx });
-      links.push({ source: 'day_domingo', target: id });
-
-      linkTruck(id, truck, textStr);
-      linkAssignedWorkers(id, assigned);
+      anadirTarea(tItem, idx, { id: `task_domingo_${idx}`, dayId: 'day_domingo', claveDia: 'domingo', claveNodo: 'sundayMonday' });
     });
 
     // Vista de un trabajador concreto (dentro de WorkerView): el Grafo
@@ -751,12 +746,12 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="w-full h-2 sm:h-2.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-                    <div 
-                      className="h-full bg-gradient-to-r from-emerald-500 to-amber-500 transition-all duration-500 rounded-full"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
+                  <BarraProgreso
+                    porcentaje={pct}
+                    pista="h-2 sm:h-2.5 bg-slate-950 border border-slate-800"
+                    relleno="bg-gradient-to-r from-emerald-500 to-amber-500 transition-all duration-500"
+                    etiqueta="Progreso de tareas"
+                  />
 
                   {/* Tasks List snippet */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">

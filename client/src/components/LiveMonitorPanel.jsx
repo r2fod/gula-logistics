@@ -8,8 +8,10 @@ import {
   Radio
 } from 'lucide-react';
 import { pairShiftsFromEntries, isZombieShift } from '../data/shiftCalculations';
-import { getTaskListForDay, isTaskEffectivelyDone } from '../data/taskPlanning';import { crearFichaje } from '../data/fichajes';
+import { getTaskListForDay, isTaskEffectivelyDone, isTaskAssignedTo, getTaskText } from '../data/taskPlanning';
+import { crearFichaje } from '../data/fichajes';
 import { formatTime } from '../utils/dateUtils';
+import BarraProgreso from './ui/BarraProgreso';
 
 
 export default function LiveMonitorPanel({
@@ -40,20 +42,6 @@ export default function LiveMonitorPanel({
     return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
   };
 
-  // Las bodas de sábado (saturdaySpecial.weddings, ver getTaskListForDay en
-  // taskPlanning.js) no tienen campo `.text` como las tareas normales —
-  // tienen `location`/`truck`. Sin este helper, `t.text` salía `undefined`
-  // para una boda y rompía tanto el filtrado por texto (`.toLowerCase()` de
-  // `undefined` lanza) como lo que se mostraba en "Actividad / Tarea
-  // Asignada" (quedaba en blanco para cualquiera fichado en un turno
-  // genérico y asignado a una boda un sábado).
-  const getTaskDisplayText = (t) => {
-    if (typeof t !== 'object' || t === null) return t || '';
-    if (typeof t.text === 'string') return t.text;
-    if (t.location) return `Boda: ${t.location}${t.truck ? ` (${t.truck})` : ''}`;
-    return '';
-  };
-
   const getAssignedTasksForWorker = (workerName) => {
     const days = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
     const todayIndex = currentTime.getDay();
@@ -67,13 +55,7 @@ export default function LiveMonitorPanel({
     const listDayKey = dayKey === 'lunes' ? 'domingo' : dayKey;
     const tasks = getTaskListForDay(activeWeekData, listDayKey);
 
-    const nameLower = workerName.toLowerCase();
-    return tasks.filter(t => {
-      if (typeof t === 'object' && Array.isArray(t.assigned) && t.assigned.length > 0) {
-        return t.assigned.some(a => a.toLowerCase() === nameLower);
-      }
-      return getTaskDisplayText(t).toLowerCase().includes(nameLower);
-    });
+    return tasks.filter(t => isTaskAssignedTo(t, workerName));
   };
 
   const DEFAULT_TASK_BY_WORKER = {
@@ -137,7 +119,7 @@ export default function LiveMonitorPanel({
     const primary = current?.task || upcoming?.task || matches[0];
 
     return {
-      text: getTaskDisplayText(primary),
+      text: getTaskText(primary),
       extraCount: Math.max(0, matches.length - 1)
     };
   };
@@ -270,12 +252,12 @@ export default function LiveMonitorPanel({
             <span className="text-emerald-400 font-mono text-xs sm:text-sm">{teamActivePercent}% Activo</span>
           </div>
 
-          <div className="w-full h-2.5 sm:h-3 bg-slate-900 rounded-full overflow-hidden border border-slate-800 p-0.5">
-            <div 
-              className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 rounded-full transition-all duration-700"
-              style={{ width: `${Math.max(5, teamActivePercent)}%` }}
-            ></div>
-          </div>
+          <BarraProgreso
+            porcentaje={Math.max(5, teamActivePercent)}
+            pista="h-2.5 sm:h-3 bg-slate-900 border border-slate-800 p-0.5"
+            relleno="bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400 transition-all duration-700"
+            etiqueta="Cobertura de jornada del equipo"
+          />
 
           <div className="flex justify-between items-center text-[10px] text-slate-500 font-semibold">
             <span>{activeCount} Trabajadores en Turno</span>
@@ -399,16 +381,12 @@ export default function LiveMonitorPanel({
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800">
-                    <div 
-                      className={`h-full transition-all duration-500 ${
-                        worker.isClockedIn 
-                          ? 'bg-gradient-to-r from-emerald-500 to-amber-400' 
-                          : 'bg-slate-800'
-                      }`}
-                      style={{ width: `${worker.isClockedIn ? Math.max(8, shiftProgressPercent) : 0}%` }}
-                    ></div>
-                  </div>
+                  <BarraProgreso
+                    porcentaje={worker.isClockedIn ? Math.max(8, shiftProgressPercent) : 0}
+                    pista="h-2 bg-slate-900 border border-slate-800"
+                    relleno={`transition-all duration-500 ${worker.isClockedIn ? 'bg-gradient-to-r from-emerald-500 to-amber-400' : 'bg-slate-800'}`}
+                    etiqueta={`Avance de jornada de ${worker.name}`}
+                  />
 
                   <div className="flex justify-between items-center text-[10px] text-slate-400 font-medium">
                     <span>{worker.isClockedIn ? worker.elapsedTimeFormatted : '0h 00m'}</span>

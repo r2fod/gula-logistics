@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TrendingUp, Share2, Bus, Clock, ChevronUp, ChevronDown, Trash2, Plus, MessageCircle } from 'lucide-react';
 import { formatearEuros, formatearEurosConSigno, formatearHoras, formatearNumero } from '../../data/formatoFinanciero';
 import { Input } from '../ui/Campo';
+import BarraProgreso from '../ui/BarraProgreso';
 
 // Horas tal como se escriben DENTRO del texto de un concepto ("4,5" → "4.5", sin ceros de
 // sobra). Ese texto se guarda en Mongo: no cambiar el formato, o los conceptos nuevos
@@ -464,12 +465,12 @@ export default function TeamBalancesTab({
                           </span>
                         </div>
 
-                        <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden border border-amber-500/20">
-                          <div 
-                            className="h-full bg-gradient-to-r from-amber-500 to-emerald-400"
-                            style={{ width: `${(worker.purseInfo.consumedHours / worker.purseInfo.totalHours) * 100}%` }}
-                          ></div>
-                        </div>
+                        <BarraProgreso
+                          porcentaje={(worker.purseInfo.consumedHours / worker.purseInfo.totalHours) * 100}
+                          pista="h-2.5 bg-slate-950 border border-amber-500/20"
+                          relleno="bg-gradient-to-r from-amber-500 to-emerald-400"
+                          etiqueta="Horas de la bolsa consumidas"
+                        />
 
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
