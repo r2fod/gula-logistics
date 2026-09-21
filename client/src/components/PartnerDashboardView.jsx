@@ -48,7 +48,7 @@ import AdminClockEditModal from './AdminClockEditModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminSettingsModal from './AdminSettingsModal';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { parseEventAndTask } from '../data/eventNaming';
+import { parseEventAndTask, buildPaxRegistry } from '../data/eventNaming';
 import { summarizeByEvent } from '../data/eventSummary';
 
 export default function PartnerDashboardView({ 
@@ -263,7 +263,8 @@ export default function PartnerDashboardView({
   const totalExtraHours = balancesList.reduce((acc, curr) => acc + curr.totalHours, 0);
 
   // Desglose por evento (una tarea de varios eventos reparte su coste entre ellos).
-  const eventsList = useMemo(() => summarizeByEvent(paidShifts, workersList), [paidShifts, workersList]);
+  const paxByEvent = useMemo(() => buildPaxRegistry(allWeeks), [allWeeks]);
+  const eventsList = useMemo(() => summarizeByEvent(paidShifts, workersList, paxByEvent), [paidShifts, workersList, paxByEvent]);
 
   // Generate Master Table Rows (Operativa Logística)
   const masterTableRows = [];

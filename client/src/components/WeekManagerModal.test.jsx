@@ -118,3 +118,31 @@ describe('WeekManagerModal — clave de Gemini y errores', () => {
     expect(screen.getByText(/Clave de Gemini guardada/)).toBeInTheDocument();
   });
 });
+
+describe('WeekManagerModal — pax de cada evento', () => {
+  it('los pax llegan al prompt y a la semana creada ([{ name, pax }])', async () => {
+    const onCreateWeek = vi.fn();
+    render(
+      <WeekManagerModal isOpen onClose={() => {}} onCreateWeek={onCreateWeek} currentWeekName="Semana 3" currentWeekTrucks={[{ name: 'Camión Gula' }]} workersList={[{ name: 'Ana', avatar: '🚚' }]} />
+    );
+    fireEvent.change(screen.getByPlaceholderText('ej. Semana 4'), { target: { value: 'Semana 4' } });
+    fireEvent.change(screen.getByPlaceholderText('ej. Del 22 al 27 de Septiembre'), { target: { value: 'Del 22 al 27 de septiembre' } });
+
+    const add = screen.getByRole('button', { name: /Añadir boda o evento/ });
+    fireEvent.click(add);
+    fireEvent.click(add);
+    fireEvent.change(screen.getAllByPlaceholderText(/Nombre o lugar/)[0], { target: { value: 'Finca Norte' } });
+    fireEvent.change(screen.getAllByLabelText('Pax (invitados)')[0], { target: { value: '120' } });
+    fireEvent.change(screen.getAllByPlaceholderText(/Nombre o lugar/)[1], { target: { value: 'Finca Sur' } }); // sin pax
+
+    fireEvent.click(screen.getByRole('button', { name: /Generar Planificación Inteligente/ }));
+    await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
+    expect(generate.mock.calls[0][0].prompt).toContain('Boda Finca Norte (120 pax)');
+
+    fireEvent.click(await screen.findByRole('button', { name: /Crear la Semana con esta Planificación/ }));
+    expect(onCreateWeek.mock.calls[0][0].events).toEqual([
+      { name: 'Boda Finca Norte', pax: 120 },
+      { name: 'Boda Finca Sur', pax: null },
+    ]);
+  });
+});

@@ -147,3 +147,19 @@ describe('formato "Evento - Tarea" en la generación', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('buildWeekPrompt — pax', () => {
+  it('los pax van en la línea del evento (junto al horario) para que la IA dimensione personal y camiones', () => {
+    const p = buildWeekPrompt({
+      ...base, dayLabel,
+      events: [
+        { day: 'viernes', kind: 'Boda', place: 'Finca Norte', time: '20:00-00:00', pax: '120' },
+        { day: 'martes', kind: 'Evento', place: 'Catering Uno', time: '', pax: 80 },
+        { day: 'martes', kind: 'Evento', place: 'Catering Dos', time: '', pax: '' },
+      ],
+    });
+    expect(p).toContain('- Viernes 25: Boda Finca Norte (20:00-00:00, 120 pax).');
+    expect(p).toContain('- Martes 22: Evento Catering Uno (80 pax).');
+    expect(p).toContain('- Martes 22: Evento Catering Dos.');
+  });
+});

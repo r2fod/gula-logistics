@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Edit3, Save, Plus, Trash2, Calendar, ChevronUp, ChevronDown } from 'lucide-react';
 import { getTaskListForDay, buildTaskListPatch } from '../data/taskPlanning';
-import { collectEventNames, splitEventNames } from '../data/eventNaming';
+import { collectEventNames, splitEventNames, EVENT_CATEGORIES } from '../data/eventNaming';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
@@ -150,6 +150,16 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
         ? { text: newValue, timeFrame: '', mapsUrl: '' }
         : { ...task, text: newValue };
       return { ...prev, ...buildTaskListPatch(prev, dayKey, list) };
+    });
+  };
+
+  // Pax (invitados) de cada boda/evento de la semana: reparten el coste de las
+  // tareas que son de varios eventos. Se guardan en `localWeek.events`.
+  const setEventPax = (name, value) => {
+    const pax = value === '' ? null : Math.max(0, Math.round(Number(value)) || 0);
+    setLocalWeek(prev => {
+      const others = (prev.events || []).filter(e => String(e.name).toLowerCase() !== name.toLowerCase());
+      return { ...prev, events: pax ? [...others, { name, pax }] : others };
     });
   };
 
@@ -414,6 +424,41 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
 
         {/* Content */}
         <div ref={scrollContainerRef} className="overflow-y-auto px-4 sm:px-6 pb-6 pt-0 space-y-6 sm:space-y-8">
+          {/* Pax por evento: reparten el coste de las tareas compartidas entre eventos */}
+          {(() => {
+            const eventos = collectEventNames(localWeek).filter(n => !EVENT_CATEGORIES.includes(n));
+            if (eventos.length === 0) return null;
+            return (
+              <details className="bg-slate-950/50 rounded-2xl border border-slate-800 mt-3">
+                <summary className="cursor-pointer px-4 py-3 text-xs font-extrabold text-amber-300">
+                  👥 Pax por boda/evento (para repartir costes)
+                </summary>
+                <div className="px-4 pb-4 space-y-2">
+                  <p className="text-[11px] text-slate-500">
+                    Una tarea de varios eventos reparte su coste en proporción a estos pax. Si a alguno le falta, se reparte a partes iguales.
+                  </p>
+                  {eventos.map(nombre => {
+                    const actual = (localWeek.events || []).find(e => String(e.name).toLowerCase() === nombre.toLowerCase());
+                    return (
+                      <div key={nombre} className="flex items-center gap-2">
+                        <span className="min-w-0 flex-1 truncate text-xs font-bold text-slate-200">{nombre}</span>
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min="0"
+                          aria-label={`Pax de ${nombre}`}
+                          value={actual?.pax ?? ''}
+                          onChange={(e) => setEventPax(nombre, e.target.value)}
+                          placeholder="Pax"
+                          className="w-24 shrink-0 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </details>
+            );
+          })()}
           
           {/* Normal Days */}
           {days.map(dayKey => {

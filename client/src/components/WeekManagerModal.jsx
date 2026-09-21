@@ -68,7 +68,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
 
   const addEvent = () => {
     // El día por defecto es el sábado (el caso más habitual) pero se cambia en el selector.
-    setEvents(prev => [...prev, { id: crypto.randomUUID(), day: 'sabado', kind: 'Boda', place: '', time: '' }]);
+    setEvents(prev => [...prev, { id: crypto.randomUUID(), day: 'sabado', kind: 'Boda', place: '', time: '', pax: '' }]);
   };
   const updateEvent = (id, field, value) => setEvents(prev => prev.map(e => (e.id === id ? { ...e, [field]: value } : e)));
   const removeEvent = (id) => setEvents(prev => prev.filter(e => e.id !== id));
@@ -111,15 +111,19 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
     setLoading(false);
   };
 
+  // Bodas y eventos con sus pax, para repartir el coste de las tareas
+  // compartidas entre eventos en proporción a su tamaño.
+  const weekEvents = () => events.map(e => ({ name: buildEventName(e, dayLabel), pax: Number(e.pax) > 0 ? Math.round(Number(e.pax)) : null }));
+
   const handleApply = () => {
     if (!weekName.trim() || !dateRange.trim() || !generatedJson) return;
-    onCreateWeek({ name: weekName.trim(), dateRange: dateRange.trim(), cloneCurrent, aiGeneratedJson: generatedJson });
+    onCreateWeek({ name: weekName.trim(), dateRange: dateRange.trim(), cloneCurrent, aiGeneratedJson: generatedJson, events: weekEvents() });
     resetAndClose();
   };
 
   const handleSkipAndCreateBlank = () => {
     if (!weekName.trim() || !dateRange.trim()) return;
-    onCreateWeek({ name: weekName.trim(), dateRange: dateRange.trim(), cloneCurrent });
+    onCreateWeek({ name: weekName.trim(), dateRange: dateRange.trim(), cloneCurrent, events: weekEvents() });
     resetAndClose();
   };
 
@@ -253,7 +257,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
               <PartyPopper className="w-3.5 h-3.5 text-amber-400" /> ¿Qué bodas y eventos hay esta semana?
             </label>
             <p className="text-[11px] text-slate-500 mb-2.5">
-              Añade cada uno con su día: la IA planifica la carga, la ruta, el montaje y la recogida de todos.
+              Añade cada uno con su día y sus pax (invitados): la IA planifica la carga, la ruta, el montaje y la recogida de todos, y los costes de una tarea compartida se reparten por pax.
             </p>
 
             <div className="space-y-2.5">
@@ -293,8 +297,19 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
                       type="text"
                       value={ev.time}
                       onChange={(e) => updateEvent(ev.id, 'time', e.target.value)}
-                      placeholder="Horario si lo sabes (ej. 20:30 - 00:30)"
+                      placeholder="Horario (ej. 20:30 - 00:30)"
                       className="min-w-0 flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/60"
+                    />
+                    <input
+                      id={`ev-pax-${ev.id}`}
+                      type="number"
+                      inputMode="numeric"
+                      min="0"
+                      aria-label="Pax (invitados)"
+                      value={ev.pax}
+                      onChange={(e) => updateEvent(ev.id, 'pax', e.target.value)}
+                      placeholder="Pax"
+                      className="w-20 shrink-0 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/60"
                     />
                     <button
                       type="button"

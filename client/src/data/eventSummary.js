@@ -1,25 +1,27 @@
-import { splitEventNames } from './eventNaming';
+import { splitEventNames, getEventShares } from './eventNaming';
 
 // Desglose de costes por evento a partir de los turnos ya emparejados
 // (subTasks de pairShiftsFromEntries). Si una tarea es de VARIOS eventos
-// ("Boda A + Boda B - Recoger material"), sus horas y su coste se reparten a
-// partes iguales entre ellos: los totales no cambian, solo dónde se anotan.
-// Devuelve [{ eventName, totalCost, totalHours, workers: { [nombre]: {name, avatar, cost, hours} } }]
+// ("Boda A + Boda B - Recoger material"), sus horas y su coste se reparten
+// entre ellos en proporción a sus pax (`paxByEvent`, ver buildPaxRegistry) o,
+// si a alguno le falta, a partes iguales: los totales no cambian, solo dónde
+// se anotan.
+// Devuelve [{ eventName, pax, totalCost, totalHours, workers: { [nombre]: {name, avatar, cost, hours} } }]
 // ordenado por coste descendente.
-export function summarizeByEvent(shifts = [], workersList = []) {
+export function summarizeByEvent(shifts = [], workersList = [], paxByEvent = {}) {
   const acc = {};
 
   shifts.forEach(shift => {
     (shift.subTasks || []).forEach(subTask => {
       const names = splitEventNames(subTask.eventName || 'Sin Asignar / Extra');
       const eventNames = names.length > 0 ? names : ['Sin Asignar / Extra'];
-      const share = 1 / eventNames.length;
-      const cost = (subTask.cost || 0) * share;
-      const hours = (subTask.durationHours || 0) * share;
+      const shares = getEventShares(eventNames, paxByEvent);
 
-      eventNames.forEach(eventName => {
+      eventNames.forEach((eventName, i) => {
+        const cost = (subTask.cost || 0) * shares[i];
+        const hours = (subTask.durationHours || 0) * shares[i];
         const key = eventName.toLowerCase(); // sin distinguir mayúsculas
-        if (!acc[key]) acc[key] = { eventName, totalCost: 0, totalHours: 0, workers: {} };
+        if (!acc[key]) acc[key] = { eventName, pax: paxByEvent[key] || null, totalCost: 0, totalHours: 0, workers: {} };
         acc[key].totalCost += cost;
         acc[key].totalHours += hours;
 

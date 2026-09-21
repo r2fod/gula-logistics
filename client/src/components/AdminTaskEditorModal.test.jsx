@@ -53,3 +53,21 @@ describe('AdminTaskEditorModal — tarea de varios eventos', () => {
     for (const n of ['Logística Preparación', 'Logística Carga', 'Limpieza Eventos', 'Boda Ana y Luis', 'Boda Eva y Pau']) expect(nombres).toContain(n);
   });
 });
+
+describe('AdminTaskEditorModal — pax por evento', () => {
+  it('se anotan los pax de cada boda y se guardan en la semana; vaciarlos los quita', () => {
+    render(<AdminTaskEditorModal isOpen onClose={() => {}} activeWeekData={semana()} workersList={[]} onSaveWeekData={(w) => { guardado = w; }} />);
+
+    fireEvent.change(screen.getByLabelText('Pax de Boda Ana y Luis'), { target: { value: '150' } });
+    fireEvent.change(screen.getByLabelText('Pax de Boda Eva y Pau'), { target: { value: '50' } });
+    fireEvent.change(screen.getByLabelText('Pax de Boda Eva y Pau'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: /Guardar y Actualizar Planning/ }));
+
+    expect(guardado.events).toEqual([{ name: 'Boda Ana y Luis', pax: 150 }]);
+  });
+
+  it('las categorías generales no piden pax', () => {
+    render(<AdminTaskEditorModal isOpen onClose={() => {}} activeWeekData={semana()} workersList={[]} onSaveWeekData={() => {}} />);
+    expect(screen.queryByLabelText('Pax de Logística Carga')).not.toBeInTheDocument();
+  });
+});

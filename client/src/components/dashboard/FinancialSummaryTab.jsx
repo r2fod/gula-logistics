@@ -73,6 +73,7 @@ export default function FinancialSummaryTab({
                       <div className="flex items-center space-x-2">
                         <div className="w-2 h-2 rounded-full bg-indigo-500"></div>
                         <span>{evt.eventName}</span>
+                        {evt.pax ? <span className="text-[10px] font-bold text-slate-500">{evt.pax} pax</span> : null}
                       </div>
                     </td>
                     <td className="px-6 py-3 text-right text-slate-300">{parseFloat(evt.totalHours.toFixed(2))} h</td>
