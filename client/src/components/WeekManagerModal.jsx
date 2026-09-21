@@ -20,6 +20,8 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
   const [selectedWorkers, setSelectedWorkers] = useState(() => new Set(workersList.map(w => w.name)));
   // Bodas y eventos de la semana, uno por fila: { id, day, kind, place, time }.
   const [events, setEvents] = useState([]);
+  // Recogidas y devoluciones de alquiler (camiones, generadores...), una por fila: { id, day, text, time }.
+  const [rentals, setRentals] = useState([]);
   const [extraNotes, setExtraNotes] = useState('');
   // La clave de Gemini se guarda solo en este navegador (nunca en el código):
   // cada móvil/ordenador la necesita pegada una vez. Sin ella no se puede
@@ -44,6 +46,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
     setWeekName('');
     setDateRange('');
     setEvents([]);
+    setRentals([]);
     setExtraNotes('');
     setGeneratedJson(null);
     setErrorMsg('');
@@ -73,6 +76,10 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
   const updateEvent = (id, field, value) => setEvents(prev => prev.map(e => (e.id === id ? { ...e, [field]: value } : e)));
   const removeEvent = (id) => setEvents(prev => prev.filter(e => e.id !== id));
 
+  const addRental = () => setRentals(prev => [...prev, { id: crypto.randomUUID(), day: 'viernes', text: '', time: '' }]);
+  const updateRental = (id, field, value) => setRentals(prev => prev.map(r => (r.id === id ? { ...r, [field]: value } : r)));
+  const removeRental = (id) => setRentals(prev => prev.filter(r => r.id !== id));
+
   // Con el rango de fechas escrito, los días salen con su número real ("Martes 22").
   const dayLabel = (key) => getDayLabel({ meta: { dateRange } }, key);
 
@@ -82,6 +89,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
     trucks: [...selectedTrucks, ...(extraTruck.trim() ? [extraTruck.trim()] : [])],
     workers: [...selectedWorkers],
     events,
+    rentals,
     extraNotes,
     dayLabel,
   });
@@ -330,6 +338,69 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
               className="mt-2.5 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-dashed border-amber-500/40 text-amber-400 hover:bg-amber-500/10 text-xs font-semibold transition-colors"
             >
               <Plus className="w-3.5 h-3.5" /> Añadir boda o evento
+            </button>
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <Truck className="w-3.5 h-3.5 text-amber-400" /> ¿Qué recogidas o devoluciones de alquiler hay?
+            </label>
+            <p className="text-[11px] text-slate-500 mb-2.5">
+              Camiones, generadores, material de alquiler... No son eventos, pero hay que planificarlos.
+            </p>
+
+            <div className="space-y-2.5">
+              {rentals.map(r => (
+                <div key={r.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      id={`rt-day-${r.id}`}
+                      aria-label="Día de la recogida o devolución"
+                      value={r.day}
+                      onChange={(e) => updateRental(r.id, 'day', e.target.value)}
+                      className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500/60"
+                    >
+                      {WEEK_EVENT_DAYS.map(d => <option key={d.key} value={d.key}>{dayLabel(d.key)}</option>)}
+                    </select>
+                    <input
+                      id={`rt-time-${r.id}`}
+                      type="text"
+                      aria-label="Hora de la recogida o devolución"
+                      value={r.time}
+                      onChange={(e) => updateRental(r.id, 'time', e.target.value)}
+                      placeholder="Hora (ej. 18:00)"
+                      className="min-w-0 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/60"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id={`rt-text-${r.id}`}
+                      type="text"
+                      aria-label="Qué hay que recoger o devolver"
+                      value={r.text}
+                      onChange={(e) => updateRental(r.id, 'text', e.target.value)}
+                      placeholder="Qué (ej. Recoger generadores 7K y furgo Albacar)"
+                      className="min-w-0 flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/60"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeRental(r.id)}
+                      aria-label="Quitar esta recogida o devolución"
+                      className="shrink-0 p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={addRental}
+              className="mt-2.5 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-dashed border-amber-500/40 text-amber-400 hover:bg-amber-500/10 text-xs font-semibold transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Añadir recogida o devolución
             </button>
           </div>
 

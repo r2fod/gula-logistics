@@ -163,3 +163,27 @@ describe('buildWeekPrompt — pax', () => {
     expect(p).toContain('- Martes 22: Evento Catering Dos.');
   });
 });
+
+describe('buildWeekPrompt — recogidas y devoluciones de alquiler', () => {
+  it('las recogidas de camiones/generadores llegan al prompt con su día y hora, ordenadas, y sin filas vacías', () => {
+    const p = buildWeekPrompt({
+      ...base, dayLabel,
+      events: [],
+      rentals: [
+        { day: 'viernes', text: 'Recoger generadores 7K y furgo Albacar', time: '18:00' },
+        { day: 'martes', text: ' Devolver material Dealde ', time: '' },
+        { day: 'martes', text: '   ', time: '10:00' },
+        { day: 'nunca', text: 'Fantasma', time: '' },
+      ],
+    });
+    expect(p).toContain('- Martes 22: Devolver material Dealde.');
+    expect(p).toContain('- Viernes 25: Recoger generadores 7K y furgo Albacar (18:00).');
+    expect(p.indexOf('Martes 22: Devolver')).toBeLessThan(p.indexOf('Viernes 25: Recoger'));
+    expect(p).not.toContain('Fantasma');
+    expect(p).toContain('Logística Preparación');
+  });
+
+  it('sin recogidas no añade nada al prompt', () => {
+    expect(buildWeekPrompt({ ...base, dayLabel, events: [], rentals: [] })).not.toContain('Recogidas y devoluciones de alquiler');
+  });
+});
