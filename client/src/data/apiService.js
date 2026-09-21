@@ -434,6 +434,41 @@ export async function patchTaskCompletionInAPI(weekId, dayKey, taskIndex, comple
   return null;
 }
 
+/**
+ * Apuntes del Calendario Gula entre dos fechas (YYYY-MM-DD), leídos por el
+ * servidor (solo admin). Devuelve { configurado, apuntes, error? }.
+ * `configurado: false` = el servidor no tiene las variables del calendario.
+ */
+export async function fetchCalendarioApuntes(desde, hasta) {
+  try {
+    const res = await fetch(`${API_BASE}/calendario/eventos?desde=${desde}&hasta=${hasta}`, { headers: { ...authHeaders() } });
+    if (res.status === 503) return { configurado: false, apuntes: [] };
+    if (!res.ok) return { configurado: true, apuntes: [], error: `HTTP ${res.status}` };
+    return await res.json();
+  } catch (err) {
+    return { configurado: true, apuntes: [], error: err.message };
+  }
+}
+
+/**
+ * Crea una semana en BORRADOR (o, con `reemplazar`, sustituye un borrador que
+ * ya exista). El servidor nunca pisa una semana que no sea borrador.
+ * Devuelve { ok, status, existe? }.
+ */
+export async function createDraftWeekInAPI(weekId, week, reemplazar = false) {
+  try {
+    const res = await fetch(`${API_BASE}/logistics/weeks/draft`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ weekId, week, reemplazar })
+    });
+    const body = await res.json().catch(() => ({}));
+    return { ok: res.ok, status: res.status, existe: !!body.existe };
+  } catch (err) {
+    return { ok: false, status: 0, error: err.message };
+  }
+}
+
 export async function uploadRentalPdf(file) {
   const formData = new FormData();
   formData.append('file', file);

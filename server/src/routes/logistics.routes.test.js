@@ -339,3 +339,55 @@ describe('POST /api/logistics/update (legacy)', () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe('POST /api/logistics/weeks/draft (borradores automáticos: nunca pisan nada)', () => {
+  const borrador = () => ({ name: 'Semana 5', meta: { week: 'Semana 5', status: 'Borrador' }, schedule: {} });
+  const enviar = (body, token = adminAuthHeader()) => request(buildApp()).post('/api/logistics/weeks/draft').set('Authorization', token).send(body);
+
+  it('exige admin', async () => {
+    expect((await request(buildApp()).post('/api/logistics/weeks/draft').send({ weekId: 'week_x', week: borrador() })).status).toBe(401);
+  });
+
+  it('crea la semana si no existe (201)', async () => {
+    LogisticsWeek.findOne.mockResolvedValue(null);
+    LogisticsWeek.create.mockResolvedValue({ weekId: 'week_auto_2026-09-29' });
+    const r = await enviar({ weekId: 'week_auto_2026-09-29', week: borrador() });
+    expect(r.status).toBe(201);
+    expect(LogisticsWeek.create).toHaveBeenCalledWith(expect.objectContaining({ weekId: 'week_auto_2026-09-29', id: 'week_auto_2026-09-29', name: 'Semana 5' }));
+  });
+
+  it('BUG evitado: si ya existe NO la pisa (409), aunque no sea borrador', async () => {
+    LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_3', meta: { status: 'Operativa Activa' } });
+    const r = await enviar({ weekId: 'week_3', week: borrador(), reemplazar: true });
+    expect(r.status).toBe(409);
+    expect(r.body.borrador).toBe(false);
+    expect(LogisticsWeek.create).not.toHaveBeenCalled();
+    expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('un borrador existente solo se reemplaza con reemplazar:true', async () => {
+    LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_auto_1', meta: { status: 'Borrador' } });
+    const sin = await enviar({ weekId: 'week_auto_1', week: borrador() });
+    expect(sin.status).toBe(409);
+    expect(sin.body.borrador).toBe(true);
+    expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
+
+    LogisticsWeek.findOneAndUpdate.mockResolvedValue({ weekId: 'week_auto_1' });
+    const con = await enviar({ weekId: 'week_auto_1', week: borrador(), reemplazar: true });
+    expect(con.status).toBe(200);
+    expect(con.body.reemplazada).toBe(true);
+  });
+
+  it('dos sesiones a la vez: el índice único devuelve 409 en vez de duplicar', async () => {
+    LogisticsWeek.findOne.mockResolvedValue(null);
+    LogisticsWeek.create.mockRejectedValue(Object.assign(new Error('E11000 duplicate key'), { code: 11000 }));
+    expect((await enviar({ weekId: 'week_auto_2', week: borrador() })).status).toBe(409);
+  });
+
+  it('rechaza weekId raro y semanas que no son borrador', async () => {
+    expect((await enviar({ weekId: '../x', week: borrador() })).status).toBe(400);
+    expect((await enviar({ weekId: 'week_ok', week: { name: 'X', meta: { status: 'Operativa Activa' } } })).status).toBe(400);
+    expect((await enviar({ weekId: 'week_ok' })).status).toBe(400);
+    expect(LogisticsWeek.create).not.toHaveBeenCalled();
+  });
+});

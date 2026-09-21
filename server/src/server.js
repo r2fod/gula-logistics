@@ -9,6 +9,7 @@ import clockRoutes from './routes/clock.routes.js';
 import logisticsRoutes from './routes/logistics.routes.js';
 import balancesRoutes from './routes/balances.routes.js';
 import notificationsRoutes from './routes/notifications.routes.js';
+import calendarioRoutes from './routes/calendario.routes.js';
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ app.use('/api/logistics', logisticsRoutes);
 app.use('/api/clock', clockRoutes);
 app.use('/api/balances', balancesRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/calendario', calendarioRoutes);
 
 // Endpoint de verificación de salud
 app.get('/api/health', (req, res) => {

@@ -182,6 +182,60 @@ router.post('/weeks', requireAdmin, async (req, res) => {
   }
 });
 
+// POST /api/logistics/weeks/draft - Crea una semana en BORRADOR (la que genera
+// el planificador automático desde el calendario). A diferencia de POST /weeks
+// (que reemplaza el documento entero a ciegas), esta ruta NUNCA pisa nada:
+//   · solo acepta semanas con meta.status === 'Borrador';
+//   · si el weekId ya existe responde 409, salvo `reemplazar: true` y solo si
+//     lo que hay ya es otro BORRADOR (una semana aceptada nunca se toca aquí);
+//   · el índice único de weekId hace que dos sesiones a la vez no dupliquen.
+router.post('/weeks/draft', requireAdmin, async (req, res) => {
+  try {
+    const { weekId, week, reemplazar } = req.body || {};
+    if (typeof weekId !== 'string' || !/^week_[A-Za-z0-9_-]{1,60}$/.test(weekId)) {
+      return res.status(400).json({ error: 'weekId debe tener la forma week_<algo>' });
+    }
+    if (!week || typeof week !== 'object' || typeof week.name !== 'string' || week.meta?.status !== 'Borrador') {
+      return res.status(400).json({ error: 'week debe ser una semana con name y meta.status "Borrador"' });
+    }
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ error: 'Se requiere conexión activa a MongoDB Atlas' });
+    }
+
+    const existing = await LogisticsWeek.findOne({ weekId });
+    if (!existing) {
+      try {
+        const created = await LogisticsWeek.create({ ...week, weekId, id: weekId });
+        return res.status(201).json({ success: true, creada: true, data: created });
+      } catch (err) {
+        if (err?.code === 11000) return res.status(409).json({ success: false, existe: true, error: 'Esa semana ya existe' });
+        throw err;
+      }
+    }
+
+    if (reemplazar === true && existing.meta?.status === 'Borrador') {
+      const updated = await LogisticsWeek.findOneAndUpdate(
+        { weekId },
+        { ...week, weekId, id: weekId },
+        { new: true }
+      );
+      return res.json({ success: true, reemplazada: true, data: updated });
+    }
+
+    return res.status(409).json({
+      success: false,
+      existe: true,
+      borrador: existing.meta?.status === 'Borrador',
+      error: existing.meta?.status === 'Borrador'
+        ? 'Esa semana ya existe como borrador (usa reemplazar para regenerarla)'
+        : 'Esa semana ya existe y no es un borrador: no se toca'
+    });
+  } catch (error) {
+    console.error('Error al crear el borrador de semana:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // PATCH /api/logistics/weeks/:weekId/tasks - Marca/desmarca UNA tarea como
 // completada. Sin requireAdmin a propósito: es lo único que necesita el
 // flujo de un trabajador (autocompletar su tarea al fichar salida, o
