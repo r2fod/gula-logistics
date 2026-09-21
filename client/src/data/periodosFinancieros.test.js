@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { inicioSemanaOperativa, rangoDePeriodo, moverPeriodo, turnosDelPeriodo, semanasDelPeriodo } from './periodosFinancieros';
+import { inicioSemanaOperativa, rangoDePeriodo, moverPeriodo, turnosDelPeriodo, semanasDelPeriodo, costeTotal, variacionPorcentual, serieDelPeriodo } from './periodosFinancieros';
 
 const d = (y, m, dia, h = 0, min = 0) => new Date(y, m - 1, dia, h, min);
 const turno = (fecha) => ({ startEntry: { timestamp: fecha.toISOString() } });
@@ -110,5 +110,72 @@ describe('semanasDelPeriodo', () => {
   it('en un mes entran las que empiezan en él; en "todo", todas', () => {
     expect(Object.keys(semanasDelPeriodo(semanas, rangoDePeriodo('mes', d(2026, 9, 1)), d(2026, 9, 21)))).toEqual(['s3', 's4']);
     expect(Object.keys(semanasDelPeriodo(semanas, rangoDePeriodo('todo')))).toHaveLength(4);
+  });
+});
+
+describe('costeTotal y variacionPorcentual', () => {
+  it('suma el coste de los turnos', () => {
+    expect(costeTotal([{ cost: 10 }, { cost: 25.5 }, {}])).toBe(35.5);
+    expect(costeTotal()).toBe(0);
+  });
+
+  it('variación respecto al periodo anterior; sin anterior no hay comparación', () => {
+    expect(variacionPorcentual(150, 100)).toBe(50);
+    expect(variacionPorcentual(50, 100)).toBe(-50);
+    expect(variacionPorcentual(100, 0)).toBeNull();
+    expect(variacionPorcentual(0, 0)).toBeNull();
+  });
+});
+
+describe('serieDelPeriodo', () => {
+  const t = (fecha, cost, durationHours) => ({ cost, durationHours, startEntry: { timestamp: fecha.toISOString() } });
+
+  it('semana: siete días de martes a lunes, con los días sin turnos a cero', () => {
+    const rango = rangoDePeriodo('semana', d(2026, 9, 19));
+    const serie = serieDelPeriodo([t(d(2026, 9, 15, 9), 20, 2), t(d(2026, 9, 15, 17), 10, 1), t(d(2026, 9, 21, 12), 5, 0.5)], rango);
+    expect(serie).toHaveLength(7);
+    expect(serie[0]).toMatchObject({ coste: 30, horas: 3 });
+    expect(serie[0].etiqueta).toMatch(/15$/);
+    expect(serie[1].coste).toBe(0);
+    expect(serie[6]).toMatchObject({ coste: 5, horas: 0.5 }); // el lunes de cola es el último
+    expect(serie[6].etiqueta).toMatch(/21$/);
+  });
+
+  it('semana: el turno de la boda que empieza el sábado y acaba de madrugada cuenta el sábado', () => {
+    const rango = rangoDePeriodo('semana', d(2026, 9, 19));
+    const serie = serieDelPeriodo([t(d(2026, 9, 19, 20, 30), 95, 9.5)], rango);
+    expect(serie.map(x => x.coste)).toEqual([0, 0, 0, 0, 95, 0, 0]);
+  });
+
+  it('mes: un tramo por semana operativa', () => {
+    const rango = rangoDePeriodo('mes', d(2026, 9, 1));
+    const serie = serieDelPeriodo([t(d(2026, 9, 3, 9), 10, 1), t(d(2026, 9, 18, 9), 40, 4), t(d(2026, 9, 21, 9), 5, 0.5)], rango);
+    const total = serie.reduce((a, x) => a + x.coste, 0);
+    expect(total).toBe(55); // ningún turno se pierde
+    const s3 = serie.find(x => x.clave === `2026-9-15`);
+    expect(s3.coste).toBe(45); // el lunes 21 es cola de la semana del martes 15
+  });
+
+  it('año: doce meses; los turnos caen en su mes', () => {
+    const rango = rangoDePeriodo('anio', d(2026, 5, 1));
+    const serie = serieDelPeriodo([t(d(2026, 1, 10), 10, 1), t(d(2026, 9, 21), 30, 3)], rango);
+    expect(serie).toHaveLength(12);
+    expect(serie[0].coste).toBe(10);
+    expect(serie[8].coste).toBe(30);
+    expect(serie[0].etiqueta).toMatch(/^Ene/);
+  });
+
+  it('todo: desde el primer mes con fichajes hasta el último, indicando el año si son varios', () => {
+    const rango = rangoDePeriodo('todo');
+    const serie = serieDelPeriodo([t(d(2025, 11, 3), 10, 1), t(d(2026, 1, 20), 30, 3)], rango);
+    expect(serie.map(x => x.coste)).toEqual([10, 0, 30]);
+    expect(serie[0].etiqueta).toMatch(/25$/);
+    expect(serieDelPeriodo([], rango)).toEqual([]);
+  });
+
+  it('un turno con fecha ilegible no rompe nada ni cuenta', () => {
+    const rango = rangoDePeriodo('semana', d(2026, 9, 19));
+    const serie = serieDelPeriodo([{ cost: 99, startEntry: { timestamp: 'nada' } }], rango);
+    expect(serie.reduce((a, x) => a + x.coste, 0)).toBe(0);
   });
 });

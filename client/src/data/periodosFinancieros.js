@@ -83,3 +83,61 @@ export function semanasDelPeriodo(semanas = {}, rango, ahora = new Date()) {
     return r && r.start.getTime() >= rango.desde.getTime() && r.start.getTime() < rango.hasta.getTime();
   }));
 }
+
+export const costeTotal = (shifts = []) => shifts.reduce((acc, s) => acc + (s.cost || 0), 0);
+
+// Cuánto ha subido (+) o bajado (-) un importe respecto al del periodo anterior,
+// en %. null si el anterior es cero: no hay con qué comparar.
+export function variacionPorcentual(actual, anterior) {
+  if (!(anterior > 0)) return null;
+  return ((actual - anterior) / anterior) * 100;
+}
+
+const claveDia = (d) => `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+const claveMes = (d) => `${d.getFullYear()}-${d.getMonth() + 1}`;
+
+// Coste y horas por tramo dentro del periodo, para la gráfica de evolución:
+// por DÍA en una semana, por SEMANA en un mes, por MES en un año (y en "todo",
+// desde el primer mes con fichajes hasta el último). Los tramos sin turnos salen
+// a cero, para que la gráfica no se salte días o meses. `turnos` ya viene
+// filtrado por el periodo (turnosDelPeriodo). Devuelve [{ clave, etiqueta, coste, horas }].
+export function serieDelPeriodo(turnos = [], rango) {
+  const tramos = [];
+  const nuevo = (clave, etiqueta) => { const t = { clave, etiqueta, coste: 0, horas: 0 }; tramos.push(t); return t; };
+  const sumar = (mapa, clave, s) => { const t = mapa.get(clave); if (t) { t.coste += s.cost || 0; t.horas += s.durationHours || 0; } };
+  const inicio = (s) => new Date(s.startEntry?.timestamp);
+  const validos = turnos.filter(s => !isNaN(inicio(s)));
+  const mapa = new Map();
+
+  if (rango?.modo === 'semana') {
+    for (let i = 0; i < 7; i++) {
+      const dia = new Date(rango.desde.getFullYear(), rango.desde.getMonth(), rango.desde.getDate() + i);
+      const dd = dia.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '');
+      mapa.set(claveDia(dia), nuevo(claveDia(dia), `${capitalizar(dd)} ${dia.getDate()}`));
+    }
+    validos.forEach(s => sumar(mapa, claveDia(inicio(s)), s));
+  } else if (rango?.modo === 'mes') {
+    for (let d = inicioSemanaOperativa(rango.desde); d < rango.hasta; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 7)) {
+      mapa.set(claveDia(d), nuevo(claveDia(d), corto(d)));
+    }
+    validos.forEach(s => sumar(mapa, claveDia(inicioSemanaOperativa(inicio(s))), s));
+  } else if (rango?.modo === 'anio' || rango?.modo === 'todo') {
+    let desde = rango.desde;
+    let hasta = rango.hasta;
+    if (rango.modo === 'todo') {
+      if (validos.length === 0) return [];
+      const tiempos = validos.map(s => inicio(s).getTime());
+      const a = new Date(Math.min(...tiempos));
+      const b = new Date(Math.max(...tiempos));
+      desde = new Date(a.getFullYear(), a.getMonth(), 1);
+      hasta = new Date(b.getFullYear(), b.getMonth() + 1, 1);
+    }
+    const variosAnios = desde.getFullYear() !== new Date(hasta.getFullYear(), hasta.getMonth() - 1, 1).getFullYear();
+    for (let d = desde; d < hasta; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+      const mes = d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '');
+      mapa.set(claveMes(d), nuevo(claveMes(d), variosAnios ? `${capitalizar(mes)} ${String(d.getFullYear()).slice(2)}` : capitalizar(mes)));
+    }
+    validos.forEach(s => sumar(mapa, claveMes(inicio(s)), s));
+  }
+  return tramos;
+}
