@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Check, Trash2, User, Lock } from 'lucide-react';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
-import { Campo, Input, Selector, AreaTexto } from './ui/Campo';
+import { Campo, Input, Selector, AreaTexto } from './ui/Campo';import { crearFichaje } from '../data/fichajes';
+
 
 export default function AdminClockEditModal({
   isOpen,
@@ -69,23 +70,17 @@ export default function AdminClockEditModal({
     const dateObj = new Date(dateTimeLocal);
     const workerObj = workersList.find(w => w.name === workerName) || { role: 'Operativa', isPayroll: false };
 
-    const entryData = {
+    const entryData = crearFichaje({
+      trabajador: { name: workerName, role: workerObj.role || 'Operativa', isPayroll: workerObj.isPayroll || false },
+      tipo: type,
+      fecha: dateObj,
       id: entry ? entry.id : crypto.randomUUID(),
-      workerName,
-      role: workerObj.role || 'Operativa',
-      isPayroll: workerObj.isPayroll || false,
       rate: Number(rate),
-      type,
-      timestamp: dateObj.toISOString(),
-      // Locale y hour12 fijos: sin esto, el formato (24h o 12h AM/PM)
-      // dependía del idioma/región del navegador de quien editaba.
-      timeFormatted: dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
-      dateFormatted: dateObj.toLocaleDateString('es-ES'),
       taskName: note.trim() || (type === 'entrada' ? 'Inicio de Jornada Operativa' : 'Cierre de Jornada'),
       note: note.trim(),
       editedByAdmin: isAdmin,
       editedAt: new Date().toISOString()
-    };
+    });
 
     if (entry) {
       if (onUpdateEntry) onUpdateEntry(entryData);

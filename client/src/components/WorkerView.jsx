@@ -23,7 +23,10 @@ import AdminClockEditModal from './AdminClockEditModal';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
 import TaskTextWithEvent from './TaskTextWithEvent';
 import { getTaskListForDay, resolveTaskIndexByText, isTaskEffectivelyDone, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart } from '../data/taskPlanning';
-import { subscribeToPush } from '../data/pushService';
+import { subscribeToPush } from '../data/pushService';import { crearFichaje, horaDeFichaje, fechaDeFichaje } from '../data/fichajes';
+import { formatTimeShort, formatWeekdayDay } from '../utils/dateUtils';
+import { formatearHoras } from '../data/formatoFinanciero';
+
 
 // Texto del botón de empezar la jornada: se elige uno al azar al abrir la
 // vista (no en cada render, para que no cambie cada segundo). Todas dicen
@@ -385,10 +388,10 @@ export default function WorkerView({
   const jornadaGateClosed = !!firstTaskStart && isTaskTooEarlyToStart(activeWeekData, immediateTask.dayKey, immediateTask.rawTask, currentTime);
   const gateText = () => {
     const opens = new Date(firstTaskStart.getTime() - 5 * 60 * 1000);
-    const hhmm = opens.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const hhmm = formatTimeShort(opens);
     return opens.toDateString() === currentTime.toDateString()
       ? `Podrás fichar a partir de las ${hhmm}`
-      : `Podrás fichar el ${opens.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric' })} a las ${hhmm}`;
+      : `Podrás fichar el ${formatWeekdayDay(opens)} a las ${hhmm}`;
   };
 
   // Lo que se ve marcado = lo que hace el clic = lo que guarda el sistema
@@ -432,7 +435,7 @@ export default function WorkerView({
                 <span>•</span>
                 <span className="text-amber-300 truncate font-medium">{currentWorkerObj.truck}</span>
                 <span>•</span>
-                <span className="font-mono text-emerald-400 font-bold">{totalCompletedHours.toFixed(1)}h esta semana</span>
+                <span className="font-mono text-emerald-400 font-bold">{formatearHoras(totalCompletedHours)} esta semana</span>
               </div>
             </div>
           </div>
@@ -519,29 +522,17 @@ export default function WorkerView({
                           <button
                             onClick={() => {
                               if (isLocked) return;
-                              const now = new Date();
                               const tRef = !immediateTask.isWedding && immediateTask.dayKey && immediateTask.taskIndex != null
                                 ? { dayKey: immediateTask.dayKey, taskIndex: immediateTask.taskIndex }
                                 : null;
-                                
-                              const entry = {
-                                // Evita choques contra el índice único de
-                                // `id` en Mongo si dos fichajes coinciden en
-                                // el mismo milisegundo (ver ClockInModal.jsx).
-                                id: crypto.randomUUID(),
-                                workerName: currentWorkerObj.name,
-                                role: currentWorkerObj.role,
-                                isPayroll: currentWorkerObj.isPayroll,
-                                rate: currentWorkerObj.rate || 10,
-                                type: 'fichaje',
-                                timestamp: now.toISOString(),
-                                timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
-                                dateFormatted: now.toLocaleDateString('es-ES'),
+
+                              onClockEntryCreated(crearFichaje({
+                                trabajador: currentWorkerObj,
+                                tipo: 'fichaje',
                                 taskName: immediateTask.taskName.trim(),
                                 note: '',
                                 taskRef: tRef
-                              };
-                              onClockEntryCreated(entry);
+                              }));
                             }}
                             disabled={isLocked}
                             className={`w-full py-2.5 px-3 rounded-lg text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
@@ -577,20 +568,7 @@ export default function WorkerView({
 
               <button
                 onClick={() => { 
-                  const now = new Date();
-                  const entry = {
-                    id: crypto.randomUUID(),
-                    workerName: currentWorkerObj.name,
-                    role: currentWorkerObj.role,
-                    isPayroll: currentWorkerObj.isPayroll,
-                    rate: currentWorkerObj.rate || 10,
-                    type: 'salida',
-                    timestamp: now.toISOString(),
-                    timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
-                    dateFormatted: now.toLocaleDateString('es-ES'),
-                    note: ''
-                  };
-                  onClockEntryCreated(entry);
+                  onClockEntryCreated(crearFichaje({ trabajador: currentWorkerObj, tipo: 'salida', note: '' }));
                 }}
                 className="w-full py-3.5 px-4 rounded-xl text-sm font-extrabold bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center space-x-2 transition-all shadow-xl shadow-rose-600/30 active:scale-95"
               >
@@ -645,22 +623,13 @@ export default function WorkerView({
                   <button
                     disabled={!isReady}
                     onClick={() => {
-                      const now = new Date();
-                      const entry = {
-                        id: crypto.randomUUID(),
-                        workerName: currentWorkerObj.name,
-                        role: currentWorkerObj.role,
-                        isPayroll: currentWorkerObj.isPayroll,
-                        rate: currentWorkerObj.rate || 10,
-                        type: 'entrada',
-                        timestamp: now.toISOString(),
-                        timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
-                        dateFormatted: now.toLocaleDateString('es-ES'),
+                      onClockEntryCreated(crearFichaje({
+                        trabajador: currentWorkerObj,
+                        tipo: 'entrada',
                         taskName: 'JORNADA',
                         note: 'Inicio de Jornada',
                         taskRef: null
-                      };
-                      onClockEntryCreated(entry);
+                      }));
                     }}
                     className={`w-full py-3.5 px-4 rounded-xl text-sm font-extrabold flex items-center justify-center space-x-2 transition-all ${
                       isReady 
@@ -1168,7 +1137,7 @@ export default function WorkerView({
                 <div key={entry.id} className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-xs font-bold text-white">
-                      {entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : entry.timeFormatted} <span className="text-[10px] text-slate-400 font-normal">({entry.timestamp ? new Date(entry.timestamp).toLocaleDateString('es-ES') : entry.dateFormatted})</span>
+                      {horaDeFichaje(entry)} <span className="text-[10px] text-slate-400 font-normal">({fechaDeFichaje(entry)})</span>
                     </span>
                     {entry.type === 'entrada' ? (
                       <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">
@@ -1185,7 +1154,7 @@ export default function WorkerView({
                   </p>
                   <div className="flex items-center justify-between pt-2 border-t border-slate-800/60 mt-1">
                     <span className="text-[10px] text-slate-400">
-                      {entry.durationHours ? `Duración: ${Number(entry.durationHours).toFixed(1)}h` : 'Turno registrado'}
+                      {entry.durationHours ? `Duración: ${formatearHoras(Number(entry.durationHours))}` : 'Turno registrado'}
                     </span>
                     <span className="text-[10px] font-bold text-amber-300 flex items-center gap-1">
                       <Lock className="w-3 h-3 text-amber-400" /> Bloqueado
@@ -1211,8 +1180,8 @@ export default function WorkerView({
                   {myEntries.map((entry) => (
                     <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
                       <td className="py-3 px-3 font-mono text-slate-200">
-                        <div className="font-bold text-white">{entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : entry.timeFormatted}</div>
-                        <div className="text-[10px] text-slate-500">{entry.timestamp ? new Date(entry.timestamp).toLocaleDateString('es-ES') : entry.dateFormatted}</div>
+                        <div className="font-bold text-white">{horaDeFichaje(entry)}</div>
+                        <div className="text-[10px] text-slate-500">{fechaDeFichaje(entry)}</div>
                       </td>
                       <td className="py-3 px-3">
                         {entry.type === 'entrada' ? (

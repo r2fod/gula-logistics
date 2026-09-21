@@ -15,11 +15,18 @@ export function formatearNumero(n, decimales = 2) {
 
 export const formatearEuros = (n) => `${formatearNumero(n, 2)} €`;
 
-// Horas sin ceros de sobra: 3,5 h · 242,5 h · 12 h · 0,75 h.
-export function formatearHoras(n) {
+// Cantidad sin ceros de sobra y sin unidad: 3,5 · 242,5 · 12 · 0,75. Es la base
+// de las horas y de cualquier cifra que no sea dinero.
+export function formatearCantidad(n) {
   const valor = Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
   const [entero, decimal] = String(Math.abs(valor)).split('.');
-  return `${valor < 0 ? '-' : ''}${agrupar(entero)}${decimal ? `,${decimal}` : ''} h`;
+  return `${valor < 0 ? '-' : ''}${agrupar(entero)}${decimal ? `,${decimal}` : ''}`;
 }
+
+// Horas: 3,5 h · 242,5 h · 12 h · 0,75 h.
+export const formatearHoras = (n) => `${formatearCantidad(n)} h`;
+
+// Importe con su signo explícito para los saldos: +125,50 € · -30,00 €. Cero lleva "+".
+export const formatearEurosConSigno = (n) => `${n >= 0 ? '+' : ''}${formatearEuros(n)}`;
 
 export const formatearPorcentaje = (n, decimales = 1) => `${formatearNumero(n, decimales)} %`;

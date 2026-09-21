@@ -8,7 +8,9 @@ import {
   Radio
 } from 'lucide-react';
 import { pairShiftsFromEntries, isZombieShift } from '../data/shiftCalculations';
-import { getTaskListForDay, isTaskEffectivelyDone } from '../data/taskPlanning';
+import { getTaskListForDay, isTaskEffectivelyDone } from '../data/taskPlanning';import { crearFichaje } from '../data/fichajes';
+import { formatTime } from '../utils/dateUtils';
+
 
 export default function LiveMonitorPanel({
   workersList = [],
@@ -252,7 +254,7 @@ export default function LiveMonitorPanel({
             <div className="bg-slate-950/80 px-3 sm:px-4 py-2 rounded-xl sm:rounded-2xl border border-slate-800 text-center font-mono">
               <span className="text-[9px] sm:text-[10px] text-slate-400 font-semibold block uppercase tracking-wider">Hora Oficial</span>
               <span className="text-xs sm:text-sm font-bold text-amber-400">
-                {currentTime.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+                {formatTime(currentTime)}
               </span>
             </div>
           </div>
@@ -459,21 +461,11 @@ export default function LiveMonitorPanel({
                 <button
                   onClick={() => {
                     if (worker.isClockedIn) {
-                      const now = new Date();
-                      const entry = {
-                        id: crypto.randomUUID(),
-                        workerName: worker.name,
-                        role: worker.role,
-                        isPayroll: worker.isPayroll,
-                        rate: worker.rate || 10,
-                        type: 'salida',
-                        timestamp: now.toISOString(),
-                        // Locale y hour12 fijos: mismo criterio que ClockInModal/AdminClockEditModal.
-                        timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false }),
-                        dateFormatted: now.toLocaleDateString('es-ES'),
+                      if (onClockEntryCreated) onClockEntryCreated(crearFichaje({
+                        trabajador: worker,
+                        tipo: 'salida',
                         note: `Finalizada tarea: ${worker.currentTask}`
-                      };
-                      if (onClockEntryCreated) onClockEntryCreated(entry);
+                      }));
                     } else {
                       if (onOpenClockModal) onOpenClockModal(worker.name);
                     }

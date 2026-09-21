@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
 import { TrendingUp, Share2, Bus, Clock, ChevronUp, ChevronDown, Trash2, Plus, MessageCircle } from 'lucide-react';
+import { formatearEuros, formatearEurosConSigno, formatearHoras, formatearNumero } from '../../data/formatoFinanciero';
+
+// Horas tal como se escriben DENTRO del texto de un concepto ("4,5" → "4.5", sin ceros de
+// sobra). Ese texto se guarda en Mongo: no cambiar el formato, o los conceptos nuevos
+// dejarían de parecerse a los ya guardados.
+const fmtHours = (h) => (Number.isInteger(h) ? `${h}` : parseFloat(h.toFixed(2)).toString());
 
 export default function TeamBalancesTab({
   balancesData,
@@ -76,7 +82,6 @@ export default function TeamBalancesTab({
     const dateLabel = Number.isNaN(dateObj.getTime())
       ? newShiftDate
       : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
-    const fmtHours = (h) => (Number.isInteger(h) ? `${h}` : parseFloat(h.toFixed(2)).toString());
 
     // Solo se ofrece incluir el +10€ si el trabajador tiene la ayuda de
     // transporte activada (hasTransportBonus) Y no se ha desmarcado en el
@@ -163,9 +168,8 @@ export default function TeamBalancesTab({
       }
 
       if (preview.extraHours > 0) {
-        const hoursLabel = Number.isInteger(preview.extraHours) ? `${preview.extraHours}` : parseFloat(preview.extraHours.toFixed(2)).toString();
         newBreakdown.push({
-          concept: `🕒 ${preview.dateLabel} (${newShiftStart} a ${newShiftEnd} - ${hoursLabel}h a ${p.extraRateAfter80h}€/h · Extra tras bolsa)`,
+          concept: `🕒 ${preview.dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(preview.extraHours)}h a ${p.extraRateAfter80h}€/h · Extra tras bolsa)`,
           amount: preview.extraHours * p.extraRateAfter80h,
           isPositive: true
         });
@@ -260,23 +264,19 @@ export default function TeamBalancesTab({
     if (worker.statusType === 'payroll') {
       message += `📌 *Estado:* Nómina Fija (Control interno a 14,00 €/h)\n`;
     } else {
-      const balanceStr = worker.currentBalance >= 0 
-        ? `+${worker.currentBalance.toFixed(2)} €` 
-        : `${worker.currentBalance.toFixed(2)} €`;
-      message += `💰 *Saldo Actual:* ${balanceStr}\n\n`;
+      message += `💰 *Saldo Actual:* ${formatearEurosConSigno(worker.currentBalance)}\n\n`;
 
       if (worker.isSpecialPurse && worker.purseInfo) {
         const p = worker.purseInfo;
         message += `📦 *Bolsa Mensual (80h):*\n`;
-        message += `• Base: ${p.grossBase.toFixed(2)} € - Alojamiento ${p.housingDeduction.toFixed(2)} € = ${p.netFixedAt80h.toFixed(2)} € Neto al cumplir 80h\n`;
-        message += `• Horas consumidas hasta hoy: ${p.consumedHours}h (Valor: ${p.consumedValue.toFixed(2)} €)\n`;
-        message += `• Horas pendientes para extra a 10€/h: ${p.remainingHoursForExtra}h\n\n`;
+        message += `• Base: ${formatearEuros(p.grossBase)} - Alojamiento ${formatearEuros(p.housingDeduction)} = ${formatearEuros(p.netFixedAt80h)} Neto al cumplir 80h\n`;
+        message += `• Horas consumidas hasta hoy: ${formatearHoras(p.consumedHours)} (Valor: ${formatearEuros(p.consumedValue)})\n`;
+        message += `• Horas pendientes para extra a 10€/h: ${formatearHoras(p.remainingHoursForExtra)}\n\n`;
       }
 
       message += `📝 *Desglose de Turnos & Conceptos:*\n`;
       worker.breakdown.forEach(item => {
-        const sign = item.amount >= 0 ? '+' : '';
-        message += `• ${item.concept}: *${sign}${item.amount.toFixed(2)} €*\n`;
+        message += `• ${item.concept}: *${formatearEurosConSigno(item.amount)}*\n`;
       });
     }
 
@@ -335,8 +335,6 @@ export default function TeamBalancesTab({
                 hours.shifts.forEach(s => {
                   let computedCost = 0;
                   let computedConcept = '';
-                  const fmtHours = (h) => (Number.isInteger(h) ? `${h}` : parseFloat(h.toFixed(2)).toString());
-
                   const timeRangeText = s.ranges ? s.ranges.join(' y ') : `${s.startTime} a ${s.endTime}`;
 
                   if (worker.isSpecialPurse && worker.purseInfo) {
@@ -436,7 +434,7 @@ export default function TeamBalancesTab({
                           <span className={`text-2xl sm:text-3xl font-extrabold font-mono ${
                             displayBalance > 0 ? 'text-emerald-400' : displayBalance < 0 ? 'text-rose-400' : 'text-slate-400'
                           }`}>
-                            {displayBalance >= 0 ? `+${displayBalance.toFixed(2)} €` : `${displayBalance.toFixed(2)} €`}
+                            {formatearEurosConSigno(displayBalance)}
                           </span>
                         )}
                       </div>
@@ -447,7 +445,7 @@ export default function TeamBalancesTab({
                       <div className="mt-3 flex items-center gap-2 text-xs bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">
                         <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                         <span className="text-emerald-100">
-                          <b className="text-emerald-400 font-mono">{parseFloat(hours.totalHours.toFixed(2))}h</b> fichadas automáticamente y sumadas al saldo
+                          <b className="text-emerald-400 font-mono">{formatearHoras(hours.totalHours)}</b> fichadas automáticamente y sumadas al saldo
                         </span>
                       </div>
                     )}
@@ -476,12 +474,12 @@ export default function TeamBalancesTab({
                           <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                             <span className="text-slate-400 block text-[10px]">Condición Base:</span>
                             <span className="font-semibold text-white">
-                              {worker.purseInfo.totalHours}h ({worker.purseInfo.grossBase.toFixed(0)}€ - {worker.purseInfo.housingDeduction.toFixed(0)}€ Aloj.) = <b>{worker.purseInfo.netFixedAt80h.toFixed(0)}€ Neto</b>
+                              {formatearHoras(worker.purseInfo.totalHours)} ({formatearNumero(worker.purseInfo.grossBase, 0)}€ - {formatearNumero(worker.purseInfo.housingDeduction, 0)}€ Aloj.) = <b>{formatearNumero(worker.purseInfo.netFixedAt80h, 0)}€ Neto</b>
                             </span>
                           </div>
                           <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
                             <span className="text-slate-400 block text-[10px]">Acumulado Septiembre:</span>
-                            <span className="font-bold text-emerald-400">{worker.purseInfo.consumedHours}h ({worker.purseInfo.consumedValue.toFixed(2)}€)</span>
+                            <span className="font-bold text-emerald-400">{formatearHoras(worker.purseInfo.consumedHours)} ({formatearEuros(worker.purseInfo.consumedValue)})</span>
                           </div>
                         </div>
 
@@ -543,7 +541,7 @@ export default function TeamBalancesTab({
                               <span className={`font-bold font-mono ${
                                 item.amount > 0 ? 'text-emerald-400' : item.amount < 0 ? 'text-rose-400' : 'text-slate-400'
                               }`}>
-                                {item.amount > 0 ? `+${item.amount.toFixed(2)} €` : item.amount < 0 ? `${item.amount.toFixed(2)} €` : '0,00 €'}
+                                {item.amount > 0 ? formatearEurosConSigno(item.amount) : formatearEuros(item.amount)}
                               </span>
                               {adminUnlocked && (
                                 <button
@@ -639,7 +637,7 @@ export default function TeamBalancesTab({
                                     })()}
                                     {preview && (
                                       <div className="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2 font-mono">
-                                        {preview.concept} → <b>+{preview.amount.toFixed(2)} €</b>
+                                        {preview.concept} → <b>+{formatearEuros(preview.amount)}</b>
                                       </div>
                                     )}
                                     {preview && hasRealShiftOnDate(worker, newShiftDate) && (
