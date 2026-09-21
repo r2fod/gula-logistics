@@ -1,10 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import BotonCerrar from './BotonCerrar';
-
-// Modales abiertos, del más antiguo al más reciente: con Escape solo se cierra
-// el de arriba (p. ej. el editor de fichaje abierto sobre el informe de nóminas).
-const modalesAbiertos = [];
 
 // Las clases van completas para que Tailwind las detecte.
 const ANCHOS = {
@@ -61,28 +58,7 @@ export default function Modal({
 }) {
   useBodyScrollLock(abierto);
 
-  // Guardar el último `onCerrar` evita re-suscribir el listener en cada render
-  // (los llamadores suelen pasar una flecha nueva cada vez).
-  const alCerrar = useRef(onCerrar);
-  alCerrar.current = onCerrar;
-
-  useEffect(() => {
-    if (!abierto || !cerrarConEscape) return undefined;
-
-    const yo = {};
-    modalesAbiertos.push(yo);
-
-    const alPulsarTecla = (evento) => {
-      if (evento.key !== 'Escape' || modalesAbiertos[modalesAbiertos.length - 1] !== yo) return;
-      alCerrar.current?.();
-    };
-    document.addEventListener('keydown', alPulsarTecla);
-
-    return () => {
-      document.removeEventListener('keydown', alPulsarTecla);
-      modalesAbiertos.splice(modalesAbiertos.indexOf(yo), 1);
-    };
-  }, [abierto, cerrarConEscape]);
+  useCerrarConEscape(abierto && cerrarConEscape, onCerrar);
 
   if (!abierto) return null;
 
