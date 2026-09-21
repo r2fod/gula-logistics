@@ -18,6 +18,7 @@ import {
   PackageCheck
 } from 'lucide-react';
 import { getDayLabel, getWeddingsBadge, isTaskEffectivelyDone } from '../data/taskPlanning';
+import { Selector } from './ui/Campo';
 
 // Categoriza una tarea por su texto para darle un icono/color propio en el
 // grafo — pura ayuda visual para distinguir de un vistazo qué tipo de
@@ -334,10 +335,10 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
         <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full lg:w-auto">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-1 sm:flex-none">
             {/* Day Filter */}
-            <select 
+            <Selector 
               value={filterDay} 
               onChange={(e) => setFilterDay(e.target.value)}
-              className="bg-slate-950 border border-slate-800 text-slate-200 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none w-full"
+              tamano="sm" texto="suave" className="font-semibold w-full"
             >
               <option value="all">📅 Todos los Días</option>
               <option value="day_martes">{getDayLabel(activeWeekData, 'martes')}</option>
@@ -346,31 +347,31 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
               <option value="day_viernes">{getDayLabel(activeWeekData, 'viernes')}</option>
               <option value="day_sabado">{getDayLabel(activeWeekData, 'sabado')} (Bodas)</option>
               <option value="day_domingo">{getDayLabel(activeWeekData, 'domingo')} y {getDayLabel(activeWeekData, 'lunes')}</option>
-            </select>
+            </Selector>
 
             {/* Truck Filter */}
-            <select 
+            <Selector 
               value={filterTruck} 
               onChange={(e) => setFilterTruck(e.target.value)}
-              className="bg-slate-950 border border-slate-800 text-emerald-400 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none w-full"
+              tamano="sm" texto="esmeralda" className="font-semibold w-full"
             >
               <option value="all">🚚 Toda la Flota</option>
               {truckNodes.map(t => (
                 <option key={t.id} value={t.id}>{t.label}{t.sub ? ` (${t.sub})` : ''}</option>
               ))}
-            </select>
+            </Selector>
 
             {/* Worker Filter — del roster real (workerNodes), no una lista fija */}
-            <select
+            <Selector
               value={filterWorker}
               onChange={(e) => setFilterWorker(e.target.value)}
-              className="bg-slate-950 border border-slate-800 text-amber-400 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none w-full"
+              tamano="sm" texto="ambar-claro" className="font-semibold w-full"
             >
               <option value="all">👥 Todo el Equipo</option>
               {workerNodes.map(w => (
                 <option key={w.id} value={w.id}>{w.label}</option>
               ))}
-            </select>
+            </Selector>
           </div>
 
           {/* View Mode Toggle */}

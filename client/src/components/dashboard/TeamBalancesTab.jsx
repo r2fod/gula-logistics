@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TrendingUp, Share2, Bus, Clock, ChevronUp, ChevronDown, Trash2, Plus, MessageCircle } from 'lucide-react';
 import { formatearEuros, formatearEurosConSigno, formatearHoras, formatearNumero } from '../../data/formatoFinanciero';
+import { Input } from '../ui/Campo';
 
 // Horas tal como se escriben DENTRO del texto de un concepto ("4,5" → "4.5", sin ceros de
 // sobra). Ese texto se guarda en Mongo: no cambiar el formato, o los conceptos nuevos
@@ -593,26 +594,26 @@ export default function TeamBalancesTab({
                                 const preview = computeShiftPreview(worker);
                                 return (
                                   <>
-                                    <input
+                                    <Input
                                       type="date"
                                       value={newShiftDate}
                                       onChange={(e) => setNewShiftDate(e.target.value)}
-                                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500 [color-scheme:dark]"
+                                      tamano="xs" fondo="medio" borde="marcado" className="w-full [color-scheme:dark]"
                                     />
                                     <div className="flex gap-2">
-                                      <input
+                                      <Input
                                         type="time"
                                         value={newShiftStart}
                                         onChange={(e) => setNewShiftStart(e.target.value)}
                                         placeholder="Entrada"
-                                        className="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500 [color-scheme:dark]"
+                                        tamano="xs" fondo="medio" borde="marcado" className="flex-1 min-w-0 [color-scheme:dark]"
                                       />
-                                      <input
+                                      <Input
                                         type="time"
                                         value={newShiftEnd}
                                         onChange={(e) => setNewShiftEnd(e.target.value)}
                                         placeholder="Salida"
-                                        className="flex-1 min-w-0 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500 [color-scheme:dark]"
+                                        tamano="xs" fondo="medio" borde="marcado" className="flex-1 min-w-0 [color-scheme:dark]"
                                       />
                                     </div>
                                     {worker.hasTransportBonus && (
@@ -665,20 +666,20 @@ export default function TeamBalancesTab({
                               })()
                             ) : newConceptMode === 'manual' ? (
                               <>
-                                <input
+                                <Input
                                   type="text"
                                   value={newConceptText}
                                   onChange={(e) => setNewConceptText(e.target.value)}
                                   placeholder="Concepto (ej: Plus puntualidad)"
-                                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                                  tamano="xs" fondo="medio" borde="marcado"
                                 />
-                                <input
+                                <Input
                                   type="text"
                                   inputMode="decimal"
                                   value={newConceptAmount}
                                   onChange={(e) => setNewConceptAmount(e.target.value)}
                                   placeholder="Importe a SUMAR (ej: 20.00)"
-                                  className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                                  tamano="xs" fondo="medio" borde="marcado"
                                 />
                                 <div className="flex gap-2">
                                   <button

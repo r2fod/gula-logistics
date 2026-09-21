@@ -3,6 +3,7 @@ import { ShieldCheck, KeyRound, Truck, Menu } from 'lucide-react';
 import { esBorrador } from '../../data/anticipacion';
 import BotonAccion from './BotonAccion';
 import { accionesDe } from './acciones';
+import { Selector } from '../ui/Campo';
 
 // Cabecera del panel de control: título con el estado de la sesión, selector de
 // semana y las acciones (barra de escritorio o barra rápida del móvil + "Menú").
@@ -73,15 +74,15 @@ export default function CabeceraPanel({
         </div>
 
         <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
-          <select
+          <Selector
             value={activeWeekId}
             onChange={(e) => onSelectWeek(e.target.value)}
-            className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs focus:outline-none min-w-0 max-w-full flex-1 sm:flex-none sm:max-w-xs truncate"
+            tamano="2xs" texto="ambar" className="min-w-0 max-w-full flex-1 sm:flex-none sm:max-w-xs truncate"
           >
             {Object.values(allWeeks).map((w) => (
               <option key={w.id} value={w.id}>{w.name} ({w.meta?.dateRange}){esBorrador(w) ? ' — BORRADOR' : ''}</option>
             ))}
-          </select>
+          </Selector>
           {nuevaSemana && <BotonAccion accion={nuevaSemana} variante="cabecera" />}
         </div>
       </div>
