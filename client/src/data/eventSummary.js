@@ -7,7 +7,7 @@ import { splitEventNames, getEventShares } from './eventNaming';
 // si a alguno le falta, a partes iguales: los totales no cambian, solo dónde
 // se anotan. `resolveEvent(taskName)` (buildTaskEventResolver) devuelve el evento
 // anotado en el planning para ese fichaje, si lo hay.
-// Devuelve [{ eventName, pax, totalCost, totalHours, workers: { [nombre]: {name, avatar, cost, hours} } }]
+// Devuelve [{ eventName, pax, totalCost, totalHours, horasEstimadas, workers: { [nombre]: {name, avatar, cost, hours} } }]
 // ordenado por coste descendente.
 export function summarizeByEvent(shifts = [], workersList = [], paxByEvent = {}, resolveEvent = null) {
   const acc = {};
@@ -15,7 +15,10 @@ export function summarizeByEvent(shifts = [], workersList = [], paxByEvent = {},
   shifts.forEach(shift => {
     (shift.subTasks || []).forEach(subTask => {
       // El evento anotado en el planning manda sobre el deducido del texto.
-      const ctx = resolveEvent ? resolveEvent(subTask.taskName) : null;
+      // Un trozo repartido por el planning (repartoPorPlanning.js) ya trae su evento.
+      const ctx = subTask.eventoPlanificado
+        ? { event: subTask.eventoPlanificado, pax: subTask.paxPlanificado }
+        : (resolveEvent ? resolveEvent(subTask.taskName) : null);
       const planned = typeof ctx === 'string' ? ctx : ctx?.event;
       const paxLocal = ctx && typeof ctx === 'object' ? ctx.pax : null; // pax de la semana de la tarea
       const names = splitEventNames(planned || subTask.eventName || 'Sin Asignar / Extra');
@@ -26,9 +29,10 @@ export function summarizeByEvent(shifts = [], workersList = [], paxByEvent = {},
         const cost = (subTask.cost || 0) * shares[i];
         const hours = (subTask.durationHours || 0) * shares[i];
         const key = eventName.toLowerCase(); // sin distinguir mayúsculas
-        if (!acc[key]) acc[key] = { eventName, pax: paxByEvent[key] || null, totalCost: 0, totalHours: 0, workers: {} };
+        if (!acc[key]) acc[key] = { eventName, pax: paxByEvent[key] || null, totalCost: 0, totalHours: 0, horasEstimadas: 0, workers: {} };
         acc[key].totalCost += cost;
         acc[key].totalHours += hours;
+        if (subTask.estimado) acc[key].horasEstimadas += hours;
 
         const workerName = shift.workerName || 'Desconocido';
         if (!acc[key].workers[workerName]) {

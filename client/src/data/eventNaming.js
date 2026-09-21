@@ -89,10 +89,10 @@ export function splitEventNames(eventName) {
 // Pax (invitados) por evento, sacados del campo `events` de cada semana
 // ([{ name, pax }]): { "boda ana y luis": 120 }. Sirve para repartir el
 // coste de una tarea de varios eventos en proporción a su tamaño.
-const esBorradorSemana = (w) => w?.meta?.status === 'Borrador';
+export const esBorradorSemana = (w) => w?.meta?.status === 'Borrador';
 
 // Pax de cada evento dentro de UNA semana: { "boda ana": 120 }.
-function paxDeSemana(week) {
+export function paxDeSemana(week) {
   const registry = {};
   (week?.events || []).forEach(ev => {
     const pax = Number(ev?.pax);

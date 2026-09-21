@@ -48,8 +48,7 @@ import AdminClockEditModal from './AdminClockEditModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminSettingsModal from './AdminSettingsModal';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { parseEventAndTask, buildPaxRegistry, buildTaskContextResolver } from '../data/eventNaming';
-import { summarizeByEvent } from '../data/eventSummary';
+import { parseEventAndTask } from '../data/eventNaming';
 import { esBorrador } from '../data/anticipacion';
 import SemanaBorradorBanner from './SemanaBorradorBanner';
 
@@ -263,15 +262,8 @@ export default function PartnerDashboardView({
   // un modal, etc.), aunque no hubiera ni un fichaje nuevo.
   const { shifts: paidShifts } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
   const workerBalances = useMemo(() => aggregateShiftsByWorker(paidShifts, workersList), [paidShifts, workersList]);
-  const balancesList = Object.values(workerBalances);
-  const totalExtraExpense = balancesList.reduce((acc, curr) => acc + (curr.isPayroll ? 0 : curr.totalCost), 0);
-  const totalPayrollValuation = balancesList.reduce((acc, curr) => acc + (curr.isPayroll ? curr.totalCost : 0), 0);
-  const totalExtraHours = balancesList.reduce((acc, curr) => acc + curr.totalHours, 0);
-
-  // Desglose por evento (una tarea de varios eventos reparte su coste entre ellos).
-  const paxByEvent = useMemo(() => buildPaxRegistry(allWeeks), [allWeeks]);
-  const resolveEvent = useMemo(() => buildTaskContextResolver(allWeeks), [allWeeks]);
-  const eventsList = useMemo(() => summarizeByEvent(paidShifts, workersList, paxByEvent, resolveEvent), [paidShifts, workersList, paxByEvent, resolveEvent]);
+  // Los totales y el desglose por evento del Resumen Financiero los calcula su
+  // pestaña, porque dependen del periodo elegido (semana, mes, año o todo).
 
   // Generate Master Table Rows (Operativa Logística)
   const masterTableRows = [];
@@ -662,11 +654,10 @@ export default function PartnerDashboardView({
       {/* TAB 4: Financial Summary */}
       {activeTab === 'financial' && (
         <FinancialSummaryTab
-          totalExtraExpense={totalExtraExpense}
-          totalPayrollValuation={totalPayrollValuation}
-          totalExtraHours={totalExtraHours}
-          eventsList={eventsList}
-          balancesList={balancesList}
+          shifts={paidShifts}
+          workersList={workersList}
+          allWeeks={allWeeks}
+          activeWeekData={activeWeekData}
         />
       )}
 
