@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getTaskListForDay, resolveTaskIndexByText, buildTaskListPatch, isTaskChronologicallyPast, isTaskTooEarlyToClockIn,
-  parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, getNextTaskStart, isTaskTooEarlyToStart, isTaskEffectivelyDone, isWeekFinished,
+  parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, getNextTaskStart, isTaskTooEarlyToStart, isTaskEffectivelyDone, isWeekFinished, getTaskText, isTaskAssignedTo,
 } from './taskPlanning';
 
 const weekData = {
@@ -508,5 +508,50 @@ describe('isWeekFinished — una semana terminada lo tiene TODO hecho', () => {
 
   it('una semana futura no está terminada', () => {
     expect(isWeekFinished(semana(), at(2026, 9, 10))).toBe(false);
+  });
+});
+
+describe('getTaskText', () => {
+  it('el texto de una tarea, de un texto suelto o de una boda', () => {
+    expect(getTaskText({ text: 'Cargar camión' })).toBe('Cargar camión');
+    expect(getTaskText('Solo texto')).toBe('Solo texto');
+    expect(getTaskText({ location: 'Finca Norte', truck: 'Camión Gula' })).toBe('Boda: Finca Norte (Camión Gula)');
+  });
+
+  it('una boda sin camión no enseña "undefined"', () => {
+    expect(getTaskText({ location: 'Finca Norte' })).toBe('Boda: Finca Norte');
+  });
+
+  it('tolera vacíos', () => {
+    expect(getTaskText(null)).toBe('');
+    expect(getTaskText({})).toBe('');
+  });
+});
+
+describe('isTaskAssignedTo', () => {
+  it('manda la lista assigned, sin distinguir mayúsculas', () => {
+    expect(isTaskAssignedTo({ text: 'Cargar', assigned: ['Ana', 'Luis'] }, 'ana')).toBe(true);
+    expect(isTaskAssignedTo({ text: 'Cargar', assigned: ['Ana'] }, 'Luis')).toBe(false);
+  });
+
+  it('con assigned, que el nombre salga en el texto no cuenta', () => {
+    expect(isTaskAssignedTo({ text: 'Ayudar a Luis', assigned: ['Ana'] }, 'Luis')).toBe(false);
+  });
+
+  it('sin assigned (dato antiguo) se busca el nombre en el texto', () => {
+    expect(isTaskAssignedTo({ text: 'Recogida (Ana y Luis)' }, 'luis')).toBe(true);
+    expect(isTaskAssignedTo({ text: 'Recogida', assigned: [] }, 'Luis')).toBe(false);
+    expect(isTaskAssignedTo('Recogida de Ana', 'Ana')).toBe(true);
+  });
+
+  it('una boda sin assigned se busca en su lugar, detalles y camión', () => {
+    const boda = { location: 'Finca Norte', truck: 'Camión Gula', details: 'Conduce Ana' };
+    expect(isTaskAssignedTo(boda, 'Ana')).toBe(true);
+    expect(isTaskAssignedTo(boda, 'Luis')).toBe(false);
+  });
+
+  it('sin nombre no coincide con nadie', () => {
+    expect(isTaskAssignedTo({ text: 'Cargar', assigned: ['Ana'] }, '')).toBe(false);
+    expect(isTaskAssignedTo({ text: 'Cargar' }, undefined)).toBe(false);
   });
 });

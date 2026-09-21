@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useEntrada } from '../../../hooks/useAnimaciones';
 import { formatearEuros, formatearHoras, formatearPorcentaje } from '../../../data/formatoFinanciero';
+import BarraProgreso from '../../ui/BarraProgreso';
 
 // Fila de una lista de desglose (por evento o por trabajador): título, coste y
 // horas, una barra con su parte del total que crece al aparecer, y un detalle
@@ -41,10 +42,12 @@ export default function FilaDesglose({ icono = null, titulo, insignia = null, no
         </div>
 
         <div className="mt-2.5 flex items-center gap-2">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300 transition-[width] duration-700 ease-out motion-reduce:transition-none"
-              style={{ width: `${anchura}%` }}
+          <div className="flex-1">
+            <BarraProgreso
+              porcentaje={anchura}
+              pista="h-1.5 bg-slate-800"
+              relleno="bg-gradient-to-r from-amber-500 to-amber-300 transition-[width] duration-700 ease-out motion-reduce:transition-none"
+              etiqueta="Peso sobre el total"
             />
           </div>
           <span className="w-12 text-right text-[11px] tabular-nums text-slate-500">{formatearPorcentaje(porcentaje)}</span>

@@ -11,6 +11,11 @@
 // tarea acababa siendo su propio "evento": 31 líneas distintas en vez de unas
 // pocas. Aquí está esa lógica en UN sitio.
 
+// Cómo se nombra una boda del sábado en un fichaje: "Boda: Finca Norte (Camión Gula)".
+// Con ese texto se ficha y luego se enlaza el fichaje con su tarea y su evento, así que
+// tiene que escribirse igual en todas partes.
+export const getWeddingTaskName = (boda) => `Boda: ${boda?.location} (${boda?.truck})`;
+
 export const EVENT_CATEGORIES = ['Logística Preparación', 'Logística Carga', 'Limpieza Eventos'];
 export const GENERAL_EVENT = 'Tareas Internas';
 const DEFAULT_CATEGORY = 'Logística Preparación';
@@ -156,7 +161,7 @@ export function buildTaskContextResolver(weeksMap = {}) {
       add(t.text, parsed.explicit ? parsed.eventName : t.event, week);
     }));
     // Las bodas del sábado se fichan como "Boda: lugar (camión)".
-    (week?.saturdaySpecial?.weddings || []).forEach(w => add(`Boda: ${w.location} (${w.truck})`, w.event, week));
+    (week?.saturdaySpecial?.weddings || []).forEach(w => add(getWeddingTaskName(w), w.event, week));
   });
 
   return (taskName) => byLabel.get(normLabel(taskName)) || null;

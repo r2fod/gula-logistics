@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Check, Trash2, User, Lock } from 'lucide-react';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
-import { Campo, Input, Selector, AreaTexto } from './ui/Campo';import { crearFichaje } from '../data/fichajes';
+import { Campo, Input, Selector, AreaTexto } from './ui/Campo';
+import { crearFichaje } from '../data/fichajes';
 
 
 export default function AdminClockEditModal({

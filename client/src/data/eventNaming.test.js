@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseEventAndTask, getEventName, inferCategory, buildEventName, normalizeGeneratedEvents, collectEventNames, splitEventNames, buildPaxRegistry, getEventShares, buildTaskEventResolver, buildTaskContextResolver } from './eventNaming';
+import { parseEventAndTask, getEventName, inferCategory, buildEventName, normalizeGeneratedEvents, collectEventNames, splitEventNames, buildPaxRegistry, getEventShares, buildTaskEventResolver, buildTaskContextResolver, getWeddingTaskName } from './eventNaming';
 
 describe('parseEventAndTask', () => {
   it('"Evento - Tarea" explícito: separa por el guion normal', () => {
@@ -222,5 +222,11 @@ describe('los BORRADORES no alteran los números de las semanas reales', () => {
     const ctx = buildTaskContextResolver({ w3: real, w5 });
     expect(ctx('Recogida Delta')).toEqual({ event: 'Evento Delta', pax: { 'evento delta': 100 } });
     expect(ctx('Evento Delta - Montaje')).toEqual({ event: 'Evento Delta', pax: { 'evento delta': 55 } });
+  });
+});
+
+describe('getWeddingTaskName', () => {
+  it('nombra la boda como se ficha: "Boda: lugar (camión)"', () => {
+    expect(getWeddingTaskName({ location: 'Finca Norte', truck: 'Camión Gula' })).toBe('Boda: Finca Norte (Camión Gula)');
   });
 });

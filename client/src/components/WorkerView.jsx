@@ -22,8 +22,10 @@ import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
 import TaskTextWithEvent from './TaskTextWithEvent';
-import { getTaskListForDay, resolveTaskIndexByText, isTaskEffectivelyDone, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart } from '../data/taskPlanning';
-import { subscribeToPush } from '../data/pushService';import { crearFichaje, horaDeFichaje, fechaDeFichaje } from '../data/fichajes';
+import { getTaskListForDay, resolveTaskIndexByText, isTaskEffectivelyDone, isTaskAssignedTo, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart } from '../data/taskPlanning';
+import { subscribeToPush } from '../data/pushService';
+import { crearFichaje, horaDeFichaje, fechaDeFichaje } from '../data/fichajes';
+import { getWeddingTaskName } from '../data/eventNaming';
 import { formatTimeShort, formatWeekdayDay } from '../utils/dateUtils';
 import { formatearHoras } from '../data/formatoFinanciero';
 import EstadoVacio from './ui/EstadoVacio';
@@ -42,6 +44,17 @@ const START_JORNADA_LABELS = [
   '🛣️ ¡A LA CARRETERA! INICIAR JORNADA',
   '🎯 ¡CON GANAS! INICIAR JORNADA',
 ];
+
+// Aviso gris con candado: la acción todavía no se puede hacer (el día no ha llegado o aún
+// falta para la hora de la tarea). `className` pone su posición y `flex` si va suelto.
+function AvisoBloqueado({ className = '', children }) {
+  return (
+    <span className={`${className || 'inline-flex'} items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed`}>
+      <Lock className="w-3 h-3" />
+      <span>{children}</span>
+    </span>
+  );
+}
 
 export default function WorkerView({
   workerName,
@@ -151,17 +164,10 @@ export default function WorkerView({
 
   // Helper to extract assigned tasks & weddings for a day for current worker
   const getDayActivities = (dayKey) => {
-    const nameLower = currentWorkerObj.name.toLowerCase();
     let tasks = [];
     let weddings = [];
 
-    const isAssigned = (t) => {
-      if (typeof t === 'object' && Array.isArray(t.assigned) && t.assigned.length > 0) {
-        return t.assigned.some(a => a.toLowerCase() === nameLower);
-      }
-      const text = typeof t === 'object' ? t.text : t;
-      return text.toLowerCase().includes(nameLower);
-    };
+    const isAssigned = (t) => isTaskAssignedTo(t, currentWorkerObj.name);
 
     if (['martes', 'miercoles', 'jueves', 'viernes'].includes(dayKey)) {
       const dayObj = activeWeekData.schedule?.[dayKey];
@@ -170,12 +176,7 @@ export default function WorkerView({
       }
     } else if (dayKey === 'sabado') {
       const wList = activeWeekData.saturdaySpecial?.weddings || [];
-      weddings = wList.filter(w => {
-        if (Array.isArray(w.assigned) && w.assigned.length > 0) {
-          return w.assigned.some(a => a.toLowerCase() === nameLower);
-        }
-        return w.details.toLowerCase().includes(nameLower) || w.truck.toLowerCase().includes(nameLower);
-      });
+      weddings = wList.filter(isAssigned);
     } else if (dayKey === 'domingo' || dayKey === 'lunes') {
       // domingo y lunes comparten sundayMonday.tasks bajo un único bucket
       // real ('domingo' es la clave de storage) — confirmado con el
@@ -273,7 +274,7 @@ export default function WorkerView({
         dayKey: day.key,
         dayTitle: day.title,
         dayBadge: 'Boda Fin de Semana',
-        taskName: `Boda: ${t.location} (${t.truck})`,
+        taskName: getWeddingTaskName(t),
         timeFrame: t.timeFrame,
         location: t.location,
         rawTask: t,
@@ -957,18 +958,12 @@ export default function WorkerView({
 
                                 {!isCompleted && (
                                   isDayInFuture(dayGroup.key) ? (
-                                    <span className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed">
-                                      <Lock className="w-3 h-3" />
-                                      <span>Aún no ha llegado este día</span>
-                                    </span>
+                                    <AvisoBloqueado className="mt-1 ml-6 self-start flex">Aún no ha llegado este día</AvisoBloqueado>
                                   ) : jornadaGateClosed ? (
                                     // El día ya llegó, pero faltan más de 5min para la hora de
                                     // inicio de ESTA tarea concreta — evita fichar por error una
                                     // tarea de última hora del día nada más empezar la jornada.
-                                    <span className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed">
-                                      <Lock className="w-3 h-3" />
-                                      <span>{gateText()}</span>
-                                    </span>
+                                    <AvisoBloqueado className="mt-1 ml-6 self-start flex">{gateText()}</AvisoBloqueado>
                                   ) : (
                                     <button
                                       onClick={(e) => {
@@ -1015,7 +1010,7 @@ export default function WorkerView({
                                   className="flex justify-between items-start cursor-pointer hover:text-white"
                                   onClick={() => {
                                     if (onToggleTask) {
-                                      const realIdx = resolveRealTaskIndex('sabado', `Boda: ${w.location} (${w.truck})`);
+                                      const realIdx = resolveRealTaskIndex('sabado', getWeddingTaskName(w));
                                       if (realIdx !== null) onToggleTask('sabado', realIdx);
                                     }
                                   }}
@@ -1057,21 +1052,15 @@ export default function WorkerView({
                                 {!isCompleted && (
                                   <div className="ml-6 pt-1">
                                     {isDayInFuture('sabado') ? (
-                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed">
-                                        <Lock className="w-3 h-3" />
-                                        <span>Aún no ha llegado este día</span>
-                                      </span>
+                                      <AvisoBloqueado>Aún no ha llegado este día</AvisoBloqueado>
                                     ) : jornadaGateClosed ? (
-                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed">
-                                        <Lock className="w-3 h-3" />
-                                        <span>{gateText()}</span>
-                                      </span>
+                                      <AvisoBloqueado>{gateText()}</AvisoBloqueado>
                                     ) : (
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          setPrefilledTask(`Boda: ${w.location} (${w.truck})`);
-                                          const realTaskIndex = resolveRealTaskIndex('sabado', `Boda: ${w.location} (${w.truck})`);
+                                          setPrefilledTask(getWeddingTaskName(w));
+                                          const realTaskIndex = resolveRealTaskIndex('sabado', getWeddingTaskName(w));
                                           setTaskRef(realTaskIndex !== null ? { dayKey: 'sabado', taskIndex: realTaskIndex } : null);
                                           setIsClockModalOpen(true);
                                         }}
