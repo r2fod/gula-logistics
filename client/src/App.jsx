@@ -1,12 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  Share2,
-  Check,
-  Copy,
-  X,
-  MessageCircle,
-  ShieldCheck,
-  ExternalLink
+  ShieldCheck
 } from 'lucide-react';
 
 import WeekManagerModal from './components/WeekManagerModal';
@@ -21,29 +15,21 @@ import WorkerView from './components/WorkerView';
 import PublicView from './components/PublicView';
 import BackgroundAnimation from './components/BackgroundAnimation';
 import AdminLoginModal from './components/AdminLoginModal';
+import EnlacesWhatsAppModal from './components/EnlacesWhatsAppModal';
 import { logisticsData as BASE_DATA } from './data/logisticsData';
 import {
   fetchClockEntriesFromAPI,
-  saveClockEntryToAPI,
-  updateClockEntryInAPI,
-  deleteClockEntryInAPI,
-  clearAllClockEntriesInAPI,
   getStoredAdminToken,
   setStoredAdminToken,
   logoutAdmin,
   fetchWeeksFromAPI,
   fetchCalendarioApuntes,
   createDraftWeekInAPI,
-  saveWeeksToAPI,
-  patchTaskCompletionInAPI,
-  saveWorkerBalanceToAPI,
   retryPendingClockEntries
 } from './data/apiService';
-import { initialBalancesData } from './data/balancesData';
-import { getActiveShiftForWorker, getInProgressTaskKeys } from './data/shiftCalculations';
+import { getInProgressTaskKeys } from './data/shiftCalculations';
 import { anticiparSemanas, semanaPorDefecto } from './data/anticipacion';
 import { parseWeekRange } from './data/taskPlanning';
-import { getTaskListForDay, buildTaskListPatch } from './data/taskPlanning';
 
 const DEFAULT_WORKERS_LIST = [
   { name: "Gonzalo", role: "Conductor Flota (Veterano)", truck: "Camión Covey (Alquiler)", avatar: "🚛", isPayroll: false, rate: 10 },
@@ -215,9 +201,6 @@ export default function App() {
   const [isTaskEditorModalOpen, setIsTaskEditorModalOpen] = useState(false);
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
 
-  const [copiedWorker, setCopiedWorker] = useState(null);
-  const [copiedPartnerLink, setCopiedPartnerLink] = useState(false);
-
   const clearUrlParams = () => {
     try {
       const url = new URL(window.location.href);
@@ -381,47 +364,6 @@ export default function App() {
   }, []);
 
 
-
-  // Link Generators
-  const getWorkerLink = (workerName) => {
-    return `${window.location.origin}${window.location.pathname}?week=${activeWeekId}&worker=${encodeURIComponent(workerName)}`;
-  };
-
-  // Enlace para Socias: si hay token de admin lo incluye, y si no, genera el enlace directo ?socias
-  const getPartnerSecureLink = () => {
-    const token = getStoredAdminToken();
-    if (token) {
-      return `${window.location.origin}${window.location.pathname}?socias&token=${token}`;
-    }
-    return `${window.location.origin}${window.location.pathname}?socias`;
-  };
-
-  const copyWorkerLink = (workerName) => {
-    navigator.clipboard.writeText(getWorkerLink(workerName));
-    setCopiedWorker(workerName);
-    setTimeout(() => setCopiedWorker(null), 3000);
-  };
-
-  const copyPartnerSecureLink = () => {
-    const link = getPartnerSecureLink();
-    if (!link) return;
-    navigator.clipboard.writeText(link);
-    setCopiedPartnerLink(true);
-    setTimeout(() => setCopiedPartnerLink(false), 3000);
-  };
-
-  const shareViaWhatsApp = (workerName) => {
-    const link = getWorkerLink(workerName);
-    const text = `🚚 Hola ${workerName}, aquí tienes tu planificación y fichaje para ${activeWeek.name} de Gula Logística: ${link}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
-  };
-
-  const sharePartnerLinkWhatsApp = () => {
-    const link = getPartnerSecureLink();
-    if (!link) return;
-    const text = `🔒 Hola Socias, aquí tenéis el Enlace Seguro de Dirección para Gula Logística (Planificación + Saldos de Horas): ${link}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
-  };
 
   // Admin mode state — the source of truth is the signed backend session
   // token (getStoredAdminToken), never a plain localStorage flag a visitor
@@ -649,134 +591,13 @@ export default function App() {
         activeWeekData={activeWeek}
       />
 
-      {/* Share Modal with Worker Links & Secure Partner Link */}
-      {isShareModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
-          <div className="relative w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-2xl text-white max-h-[92vh] overflow-y-auto overflow-x-hidden">
-            <button 
-              onClick={() => setIsShareModalOpen(false)}
-              className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                <Share2 className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold font-['Outfit']">Enlaces de WhatsApp</h3>
-                <p className="text-xs text-slate-400">Envía a cada trabajador o socia su enlace seguro</p>
-              </div>
-            </div>
-
-            {/* Partner Link Box */}
-            <div className="mb-5 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-400 flex items-center space-x-1.5">
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>Enlace para Socias (1 Clic - Sin clave)</span>
-                </span>
-                <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full">SOCIAS</span>
-              </div>
-
-              <div className="flex items-center bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 min-w-0">
-                <input
-                  type="text"
-                  readOnly
-                  value={getPartnerSecureLink()}
-                  className="bg-transparent text-xs text-amber-300/90 font-mono w-full min-w-0 focus:outline-none select-all truncate"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2 pt-1 w-full">
-                <button
-                  onClick={copyPartnerSecureLink}
-                  className="w-full sm:flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-colors border border-slate-700 whitespace-nowrap"
-                >
-                  {copiedPartnerLink ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-emerald-400">¡Copiado!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Copiar Link Socias</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  onClick={sharePartnerLinkWhatsApp}
-                  className="w-full sm:flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-emerald-600/20 whitespace-nowrap"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />
-                  <span>WhatsApp Socias</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Workers List */}
-            <div className="space-y-3 max-h-[50vh] overflow-y-auto overflow-x-hidden pr-1 no-scrollbar">
-              <span className="text-xs font-semibold text-slate-400 block uppercase tracking-wider">Enlaces de Trabajadores</span>
-              {workersList.map((w, idx) => (
-                <div key={idx} className="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 overflow-hidden">
-                  <div className="flex items-center space-x-3 min-w-0 flex-1 w-full">
-                    <span className="text-2xl shrink-0">{w.avatar}</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center space-x-2">
-                        <h4 className="font-bold text-white text-sm truncate">{w.name}</h4>
-                        {w.isPayroll ? (
-                          <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30 shrink-0">Nómina</span>
-                        ) : (
-                          <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 shrink-0">10€/h</span>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-400 truncate" title={w.role}>{w.role}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full sm:w-auto shrink-0">
-                    <button
-                      onClick={() => copyWorkerLink(w.name)}
-                      className="col-span-2 sm:col-span-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
-                    >
-                      {copiedWorker === w.name ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          <span className="text-emerald-400">¡Copiado!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>Copiar Link</span>
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      onClick={() => shareViaWhatsApp(w.name)}
-                      className="col-span-1 sm:col-span-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-emerald-600/20 whitespace-nowrap shrink-0"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      <span>WhatsApp</span>
-                    </button>
-
-                    <button
-                      onClick={() => window.open(getWorkerLink(w.name), '_blank')}
-                      className="col-span-1 sm:col-span-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-blue-600/20 whitespace-nowrap shrink-0"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Abrir</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      <EnlacesWhatsAppModal
+        abierto={isShareModalOpen}
+        onCerrar={() => setIsShareModalOpen(false)}
+        workersList={workersList}
+        weekId={activeWeekId}
+        weekName={activeWeek.name}
+      />
 
       <AdminWorkerEditorModal
         isOpen={isWorkerEditorModalOpen}
