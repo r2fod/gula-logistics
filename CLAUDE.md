@@ -11,7 +11,7 @@
 - `meta.dateRange` de la semana: texto legible tipo `Del 15 al 20 de Septiembre de 2026` — de él salen las fechas reales de cada tarea (`taskPlanning.js`); si no se puede leer, no se auto-marca ni se tacha nada. `sundayMonday.tasks` es una sola lista domingo+lunes: usar `targetDay` ('Domingo'/'Lunes'); sin él cuenta como lunes.
 - Texto de tarea: `"EVENTO - Tarea"` (guion normal entre espacios; ver `client/src/data/eventNaming.js`) — de ahí sale el coste por evento. Las rayas largas (—) son descripción, no separador.
 - Task ID: string corta manual por día (`m1`, `mi2`, `v1c`...), sin sistema de migración — al insertar una tarea nueva, elegir un id que no choque con los del mismo día.
-- Week ID: `week_<Date.now()>` al crear semana nueva; `week_3` es la semilla base (no renombrar sin actualizar `server/src/data/logisticsData.js` y el bootstrap de Mongo).
+- Week ID: `week_<Date.now()>` al crear semana nueva a mano; los borradores automáticos usan `week_auto_AAAA-MM-DD` (martes que la abre) para que dos sesiones no dupliquen; `meta.status` es `"Borrador"` hasta que un admin la acepta (`"Operativa Activa"`); `week_3` es la semilla base (no renombrar sin actualizar `server/src/data/logisticsData.js` y el bootstrap de Mongo).
 - WorkerBalance ID: `nombre.toLowerCase().replace(/\s+/g, '-')` — cambiar el nombre de un trabajador sin actualizar este id rompe el vínculo con sus fichajes/saldos.
 - ClockEntry ID: `Date.now().toString()`.
 - Toda tarea (día normal, boda, domingo/lunes) lleva `assigned: [...]` con nombres exactos de `WORKERS_LIST` — es la fuente de verdad para el grafo, `WorkerView` y `LiveMonitorPanel`. Renombrar a alguien en `WORKERS_LIST` sin tocar los `assigned` existentes los deja huérfanos.

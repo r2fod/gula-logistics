@@ -50,12 +50,18 @@ import AdminSettingsModal from './AdminSettingsModal';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { parseEventAndTask, buildPaxRegistry, buildTaskEventResolver } from '../data/eventNaming';
 import { summarizeByEvent } from '../data/eventSummary';
+import { esBorrador } from '../data/anticipacion';
+import SemanaBorradorBanner from './SemanaBorradorBanner';
 
 export default function PartnerDashboardView({ 
   activeWeekData, 
   allWeeks = {}, 
   activeWeekId, 
   onSelectWeek, 
+  onRegenerateDraft,
+  anticipacionAviso,
+  onCerrarAnticipacionAviso,
+
   onUpdateWeek,
   workersList = [], 
   clockEntries = [], 
@@ -396,7 +402,7 @@ export default function PartnerDashboardView({
               className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs focus:outline-none min-w-0 max-w-full flex-1 sm:flex-none sm:max-w-xs truncate"
             >
               {Object.values(allWeeks).map((w) => (
-                <option key={w.id} value={w.id}>{w.name} ({w.meta?.dateRange})</option>
+                <option key={w.id} value={w.id}>{w.name} ({w.meta?.dateRange}){esBorrador(w) ? ' — BORRADOR' : ''}</option>
               ))}
             </select>
             {adminUnlocked && (
@@ -506,6 +512,28 @@ export default function PartnerDashboardView({
           )}
         </div>
       </header>
+
+      {/* Aviso de borradores recién preparados desde el calendario */}
+      {adminUnlocked && anticipacionAviso && (
+        <div role="status" className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-[11px] sm:text-xs text-emerald-200 flex items-start justify-between gap-3">
+          <span>{anticipacionAviso}</span>
+          <button type="button" onClick={onCerrarAnticipacionAviso} aria-label="Cerrar aviso" className="shrink-0 text-emerald-300 hover:text-white font-bold">✕</button>
+        </div>
+      )}
+
+      {/* Semana en BORRADOR: propuesta generada desde el calendario, pendiente de revisar y aceptar */}
+      {esBorrador(activeWeekData) && (
+        <SemanaBorradorBanner
+          week={activeWeekData}
+          adminUnlocked={adminUnlocked}
+          onAceptar={() => {
+            if (!window.confirm('¿Aceptar esta semana y activarla? Dejará de ser un borrador.')) return;
+            const { avisos, ...metaSinAvisos } = activeWeekData.meta || {};
+            if (onUpdateWeek) onUpdateWeek({ ...activeWeekData, meta: { ...metaSinAvisos, status: 'Operativa Activa', aceptadaEl: new Date().toISOString() } });
+          }}
+          onRegenerar={onRegenerateDraft ? () => onRegenerateDraft(activeWeekId) : undefined}
+        />
+      )}
 
       {/* Primary View Navigation Tabs Bar */}
       <div className="flex items-center space-x-2 bg-slate-900/80 p-1.5 sm:p-2 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar w-full max-w-full">

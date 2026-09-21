@@ -32,6 +32,8 @@ import {
   setStoredAdminToken,
   logoutAdmin,
   fetchWeeksFromAPI,
+  fetchCalendarioApuntes,
+  createDraftWeekInAPI,
   saveWeeksToAPI,
   patchTaskCompletionInAPI,
   saveWorkerBalanceToAPI,
@@ -39,6 +41,8 @@ import {
 } from './data/apiService';
 import { initialBalancesData } from './data/balancesData';
 import { getActiveShiftForWorker, getInProgressTaskKeys } from './data/shiftCalculations';
+import { anticiparSemanas, semanaPorDefecto } from './data/anticipacion';
+import { parseWeekRange } from './data/taskPlanning';
 import { getTaskListForDay, buildTaskListPatch } from './data/taskPlanning';
 
 const DEFAULT_WORKERS_LIST = [
@@ -112,6 +116,68 @@ export default function App() {
   const inProgressKeys = useMemo(() => getInProgressTaskKeys(activeClockEntries), [activeClockEntries]);
   inProgressKeysRef.current = inProgressKeys;
 
+  // Anticipación automática de semanas (desde el calendario, como BORRADOR).
+  // Solo con sesión de admin; como mucho cada 6 h por navegador; idempotente
+  // (el servidor no duplica ni pisa) y silenciosa si el calendario no está
+  // configurado. Por ref porque el efecto que la dispara se monta una vez.
+  const [avisoAnticipacion, setAvisoAnticipacion] = useState(null);
+  const anticipacionEnCursoRef = useRef(false);
+  const ejecutarAnticipacion = async () => {
+    if (!getStoredAdminToken() || anticipacionEnCursoRef.current) return;
+    const CLAVE = 'gula_anticipacion_v1';
+    let ultima = 0;
+    try { ultima = Number(localStorage.getItem(CLAVE) || 0); } catch { /* sin almacenamiento */ }
+    if (Date.now() - ultima < 6 * 60 * 60 * 1000) return;
+    anticipacionEnCursoRef.current = true;
+    try {
+      const semanas = await fetchWeeksFromAPI();
+      if (!semanas) return;
+      const r = await anticiparSemanas({
+        semanas, hoy: new Date(), roster: workersList,
+        leerApuntes: fetchCalendarioApuntes, crearBorrador: createDraftWeekInAPI,
+      });
+      if (r.estado === 'error') return; // se reintenta en el siguiente ciclo
+      try { localStorage.setItem(CLAVE, String(Date.now())); } catch { /* sin almacenamiento */ }
+      if (r.creadas.length > 0) {
+        const nuevas = await fetchWeeksFromAPI();
+        if (nuevas) setAllWeeks(nuevas);
+        setAvisoAnticipacion(`📅 Borrador${r.creadas.length > 1 ? 'es' : ''} preparado${r.creadas.length > 1 ? 's' : ''} desde el calendario: ${r.creadas.map(c => `${c.name} (${c.dateRange.replace(/^Del /, '')})`).join(' · ')}. Revísalo${r.creadas.length > 1 ? 's' : ''} y acéptalo${r.creadas.length > 1 ? 's' : ''} en el selector de semanas.`);
+      }
+    } finally {
+      anticipacionEnCursoRef.current = false;
+    }
+  };
+  const ejecutarAnticipacionRef = useRef(ejecutarAnticipacion);
+  ejecutarAnticipacionRef.current = ejecutarAnticipacion;
+
+  // Primera pasada poco después de abrir la app y luego cada 30 min (el límite de
+  // 6 h por navegador está dentro de ejecutarAnticipacion).
+  useEffect(() => {
+    const primera = setTimeout(() => ejecutarAnticipacionRef.current(), 4000);
+    const ciclo = setInterval(() => ejecutarAnticipacionRef.current(), 30 * 60 * 1000);
+    return () => { clearTimeout(primera); clearInterval(ciclo); };
+  }, []);
+
+  // Vuelve a generar un BORRADOR concreto desde el calendario (pierde sus cambios).
+  const regenerarBorrador = async (weekId) => {
+    const semanas = await fetchWeeksFromAPI();
+    const semana = semanas?.[weekId];
+    const rango = semana && parseWeekRange(semana.meta?.dateRange, new Date());
+    if (!rango) { alert('No se pudo leer el rango de fechas de esta semana.'); return; }
+    if (!window.confirm('Se volverá a generar este borrador desde el calendario y se PERDERÁN los cambios que hayas hecho en él. ¿Continuar?')) return;
+    const clave = `${rango.start.getFullYear()}-${String(rango.start.getMonth() + 1).padStart(2, '0')}-${String(rango.start.getDate()).padStart(2, '0')}`;
+    const r = await anticiparSemanas({
+      semanas, hoy: new Date(), roster: workersList,
+      leerApuntes: fetchCalendarioApuntes, crearBorrador: createDraftWeekInAPI,
+      inicios: [rango.start], reemplazar: true, idsForzados: { [clave]: weekId },
+    });
+    if (r.estado === 'no-configurado') { alert('El calendario no está configurado en el servidor (variables CALENDARIO_* en Render).'); return; }
+    if (r.estado === 'error') { alert(`No se pudo leer el calendario: ${r.error}`); return; }
+    if (r.creadas.length === 0) { alert(`No se ha regenerado: ${r.omitidas[0]?.motivo || 'sin cambios'}.`); return; }
+    const nuevas = await fetchWeeksFromAPI();
+    if (nuevas) setAllWeeks(nuevas);
+  };
+
 
   const [activeWorker, setActiveWorker] = useState(null);
   const [isPublicPreviewMode, setIsPublicPreviewMode] = useState(() => {
@@ -173,7 +239,8 @@ export default function App() {
     const hasSociasFlag = params.has('socias') || params.get('socias') !== null;
     const hasAdminFlag = params.has('admin') || params.get('admin') === 'true';
 
-    if (weekParam && allWeeks[weekParam]) {
+    // Un borrador solo lo abre un admin: un enlace ?week= a un borrador no vale para nadie más.
+    if (weekParam && allWeeks[weekParam] && !(allWeeks[weekParam].meta?.status === 'Borrador' && !getStoredAdminToken())) {
       setActiveWeekId(weekParam);
     }
     // El icono de la app instalada (PWA) siempre abre start_url del
@@ -254,6 +321,12 @@ export default function App() {
           localStorage.setItem('gula_logistics_all_weeks_v10', JSON.stringify(remoteWeeks));
         } catch (e) {
           console.error(e);
+        }
+        // Sin ?week= en el enlace, la semana por defecto es la que contiene HOY
+        // (nunca un borrador): antes era siempre la 3, aunque hubiera pasado.
+        if (!weekParam) {
+          const porDefecto = semanaPorDefecto(remoteWeeks, new Date());
+          if (porDefecto && remoteWeeks[porDefecto]) setActiveWeekId(porDefecto);
         }
       }
     });
@@ -509,6 +582,9 @@ export default function App() {
         activeWeekId={activeWeekId}
         onSelectWeek={setActiveWeekId}
         onUpdateWeek={handleUpdateActiveWeek}
+        onRegenerateDraft={regenerarBorrador}
+        anticipacionAviso={avisoAnticipacion}
+        onCerrarAnticipacionAviso={() => setAvisoAnticipacion(null)}
         workersList={workersList}
         clockEntries={activeClockEntries}
         isAdmin={isAdmin}
