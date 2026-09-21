@@ -5,6 +5,7 @@ import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../data/shiftCal
 import { horaDeFichaje, fechaDeFichaje } from '../data/fichajes';
 import { formatearEuros, formatearHoras } from '../data/formatoFinanciero';
 import Modal from './ui/Modal';
+import EstadoVacio from './ui/EstadoVacio';
 import CabeceraModal from './ui/CabeceraModal';
 import { Selector } from './ui/Campo';
 
@@ -381,11 +382,7 @@ export default function PayrollReportModal({
         {/* Tab 1: Shift Pairs (Jornadas Completadas) */}
         {viewTab === 'shifts' && (
           filteredShifts.length === 0 ? (
-            <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800">
-              <Clock className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-              <p className="text-xs text-slate-400">No hay registros de jornadas completadas para mostrar.</p>
-              <p className="text-[11px] text-slate-500 mt-1">Los fichajes se calculan cuando un trabajador ficha su entrada y salida.</p>
-            </div>
+            <EstadoVacio icono={Clock} titulo="No hay registros de jornadas completadas para mostrar." detalle="Los fichajes se calculan cuando un trabajador ficha su entrada y salida." />
           ) : (
             <>
               {/* Mobile Card Layout (sm:hidden) */}
@@ -544,10 +541,7 @@ export default function PayrollReportModal({
         {/* Tab 2: Raw Individual Entries (Listado Completo & Edición Admin) */}
         {viewTab === 'raw_entries' && (
           filteredRawEntries.length === 0 ? (
-            <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800">
-              <Clock className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-              <p className="text-xs text-slate-400">No hay fichajes individuales registrados.</p>
-            </div>
+            <EstadoVacio icono={Clock} titulo="No hay fichajes individuales registrados." />
           ) : (
             <div className="overflow-x-auto no-scrollbar">
               <table className="w-full min-w-[620px] text-left text-xs border-collapse">
@@ -642,11 +636,7 @@ export default function PayrollReportModal({
             </div>
 
             {filteredEstimatedSummary.length === 0 ? (
-              <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800">
-                <Calendar className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-                <p className="text-xs text-slate-400">No hay horas estimables para mostrar.</p>
-                <p className="text-[11px] text-slate-500 mt-1">Ninguna tarea de esta semana tiene un horario completo (HH:MM - HH:MM) con alguien asignado.</p>
-              </div>
+              <EstadoVacio icono={Calendar} titulo="No hay horas estimables para mostrar." detalle="Ninguna tarea de esta semana tiene un horario completo (HH:MM - HH:MM) con alguien asignado." />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
@@ -719,10 +709,7 @@ export default function PayrollReportModal({
             </div>
 
             {filteredTrashEntries.length === 0 ? (
-              <div className="text-center py-12 bg-slate-950/40 rounded-2xl border border-slate-800">
-                <Trash2 className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-                <p className="text-xs text-slate-400">La papelera está vacía.</p>
-              </div>
+              <EstadoVacio icono={Trash2} titulo="La papelera está vacía." colorIcono="text-slate-600" />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">

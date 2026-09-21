@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Copy, Sparkles, RefreshCw, AlertCircle, Check, Truck, Users, PartyPopper, Trash2 } from 'lucide-react';
 import { generateScheduleWithGemini, buildWeekPrompt, WEEK_EVENT_DAYS, WEEK_EVENT_KINDS, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
 import Modal from './ui/Modal';
+import Tarjeta from './ui/Tarjeta';
 import CabeceraModal from './ui/CabeceraModal';
 import { parseWeekRange, getDayLabel } from '../data/taskPlanning';
 import { buildEventName } from '../data/eventNaming';
@@ -258,7 +259,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
 
           <div className="space-y-2.5">
             {events.map(ev => (
-              <div key={ev.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-2">
+              <Tarjeta key={ev.id} className="p-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <Selector
                     id={`ev-day-${ev.id}`}
@@ -316,7 +317,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-              </div>
+              </Tarjeta>
             ))}
           </div>
 
@@ -339,7 +340,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
 
           <div className="space-y-2.5">
             {rentals.map(r => (
-              <div key={r.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-2">
+              <Tarjeta key={r.id} className="p-3 space-y-2">
                 <div className="grid grid-cols-2 gap-2">
                   <Selector
                     id={`rt-day-${r.id}`}
@@ -379,7 +380,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
-              </div>
+              </Tarjeta>
             ))}
           </div>
 

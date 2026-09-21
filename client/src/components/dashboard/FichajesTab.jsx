@@ -1,6 +1,8 @@
 import React from 'react';
 import { Lock, Eye, Plus, Clock, Edit3, Trash2 } from 'lucide-react';
 import { fechaDeFichaje, horaDeFichaje } from '../../data/fichajes';
+import Tarjeta from '../ui/Tarjeta';
+import EstadoVacio from '../ui/EstadoVacio';
 
 export default function FichajesTab({
   clockEntries,
@@ -11,7 +13,7 @@ export default function FichajesTab({
   onDeleteClockEntry
 }) {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-5 animate-fadeIn">
+    <Tarjeta variante="panel" className="p-6 space-y-5 animate-fadeIn">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
         <div>
           <div className="flex items-center space-x-2">
@@ -54,11 +56,13 @@ export default function FichajesTab({
       </div>
 
       {clockEntries.length === 0 ? (
-        <div className="text-center py-12 bg-slate-950/60 rounded-2xl border border-slate-800">
-          <Clock className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-          <p className="text-sm font-semibold text-slate-300">No hay fichajes registrados en el sistema.</p>
-          <p className="text-xs text-slate-500 mt-1">Los fichajes realizados por los trabajadores aparecerán aquí automáticamente.</p>
-        </div>
+        <EstadoVacio
+          icono={Clock}
+          titulo="No hay fichajes registrados en el sistema."
+          detalle="Los fichajes realizados por los trabajadores aparecerán aquí automáticamente."
+          tituloDestacado
+          className="py-12 bg-slate-950/60"
+        />
       ) : (() => {
         const byDay = {};
         const sortedEntries = [...clockEntries].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
@@ -187,6 +191,6 @@ export default function FichajesTab({
         </div>
         );
       })()}
-    </div>
+    </Tarjeta>
   );
 }
