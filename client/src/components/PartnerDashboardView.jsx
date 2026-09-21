@@ -398,8 +398,10 @@ export default function PartnerDashboardView({
               onChange={(e) => onSelectWeek(e.target.value)}
               className="bg-slate-950 border border-slate-800 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs focus:outline-none min-w-0 max-w-full flex-1 sm:flex-none sm:max-w-xs truncate"
             >
-              {Object.values(allWeeks).map((w) => (
-                <option key={w.id} value={w.id}>{w.name} ({w.meta?.dateRange}){esBorrador(w) ? ' — BORRADOR' : ''}</option>
+              {/* El valor es la CLAVE de la semana: la semana 3 no lleva campo `id`, y con `w.id` su
+                  opción valía "undefined" (el texto) y al elegirla se abría la semana de ejemplo. */}
+              {Object.entries(allWeeks).map(([id, w]) => (
+                <option key={id} value={id}>{w.name} ({w.meta?.dateRange}){esBorrador(w) ? ' — BORRADOR' : ''}</option>
               ))}
             </select>
             {adminUnlocked && (

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Users, Calendar, Clock, Check, Sparkles } from 'lucide-react';
 import { isTaskEffectivelyDone, getDayLabel } from '../../data/taskPlanning';
 import TaskTextWithEvent from '../TaskTextWithEvent';
+import { rejillaDeDias } from './rejillaDias';
 
 export default function ScheduleTab({ activeWeekData, workersList, onToggleTask, onUpdateWeek, vispera = null }) {
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
@@ -139,6 +140,9 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
     );
   };
 
+  const diasSemana = Object.entries(activeWeekData?.schedule || {});
+  const rejilla = rejillaDeDias(diasSemana.length + (vispera ? 1 : 0));
+
   const sharedTasks = (activeWeekData?.sundayMonday?.tasks || []).map((task, idx) => ({ task, idx }));
   const targetDayOf = (task) => (typeof task === 'object' && task.targetDay ? task.targetDay.toLowerCase() : null);
   const sharedGroups = [
@@ -219,8 +223,8 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
         </div>
       </section>
 
-      {/* Schedule Days Grid - 4 Columns Across Widescreen */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+      {/* Rejilla de días: las columnas dependen de cuántos hay (con víspera son 5) para no dejar filas a medias */}
+      <div className={`grid gap-5 ${rejilla.contenedor}`}>
         {/* El lunes anterior a la semana (la cola de la anterior): la carga de los eventos del martes se hace ese día */}
         {vispera && (
           <div className="bg-slate-900/90 border border-indigo-500/30 rounded-3xl p-5 shadow-xl backdrop-blur-xl space-y-3 animate-aparecer motion-reduce:animate-none">
@@ -240,8 +244,8 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
             </div>
           </div>
         )}
-        {Object.entries(activeWeekData?.schedule || {}).map(([key, day]) => (
-          <div key={key} className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-5 shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-4">
+        {diasSemana.map(([key, day], posicion) => (
+          <div key={key} className={`bg-slate-900/90 border border-slate-800/90 rounded-3xl p-5 shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-4 ${posicion === diasSemana.length - 1 ? rejilla.ultima : ''}`}>
             <div>
               <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-800/80">
                 <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
