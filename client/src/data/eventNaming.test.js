@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseEventAndTask, getEventName, inferCategory, buildEventName, normalizeGeneratedEvents, collectEventNames, splitEventNames, buildPaxRegistry, getEventShares } from './eventNaming';
+import { parseEventAndTask, getEventName, inferCategory, buildEventName, normalizeGeneratedEvents, collectEventNames, splitEventNames, buildPaxRegistry, getEventShares, buildTaskEventResolver } from './eventNaming';
 
 describe('parseEventAndTask', () => {
   it('"Evento - Tarea" explícito: separa por el guion normal', () => {
@@ -108,6 +108,9 @@ describe('tareas de varios eventos', () => {
     expect(splitEventNames('Boda Cliente2 y Cliente15 y Boda Cliente3')).toEqual(['Boda Cliente2 y Cliente15', 'Boda Cliente3']);
     expect(splitEventNames('Evento Catering Uno y Evento Catering Dos')).toEqual(['Evento Catering Uno', 'Evento Catering Dos']);
     expect(splitEventNames('Boda Ana y Luis')).toEqual(['Boda Ana y Luis']);
+    // un "+" dentro del nombre de UN evento no lo parte (viene así del calendario)
+    expect(splitEventNames('Evento Coffee + Comida Cliente12')).toEqual(['Evento Coffee + Comida Cliente12']);
+    expect(splitEventNames('Evento Coffee + Comida Cliente12 + Evento Empresa1')).toEqual(['Evento Coffee + Comida Cliente12', 'Evento Empresa1']);
     expect(splitEventNames('')).toEqual([]);
   });
 
@@ -157,5 +160,40 @@ describe('pax: buildPaxRegistry y getEventShares', () => {
 
   it('collectEventNames incluye los eventos registrados en la semana aunque aún no tengan tareas', () => {
     expect(collectEventNames({ events: [{ name: 'Boda Nueva', pax: 90 }] })).toContain('Boda Nueva');
+  });
+});
+
+describe('buildTaskEventResolver — evento anotado en el planning, sin tocar el texto', () => {
+  const weeks = {
+    w3: {
+      schedule: { martes: { tasks: [
+        { text: 'Recogida Evento Empresa1 y descarga en Restaurante', event: 'Evento Empresa1' },
+        { text: 'Boda Ana y Luis - Supervisión', event: 'Otro evento' }, // manda el del texto
+        { text: 'Recoger sofá' }, // sin evento anotado
+      ] } },
+      sundayMonday: { tasks: [{ text: 'Recogida  Boda   Cliente3 ', event: 'Boda Cliente3' }] },
+      saturdaySpecial: { weddings: [{ location: 'El Cerrao Lugar1 de Chera ', truck: 'Camión Gula', event: 'Boda Lugar1 de Chera' }] },
+    },
+  };
+  const resolve = buildTaskEventResolver(weeks);
+
+  it('enlaza el nombre del fichaje (con horario pegado, espacios raros o sin acentos) con el evento de la tarea', () => {
+    expect(resolve('Recogida Evento Empresa1 y descarga en Restaurante (12:00-16:00)')).toBe('Evento Empresa1');
+    expect(resolve('recogida boda Cliente3')).toBe('Boda Cliente3'); // sin distinguir mayúsculas ni acentos
+    expect(resolve('Recogida Boda Cliente3')).toBe('Boda Cliente3');
+  });
+
+  it('el evento escrito en el texto manda sobre el campo event', () => {
+    expect(resolve('Boda Ana y Luis - Supervisión')).toBe('Boda Ana y Luis');
+  });
+
+  it('las bodas del sábado se enlazan por su etiqueta de fichaje "Boda: lugar (camión)"', () => {
+    expect(resolve('Boda: El Cerrao Lugar1 de Chera  (Camión Gula)')).toBe('Boda Lugar1 de Chera');
+  });
+
+  it('lo desconocido y las tareas sin evento devuelven null (se usa la deducción de siempre)', () => {
+    expect(resolve('Recoger sofá')).toBeNull();
+    expect(resolve('Inicio de Jornada')).toBeNull();
+    expect(buildTaskEventResolver(null)('x')).toBeNull();
   });
 });

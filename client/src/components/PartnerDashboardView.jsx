@@ -48,7 +48,7 @@ import AdminClockEditModal from './AdminClockEditModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminSettingsModal from './AdminSettingsModal';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { parseEventAndTask, buildPaxRegistry } from '../data/eventNaming';
+import { parseEventAndTask, buildPaxRegistry, buildTaskEventResolver } from '../data/eventNaming';
 import { summarizeByEvent } from '../data/eventSummary';
 
 export default function PartnerDashboardView({ 
@@ -264,7 +264,8 @@ export default function PartnerDashboardView({
 
   // Desglose por evento (una tarea de varios eventos reparte su coste entre ellos).
   const paxByEvent = useMemo(() => buildPaxRegistry(allWeeks), [allWeeks]);
-  const eventsList = useMemo(() => summarizeByEvent(paidShifts, workersList, paxByEvent), [paidShifts, workersList, paxByEvent]);
+  const resolveEvent = useMemo(() => buildTaskEventResolver(allWeeks), [allWeeks]);
+  const eventsList = useMemo(() => summarizeByEvent(paidShifts, workersList, paxByEvent, resolveEvent), [paidShifts, workersList, paxByEvent, resolveEvent]);
 
   // Generate Master Table Rows (Operativa Logística)
   const masterTableRows = [];
@@ -277,7 +278,9 @@ export default function PartnerDashboardView({
         const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
         
         // Mismo criterio que el desglose de costes (ver eventNaming.js).
-        const { eventName, specificTaskName } = parseEventAndTask(taskText || 'Sin Asignar');
+        const parsedTask = parseEventAndTask(taskText || 'Sin Asignar');
+        const { specificTaskName } = parsedTask;
+        const eventName = (!parsedTask.explicit && typeof task === 'object' && task.event) || parsedTask.eventName;
 
         taskAssigned.forEach(workerName => {
           let matchSubTask = null;

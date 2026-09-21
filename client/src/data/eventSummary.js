@@ -5,15 +5,18 @@ import { splitEventNames, getEventShares } from './eventNaming';
 // ("Boda A + Boda B - Recoger material"), sus horas y su coste se reparten
 // entre ellos en proporción a sus pax (`paxByEvent`, ver buildPaxRegistry) o,
 // si a alguno le falta, a partes iguales: los totales no cambian, solo dónde
-// se anotan.
+// se anotan. `resolveEvent(taskName)` (buildTaskEventResolver) devuelve el evento
+// anotado en el planning para ese fichaje, si lo hay.
 // Devuelve [{ eventName, pax, totalCost, totalHours, workers: { [nombre]: {name, avatar, cost, hours} } }]
 // ordenado por coste descendente.
-export function summarizeByEvent(shifts = [], workersList = [], paxByEvent = {}) {
+export function summarizeByEvent(shifts = [], workersList = [], paxByEvent = {}, resolveEvent = null) {
   const acc = {};
 
   shifts.forEach(shift => {
     (shift.subTasks || []).forEach(subTask => {
-      const names = splitEventNames(subTask.eventName || 'Sin Asignar / Extra');
+      // El evento anotado en el planning manda sobre el deducido del texto.
+      const planned = resolveEvent ? resolveEvent(subTask.taskName) : null;
+      const names = splitEventNames(planned || subTask.eventName || 'Sin Asignar / Extra');
       const eventNames = names.length > 0 ? names : ['Sin Asignar / Extra'];
       const shares = getEventShares(eventNames, paxByEvent);
 
