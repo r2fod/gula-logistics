@@ -49,6 +49,7 @@ import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminSettingsModal from './AdminSettingsModal';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { parseEventAndTask } from '../data/eventNaming';
+import { summarizeByEvent } from '../data/eventSummary';
 
 export default function PartnerDashboardView({ 
   activeWeekData, 
@@ -261,55 +262,8 @@ export default function PartnerDashboardView({
   const totalPayrollValuation = balancesList.reduce((acc, curr) => acc + (curr.isPayroll ? curr.totalCost : 0), 0);
   const totalExtraHours = balancesList.reduce((acc, curr) => acc + curr.totalHours, 0);
 
-  // Group shifts by Event (taskName) using V2 subTasks
-  const summaryByEvent = paidShifts.reduce((acc, shift) => {
-    // Para cada shift, iteramos por sus subTasks (las fracciones de jornada V2, o la tarea única V1)
-    const subTasks = shift.subTasks || [];
-    
-    subTasks.forEach(subTask => {
-      let eventName = subTask.eventName || 'Sin Asignar / Extra';
-      
-      // Grouping key (case-insensitive)
-      const groupKey = eventName.toLowerCase();
-
-      if (!acc[groupKey]) {
-        acc[groupKey] = {
-          eventName: eventName, // Preserve original casing
-          totalCost: 0,
-          totalHours: 0,
-          workers: {}
-        };
-      }
-
-      // Cost and hours are already calculated precisely for this subTask in pairShiftsFromEntries
-      const shiftCost = subTask.cost || 0;
-      const hours = subTask.durationHours || 0;
-
-      acc[groupKey].totalCost += shiftCost;
-      acc[groupKey].totalHours += hours;
-
-      const workerName = shift.workerName || 'Desconocido';
-      if (!acc[groupKey].workers[workerName]) {
-        // Encontrar su avatar
-        const workerRoster = workersList.find(w => w.name?.toLowerCase().includes(workerName.toLowerCase() || ''));
-        const avatar = workerRoster?.avatar || '👤';
-        
-        acc[groupKey].workers[workerName] = {
-          name: workerName,
-          avatar,
-          cost: 0,
-          hours: 0,
-        };
-      }
-      acc[groupKey].workers[workerName].cost += shiftCost;
-      acc[groupKey].workers[workerName].hours += hours;
-    });
-
-    return acc;
-  }, {});
-
-  // Convert to array and sort by total cost descending
-  const eventsList = Object.values(summaryByEvent).sort((a, b) => b.totalCost - a.totalCost);
+  // Desglose por evento (una tarea de varios eventos reparte su coste entre ellos).
+  const eventsList = useMemo(() => summarizeByEvent(paidShifts, workersList), [paidShifts, workersList]);
 
   // Generate Master Table Rows (Operativa Logística)
   const masterTableRows = [];
