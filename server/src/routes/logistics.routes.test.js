@@ -156,7 +156,7 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
   it('desmarcar una tarea que ya estaba sin marcar tampoco escribe', async () => {
     LogisticsWeek.findOne.mockResolvedValue({
       weekId: 'week_3',
-      sundayMonday: { tasks: [{ text: 'Devolver Dealde' }, 'texto plano'] },
+      sundayMonday: { tasks: [{ text: 'Devolver Alquileres Norte' }, 'texto plano'] },
     });
 
     const app = buildApp();
@@ -172,7 +172,7 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
   it('desmarcar a propósito guarda reopened:true (el reloj ya no la vuelve a marcar) y marcar lo quita', async () => {
     LogisticsWeek.findOne.mockResolvedValue({
       weekId: 'week_3',
-      sundayMonday: { tasks: [{ text: 'Devolver Dealde', completed: false }] },
+      sundayMonday: { tasks: [{ text: 'Devolver Alquileres Norte', completed: false }] },
     });
     LogisticsWeek.findOneAndUpdate.mockResolvedValue({ weekId: 'week_3' });
     const app = buildApp();
@@ -183,17 +183,17 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
     expect(r1.body.unchanged).toBeUndefined();
     expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
       { weekId: 'week_3' },
-      { $set: { 'sundayMonday.tasks.0': { text: 'Devolver Dealde', completed: false, reopened: true } } },
+      { $set: { 'sundayMonday.tasks.0': { text: 'Devolver Alquileres Norte', completed: false, reopened: true } } },
       { new: true }
     );
 
-    LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_3', sundayMonday: { tasks: [{ text: 'Devolver Dealde', completed: false, reopened: true }] } });
+    LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_3', sundayMonday: { tasks: [{ text: 'Devolver Alquileres Norte', completed: false, reopened: true }] } });
     LogisticsWeek.findOneAndUpdate.mockClear();
     const r2 = await request(app).patch('/api/logistics/weeks/week_3/tasks').send({ dayKey: 'domingo', taskIndex: 0, completed: true, reopened: false });
     expect(r2.status).toBe(200);
     expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
       { weekId: 'week_3' },
-      { $set: { 'sundayMonday.tasks.0': { text: 'Devolver Dealde', completed: true, reopened: false } } },
+      { $set: { 'sundayMonday.tasks.0': { text: 'Devolver Alquileres Norte', completed: true, reopened: false } } },
       { new: true }
     );
   });
@@ -224,7 +224,7 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
   it('resuelve "domingo" contra sundayMonday.tasks, no schedule.domingo', async () => {
     LogisticsWeek.findOne.mockResolvedValue({
       weekId: 'week_3',
-      sundayMonday: { tasks: [{ text: 'Devolver Dealde', completed: false }] },
+      sundayMonday: { tasks: [{ text: 'Devolver Alquileres Norte', completed: false }] },
     });
     LogisticsWeek.findOneAndUpdate.mockResolvedValue({ weekId: 'week_3' });
 
@@ -236,7 +236,7 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
     expect(res.status).toBe(200);
     expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
       { weekId: 'week_3' },
-      { $set: { 'sundayMonday.tasks.0': { text: 'Devolver Dealde', completed: true } } },
+      { $set: { 'sundayMonday.tasks.0': { text: 'Devolver Alquileres Norte', completed: true } } },
       { new: true }
     );
   });
@@ -244,7 +244,7 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
   it('resuelve "sabado" contra saturdaySpecial.weddings, no schedule.sabado (que ni existe)', async () => {
     LogisticsWeek.findOne.mockResolvedValue({
       weekId: 'week_3',
-      saturdaySpecial: { weddings: [{ location: 'Sot de Chera', truck: 'Camión Gula', completed: false }] },
+      saturdaySpecial: { weddings: [{ location: 'Finca Este', truck: 'Camión Gula', completed: false }] },
     });
     LogisticsWeek.findOneAndUpdate.mockResolvedValue({ weekId: 'week_3' });
 
@@ -256,7 +256,7 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
     expect(res.status).toBe(200);
     expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
       { weekId: 'week_3' },
-      { $set: { 'saturdaySpecial.weddings.0': { location: 'Sot de Chera', truck: 'Camión Gula', completed: true } } },
+      { $set: { 'saturdaySpecial.weddings.0': { location: 'Finca Este', truck: 'Camión Gula', completed: true } } },
       { new: true }
     );
   });

@@ -10,7 +10,7 @@ const weekData = {
   },
   sundayMonday: {
     title: 'Domingo 20 & Lunes 21',
-    tasks: [{ text: 'Devolver Dealde', completed: false }, { text: 'Recogida en Refranys', completed: true }],
+    tasks: [{ text: 'Devolver Alquileres Norte', completed: false }, { text: 'Recogida en Finca Sur', completed: true }],
   },
 };
 
@@ -35,7 +35,7 @@ describe('getTaskListForDay', () => {
 
 describe('resolveTaskIndexByText', () => {
   it('encuentra el índice real de una tarea de domingo por su texto', () => {
-    expect(resolveTaskIndexByText(weekData, 'domingo', 'Recogida en Refranys')).toBe(1);
+    expect(resolveTaskIndexByText(weekData, 'domingo', 'Recogida en Finca Sur')).toBe(1);
   });
 
   it('encuentra el índice de una tarea de texto plano (no objeto) en un día normal', () => {
@@ -49,7 +49,7 @@ describe('resolveTaskIndexByText', () => {
 
 describe('buildTaskListPatch', () => {
   it('para domingo, actualiza sundayMonday.tasks preservando el resto de sundayMonday (p.ej. title)', () => {
-    const nuevaLista = [{ text: 'Devolver Dealde', completed: true }];
+    const nuevaLista = [{ text: 'Devolver Alquileres Norte', completed: true }];
     const patch = buildTaskListPatch(weekData, 'domingo', nuevaLista);
     expect(patch).toEqual({ sundayMonday: { title: 'Domingo 20 & Lunes 21', tasks: nuevaLista } });
   });
@@ -63,7 +63,7 @@ describe('buildTaskListPatch', () => {
   });
 
   it('"sundayMonday" como dayKey también actualiza sundayMonday.tasks (mismo alias que "domingo")', () => {
-    const nuevaLista = [{ text: 'Devolver Dealde', completed: true }];
+    const nuevaLista = [{ text: 'Devolver Alquileres Norte', completed: true }];
     const patch = buildTaskListPatch(weekData, 'sundayMonday', nuevaLista);
     expect(patch).toEqual({ sundayMonday: { title: 'Domingo 20 & Lunes 21', tasks: nuevaLista } });
   });
@@ -266,8 +266,8 @@ describe('resolveTaskEvalDay', () => {
 describe('getTaskPastStatus / isTaskPast — bugs reales del 20/09', () => {
   const GRACE = 45;
   const devolucionLunes = { text: 'Devolución Camión Albacar', timeFrame: '13:00 - 13:30' };
-  const recogidaDomingo = { text: 'Recogida Refranys', timeFrame: '15:00 - 17:00', targetDay: 'Domingo' };
-  const recogidaSinEtiqueta = { text: 'Recogida Refranys', timeFrame: '15:00 - 17:00' };
+  const recogidaDomingo = { text: 'Recogida Finca Sur', timeFrame: '15:00 - 17:00', targetDay: 'Domingo' };
+  const recogidaSinEtiqueta = { text: 'Recogida Finca Sur', timeFrame: '15:00 - 17:00' };
 
   it('BUG: una devolución del lunes sin etiquetar NO se da por hecha el domingo por la mañana', () => {
     expect(isTaskPast(SEMANA_ACTUAL, 'domingo', devolucionLunes, at(2026, 9, 20, 20, 17), GRACE)).toBe(false);
@@ -413,7 +413,7 @@ describe('isTaskTooEarlyToStart — fichar solo desde 5 min antes, por fecha rea
 
 describe('getNextTaskStart — tareas sin etiquetar domingo/lunes', () => {
   const sofa = { text: 'Devolución Sofá', timeFrame: '09:00 - 09:30' };
-  const refranys = { text: 'Recogida Refranys', timeFrame: '15:00-17:00' };
+  const refranys = { text: 'Recogida Finca Sur', timeFrame: '15:00-17:00' };
   const hhmm = (d) => d && `${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
 
   it('el domingo a las 14:00: la de las 15:00 es la del domingo y la de las 09:00 la del lunes', () => {

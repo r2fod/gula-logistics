@@ -296,7 +296,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
                     type="text"
                     value={ev.place}
                     onChange={(e) => updateEvent(ev.id, 'place', e.target.value)}
-                    placeholder="Nombre o lugar (ej. Boda Rocío — Mas dels Refranys)"
+                    placeholder="Nombre o lugar (ej. Boda Marta — Finca Sur)"
                     className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/60"
                   />
                   <div className="flex items-center gap-2">

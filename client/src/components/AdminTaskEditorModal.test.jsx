@@ -10,7 +10,7 @@ const semana = () => ({
     martes: { title: 'Martes 15', tasks: [
       { id: 'm1', text: 'Boda Ana y Luis - Carga de material', timeFrame: '09:00-10:00', assigned: [], completed: false },
       { id: 'm2', text: 'Boda Eva y Pau - Supervisión', timeFrame: '10:00-11:00', assigned: [], completed: false },
-      { id: 'm3', text: 'Recoger material Dealde', timeFrame: '11:00-12:00', assigned: [], completed: false },
+      { id: 'm3', text: 'Recoger material Alquileres Norte', timeFrame: '11:00-12:00', assigned: [], completed: false },
     ] },
   },
   saturdaySpecial: { weddings: [] },
@@ -44,7 +44,7 @@ describe('AdminTaskEditorModal — tarea de varios eventos', () => {
 
     fireEvent.click(chip('Boda Ana y Luis'));
     fireEvent.click(screen.getByRole('button', { name: /Guardar y Actualizar Planning/ }));
-    expect(guardado.schedule.martes.tasks[2].text).toBe('Boda Eva y Pau + Boda Ana y Luis - Recoger material Dealde');
+    expect(guardado.schedule.martes.tasks[2].text).toBe('Boda Eva y Pau + Boda Ana y Luis - Recoger material Alquileres Norte');
   });
 
   it('ofrece las tres categorías generales junto a los eventos ya usados', () => {

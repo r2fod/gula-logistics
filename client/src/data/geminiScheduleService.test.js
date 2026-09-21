@@ -61,7 +61,7 @@ describe('generateScheduleWithGemini — nunca inventa una semana', () => {
     expect(r.generatedJson).toBeNull();
     expect(r.errorMsg).toContain('Falta la clave de Gemini');
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(JSON.stringify(r)).not.toContain('Sot de Chera');
+    expect(JSON.stringify(r)).not.toContain('Evento Especial 3');
   });
 
   it('con clave devuelve el JSON y manda la clave en la cabecera, no en la URL', async () => {
@@ -171,12 +171,12 @@ describe('buildWeekPrompt — recogidas y devoluciones de alquiler', () => {
       events: [],
       rentals: [
         { day: 'viernes', text: 'Recoger generadores 7K y furgo Albacar', time: '18:00' },
-        { day: 'martes', text: ' Devolver material Dealde ', time: '' },
+        { day: 'martes', text: ' Devolver material Alquileres Norte ', time: '' },
         { day: 'martes', text: '   ', time: '10:00' },
         { day: 'nunca', text: 'Fantasma', time: '' },
       ],
     });
-    expect(p).toContain('- Martes 22: Devolver material Dealde.');
+    expect(p).toContain('- Martes 22: Devolver material Alquileres Norte.');
     expect(p).toContain('- Viernes 25: Recoger generadores 7K y furgo Albacar (18:00).');
     expect(p.indexOf('Martes 22: Devolver')).toBeLessThan(p.indexOf('Viernes 25: Recoger'));
     expect(p).not.toContain('Fantasma');

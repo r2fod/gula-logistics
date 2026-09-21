@@ -7,7 +7,7 @@
 // Convención de la app (ya la usaba el editor de admin, "Nombre del Evento"):
 // el texto de la tarea es "EVENTO - Tarea", con un guion normal entre
 // espacios. El desglose agrupaba por lo que va antes del guion, pero como la
-// IA escribía textos libres ("Recoger Sillas Carvillo — 90 sillas…") cada
+// IA escribía textos libres ("Recoger Sillas Proveedor Sur — 90 sillas…") cada
 // tarea acababa siendo su propio "evento": 31 líneas distintas en vez de unas
 // pocas. Aquí está esa lógica en UN sitio.
 
@@ -73,12 +73,12 @@ export function parseEventAndTask(taskName) {
 export const getEventName = (taskName) => parseEventAndTask(taskName).eventName;
 
 // Una tarea puede servir a VARIOS eventos a la vez (ej. recoger material en
-// Dealde para dos bodas). Se escriben separados por " + " antes del guion:
-// "Boda Ana y Luis + Boda Eva y Pau - Recoger material Dealde". También se
+// Alquileres Norte para dos bodas). Se escriben separados por " + " antes del guion:
+// "Boda Ana y Luis + Boda Eva y Pau - Recoger material Alquileres Norte". También se
 // entiende "Boda A y Boda B" (así se escribió antes de existir el separador).
 // Un " + " o una " y " solo separan si lo que sigue empieza por "Boda" o
 // "Evento": así no se parte "Boda Ana y Luis" ni un evento cuyo nombre lleva
-// un "+" ("Evento Coffee + Comida Aitana", tal como está en el calendario). Devuelve la lista de eventos sin vacíos.
+// un "+" ("Evento Coffee + Comida Omega", tal como está en el calendario). Devuelve la lista de eventos sin vacíos.
 export function splitEventNames(eventName) {
   return String(eventName || '')
     .split(/\s+[+y]\s+(?=(?:boda|evento)\s)/i)

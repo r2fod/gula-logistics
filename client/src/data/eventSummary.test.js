@@ -21,13 +21,13 @@ describe('summarizeByEvent', () => {
 
   it('los totales no cambian: la suma por evento es la del turno', () => {
     const lista = summarizeByEvent([
-      turno('Ana', [sub('Boda Joaquín y Maria y Boda Rocio', 3, 30), sub('Boda Rocio', 1, 10)]),
+      turno('Ana', [sub('Boda Ana y Luis y Boda Marta', 3, 30), sub('Boda Marta', 1, 10)]),
       turno('Luis', [sub('Logística Carga', 2, 20)]),
     ], roster);
     expect(lista.reduce((a, e) => a + e.totalCost, 0)).toBeCloseTo(60);
     expect(lista.reduce((a, e) => a + e.totalHours, 0)).toBeCloseTo(6);
-    const rocio = lista.find(e => e.eventName === 'Boda Rocio');
-    expect(rocio.totalCost).toBeCloseTo(25); // 15 de la tarea compartida + 10 propios
+    const marta = lista.find(e => e.eventName === 'Boda Marta');
+    expect(marta.totalCost).toBeCloseTo(25); // 15 de la tarea compartida + 10 propios
   });
 
   it('agrupa sin distinguir mayúsculas y ordena por coste descendente', () => {
@@ -64,19 +64,19 @@ describe('summarizeByEvent — reparto por pax', () => {
 });
 
 describe('summarizeByEvent — evento del planning', () => {
-  const semanas = { w: { schedule: { martes: { tasks: [{ text: 'Descarga Refranys — recogida de material', event: 'Boda Rocío' }] } } } };
+  const semanas = { w: { schedule: { martes: { tasks: [{ text: 'Descarga Finca Sur — recogida de material', event: 'Boda Marta' }] } } } };
   const resolver = buildTaskEventResolver(semanas);
 
   it('un fichaje con el texto de una tarea anotada va al evento del planning y los totales no cambian', () => {
     const turnos = [turno('Ana', [
-      { taskName: 'Descarga Refranys — recogida de material (10:30-16:00)', eventName: 'Logística Preparación', durationHours: 4, cost: 40 },
+      { taskName: 'Descarga Finca Sur — recogida de material (10:30-16:00)', eventName: 'Logística Preparación', durationHours: 4, cost: 40 },
       { taskName: 'Tarea suelta', eventName: 'Tarea suelta', durationHours: 1, cost: 10 },
     ])];
     const sin = summarizeByEvent(turnos, roster);
     const con = summarizeByEvent(turnos, roster, {}, resolver);
 
     expect(sin.map(e => e.eventName).sort()).toEqual(['Logística Preparación', 'Tarea suelta']);
-    expect(con.map(e => e.eventName).sort()).toEqual(['Boda Rocío', 'Tarea suelta']);
+    expect(con.map(e => e.eventName).sort()).toEqual(['Boda Marta', 'Tarea suelta']);
     expect(con.reduce((a, e) => a + e.totalCost, 0)).toBe(sin.reduce((a, e) => a + e.totalCost, 0));
   });
 });
