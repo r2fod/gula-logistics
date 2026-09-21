@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { saveWorkerBalanceToAPI } from '../data/apiService';
-import { initialBalancesData } from '../data/balancesData';
 
 export const DEFAULT_WORKERS_LIST = [
   { name: "Gonzalo", role: "Conductor Flota (Veterano)", truck: "Camión Covey (Alquiler)", avatar: "🚛", isPayroll: false, rate: 10 },
