@@ -18,7 +18,7 @@
 
 ## CODE & UX
 - Diffs mínimos. Responsive 320–1920px de verdad — hoy había overflow horizontal real en móvil en dos selectores, ver `MEJORAS.md`.
-- UI: Solo Tailwind + transiciones/animaciones nativas (`animate-fadeIn`, `animate-pulse`...). Nada de librerías de animación.
+- UI: Solo Tailwind + transiciones/animaciones nativas (`animate-fadeIn`, `animate-aparecer`, `animate-pop`, `animate-pulse`...; los keyframes viven en `client/src/index.css`). Iconos: la regla global de `index.css` ya los anima al pasar el ratón; para una animación propia, clase `icono-campana|camion|reloj|latido|destello` en el botón. Todo respeta "reducir movimiento". Nada de librerías de animación.
 - UI visual: verificar abriendo la app desplegada (https://r2fod.github.io/gula-logistics) y mirando de verdad, no solo que compile. `npm run build` en verde no significa que se vea bien.
 - Tests: **no hay suite de tests automatizados en este proyecto.** Verificación = build limpio + comprobación manual en el navegador (desktop y móvil) + `curl` contra la API de Render para cambios de backend.
 - Seguridad: nunca contraseñas/secretos hardcodeados en el cliente — todo pasa por `/api/auth/*` contra Mongo. Antes de mergear cualquier código que toque auth o datos financieros, releer `CLAUDE.md` (sección seguridad) y `MEJORAS.md`.

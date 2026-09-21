@@ -51,6 +51,7 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { parseEventAndTask } from '../data/eventNaming';
 import { esBorrador } from '../data/anticipacion';
 import SemanaBorradorBanner from './SemanaBorradorBanner';
+import { BarraPestanas, BarraInferior } from './dashboard/NavegacionPrincipal';
 
 export default function PartnerDashboardView({ 
   activeWeekData, 
@@ -346,7 +347,7 @@ export default function PartnerDashboardView({
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 w-full">
           {/* Title & Selector (compact) */}
           <div className="flex items-center gap-2.5 min-w-0 max-w-full flex-wrap sm:flex-nowrap">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 p-0.5 shadow-lg shadow-amber-500/20 shrink-0">
+            <div className="icono-camion w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 p-0.5 shadow-lg shadow-amber-500/20 shrink-0">
               <div className="w-full h-full bg-slate-950 rounded-[9px] flex items-center justify-center text-amber-400">
                 <Truck className="w-4 h-4" />
               </div>
@@ -360,7 +361,7 @@ export default function PartnerDashboardView({
                   <>
                     <span className="px-2 py-0.5 text-[9px] font-extrabold rounded-full bg-amber-500 text-slate-950 flex items-center gap-1 shrink-0">
                       <ShieldCheck className="w-2.5 h-2.5" />
-                      <span>👑 ADMIN</span>
+                      <span>ADMIN</span>
                     </span>
                     <button onClick={() => setIsAdminSettingsOpen(true)} className="px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 flex items-center gap-1 transition-colors shrink-0">
                       <KeyRound className="w-2.5 h-2.5" />
@@ -400,7 +401,7 @@ export default function PartnerDashboardView({
             {adminUnlocked && (
               <button onClick={onOpenAddWeek} className="bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1 border border-slate-800 transition-all shrink-0">
                 <Plus className="w-3 h-3 text-amber-400" />
-                <span className="whitespace-nowrap">+ Semana</span>
+                <span className="whitespace-nowrap">Semana</span>
               </button>
             )}
           </div>
@@ -411,10 +412,10 @@ export default function PartnerDashboardView({
           <div className="flex items-center gap-2">
             <button 
               onClick={onOpenClockIn} 
-              className="bg-gradient-to-r from-emerald-500 to-emerald-600 active:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all shrink-0"
+              className="icono-reloj bg-gradient-to-r from-emerald-500 to-emerald-600 active:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 transition-all shrink-0"
             >
               <Clock className="w-3.5 h-3.5 shrink-0" />
-              <span className="whitespace-nowrap">⏱️ Fichar</span>
+              <span className="whitespace-nowrap">Fichar</span>
             </button>
 
             {onOpenShareModal && (
@@ -440,18 +441,18 @@ export default function PartnerDashboardView({
 
         {/* Right: Desktop Action buttons toolbar (hidden on mobile, flex on desktop) */}
         <div className="hidden lg:flex items-center justify-center gap-1.5 w-full overflow-x-auto no-scrollbar pt-2 border-t border-slate-800/80">
-          <button onClick={onOpenClockIn} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all shrink-0">
+          <button onClick={onOpenClockIn} className="icono-reloj bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all shrink-0">
             <Clock className="w-3.5 h-3.5 shrink-0" />
-            <span className="whitespace-nowrap">⏱️ Fichar</span>
+            <span className="whitespace-nowrap">Fichar</span>
           </button>
 
           {adminUnlocked && (
             <button 
               onClick={handleOpenNotifyModal} 
               disabled={isPushLoading}
-              className="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-indigo-500/30 transition-all shrink-0"
+              className="icono-campana bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-indigo-500/30 transition-all shrink-0"
             >
-              <Bell className={`w-3.5 h-3.5 shrink-0 ${isPushLoading ? 'animate-pulse' : 'animate-bounce'}`} />
+              <Bell className={`w-3.5 h-3.5 shrink-0 ${isPushLoading ? 'animate-pulse' : ''}`} />
               <span className="whitespace-nowrap truncate max-w-[120px]">{isPushLoading ? 'Avisando...' : 'Avisar Cambios'}</span>
             </button>
           )}
@@ -459,14 +460,14 @@ export default function PartnerDashboardView({
           {adminUnlocked && onOpenTaskEditor && (
             <button onClick={onOpenTaskEditor} className="bg-orange-600/20 hover:bg-orange-600/40 text-orange-400 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-orange-500/30 transition-all shrink-0">
               <Edit3 className="w-3.5 h-3.5 shrink-0" />
-              <span className="whitespace-nowrap truncate max-w-[100px]">✏️ Planning</span>
+              <span className="whitespace-nowrap truncate max-w-[100px]">Planning</span>
             </button>
           )}
 
           {adminUnlocked && onOpenWorkerEditor && (
             <button onClick={onOpenWorkerEditor} className="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 border border-indigo-500/30 transition-all shrink-0">
               <Users className="w-3.5 h-3.5 shrink-0" />
-              <span className="whitespace-nowrap truncate max-w-[100px]">➕ Trabajador</span>
+              <span className="whitespace-nowrap truncate max-w-[100px]">Trabajador</span>
             </button>
           )}
 
@@ -478,14 +479,14 @@ export default function PartnerDashboardView({
           )}
 
           {adminUnlocked && (
-            <button onClick={onOpenGemini} className="bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all shrink-0">
+            <button onClick={onOpenGemini} className="icono-destello bg-gradient-to-r from-amber-500 to-indigo-500 hover:opacity-95 text-slate-950 font-extrabold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all shrink-0">
               <Wand2 className="w-3.5 h-3.5 shrink-0" />
               <span className="whitespace-nowrap">Gemini AI</span>
             </button>
           )}
 
           {onOpenShareModal && (
-            <button onClick={onOpenShareModal} className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/30 active:scale-95 transition-all shrink-0" title="Enlaces de WhatsApp (Trabajadores y Socias)">
+            <button onClick={onOpenShareModal} className="icono-latido bg-blue-600 hover:bg-blue-500 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/30 active:scale-95 transition-all shrink-0" title="Enlaces de WhatsApp (Trabajadores y Socias)">
               <Share2 className="w-3.5 h-3.5 shrink-0" />
               <span className="whitespace-nowrap truncate max-w-[100px]">WhatsApp</span>
             </button>
@@ -527,92 +528,8 @@ export default function PartnerDashboardView({
         />
       )}
 
-      {/* Primary View Navigation Tabs Bar */}
-      <div className="flex items-center space-x-2 bg-slate-900/80 p-1.5 sm:p-2 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar w-full max-w-full">
-        <button
-          onClick={() => handleTabClick('live')}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'live'
-              ? 'bg-emerald-500 text-slate-950 font-extrabold shadow-lg shadow-emerald-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <Radio className="w-3.5 h-3.5 animate-pulse text-rose-400" />
-          <span>🔴 Actividad en Tiempo Real</span>
-        </button>
-
-        <button
-          onClick={() => handleTabClick('schedule')}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'schedule'
-              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <Calendar className="w-3.5 h-3.5" />
-          <span>📅 Cuadrante Semanal</span>
-        </button>
-
-        <button
-          onClick={() => handleTabClick('graph')}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'graph'
-              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <Zap className="w-3.5 h-3.5 text-amber-400" />
-          <span>🕸️ Grafo & Flujo</span>
-        </button>
-
-        <button
-          onClick={() => handleTabClick('logistics')}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'logistics'
-              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <Truck className="w-3.5 h-3.5" />
-          <span>🚚 Flota & Bodas</span>
-        </button>
-
-        <button
-          onClick={() => handleTabClick('balances')}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'balances'
-              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <TrendingUp className="w-3.5 h-3.5" />
-          <span>📜 Saldos & Acuerdos</span>
-        </button>
-
-        <button
-          onClick={() => handleTabClick('financial')}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'financial'
-              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <DollarSign className="w-3.5 h-3.5" />
-          <span>💶 Resumen Financiero</span>
-        </button>
-
-        <button
-          onClick={() => handleTabClick('fichajes')}
-          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'fichajes'
-              ? 'bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-500/20'
-              : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-          }`}
-        >
-          <Lock className="w-3.5 h-3.5 text-amber-400" />
-          <span>⚙️ Historial Fichajes ({clockEntries.length})</span>
-        </button>
-      </div>
+      {/* Barra de secciones (la pastilla activa se desliza de una a otra) */}
+      <BarraPestanas activa={activeTab} onSeleccionar={handleTabClick} contadorFichajes={clockEntries.length} />
 
       {/* TAB 1: Saldos & Acuerdos Detallados */}
       {activeTab === 'balances' && (
@@ -742,7 +659,9 @@ export default function PartnerDashboardView({
                 <div>
                   <span className="text-[10px] text-slate-400 block font-medium">Modo de Acceso</span>
                   <span className="text-xs font-bold text-white flex items-center gap-1 mt-0.5">
-                    {adminUnlocked ? '👑 Administrador' : '👥 Socias / Lectura'}
+                    {adminUnlocked
+                      ? <><ShieldCheck className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" /> Administrador</>
+                      : <><Eye className="w-3.5 h-3.5 text-blue-400" aria-hidden="true" /> Socias / lectura</>}
                   </span>
                 </div>
                 {adminUnlocked ? (
@@ -774,7 +693,7 @@ export default function PartnerDashboardView({
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-emerald-500 to-emerald-600 text-slate-950 shadow-md"
                     >
                       <Clock className="w-4 h-4 shrink-0" />
-                      <span>⏱️ Registrar Fichaje</span>
+                      <span>Registrar fichaje</span>
                     </button>
 
                     {adminUnlocked && onOpenTaskEditor && (
@@ -783,7 +702,7 @@ export default function PartnerDashboardView({
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-orange-400 border border-slate-800"
                       >
                         <Edit3 className="w-4 h-4 shrink-0" />
-                        <span>✏️ Editor de Planning Semanal</span>
+                        <span>Editor de planning semanal</span>
                       </button>
                     )}
 
@@ -791,10 +710,10 @@ export default function PartnerDashboardView({
                       <button
                         onClick={() => { handleOpenNotifyModal(); setIsMobileDrawerOpen(false); }}
                         disabled={isPushLoading}
-                        className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                        className="icono-campana w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
                       >
                         <Bell className={`w-4 h-4 shrink-0 ${isPushLoading ? 'animate-pulse' : ''}`} />
-                        <span>{isPushLoading ? 'Avisando...' : '🔔 Avisar Cambios'}</span>
+                        <span>{isPushLoading ? 'Avisando...' : 'Avisar cambios'}</span>
                       </button>
                     )}
 
@@ -804,7 +723,7 @@ export default function PartnerDashboardView({
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-indigo-300 border border-slate-800"
                       >
                         <Users className="w-4 h-4 shrink-0" />
-                        <span>➕ Gestión de Trabajadores</span>
+                        <span>Gestión de trabajadores</span>
                       </button>
                     )}
 
@@ -814,7 +733,7 @@ export default function PartnerDashboardView({
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-800"
                       >
                         <DollarSign className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>💵 Nóminas y Horas Extra</span>
+                        <span>Nóminas y horas extra</span>
                       </button>
                     )}
 
@@ -824,7 +743,7 @@ export default function PartnerDashboardView({
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-amber-500/20 to-indigo-500/20 hover:from-amber-500/30 text-amber-300 border border-amber-500/30"
                       >
                         <Wand2 className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>✨ Asistente IA Gemini</span>
+                        <span>Asistente IA Gemini</span>
                       </button>
                     )}
                   </div>
@@ -841,7 +760,7 @@ export default function PartnerDashboardView({
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30"
                       >
                         <Share2 className="w-4 h-4 text-blue-400 shrink-0" />
-                        <span>💬 Compartir por WhatsApp</span>
+                        <span>Compartir por WhatsApp</span>
                       </button>
                     )}
 
@@ -850,7 +769,7 @@ export default function PartnerDashboardView({
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-amber-300 border border-slate-800"
                     >
                       {copiedLink ? <Check className="w-4 h-4 text-emerald-400 shrink-0" /> : <Copy className="w-4 h-4 text-amber-400 shrink-0" />}
-                      <span>{copiedLink ? '¡Enlace Copiado!' : '📋 Copiar Link de Socias'}</span>
+                      <span>{copiedLink ? '¡Enlace copiado!' : 'Copiar link de socias'}</span>
                     </button>
 
                     {onTogglePublicView && (
@@ -859,7 +778,7 @@ export default function PartnerDashboardView({
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800"
                       >
                         <Eye className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>👁️ Vista Pública de Operativa</span>
+                        <span>Vista pública de operativa</span>
                       </button>
                     )}
                   </div>
@@ -876,14 +795,14 @@ export default function PartnerDashboardView({
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800"
                       >
                         <KeyRound className="w-4 h-4 text-slate-400 shrink-0" />
-                        <span>⚙️ Claves & Configuración</span>
+                        <span>Claves y configuración</span>
                       </button>
                       <button
                         onClick={() => { onOpenAddWeek(); setIsMobileDrawerOpen(false); }}
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800"
                       >
                         <Plus className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>📅 Añadir Nueva Semana</span>
+                        <span>Añadir nueva semana</span>
                       </button>
                     </div>
                   </div>
@@ -898,64 +817,8 @@ export default function PartnerDashboardView({
         </div>
       )}
 
-      {/* Mobile Floating Bottom Navigation Bar (Thumb-Accessible) */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 px-3 py-1.5 flex items-center justify-around shadow-2xl safe-bottom">
-        <button
-          onClick={() => handleTabClick('live')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all relative ${
-            activeTab === 'live'
-              ? 'text-emerald-400 font-extrabold scale-105'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Radio className="w-5 h-5 mb-0.5 text-rose-400 animate-pulse" />
-          <span className="text-[10px]">En Vivo</span>
-        </button>
-
-        <button
-          onClick={() => handleTabClick('schedule')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
-            activeTab === 'schedule'
-              ? 'text-amber-400 font-extrabold scale-105'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Calendar className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Cuadrante</span>
-        </button>
-
-        <button
-          onClick={() => handleTabClick('balances')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
-            activeTab === 'balances'
-              ? 'text-amber-400 font-extrabold scale-105'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <TrendingUp className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Saldos</span>
-        </button>
-
-        <button
-          onClick={() => handleTabClick('graph')}
-          className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all ${
-            activeTab === 'graph'
-              ? 'text-amber-400 font-extrabold scale-105'
-              : 'text-slate-400 hover:text-slate-200'
-          }`}
-        >
-          <Zap className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Grafo</span>
-        </button>
-
-        <button
-          onClick={() => setIsMobileDrawerOpen(true)}
-          className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-400 hover:text-amber-400 transition-all"
-        >
-          <Menu className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Menú</span>
-        </button>
-      </nav>
+      {/* Barra inferior del móvil (al alcance del pulgar) */}
+      <BarraInferior activa={activeTab} onSeleccionar={handleTabClick} onAbrirMenu={() => setIsMobileDrawerOpen(true)} />
       {/* Modales y Drawers (existentes arriba, pero este es el de Avisar Cambios) */}
       {isNotifyModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">

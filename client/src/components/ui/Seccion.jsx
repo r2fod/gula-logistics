@@ -1,9 +1,10 @@
 import React from 'react';
 
 // Tarjeta de sección del Resumen Financiero: cabecera con icono, título y una
-// línea de apoyo, y el contenido debajo. `min-w-0` deja que el contenido
+// línea de apoyo, el contenido debajo y, si se pasa `pie`, una franja fija al final
+// (totales) que queda alineada aunque la tarjeta se estire para igualar a su vecina. `min-w-0` deja que el contenido
 // (tablas, gráficas) se encoja en vez de ensanchar la página en móvil.
-export default function Seccion({ titulo, subtitulo = null, icono: Icono = null, color = 'text-amber-400', retraso = 0, className = '', children }) {
+export default function Seccion({ titulo, subtitulo = null, icono: Icono = null, color = 'text-amber-400', retraso = 0, className = '', pie = null, children }) {
   return (
     <section
       className={`flex flex-col min-w-0 overflow-hidden bg-slate-900 border border-slate-800 rounded-2xl shadow-lg animate-aparecer motion-reduce:animate-none ${className}`}
@@ -17,6 +18,7 @@ export default function Seccion({ titulo, subtitulo = null, icono: Icono = null,
         </div>
       </header>
       {children}
+      {pie && <footer className="mt-auto border-t border-slate-800 bg-slate-950/40 px-3.5 sm:px-5 py-3">{pie}</footer>}
     </section>
   );
 }

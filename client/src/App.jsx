@@ -41,7 +41,8 @@ import {
 } from './data/apiService';
 import { initialBalancesData } from './data/balancesData';
 import { getActiveShiftForWorker, getInProgressTaskKeys } from './data/shiftCalculations';
-import { anticiparSemanas, semanaPorDefecto } from './data/anticipacion';
+import { anticiparSemanas } from './data/anticipacion';
+import { construirEnlaceTrabajador, semanaInicialDeEnlace } from './data/enlaces';
 import { parseWeekRange } from './data/taskPlanning';
 import { getTaskListForDay, buildTaskListPatch } from './data/taskPlanning';
 
@@ -239,10 +240,11 @@ export default function App() {
     const hasSociasFlag = params.has('socias') || params.get('socias') !== null;
     const hasAdminFlag = params.has('admin') || params.get('admin') === 'true';
 
-    // Un borrador solo lo abre un admin: un enlace ?week= a un borrador no vale para nadie más.
-    if (weekParam && allWeeks[weekParam] && !(allWeeks[weekParam].meta?.status === 'Borrador' && !getStoredAdminToken())) {
-      setActiveWeekId(weekParam);
-    }
+    // Qué semana se abre (ver data/enlaces.js): un trabajador siempre ve la de hoy,
+    // aunque su enlace sea uno viejo con ?week=; un borrador solo lo abre un admin.
+    const hasAdminSession = !!getStoredAdminToken();
+    const semanaInicial = semanaInicialDeEnlace({ weekParam, workerParam, hayAdmin: hasAdminSession, semanas: allWeeks });
+    if (semanaInicial) setActiveWeekId(semanaInicial);
     // El icono de la app instalada (PWA) siempre abre start_url del
     // manifest, SIN los parámetros de la URL original (?worker=...) — así
     // que un trabajador que instale su propio enlace perdía su identidad
@@ -255,7 +257,6 @@ export default function App() {
     // abra el enlace de un trabajador para probarlo queda "atrapado" en esa
     // vista en cada carga siguiente sin parámetros, sin poder volver al
     // panel — pasó de verdad con el enlace de un trabajador nuevo.
-    const hasAdminSession = !!getStoredAdminToken();
     if (workerParam) {
       const matched = workersList.find(w => w.name.toLowerCase() === workerParam.toLowerCase());
       if (matched) {
@@ -322,12 +323,10 @@ export default function App() {
         } catch (e) {
           console.error(e);
         }
-        // Sin ?week= en el enlace, la semana por defecto es la que contiene HOY
-        // (nunca un borrador): antes era siempre la 3, aunque hubiera pasado.
-        if (!weekParam) {
-          const porDefecto = semanaPorDefecto(remoteWeeks, new Date());
-          if (porDefecto && remoteWeeks[porDefecto]) setActiveWeekId(porDefecto);
-        }
+        // Con las semanas ya al día se vuelve a decidir cuál abrir: la que contiene
+        // HOY (nunca un borrador) salvo ?week= de un admin.
+        const semanaActual = semanaInicialDeEnlace({ weekParam, workerParam, hayAdmin: hasAdminSession, semanas: remoteWeeks });
+        if (semanaActual) setActiveWeekId(semanaActual);
       }
     });
   }, []);
@@ -384,7 +383,7 @@ export default function App() {
 
   // Link Generators
   const getWorkerLink = (workerName) => {
-    return `${window.location.origin}${window.location.pathname}?week=${activeWeekId}&worker=${encodeURIComponent(workerName)}`;
+    return construirEnlaceTrabajador(window.location.origin, window.location.pathname, workerName);
   };
 
   // Enlace para Socias: si hay token de admin lo incluye, y si no, genera el enlace directo ?socias
@@ -412,7 +411,7 @@ export default function App() {
 
   const shareViaWhatsApp = (workerName) => {
     const link = getWorkerLink(workerName);
-    const text = `🚚 Hola ${workerName}, aquí tienes tu planificación y fichaje para ${activeWeek.name} de Gula Logística: ${link}`;
+    const text = `🚚 Hola ${workerName}, aquí tienes tu planificación y fichaje de Gula Logística: ${link}\n\nGuarda este enlace: es siempre el mismo y se actualiza solo cada semana.`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 

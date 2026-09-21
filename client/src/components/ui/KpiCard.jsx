@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCountUp } from '../../../hooks/useAnimaciones';
+import { useCountUp } from '../../hooks/useAnimaciones';
 
 // Un color por tarjeta; las clases van completas para que Tailwind las detecte.
 const COLORES = {
