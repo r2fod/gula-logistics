@@ -192,10 +192,13 @@ router.post('/weeks', requireAdmin, async (req, res) => {
 router.patch('/weeks/:weekId/tasks', async (req, res) => {
   try {
     const { weekId } = req.params;
-    const { dayKey, taskIndex, completed } = req.body;
+    const { dayKey, taskIndex, completed, reopened } = req.body;
 
     if (typeof dayKey !== 'string' || !dayKey || !Number.isInteger(taskIndex) || taskIndex < 0 || typeof completed !== 'boolean') {
       return res.status(400).json({ error: 'dayKey (string), taskIndex (entero >= 0) y completed (booleano) son obligatorios' });
+    }
+    if (reopened !== undefined && typeof reopened !== 'boolean') {
+      return res.status(400).json({ error: 'reopened, si se envía, debe ser un booleano' });
     }
 
     if (mongoose.connection.readyState !== 1) {
@@ -223,12 +226,17 @@ router.patch('/weeks/:weekId/tasks', async (req, res) => {
     // autoCompletePastTasks) hacía que TODOS los guardados de admin
     // chocaran con "Alguien más ha guardado cambios" sin que nadie hubiera
     // cambiado nada. PATCH es idempotente: repetirlo no debe tocar el doc.
+    // `reopened` (opcional) = alguien DESMARCÓ la tarea a propósito: el reloj del
+    // cliente ya no debe volver a darla por hecha. Solo se puede tocar junto
+    // a `completed`; el endpoint sigue sin poder escribir nada más.
     const currentCompleted = !!(current && typeof current === 'object' && current.completed);
-    if (currentCompleted === completed) {
+    const currentReopened = !!(current && typeof current === 'object' && current.reopened);
+    if (currentCompleted === completed && (reopened === undefined || currentReopened === reopened)) {
       return res.json({ success: true, unchanged: true, data: week });
     }
 
-    const updatedTask = (current && typeof current === 'object') ? { ...current, completed } : { text: current, completed };
+    const changes = reopened === undefined ? { completed } : { completed, reopened };
+    const updatedTask = (current && typeof current === 'object') ? { ...current, ...changes } : { text: current, ...changes };
     const fieldPath = isSabado
       ? `saturdaySpecial.weddings.${taskIndex}`
       : isDomingoOLunes ? `sundayMonday.tasks.${taskIndex}` : `schedule.${dayKey}.tasks.${taskIndex}`;

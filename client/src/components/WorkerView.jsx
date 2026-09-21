@@ -32,7 +32,7 @@ import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
 import TaskTextWithEvent from './TaskTextWithEvent';
-import { getTaskListForDay, resolveTaskIndexByText, isTaskPast, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart } from '../data/taskPlanning';
+import { getTaskListForDay, resolveTaskIndexByText, isTaskEffectivelyDone, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart } from '../data/taskPlanning';
 import { subscribeToPush } from '../data/pushService';
 
 // Texto del botón de empezar la jornada: se elige uno al azar al abrir la
@@ -255,12 +255,11 @@ export default function WorkerView({
     const candidates = [];
     for (const day of daysWithActivitiesForTotals) {
       for (const t of day.tasks) {
-        if (typeof t === 'object' && t.completed) continue;
-        if (isTaskPast(activeWeekData, day.key, t, currentTime)) continue;
+        if (isTaskEffectivelyDone(activeWeekData, day.key, t, currentTime)) continue;
         candidates.push({ day, t, isWedding: false });
       }
       for (const w of day.weddings || []) {
-        if (w.completed || isTaskPast(activeWeekData, day.key, w, currentTime)) continue;
+        if (isTaskEffectivelyDone(activeWeekData, day.key, w, currentTime)) continue;
         candidates.push({ day, t: w, isWedding: true });
       }
     }
@@ -402,12 +401,11 @@ export default function WorkerView({
       : `Podrás fichar el ${opens.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric' })} a las ${hhmm}`;
   };
 
-  // Solo tachado visual (grace 0). isTaskPast compara contra la FECHA REAL
-  // de la tarea dentro de la semana (meta.dateRange) y respeta el targetDay
-  // de las de domingo/lunes; una sin etiquetar cuenta como lunes, así que no
-  // se tacha el domingo. Sustituye a una copia local con el bug de
-  // medianoche viejo y a la comparación por día de la semana suelto.
-  const isTaskDone = (dayKey, task) => isTaskPast(activeWeekData, dayKey, task, currentTime);
+  // Lo que se ve marcado = lo que hace el clic = lo que guarda el sistema
+  // (isTaskEffectivelyDone): hecha si está marcada, o si pasó su hora + margen y
+  // nadie la desmarcó a propósito. Compara contra la FECHA REAL de la tarea
+  // (meta.dateRange) y respeta su targetDay; una sin etiquetar cuenta como lunes.
+  const isTaskDone = (dayKey, task) => isTaskEffectivelyDone(activeWeekData, dayKey, task, currentTime);
 
   return (
     <div className="space-y-4 sm:space-y-5 animate-fadeIn w-full max-w-full overflow-x-hidden">
@@ -933,10 +931,9 @@ export default function WorkerView({
                           {dayGroup.tasks.map((task, idx) => {
                             const taskText = typeof task === 'object' ? task.text : task;
                             const timeFrame = typeof task === 'object' ? task.timeFrame : null;
-                            const manuallyCompleted = typeof task === 'object' ? task.completed : false;
                             
                             // A task is considered visually completed if manually marked OR if its time has past
-                            const isCompleted = manuallyCompleted || isTaskDone(dayGroup.key, task);
+                            const isCompleted = isTaskDone(dayGroup.key, task);
                             
                             const taskLabel = timeFrame
                               ? `${taskText} (${timeFrame})`
@@ -1043,11 +1040,10 @@ export default function WorkerView({
                             <span>Boda Asignada Sábado</span>
                           </span>
                           {dayGroup.weddings.map((w, idx) => {
-                            const manuallyCompleted = w.completed;
                             // El campo real es `timeFrame` (así lo guarda AdminTaskEditorModal
                             // y así llega de Mongo) — `w.time` no existe en ninguna boda real,
                             // así que esto nunca se daba por pasada ni mostraba su horario.
-                            const isCompleted = manuallyCompleted || isTaskDone('sabado', w);
+                            const isCompleted = isTaskDone('sabado', w);
                             
                             return (
                               <div key={idx} className={`p-3 sm:p-3.5 rounded-xl border space-y-1 transition-all ${

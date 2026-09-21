@@ -343,6 +343,25 @@ export function isTaskPast(weekData, dayKey, task, now = new Date(), graceMinute
   return getTaskPastStatus(weekData, dayKey, task, now, graceMinutes) === true;
 }
 
+// ¿Se da la tarea por hecha? ÚNICA fuente de verdad para lo que se ve (tachado
+// y check), lo que hace un clic y lo que se guarda solo:
+//   · `completed: true` -> hecha (alguien la marcó, o se fichó su salida).
+//   · `reopened: true`  -> alguien la DESMARCÓ a propósito: el reloj ya no la
+//     vuelve a dar por hecha (antes se volvía a marcar sola a los 45 min y
+//     "no dejaba desmarcar").
+//   · si no, hecha cuando pasó su hora + margen (TASK_COMPLETION_GRACE_MINUTES).
+// El mismo margen para verla y para guardarla: antes se TACHABA al acabar su
+// hora exacta pero no se guardaba hasta 45 min después, y como el clic
+// actuaba sobre el dato (no sobre lo que se veía), pulsar una tarea tachada
+// la MARCABA de verdad en vez de desmarcarla.
+export function isTaskEffectivelyDone(weekData, dayKey, task, now = new Date(), graceMinutes = TASK_COMPLETION_GRACE_MINUTES) {
+  if (task && typeof task === 'object') {
+    if (task.completed) return true;
+    if (task.reopened) return false;
+  }
+  return isTaskPast(weekData, dayKey, task, now, graceMinutes);
+}
+
 // Añade el año al texto del rango si no lo trae ("Del 22 al 27 de Septiembre"
 // -> "... de 2026") para que dentro de meses no se lea otro año por cercanía.
 // Si el texto no se entiende, se devuelve tal cual.
@@ -356,7 +375,12 @@ export function ensureYearInDateRange(dateRange, now = new Date()) {
 // semana nueva creada clonando la actual, o generada por IA, no debe heredar
 // los "hecho" de la anterior: llegaría con todo tachado desde el minuto cero.
 export function clearWeekCompletion(weekData) {
-  const clearList = (list) => (list || []).map(t => (t && typeof t === 'object' ? { ...t, completed: false } : t));
+  const clearList = (list) => (list || []).map(t => {
+    if (!t || typeof t !== 'object') return t;
+    const limpia = { ...t, completed: false };
+    delete limpia.reopened; // el desmarcado a mano tampoco se hereda
+    return limpia;
+  });
   const cleared = { ...weekData };
   if (weekData.schedule) {
     cleared.schedule = Object.fromEntries(
