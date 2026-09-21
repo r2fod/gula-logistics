@@ -67,3 +67,22 @@ describe('ScheduleTab — bloque domingo/lunes', () => {
     expect(screen.queryByText('Lunes 21')).not.toBeInTheDocument();
   });
 });
+
+describe('ScheduleTab — evento de cada tarea', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('una tarea "Evento - Tarea" muestra el evento como etiqueta y la tarea aparte; sin evento se ve tal cual', () => {
+    vi.setSystemTime(new Date(2026, 8, 20, 12, 0));
+    const week = semana([
+      { text: 'Boda Ana y Luis - Descarga + Montaje Estructura', timeFrame: '09:00-11:00', targetDay: 'Domingo', assigned: ['Ana'], completed: false },
+      { text: 'Recoger material sin evento', timeFrame: '12:00-13:00', targetDay: 'Domingo', assigned: ['Ana'], completed: false },
+    ]);
+    renderTab(week);
+
+    expect(screen.getByText('Boda Ana y Luis')).toBeInTheDocument(); // etiqueta del evento
+    expect(screen.getByText(/Descarga \+ Montaje Estructura/)).toBeInTheDocument();
+    expect(screen.queryByText(/Boda Ana y Luis - Descarga/)).not.toBeInTheDocument(); // el " - " ya no se ve en bruto
+    expect(screen.getByText('Recoger material sin evento')).toBeInTheDocument();
+  });
+});

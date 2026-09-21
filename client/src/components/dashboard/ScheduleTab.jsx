@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Users, Calendar, Clock, Check, Sparkles } from 'lucide-react';
 import { isTaskPast, getDayLabel } from '../../data/taskPlanning';
+import TaskTextWithEvent from '../TaskTextWithEvent';
 
 export default function ScheduleTab({ activeWeekData, workersList, onToggleTask, onUpdateWeek }) {
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
@@ -124,7 +125,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
       }`}>
         <span>
           {isCompleted && <Check className="w-4 h-4 inline mr-1 text-emerald-400" />}
-          {taskText}
+          <TaskTextWithEvent text={taskText} />
         </span>
         {timeFrame && (
           <span className="mt-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded flex items-center gap-1 w-fit whitespace-nowrap">
@@ -264,7 +265,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
                         )}
                       </div>
                       <div className="flex-1 leading-relaxed">
-                        <span className={isCompleted ? 'line-through' : ''}>{taskText}</span>
+                        <span className={isCompleted ? 'line-through' : ''}><TaskTextWithEvent text={taskText} /></span>
                         {typeof task === 'object' && task.timeFrame && (
                           <span className="ml-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 align-middle whitespace-nowrap">
                             <Clock className="w-3 h-3" />

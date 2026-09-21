@@ -15,11 +15,11 @@ describe('buildWeekPrompt', () => {
         { day: 'martes', kind: 'Evento', place: 'Catering Dos', time: '' },
       ],
     });
-    expect(p).toContain('- Martes 22: Evento — Catering Uno (20:00-23:00).');
-    expect(p).toContain('- Martes 22: Evento — Catering Dos.');
-    expect(p).toContain('- Viernes 25: Boda — Finca Norte.');
+    expect(p).toContain('- Martes 22: Evento Catering Uno (20:00-23:00).');
+    expect(p).toContain('- Martes 22: Evento Catering Dos.');
+    expect(p).toContain('- Viernes 25: Boda Finca Norte.');
     // ordenados por día aunque se hayan añadido en otro orden
-    expect(p.indexOf('Martes 22: Evento — Catering Uno')).toBeLessThan(p.indexOf('Viernes 25'));
+    expect(p.indexOf('Martes 22: Evento Catering Uno')).toBeLessThan(p.indexOf('Viernes 25'));
   });
 
   it('sin eventos de sábado le dice a la IA que no genere bodas de sábado', () => {
@@ -44,7 +44,7 @@ describe('buildWeekPrompt', () => {
       events: [{ day: 'nunca', kind: 'Boda', place: 'Fantasma' }, { day: 'martes', kind: 'Boda', place: '  Finca Real  ', time: ' 10:00 ' }],
     });
     expect(p).not.toContain('Fantasma');
-    expect(p).toContain('Boda — Finca Real (10:00).');
+    expect(p).toContain('Boda Finca Real (10:00).');
   });
 });
 
@@ -111,5 +111,39 @@ describe('validateGeneratedSchedule', () => {
     expect(validateGeneratedSchedule([])).not.toBe('');
     expect(validateGeneratedSchedule({ sundayMonday: { tasks: 'no' } })).not.toBe('');
     expect(validateGeneratedSchedule({ saturdaySpecial: { weddings: {} } })).not.toBe('');
+  });
+});
+
+describe('formato "Evento - Tarea" en la generación', () => {
+  it('el prompt pide usar EXACTAMENTE los nombres de evento del usuario y las categorías generales', () => {
+    const p = buildWeekPrompt({
+      ...base, dayLabel,
+      events: [{ day: 'viernes', kind: 'Boda', place: 'Finca Norte', time: '' }, { day: 'martes', kind: 'Evento', place: 'Catering Uno', time: '' }],
+    });
+    expect(p).toContain('"EVENTO - Tarea"');
+    expect(p).toContain('EXACTAMENTE estos nombres de evento: Evento Catering Uno, Boda Finca Norte');
+    expect(p).toContain('Logística Preparación');
+  });
+
+  it('el prompt de sistema explica el formato con las tres categorías', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse(semanaOk));
+    vi.stubGlobal('fetch', fetchMock);
+    await generateScheduleWithGemini({ prompt: 'x', apiKey: 'k' });
+    const texto = JSON.parse(fetchMock.mock.calls[0][1].body).contents[0].parts[0].text;
+    expect(texto).toContain('FORMATO DEL TEXTO DE CADA TAREA');
+    for (const c of ['Logística Preparación', 'Logística Carga', 'Limpieza Eventos']) expect(texto).toContain(`"${c}"`);
+    vi.unstubAllGlobals();
+  });
+
+  it('si la IA se salta el formato, se completa con el evento conocido o la categoría', async () => {
+    const respuesta = { schedule: { martes: { tasks: [{ text: 'Recoger generador de la Finca Norte' }, { text: 'Limpieza de vajilla' }, { text: 'Boda Finca Norte - Supervisión' }] } } };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(okResponse(respuesta)));
+    const r = await generateScheduleWithGemini({ prompt: 'x', apiKey: 'k', eventNames: ['Boda Finca Norte'] });
+    expect(r.generatedJson.schedule.martes.tasks.map(t => t.text)).toEqual([
+      'Boda Finca Norte - Recoger generador de la Finca Norte',
+      'Limpieza Eventos - Limpieza de vajilla',
+      'Boda Finca Norte - Supervisión',
+    ]);
+    vi.unstubAllGlobals();
   });
 });

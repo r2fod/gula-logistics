@@ -31,6 +31,7 @@ import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
+import TaskTextWithEvent from './TaskTextWithEvent';
 import { getTaskListForDay, resolveTaskIndexByText, isTaskPast, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart } from '../data/taskPlanning';
 import { subscribeToPush } from '../data/pushService';
 
@@ -962,7 +963,7 @@ export default function WorkerView({
                                 >
                                   <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`} />
                                   <span className={`font-medium ${isCompleted ? 'line-through opacity-70' : ''}`}>
-                                    {taskLabel}
+                                    <TaskTextWithEvent text={taskText} />{timeFrame ? ` (${timeFrame})` : ''}
                                   </span>
                                   {typeof task === 'object' && task.targetDay && (
                                     <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md whitespace-nowrap shrink-0 border ${

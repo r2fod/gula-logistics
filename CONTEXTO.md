@@ -48,6 +48,7 @@ Sábado 19 es el día clave: **3 bodas simultáneas**:
 6. Descargar en un evento implica también **montaje de estructura** — debe reflejarse en el tiempo estimado.
 7. **Domingo y lunes comparten una sola lista de tareas.** Cada tarea puede llevar "Día Específico" (Solo Domingo / Solo Lunes). Sin él es ambigua y el sistema la trata como lunes (nunca se da por hecha antes de tiempo). Las tareas de la última semana operativa se pueden separar así en el planning.
 8. **El rango de fechas de la semana (`meta.dateRange`) manda**: de él salen los números de día y cuándo se considera pasada una tarea. Formato que se entiende: "Del 15 al 20 de Septiembre de 2026" (con el año). Si no se entiende, no se marca ni se tacha nada por horario.
+9. **Cada tarea lleva su evento en el texto: `"EVENTO - Tarea"`** (guion normal entre espacios). El evento es el nombre de la boda o evento ("Boda Ana y Luis", "Evento Catering Norte") o una categoría general: "Logística Preparación", "Logística Carga", "Limpieza Eventos". De ahí sale el desglose de costes por evento y por persona (Resumen Financiero). En el asistente de nueva semana se añaden las bodas y eventos con su día y la IA usa esos nombres.
 
 ## Otros proyectos del mismo usuario (NO tocar)
 

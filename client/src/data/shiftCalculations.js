@@ -4,6 +4,8 @@
 // real en curso. No se cierra solo — eso lo decide un admin a propósito
 // desde el editor de fichajes — esto solo sirve para SEÑALARLO en vez de
 // dejarlo indefinidamente como "en turno" con un cronómetro absurdo.
+import { parseEventAndTask } from './eventNaming';
+
 export const ZOMBIE_SHIFT_HOURS = 16;
 
 // `activeEntry` es el fichaje de entrada abierto (lo que devuelve
@@ -118,15 +120,8 @@ export function pairShiftsFromEntries(entries = []) {
           const ratio = rawDuration > 0 ? (t.durationHours / (totalDiffMs / (1000 * 60 * 60))) : 0;
           const adjustedDuration = durationHours * ratio;
           
-          let eventName = t.taskName || 'Sin Asignar';
-          let specificTaskName = 'Tarea General';
-          
-          const dashMatch = eventName.match(/\s+[-–—]\s+/);
-          if (dashMatch) {
-            const parts = eventName.split(dashMatch[0]);
-            eventName = parts[0].trim();
-            specificTaskName = parts.slice(1).join(dashMatch[0]).trim();
-          }
+          // Evento y tarea del texto del fichaje (ver eventNaming.js).
+          const { eventName, specificTaskName } = parseEventAndTask(t.taskName || 'Sin Asignar');
           
           finalTasks.push({
             taskName: t.taskName,
@@ -153,15 +148,7 @@ export function pairShiftsFromEntries(entries = []) {
         }
       } else {
         // V1 Shift
-        let eventName = startEntry.taskName || 'Sin Asignar';
-        let specificTaskName = 'Tarea General';
-        
-        const dashMatch = eventName.match(/\s+[-–—]\s+/);
-        if (dashMatch) {
-          const parts = eventName.split(dashMatch[0]);
-          eventName = parts[0].trim();
-          specificTaskName = parts.slice(1).join(dashMatch[0]).trim();
-        }
+        const { eventName, specificTaskName } = parseEventAndTask(startEntry.taskName || 'Sin Asignar');
 
         finalTasks.push({
           taskName: startEntry.taskName || 'Sin Asignar',

@@ -48,6 +48,7 @@ import AdminClockEditModal from './AdminClockEditModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminSettingsModal from './AdminSettingsModal';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { parseEventAndTask } from '../data/eventNaming';
 
 export default function PartnerDashboardView({ 
   activeWeekData, 
@@ -320,13 +321,8 @@ export default function PartnerDashboardView({
         const taskText = typeof task === 'object' ? task.text : task;
         const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
         
-        let eventName = taskText || 'Sin Asignar';
-        let specificTaskName = 'Tarea General';
-        if (eventName.includes(' - ')) {
-          const parts = eventName.split(' - ');
-          eventName = parts[0].trim();
-          specificTaskName = parts.slice(1).join(' - ').trim();
-        }
+        // Mismo criterio que el desglose de costes (ver eventNaming.js).
+        const { eventName, specificTaskName } = parseEventAndTask(taskText || 'Sin Asignar');
 
         taskAssigned.forEach(workerName => {
           let matchSubTask = null;

@@ -54,14 +54,14 @@ export default function FinancialSummaryTab({
             <div className="bg-indigo-900/40 px-6 py-4 border-b border-slate-800 flex items-center space-x-2 shrink-0">
               <TrendingUp className="w-5 h-5 text-indigo-400" />
               <h4 className="font-extrabold text-indigo-300 text-sm tracking-wider uppercase">
-                Desglose por Tarea / Evento
+                Desglose por Evento
               </h4>
             </div>
             <div className="overflow-y-auto no-scrollbar max-h-[350px]">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-900/90 backdrop-blur text-slate-400 sticky top-0 z-10 shadow-sm">
                   <tr>
-                    <th className="px-6 py-3 font-semibold uppercase tracking-wider">Evento / Tarea</th>
+                    <th className="px-6 py-3 font-semibold uppercase tracking-wider">Evento</th>
                     <th className="px-6 py-3 font-semibold uppercase tracking-wider text-right">Horas Totales</th>
                     <th className="px-6 py-3 font-semibold uppercase tracking-wider text-right">Coste Total</th>
                   </tr>
