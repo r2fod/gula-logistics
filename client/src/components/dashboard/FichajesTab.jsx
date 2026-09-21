@@ -1,6 +1,6 @@
 import React from 'react';
 import { Lock, Eye, Plus, Clock, Edit3, Trash2 } from 'lucide-react';
-import { formatDate, formatTime } from '../../utils/dateUtils';
+import { fechaDeFichaje, horaDeFichaje } from '../../data/fichajes';
 
 export default function FichajesTab({
   clockEntries,
@@ -64,7 +64,7 @@ export default function FichajesTab({
         const sortedEntries = [...clockEntries].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         
         sortedEntries.forEach(e => {
-          const day = e.timestamp ? formatDate(e.timestamp) : (e.dateFormatted || 'Sin Fecha');
+          const day = fechaDeFichaje(e) || 'Sin Fecha';
           if (!byDay[day]) byDay[day] = [];
           byDay[day].push(e);
         });
@@ -112,10 +112,10 @@ export default function FichajesTab({
                 <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
                   <td className="py-3.5 px-4 font-mono text-slate-200">
                     <div className="font-bold text-white">
-                      {entry.timestamp ? formatTime(entry.timestamp, true) : entry.timeFormatted}
+                      {horaDeFichaje(entry)}
                     </div>
                     <div className="text-[10px] text-slate-500">
-                          {entry.timestamp ? formatDate(entry.timestamp) : entry.dateFormatted}
+                          {fechaDeFichaje(entry)}
                     </div>
                   </td>
                   <td className="py-3.5 px-4">

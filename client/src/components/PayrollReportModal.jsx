@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { DollarSign, Clock, Copy, Check, Trash2, Calendar, Lock, Edit3, Plus, ShieldCheck } from 'lucide-react';
 import AdminClockEditModal from './AdminClockEditModal';
 import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../data/shiftCalculations';
+import { horaDeFichaje, fechaDeFichaje } from '../data/fichajes';
+import { formatearEuros, formatearHoras } from '../data/formatoFinanciero';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Selector } from './ui/Campo';
@@ -170,16 +172,16 @@ export default function PayrollReportModal({
 
   const handleCopySummary = () => {
     let summaryText = `📋 *INFORME DE CONTROL HORARIO Y COSTES - GULA LOGÍSTICA*\n\n`;
-    summaryText += `💶 *Gasto Total Extras (10€/h):* ${totalExtraCost.toFixed(2)} €\n`;
-    summaryText += `⭐ *Valoración Interna Nóminas (14€/h):* ${totalPayrollValuation.toFixed(2)} €\n`;
-    summaryText += `⏱️ *Total Horas Trabajadas:* ${totalExtraHours.toFixed(1)} h\n`;
+    summaryText += `💶 *Gasto Total Extras (10€/h):* ${formatearEuros(totalExtraCost)}\n`;
+    summaryText += `⭐ *Valoración Interna Nóminas (14€/h):* ${formatearEuros(totalPayrollValuation)}\n`;
+    summaryText += `⏱️ *Total Horas Trabajadas:* ${formatearHoras(totalExtraHours)}\n`;
     summaryText += `----------------------------------------\n\n`;
 
     filteredShifts.forEach(s => {
       summaryText += `👤 *${s.workerName}* (${s.isSalaried ? 'Nómina (Control 14€/h)' : '10€/h'})\n`;
       summaryText += `  • Horario: ${s.startTime} ➔ ${s.endTime} (${s.startDate})\n`;
       summaryText += `  • Duración: ${s.durationFormatted}\n`;
-      summaryText += `  • Coste: ${s.isSalaried ? `${s.cost.toFixed(2)} € (Control Interno)` : `${s.cost.toFixed(2)} €`}\n\n`;
+      summaryText += `  • Coste: ${formatearEuros(s.cost)}${s.isSalaried ? ' (Control Interno)' : ''}\n\n`;
     });
 
     // Sección "Estimado (Planning)" — antes no se incluía en absoluto en el
@@ -189,10 +191,10 @@ export default function PayrollReportModal({
     if (filteredEstimatedSummary.length > 0) {
       summaryText += `----------------------------------------\n\n`;
       summaryText += `📅 *ESTIMADO SEGÚN PLANNING (no son fichajes reales)*\n`;
-      summaryText += `⏱️ *Horas Estimadas (extras):* ${totalEstimatedExtraHours.toFixed(1)} h\n`;
-      summaryText += `💶 *Coste Estimado (extras):* ${totalEstimatedExtraCost.toFixed(2)} €\n\n`;
+      summaryText += `⏱️ *Horas Estimadas (extras):* ${formatearHoras(totalEstimatedExtraHours)}\n`;
+      summaryText += `💶 *Coste Estimado (extras):* ${formatearEuros(totalEstimatedExtraCost)}\n\n`;
       filteredEstimatedSummary.forEach(e => {
-        summaryText += `👤 *${e.workerName}* (${e.isSalaried ? 'Nómina Fija' : `${e.rate.toFixed(2)} €/h`}): ${e.hours.toFixed(1)} h${e.isSalaried ? '' : ` — ${e.cost.toFixed(2)} €`}\n`;
+        summaryText += `👤 *${e.workerName}* (${e.isSalaried ? 'Nómina Fija' : `${formatearEuros(e.rate)}/h`}): ${formatearHoras(e.hours)}${e.isSalaried ? '' : ` — ${formatearEuros(e.cost)}`}\n`;
       });
       summaryText += `\n`;
     }
@@ -283,7 +285,7 @@ export default function PayrollReportModal({
           <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
             <p className="text-xs text-slate-400 font-medium">Gasto Total Extras</p>
             <p className="text-2xl font-bold text-amber-400 mt-1 font-['Outfit']">
-              {totalExtraCost.toFixed(2)} €
+              {formatearEuros(totalExtraCost)}
             </p>
             <p className="text-[10px] text-slate-500 mt-0.5">Calculado a 10,00 €/h</p>
           </div>
@@ -291,7 +293,7 @@ export default function PayrollReportModal({
           <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
             <p className="text-xs text-slate-400 font-medium">Horas Extras Totales</p>
             <p className="text-2xl font-bold text-emerald-400 mt-1 font-['Outfit']">
-              {totalExtraHours.toFixed(1)} h
+              {formatearHoras(totalExtraHours)}
             </p>
             <p className="text-[10px] text-slate-500 mt-0.5">{filteredShifts.length} jornadas completadas</p>
           </div>
@@ -299,7 +301,7 @@ export default function PayrollReportModal({
           <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
             <p className="text-xs text-slate-400 font-medium">Valoración Interna Nóminas</p>
             <p className="text-2xl font-bold text-indigo-400 mt-1 font-['Outfit']">
-              {totalPayrollValuation.toFixed(2)} €
+              {formatearEuros(totalPayrollValuation)}
             </p>
             <p className="text-[10px] text-slate-500 mt-0.5">Irene + Raúl (control interno a 14,00 €/h)</p>
           </div>
@@ -416,9 +418,9 @@ export default function PayrollReportModal({
                     </div>
 
                     <div className="flex items-center justify-between pt-1.5 border-t border-slate-800/60">
-                      <span className="font-semibold text-emerald-400">{Number.isInteger(s.durationHours) ? s.durationHours : parseFloat(s.durationHours.toFixed(2))}h totales</span>
+                      <span className="font-semibold text-emerald-400">{formatearHoras(s.durationHours)} totales</span>
                       <span className="font-bold text-amber-400 font-mono text-sm">
-                        {s.isSalaried ? '0,00 €' : `${s.cost.toFixed(2)} €`}
+                        {s.isSalaried ? formatearEuros(0) : formatearEuros(s.cost)}
                       </span>
                     </div>
 
@@ -492,7 +494,7 @@ export default function PayrollReportModal({
                         </td>
                         <td className="py-3 px-3">
                           <div className={`font-semibold ${s.isAnomalous ? 'text-rose-400' : 'text-emerald-400'}`}>
-                            {Number.isInteger(s.durationHours) ? s.durationHours : parseFloat(s.durationHours.toFixed(2))}h totales
+                            {formatearHoras(s.durationHours)} totales
                           </div>
                           {s.isAnomalous && (
                             <div className="text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1 py-0.5 rounded mt-1 inline-flex items-center gap-1" title="El sistema ha capado este turno a 14h automáticamente por seguridad. Revisa las horas reales.">
@@ -501,7 +503,7 @@ export default function PayrollReportModal({
                           )}
                         </td>
                         <td className="py-3 px-3 text-right font-bold text-amber-400 font-mono text-sm">
-                          {s.isSalaried ? '0,00 €' : `${s.cost.toFixed(2)} €`}
+                          {s.isSalaried ? formatearEuros(0) : formatearEuros(s.cost)}
                         </td>
                         <td className="py-3 px-3 text-center">
                           {isAdmin ? (
@@ -564,15 +566,10 @@ export default function PayrollReportModal({
                     <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
                       <td className="py-3 px-3 text-slate-200 font-mono">
                         <div>
-                          {entry.timestamp ? (() => {
-                            const d = new Date(entry.timestamp);
-                            if (isNaN(d)) return entry.timeFormatted;
-                            const pad = n => String(n).padStart(2, '0');
-                            return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-                          })() : entry.timeFormatted}
+                          {horaDeFichaje(entry)}
                         </div>
                         <div className="text-[10px] text-slate-500">
-                          {entry.timestamp ? new Date(entry.timestamp).toLocaleDateString('es-ES') : entry.dateFormatted}
+                          {fechaDeFichaje(entry)}
                         </div>
                       </td>
                       <td className="py-3 px-3 font-bold text-white">
@@ -672,13 +669,13 @@ export default function PayrollReportModal({
                             </span>
                           ) : (
                             <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
-                              Extra ({e.rate.toFixed(2)} €/h)
+                              Extra ({formatearEuros(e.rate)}/h)
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 font-semibold text-emerald-400">{e.hours.toFixed(1)} h</td>
+                        <td className="py-3 px-3 font-semibold text-emerald-400">{formatearHoras(e.hours)}</td>
                         <td className="py-3 px-3 text-right font-bold text-amber-400 font-mono text-sm">
-                          {e.isSalaried ? '0,00 €' : `${e.cost.toFixed(2)} €`}
+                          {e.isSalaried ? formatearEuros(0) : formatearEuros(e.cost)}
                         </td>
                       </tr>
                     ))}
@@ -686,8 +683,8 @@ export default function PayrollReportModal({
                   <tfoot>
                     <tr className="border-t border-slate-800 text-xs font-bold text-white">
                       <td className="py-3 px-3" colSpan={2}>Total estimado (extras)</td>
-                      <td className="py-3 px-3 text-emerald-400">{totalEstimatedExtraHours.toFixed(1)} h</td>
-                      <td className="py-3 px-3 text-right text-amber-400 font-mono">{totalEstimatedExtraCost.toFixed(2)} €</td>
+                      <td className="py-3 px-3 text-emerald-400">{formatearHoras(totalEstimatedExtraHours)}</td>
+                      <td className="py-3 px-3 text-right text-amber-400 font-mono">{formatearEuros(totalEstimatedExtraCost)}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -743,15 +740,10 @@ export default function PayrollReportModal({
                       <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors opacity-70">
                         <td className="py-3 px-3 text-slate-200 font-mono">
                           <div>
-                            {entry.timestamp ? (() => {
-                              const d = new Date(entry.timestamp);
-                              if (isNaN(d)) return entry.timeFormatted;
-                              const pad = n => String(n).padStart(2, '0');
-                              return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-                            })() : entry.timeFormatted}
+                            {horaDeFichaje(entry)}
                           </div>
                           <div className="text-[10px] text-slate-500">
-                            {entry.timestamp ? new Date(entry.timestamp).toLocaleDateString('es-ES') : entry.dateFormatted}
+                            {fechaDeFichaje(entry)}
                           </div>
                         </td>
                         <td className="py-3 px-3 font-bold text-white">

@@ -1,4 +1,5 @@
 import { getWeekRange } from './taskPlanning';
+import { formatDayMonthShort, formatMonthYear, formatWeekdayShort, formatMonthShort } from '../utils/dateUtils';
 
 // Periodos del Resumen Financiero: semana, mes o año, o todo el histórico.
 //
@@ -25,7 +26,7 @@ export function inicioSemanaOperativa(fecha) {
   return d;
 }
 
-const corto = (d) => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }).replace('.', '');
+const corto = formatDayMonthShort;
 const capitalizar = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
 // { modo, desde, hasta, etiqueta }: `desde` incluido y `hasta` excluido; en
@@ -35,7 +36,7 @@ export function rangoDePeriodo(modo, ancla = new Date(), semanas = {}) {
   if (modo === 'mes') {
     const desde = new Date(ancla.getFullYear(), ancla.getMonth(), 1);
     const hasta = new Date(ancla.getFullYear(), ancla.getMonth() + 1, 1);
-    return { modo, desde, hasta, etiqueta: capitalizar(desde.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })) };
+    return { modo, desde, hasta, etiqueta: capitalizar(formatMonthYear(desde)) };
   }
   if (modo === 'anio') {
     const desde = new Date(ancla.getFullYear(), 0, 1);
@@ -112,7 +113,7 @@ export function serieDelPeriodo(turnos = [], rango) {
   if (rango?.modo === 'semana') {
     for (let i = 0; i < 7; i++) {
       const dia = new Date(rango.desde.getFullYear(), rango.desde.getMonth(), rango.desde.getDate() + i);
-      const dd = dia.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '');
+      const dd = formatWeekdayShort(dia);
       mapa.set(claveDia(dia), nuevo(claveDia(dia), `${capitalizar(dd)} ${dia.getDate()}`));
     }
     validos.forEach(s => sumar(mapa, claveDia(inicio(s)), s));
@@ -134,7 +135,7 @@ export function serieDelPeriodo(turnos = [], rango) {
     }
     const variosAnios = desde.getFullYear() !== new Date(hasta.getFullYear(), hasta.getMonth() - 1, 1).getFullYear();
     for (let d = desde; d < hasta; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
-      const mes = d.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '');
+      const mes = formatMonthShort(d);
       mapa.set(claveMes(d), nuevo(claveMes(d), variosAnios ? `${capitalizar(mes)} ${String(d.getFullYear()).slice(2)}` : capitalizar(mes)));
     }
     validos.forEach(s => sumar(mapa, claveMes(inicio(s)), s));

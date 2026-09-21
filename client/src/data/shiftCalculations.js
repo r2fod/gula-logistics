@@ -5,6 +5,7 @@
 // desde el editor de fichajes — esto solo sirve para SEÑALARLO en vez de
 // dejarlo indefinidamente como "en turno" con un cronómetro absurdo.
 import { parseEventAndTask } from './eventNaming';
+import { fechaDeFichaje, horaDeFichaje } from './fichajes';
 
 export const ZOMBIE_SHIFT_HOURS = 16;
 
@@ -54,7 +55,7 @@ export function pairShiftsFromEntries(entries = []) {
   const activeWorkerShifts = {};
 
   sortEntriesByTimestamp(entries).forEach(entry => {
-    const { workerName, type, timestamp, timeFormatted, dateFormatted, isPayroll, rate, note, taskName } = entry;
+    const { workerName, type, timestamp, isPayroll, rate, note, taskName } = entry;
 
     if (type === 'entrada') {
       activeWorkerShifts[workerName] = {
@@ -167,10 +168,10 @@ export function pairShiftsFromEntries(entries = []) {
         workerName,
         isSalaried,
         rate: hourlyRate,
-        startDate: startEntry.timestamp ? new Date(startEntry.timestamp).toLocaleDateString('es-ES') : startEntry.dateFormatted,
-        startTime: startEntry.timestamp ? new Date(startEntry.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : startEntry.timeFormatted,
-        endDate: timestamp ? new Date(timestamp).toLocaleDateString('es-ES') : dateFormatted,
-        endTime: timestamp ? new Date(timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) : timeFormatted,
+        startDate: fechaDeFichaje(startEntry),
+        startTime: horaDeFichaje(startEntry),
+        endDate: fechaDeFichaje(entry),
+        endTime: horaDeFichaje(entry),
         durationHours,
         durationFormatted: `${hours}h ${minutes}m`,
         cost,

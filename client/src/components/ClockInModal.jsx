@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Play, Square, Lock } from 'lucide-react';
 import { getActiveShiftForWorker } from '../data/shiftCalculations';
+import { crearFichaje } from '../data/fichajes';
+import { formatTime, formatDateLong } from '../utils/dateUtils';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input, Selector } from './ui/Campo';
@@ -47,54 +49,25 @@ export default function ClockInModal({
 
   const currentWorkerObj = workersList.find(w => w.name === selectedWorker) || workersList[0];
 
+  // Quien ficha: el elegido en el selector (con el rol y la tarifa de su ficha).
+  const trabajadorElegido = { ...currentWorkerObj, name: selectedWorker };
+
   const handleClockIn = () => {
-    const now = new Date();
-    const entry = {
-      // crypto.randomUUID() en vez de Date.now().toString(): dos fichajes
-      // que coincidan en el mismo milisegundo (típico si varios empiezan la
-      // jornada a la misma hora en punto) chocaban contra el índice único
-      // de `id` en Mongo — el segundo fallaba con un 500 silencioso.
-      id: crypto.randomUUID(),
-      workerName: selectedWorker,
-      role: currentWorkerObj.role,
-      isPayroll: currentWorkerObj.isPayroll,
-      rate: currentWorkerObj.rate || 10,
-      type: 'entrada',
-      timestamp: now.toISOString(),
-      // Locale y hour12 fijos: sin esto, el formato (24h o 12h AM/PM)
-      // dependía del idioma/región del navegador de quien fichaba.
-      timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
-      dateFormatted: now.toLocaleDateString('es-ES'),
+    onClockEntryCreated(crearFichaje({
+      trabajador: trabajadorElegido,
+      tipo: 'entrada',
       taskName: note.trim() || 'Inicio de Jornada Operativa',
       note: note.trim(),
       // Referencia a la tarea real del planning (día + índice) para poder
       // marcarla como hecha sola cuando se fiche la salida de este turno.
       taskRef: taskRef || null
-    };
-    onClockEntryCreated(entry);
+    }));
     setNote('');
     onClose();
   };
 
   const handleClockOut = () => {
-    const now = new Date();
-    const entry = {
-      // crypto.randomUUID() en vez de Date.now().toString(): dos fichajes
-      // que coincidan en el mismo milisegundo (típico si varios empiezan la
-      // jornada a la misma hora en punto) chocaban contra el índice único
-      // de `id` en Mongo — el segundo fallaba con un 500 silencioso.
-      id: crypto.randomUUID(),
-      workerName: selectedWorker,
-      role: currentWorkerObj.role,
-      isPayroll: currentWorkerObj.isPayroll,
-      rate: currentWorkerObj.rate || 10,
-      type: 'salida',
-      timestamp: now.toISOString(),
-      timeFormatted: now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
-      dateFormatted: now.toLocaleDateString('es-ES'),
-      note: note.trim()
-    };
-    onClockEntryCreated(entry);
+    onClockEntryCreated(crearFichaje({ trabajador: trabajadorElegido, tipo: 'salida', note: note.trim() }));
     setNote('');
     onClose();
   };
@@ -106,10 +79,10 @@ export default function ClockInModal({
       {/* Live Clock Display */}
       <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-center mb-5">
         <span className="text-3xl font-extrabold font-mono text-emerald-400 tracking-wider">
-          {currentTime.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}
+          {formatTime(currentTime)}
         </span>
         <p className="text-xs text-slate-400 mt-1 capitalize">
-          {currentTime.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          {formatDateLong(currentTime)}
         </p>
       </div>
 
