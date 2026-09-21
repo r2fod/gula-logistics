@@ -169,6 +169,58 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
     expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
+  it('desmarcar a propósito guarda reopened:true (el reloj ya no la vuelve a marcar) y marcar lo quita', async () => {
+    LogisticsWeek.findOne.mockResolvedValue({
+      weekId: 'week_3',
+      sundayMonday: { tasks: [{ text: 'Devolver Dealde', completed: false }] },
+    });
+    LogisticsWeek.findOneAndUpdate.mockResolvedValue({ weekId: 'week_3' });
+    const app = buildApp();
+
+    // Tarea que solo "se veía" hecha por la hora (completed false): desmarcarla debe persistir reopened.
+    const r1 = await request(app).patch('/api/logistics/weeks/week_3/tasks').send({ dayKey: 'domingo', taskIndex: 0, completed: false, reopened: true });
+    expect(r1.status).toBe(200);
+    expect(r1.body.unchanged).toBeUndefined();
+    expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
+      { weekId: 'week_3' },
+      { $set: { 'sundayMonday.tasks.0': { text: 'Devolver Dealde', completed: false, reopened: true } } },
+      { new: true }
+    );
+
+    LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_3', sundayMonday: { tasks: [{ text: 'Devolver Dealde', completed: false, reopened: true }] } });
+    LogisticsWeek.findOneAndUpdate.mockClear();
+    const r2 = await request(app).patch('/api/logistics/weeks/week_3/tasks').send({ dayKey: 'domingo', taskIndex: 0, completed: true, reopened: false });
+    expect(r2.status).toBe(200);
+    expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
+      { weekId: 'week_3' },
+      { $set: { 'sundayMonday.tasks.0': { text: 'Devolver Dealde', completed: true, reopened: false } } },
+      { new: true }
+    );
+  });
+
+  it('repetir el mismo desmarcado (ya con reopened) no escribe; reopened no booleano se rechaza; el resto de campos no se toca', async () => {
+    LogisticsWeek.findOne.mockResolvedValue({
+      weekId: 'week_3',
+      sundayMonday: { tasks: [{ text: 'X', completed: false, reopened: true, assigned: ['Ana'] }] },
+    });
+    const app = buildApp();
+    const igual = await request(app).patch('/api/logistics/weeks/week_3/tasks').send({ dayKey: 'domingo', taskIndex: 0, completed: false, reopened: true });
+    expect(igual.body.unchanged).toBe(true);
+    expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
+
+    const malo = await request(app).patch('/api/logistics/weeks/week_3/tasks').send({ dayKey: 'domingo', taskIndex: 0, completed: false, reopened: 'si' });
+    expect(malo.status).toBe(400);
+
+    // sin reopened en el cuerpo, un completed distinto sigue escribiendo solo completed y conserva lo demás
+    LogisticsWeek.findOneAndUpdate.mockResolvedValue({ weekId: 'week_3' });
+    await request(app).patch('/api/logistics/weeks/week_3/tasks').send({ dayKey: 'domingo', taskIndex: 0, completed: true });
+    expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
+      { weekId: 'week_3' },
+      { $set: { 'sundayMonday.tasks.0': { text: 'X', completed: true, reopened: true, assigned: ['Ana'] } } },
+      { new: true }
+    );
+  });
+
   it('resuelve "domingo" contra sundayMonday.tasks, no schedule.domingo', async () => {
     LogisticsWeek.findOne.mockResolvedValue({
       weekId: 'week_3',

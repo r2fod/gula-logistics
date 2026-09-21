@@ -16,7 +16,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { pairShiftsFromEntries, isZombieShift } from '../data/shiftCalculations';
-import { getTaskListForDay, isTaskPast, TASK_COMPLETION_GRACE_MINUTES } from '../data/taskPlanning';
+import { getTaskListForDay, isTaskEffectivelyDone } from '../data/taskPlanning';
 
 export default function LiveMonitorPanel({
   workersList = [],
@@ -105,13 +105,10 @@ export default function LiveMonitorPanel({
 
     const matches = allMatches.filter(t => {
       if (typeof t !== 'object') return true; // Simple strings are assumed incomplete unless mapped to obj
-      if (t.completed) return false; // Explicitly marked as done
-      // isTaskPast compara contra la fecha REAL de la tarea en la semana
-      // activa (meta.dateRange) y respeta su targetDay; en lunes la lista
-      // de domingo/lunes vive bajo 'domingo' (mismo alias que arriba). Una
-      // tarea sin etiquetar cuenta como lunes: no se da por terminada el
-      // domingo aunque su hora ya haya pasado.
-      if (isTaskPast(activeWeekData, dayKey === 'lunes' ? 'domingo' : dayKey, t, currentTime, TASK_COMPLETION_GRACE_MINUTES)) return false; // Ya terminó (con margen)
+      // Hecha (marcada, o pasada su hora + margen y no desmarcada a propósito).
+      // En lunes la lista de domingo/lunes vive bajo 'domingo' (mismo alias que
+      // arriba); una tarea sin etiquetar cuenta como lunes.
+      if (isTaskEffectivelyDone(activeWeekData, dayKey === 'lunes' ? 'domingo' : dayKey, t, currentTime)) return false;
       return true;
     });
 

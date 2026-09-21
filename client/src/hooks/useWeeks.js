@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { logisticsData as BASE_DATA } from '../data/logisticsData';
 import { saveWeeksToAPI, patchTaskCompletionInAPI } from '../data/apiService';
-import { getTaskListForDay, buildTaskListPatch, getTaskPastStatus, ensureYearInDateRange, clearWeekCompletion, TASK_COMPLETION_GRACE_MINUTES } from '../data/taskPlanning';
+import { getTaskListForDay, buildTaskListPatch, getTaskPastStatus, isTaskEffectivelyDone, ensureYearInDateRange, clearWeekCompletion, TASK_COMPLETION_GRACE_MINUTES } from '../data/taskPlanning';
 
 const ALL_DAY_KEYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'domingo', 'sabado'];
 
@@ -75,19 +75,24 @@ export function useWeeks() {
     updateWeeks(newWeeks);
   };
 
+  // El clic actúa sobre lo que se VE (isTaskEffectivelyDone), no sobre el
+  // dato suelto: si la tarea sale hecha por su hora aunque no esté marcada,
+  // pulsarla la DESMARCA. Desmarcar deja `reopened: true` para que el reloj no
+  // la vuelva a marcar sola; marcarla lo quita.
   const toggleTask = (dayKey, taskIdx) => {
     const list = [...getTaskListForDay(activeWeek, dayKey)];
     const taskItem = list[taskIdx];
     if (taskItem === undefined) return;
-    const newCompleted = typeof taskItem === 'object' ? !taskItem.completed : true;
+    const newCompleted = !isTaskEffectivelyDone(activeWeek, dayKey, taskItem, new Date());
+    const reopened = !newCompleted;
     if (typeof taskItem === 'object') {
-      list[taskIdx] = { ...taskItem, completed: newCompleted };
+      list[taskIdx] = { ...taskItem, completed: newCompleted, reopened };
     } else {
-      list[taskIdx] = { text: taskItem, completed: newCompleted };
+      list[taskIdx] = { text: taskItem, completed: newCompleted, reopened };
     }
     applyLocalWeeksState({ ...allWeeks, [activeWeekId]: { ...activeWeek, ...buildTaskListPatch(activeWeek, dayKey, list) } });
     lastLocalEditRef.current = Date.now();
-    patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, newCompleted);
+    patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, newCompleted, reopened);
   };
 
   const markTaskCompleted = (dayKey, taskIdx) => {
@@ -96,9 +101,9 @@ export function useWeeks() {
     if (taskItem === undefined) return;
     if (typeof taskItem === 'object') {
       if (taskItem.completed) return;
-      list[taskIdx] = { ...taskItem, completed: true };
+      list[taskIdx] = { ...taskItem, completed: true, reopened: false };
     } else {
-      list[taskIdx] = { text: taskItem, completed: true };
+      list[taskIdx] = { text: taskItem, completed: true, reopened: false };
     }
     applyLocalWeeksState({ ...allWeeks, [activeWeekId]: { ...activeWeek, ...buildTaskListPatch(activeWeek, dayKey, list) } });
     // Igual que toggleTask: sin esto, el polling de 20s podía traer de
@@ -106,7 +111,7 @@ export function useWeeks() {
     // desmarcar la tarea que se acaba de completar (el mismo bug que ya
     // se arregló para el toggle manual, pero aquí faltaba).
     lastLocalEditRef.current = Date.now();
-    patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, true);
+    patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, true, false);
   };
 
   // Recorre TODAS las tareas de la semana activa (días normales, domingo/
@@ -124,12 +129,17 @@ export function useWeeks() {
   // Una tarea de la lista domingo/lunes sin `targetDay` se evalúa como lunes
   // (ver resolveTaskEvalDay). markTaskCompleted recibe el dayKey original
   // ('domingo'), que es donde de verdad vive guardada la tarea.
-  const autoCompletePastTasks = () => {
+  //
+  // No marca (1) una tarea que alguien DESMARCÓ a propósito (`reopened`), ni
+  // (2) una tarea "en proceso": `inProgressKeys` son las "dayKey:taskIndex" en
+  // las que hay alguien fichado ahora mismo (ver getInProgressTaskKeys).
+  const autoCompletePastTasks = (inProgressKeys = new Set()) => {
     const now = new Date();
     ALL_DAY_KEYS.forEach(dayKey => {
       const list = getTaskListForDay(activeWeek, dayKey);
       list.forEach((task, idx) => {
-        if (typeof task === 'object' && task !== null && task.completed) return;
+        if (typeof task === 'object' && task !== null && (task.completed || task.reopened)) return;
+        if (inProgressKeys.has(`${dayKey}:${idx}`)) return;
         if (getTaskPastStatus(activeWeek, dayKey, task, now, TASK_COMPLETION_GRACE_MINUTES) === true) {
           markTaskCompleted(dayKey, idx);
         }

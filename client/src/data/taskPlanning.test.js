@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getTaskListForDay, resolveTaskIndexByText, buildTaskListPatch, isTaskChronologicallyPast, isTaskTooEarlyToClockIn,
-  parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, getNextTaskStart, isTaskTooEarlyToStart,
+  parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, getNextTaskStart, isTaskTooEarlyToStart, isTaskEffectivelyDone,
 } from './taskPlanning';
 
 const weekData = {
@@ -435,5 +435,36 @@ describe('getNextTaskStart — tareas sin etiquetar domingo/lunes', () => {
     expect(hhmm(getNextTaskStart(SEMANA_ACTUAL, 'domingo', { ...sofa, targetDay: 'Lunes' }, at(2026, 9, 20, 10, 0)))).toBe('21 9:00');
     expect(getNextTaskStart(SEMANA_ACTUAL, 'domingo', { ...sofa, targetDay: 'Domingo' }, at(2026, 9, 21, 1, 0))).toBeNull();
     expect(getNextTaskStart(SEMANA_ACTUAL, 'domingo', sofa, at(2026, 9, 21, 12, 0))).toBeNull();
+  });
+});
+
+describe('isTaskEffectivelyDone — lo que se ve, lo que hace el clic y lo que se guarda', () => {
+  const generador = { text: 'Devolución Generador', timeFrame: '09:30 - 10:00', targetDay: 'Lunes', completed: false };
+
+  it('BUG evitado: a las 10:03 (captura) NO se ve hecha una tarea de 09:30-10:00: hasta las 10:45 (margen de 45 min)', () => {
+    expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'domingo', generador, at(2026, 9, 21, 10, 3))).toBe(false);
+    expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'domingo', generador, at(2026, 9, 21, 10, 44))).toBe(false);
+    expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'domingo', generador, at(2026, 9, 21, 10, 46))).toBe(true);
+  });
+
+  it('completed:true siempre está hecha', () => {
+    expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'domingo', { ...generador, completed: true }, at(2026, 9, 21, 6, 0))).toBe(true);
+  });
+
+  it('BUG evitado: una tarea desmarcada a propósito (reopened) NO vuelve a darse por hecha por la hora', () => {
+    const reabierta = { ...generador, reopened: true };
+    expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'domingo', reabierta, at(2026, 9, 21, 12, 0))).toBe(false);
+    // ...pero si alguien la marca, vale
+    expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'domingo', { ...reabierta, completed: true }, at(2026, 9, 21, 12, 0))).toBe(true);
+  });
+
+  it('texto plano y tareas sin horario no se dan por hechas por el reloj', () => {
+    expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'martes', 'texto', at(2026, 9, 25, 12, 0))).toBe(false);
+    expect(isTaskEffectivelyDone(SEMANA_ACTUAL, 'martes', { text: 'sin hora' }, at(2026, 9, 25, 12, 0))).toBe(false);
+  });
+
+  it('clearWeekCompletion también quita el desmarcado a mano', () => {
+    const w = { sundayMonday: { tasks: [{ text: 'a', completed: false, reopened: true }] } };
+    expect(clearWeekCompletion(w).sundayMonday.tasks[0]).toEqual({ text: 'a', completed: false });
   });
 });

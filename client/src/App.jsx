@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Share2,
   Check,
@@ -38,7 +38,7 @@ import {
   retryPendingClockEntries
 } from './data/apiService';
 import { initialBalancesData } from './data/balancesData';
-import { getActiveShiftForWorker } from './data/shiftCalculations';
+import { getActiveShiftForWorker, getInProgressTaskKeys } from './data/shiftCalculations';
 import { getTaskListForDay, buildTaskListPatch } from './data/taskPlanning';
 
 const DEFAULT_WORKERS_LIST = [
@@ -104,6 +104,13 @@ export default function App() {
     handleRestoreClockEntry,
     handleClearClockEntries
   } = useClockings(markTaskCompleted);
+
+  // Tareas en las que alguien está fichado ahora mismo: el reloj no las da por
+  // hechas mientras tanto ("en proceso"). Por ref, igual que arriba, porque el
+  // sondeo de 20s no se vuelve a montar.
+  const inProgressKeysRef = useRef(new Set());
+  const inProgressKeys = useMemo(() => getInProgressTaskKeys(activeClockEntries), [activeClockEntries]);
+  inProgressKeysRef.current = inProgressKeys;
 
 
   const [activeWorker, setActiveWorker] = useState(null);
@@ -259,7 +266,7 @@ export default function App() {
     // pasaron mientras la app estaba cerrada — no solo esperar al primer
     // tick del intervalo de 20s.
     if (getStoredAdminToken()) {
-      autoCompletePastTasksRef.current();
+      autoCompletePastTasksRef.current(inProgressKeysRef.current);
     }
     // En cuanto el móvil recupera cobertura, reintentar YA los fichajes
     // pendientes en vez de esperar hasta 20s al siguiente tick del
@@ -291,7 +298,7 @@ export default function App() {
       // sesión después de montar la app) para que no lo dispare cada
       // trabajador desde su propio móvil a la vez.
       if (getStoredAdminToken()) {
-        autoCompletePastTasksRef.current();
+        autoCompletePastTasksRef.current(inProgressKeysRef.current);
       }
     }, 20000);
     return () => {

@@ -5,6 +5,7 @@ import {
   pairShiftsFromEntries,
   aggregateShiftsByWorker,
   isZombieShift,
+  getInProgressTaskKeys,
 } from './shiftCalculations';
 
 // Helper para no repetir campos en cada fichaje de prueba.
@@ -283,5 +284,24 @@ describe('isZombieShift', () => {
     expect(isZombieShift(null)).toBe(false);
     expect(isZombieShift(undefined)).toBe(false);
     expect(isZombieShift({})).toBe(false); // sin timestamp
+  });
+});
+
+describe('getInProgressTaskKeys — tareas "en proceso"', () => {
+  const ahora = new Date('2026-09-20T18:00:00');
+
+  it('una tarea con alguien fichado ahora mismo está en proceso; una jornada general o un turno ya cerrado, no', () => {
+    const entradas = [
+      entry({ id: '1', workerName: 'Ana', type: 'entrada', timestamp: '2026-09-20T15:00:00', taskName: 'Recogida', taskRef: { dayKey: 'domingo', taskIndex: 0 } }),
+      entry({ id: '2', workerName: 'Luis', type: 'entrada', timestamp: '2026-09-20T15:00:00', taskName: 'JORNADA', taskRef: null }),
+      entry({ id: '3', workerName: 'Eva', type: 'entrada', timestamp: '2026-09-20T09:00:00', taskName: 'Limpieza', taskRef: { dayKey: 'domingo', taskIndex: 6 } }),
+      entry({ id: '4', workerName: 'Eva', type: 'salida', timestamp: '2026-09-20T13:00:00' }),
+    ];
+    expect([...getInProgressTaskKeys(entradas, ahora)]).toEqual(['domingo:0']);
+  });
+
+  it('un turno abierto olvidado desde hace más de 16 h no bloquea la tarea para siempre', () => {
+    const entradas = [entry({ id: '1', workerName: 'Ana', type: 'entrada', timestamp: '2026-09-19T08:00:00', taskName: 'Recogida', taskRef: { dayKey: 'domingo', taskIndex: 0 } })];
+    expect(getInProgressTaskKeys(entradas, ahora).size).toBe(0);
   });
 });

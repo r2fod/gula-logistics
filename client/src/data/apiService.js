@@ -414,15 +414,16 @@ export async function saveWeeksToAPI(weeksPayload) {
  * Marca/desmarca UNA tarea del planning como completada — sin necesitar
  * sesión de admin (a diferencia de saveWeeksToAPI). Es lo que usa el propio
  * trabajador al fichar salida de una tarea o al tocarla en su cuadrante;
- * el servidor solo permite tocar el campo `completed` de esa tarea, nunca
- * el resto del documento de la semana.
+ * el servidor solo permite tocar los campos `completed` y `reopened` de esa
+ * tarea, nunca el resto del documento de la semana.
  */
-export async function patchTaskCompletionInAPI(weekId, dayKey, taskIndex, completed) {
+export async function patchTaskCompletionInAPI(weekId, dayKey, taskIndex, completed, reopened) {
   try {
     const res = await fetch(`${API_BASE}/logistics/weeks/${weekId}/tasks`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dayKey, taskIndex, completed })
+      // `reopened` (opcional): true si alguien la desmarcó a propósito.
+      body: JSON.stringify(typeof reopened === 'boolean' ? { dayKey, taskIndex, completed, reopened } : { dayKey, taskIndex, completed })
     });
     if (res.ok) {
       return await res.json();

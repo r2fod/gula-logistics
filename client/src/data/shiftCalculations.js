@@ -268,3 +268,17 @@ export function aggregateShiftsByWorker(shifts, workersList = []) {
 
   return workerBalances;
 }
+
+// Claves "dayKey:taskIndex" de las tareas en las que ALGUIEN está fichado
+// ahora mismo (turno abierto con taskRef). Esas tareas están "en proceso":
+// el reloj no debe darlas por hechas aunque haya pasado su hora. Los turnos
+// abiertos que llevan demasiado tiempo (casi seguro olvidos) no cuentan.
+export function getInProgressTaskKeys(entries = [], now = new Date()) {
+  const keys = new Set();
+  const { activeShifts } = pairShiftsFromEntries(entries);
+  Object.values(activeShifts).forEach(shift => {
+    if (!shift?.taskRef || isZombieShift(shift, now)) return;
+    keys.add(`${shift.taskRef.dayKey}:${shift.taskRef.taskIndex}`);
+  });
+  return keys;
+}

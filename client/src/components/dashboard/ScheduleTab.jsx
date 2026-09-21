@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Users, Calendar, Clock, Check, Sparkles } from 'lucide-react';
-import { isTaskPast, getDayLabel } from '../../data/taskPlanning';
+import { isTaskEffectivelyDone, getDayLabel } from '../../data/taskPlanning';
 import TaskTextWithEvent from '../TaskTextWithEvent';
 
 export default function ScheduleTab({ activeWeekData, workersList, onToggleTask, onUpdateWeek }) {
@@ -56,9 +56,10 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
   };
 
   const renderDynamicTask = (task, idx, dayKey) => {
-    // El día de una tarea de flota es explícito (pickupDay/returnDay): en
-    // domingo/lunes se fija como targetDay para que no se trate como ambigua.
-    const isCompleted = task.completed || isTaskPast(activeWeekData, dayKey, { ...task, targetDay: dayKey }, currentTime);
+    // Las tareas de flota (recogida/devolución de camión) solo cuentan lo que
+    // marca su casilla: su clic cambia esa casilla, así que mostrar además "hecha
+    // por la hora" dejaba tachada una que no se podía desmarcar.
+    const isCompleted = !!task.completed;
     
     return (
       <li 
@@ -103,14 +104,13 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
     );
   };
 
-  // Tarea de la lista compartida domingo/lunes. isTaskPast usa el targetDay
+  // Tarea de la lista compartida domingo/lunes. isTaskEffectivelyDone usa el targetDay
   // de la tarea y, si no lo tiene, la evalúa como lunes (no se tacha el
   // domingo una tarea que puede ser del lunes).
   const renderSharedTask = (task, idx) => {
     const taskText = typeof task === 'object' ? task.text : task;
     const timeFrame = typeof task === 'object' ? task.timeFrame : null;
-    const manuallyCompleted = typeof task === 'object' ? !!task.completed : false;
-    const isCompleted = manuallyCompleted || isTaskPast(activeWeekData, 'domingo', task, currentTime);
+    const isCompleted = isTaskEffectivelyDone(activeWeekData, 'domingo', task, currentTime);
 
     const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
     const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
@@ -234,9 +234,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
               <ul className="space-y-2.5 text-xs text-slate-300">
                 {(day.tasks || []).map((task, idx) => {
                   const taskText = typeof task === 'object' ? task.text : task;
-                  const manuallyCompleted = typeof task === 'object' ? !!task.completed : false;
-                  
-                  const isCompleted = manuallyCompleted || isTaskPast(activeWeekData, key, task, currentTime);
+                  const isCompleted = isTaskEffectivelyDone(activeWeekData, key, task, currentTime);
                   
                   const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
                   const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
@@ -297,8 +295,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
             {(activeWeekData.saturdaySpecial.weddings || []).map((w, idx) => {
-              const manuallyCompleted = !!w.completed;
-              const isCompleted = manuallyCompleted || isTaskPast(activeWeekData, 'sabado', w, currentTime);
+              const isCompleted = isTaskEffectivelyDone(activeWeekData, 'sabado', w, currentTime);
               const wAssigned = w.assigned || [];
               const matchesFilter = !selectedWorkerFilter || wAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
 
