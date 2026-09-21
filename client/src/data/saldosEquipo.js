@@ -14,7 +14,7 @@ const fichaVacia = (worker) => ({
 });
 
 // Una ficha de Saldos por cada persona del equipo actual: la que ya existe
-// (aunque se llame "Persona2 Gula" y el equipo diga "Persona2") o una vacía.
+// (aunque se llame "Marta Gula" y el equipo diga "Marta") o una vacía.
 // Sin esta unión, quien tiene saldo real salía con +0,00 € y sin desglose.
 export function fusionarSaldosConEquipo(balancesData, workersList) {
   const fichas = balancesData?.workers || [];
@@ -24,9 +24,9 @@ export function fusionarSaldosConEquipo(balancesData, workersList) {
   };
 }
 
-// `datosPorNombre` está indexado por el nombre corto del equipo ("Persona2");
+// `datosPorNombre` está indexado por el nombre corto del equipo ("Marta");
 // devuelve la entrada de la persona cuya ficha se llama `nombreSaldo`
-// ("Persona2 Gula"), o null si no hay.
+// ("Marta Gula"), o null si no hay.
 export function buscarPorNombreDeSaldo(datosPorNombre, nombreSaldo) {
   if (!nombreSaldo || !datosPorNombre) return null;
   const clave = Object.keys(datosPorNombre).find((nombreEquipo) => coincideNombre(nombreEquipo, nombreSaldo));
