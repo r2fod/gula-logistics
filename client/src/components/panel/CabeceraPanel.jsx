@@ -33,7 +33,7 @@ export default function CabeceraPanel({
       {/* Fila superior: título y selector de semana */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 w-full">
         <div className="flex items-center gap-2.5 min-w-0 max-w-full flex-wrap sm:flex-nowrap">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 p-0.5 shadow-lg shadow-amber-500/20 shrink-0">
+          <div className="icono-camion w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 p-0.5 shadow-lg shadow-amber-500/20 shrink-0">
             <div className="w-full h-full bg-slate-950 rounded-[9px] flex items-center justify-center text-amber-400">
               <Truck className="w-4 h-4" />
             </div>
@@ -79,8 +79,10 @@ export default function CabeceraPanel({
             onChange={(e) => onSelectWeek(e.target.value)}
             tamano="2xs" texto="ambar" className="min-w-0 max-w-full flex-1 sm:flex-none sm:max-w-xs truncate"
           >
-            {Object.values(allWeeks).map((w) => (
-              <option key={w.id} value={w.id}>{w.name} ({w.meta?.dateRange}){esBorrador(w) ? ' — BORRADOR' : ''}</option>
+            {/* El valor es la CLAVE de la semana: la semana 3 no lleva campo `id`, y con `w.id` su
+                opción valía "undefined" y al elegirla se abría la semana de ejemplo. */}
+            {Object.entries(allWeeks).map(([id, w]) => (
+              <option key={id} value={id}>{w.name} ({w.meta?.dateRange}){esBorrador(w) ? ' — BORRADOR' : ''}</option>
             ))}
           </Selector>
           {nuevaSemana && <BotonAccion accion={nuevaSemana} variante="cabecera" />}

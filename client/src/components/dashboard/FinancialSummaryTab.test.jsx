@@ -84,6 +84,48 @@ describe('FinancialSummaryTab — periodo', () => {
   });
 });
 
+const semana4 = {
+  id: 'week_4', name: 'Semana 4',
+  meta: { dateRange: 'Del 22 al 27 de Septiembre de 2026', status: 'Operativa Activa' },
+  events: [], schedule: {}, saturdaySpecial: { weddings: [] }, sundayMonday: { tasks: [] },
+};
+
+describe('FinancialSummaryTab — sigue a la semana elegida', () => {
+  beforeEach(() => vi.useFakeTimers({ toFake: ['Date'] }));
+  afterEach(() => vi.useRealTimers());
+  const conSemanas = { week_3: semana3, week_4: semana4 };
+
+  it('al cambiar de semana arriba, el resumen enseña los números de esa semana', () => {
+    vi.setSystemTime(new Date(2026, 8, 30, 12, 0));
+    const { rerender } = render(<FinancialSummaryTab shifts={shifts} workersList={[]} allWeeks={conSemanas} activeWeekData={semana3} />);
+    expect(within(tarjeta('Horas registradas')).getByText('3,5 h')).toBeTruthy();
+    rerender(<FinancialSummaryTab shifts={shifts} workersList={[]} allWeeks={conSemanas} activeWeekData={semana4} />);
+    expect(screen.getByText(/Semana 4 · 22 sept – 28 sept 2026/)).toBeTruthy();
+    expect(within(tarjeta('Horas registradas')).getByText('0 h')).toBeTruthy();
+    rerender(<FinancialSummaryTab shifts={shifts} workersList={[]} allWeeks={conSemanas} activeWeekData={semana3} />);
+    expect(within(tarjeta('Horas registradas')).getByText('3,5 h')).toBeTruthy();
+  });
+
+  it('pulsar Semana vuelve a la semana elegida arriba aunque se haya ido a otra con las flechas', () => {
+    vi.setSystemTime(new Date(2026, 8, 30, 12, 0));
+    render(<FinancialSummaryTab shifts={shifts} workersList={[]} allWeeks={conSemanas} activeWeekData={semana3} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Periodo siguiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Periodo siguiente' }));
+    expect(screen.getByText(/29 sept – 5 oct 2026/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Semana' }));
+    expect(screen.getByText(/Semana 3 · 15 sept – 21 sept 2026/)).toBeTruthy();
+    expect(within(tarjeta('Horas registradas')).getByText('3,5 h')).toBeTruthy();
+  });
+
+  it('Mes y Año parten de la semana elegida, no de otra a la que se hubiera navegado', () => {
+    vi.setSystemTime(new Date(2026, 9, 20, 12, 0));
+    render(<FinancialSummaryTab shifts={shifts} workersList={[]} allWeeks={conSemanas} activeWeekData={semana3} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Periodo siguiente' })); // semana del 22
+    fireEvent.click(screen.getByRole('button', { name: 'Mes' }));
+    expect(screen.getByText(/Septiembre de 2026/)).toBeTruthy();
+  });
+});
+
 describe('FinancialSummaryTab — desglose y comparación', () => {
   beforeEach(() => vi.useFakeTimers({ toFake: ['Date'] }));
   afterEach(() => vi.useRealTimers());

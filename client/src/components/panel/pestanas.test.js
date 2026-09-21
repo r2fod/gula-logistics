@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { PESTANAS, pestanaDesdeUrl, guardarPestanaEnUrl } from './pestanas';
+import { PESTANAS, ORDEN_MOVIL, pestanaDesdeUrl, guardarPestanaEnUrl } from './pestanas';
 
 describe('pestanaDesdeUrl', () => {
   it('abre en tiempo real si no hay nada', () => {
@@ -62,7 +62,8 @@ describe('PESTANAS', () => {
     });
   });
 
-  it('la barra inferior del móvil enseña En Vivo, Cuadrante, Saldos y Grafo', () => {
-    expect(PESTANAS.filter((p) => p.etiquetaCorta).map((p) => p.id)).toEqual(['live', 'schedule', 'graph', 'balances']);
+  it('los atajos del móvil existen y tienen nombre corto', () => {
+    expect(ORDEN_MOVIL).toEqual(['live', 'schedule', 'balances', 'graph']);
+    ORDEN_MOVIL.forEach((id) => expect(PESTANAS.find((p) => p.id === id)?.corta).toBeTruthy());
   });
 });

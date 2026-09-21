@@ -3,10 +3,13 @@
 // controladas con tiempo. Nunca activa nada: un admin revisa el borrador y lo
 // acepta (ver el banner de PartnerDashboardView).
 import { generarBorrador, martesDeSemana, weekIdParaInicio, formatearRango } from './weekGenerator';
-import { parseWeekRange } from './taskPlanning';
+import { parseWeekRange, isWeekFinished } from './taskPlanning';
 
 const aIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const sumarDias = (d, n) => { const r = new Date(d.getFullYear(), d.getMonth(), d.getDate()); r.setDate(r.getDate() + n); return r; };
+
+// Cuántos días por delante puede empezar la semana siguiente para abrirla ya, cuando la actual ha terminado.
+const DIAS_PARA_ADELANTAR = 3;
 
 export const esBorrador = (semana) => semana?.meta?.status === 'Borrador';
 
@@ -28,16 +31,24 @@ export function semanasAAnticipar(semanas, hoy = new Date(), horizonte = 2) {
 
 // Semana que se abre por defecto (sin ?week= en el enlace): la NO borrador cuyo
 // rango contiene hoy (con su lunes de cola); si no hay, la última ya empezada.
+// Si esa semana ya ha TERMINADO del todo (isWeekFinished: p. ej. el lunes por la
+// tarde, con todas las tareas de la cola hechas) y la siguiente, aceptada, empieza
+// en los próximos días, se abre la siguiente: al refrescar el lunes por la noche no
+// se vuelve a la semana que ya pasó. Un borrador nunca cuenta.
 // null si no se puede decidir (el llamador conserva lo que tuviera).
 export function semanaPorDefecto(semanas, hoy = new Date()) {
   const hoyIso = aIso(hoy);
   const candidatas = Object.entries(semanas || {})
     .filter(([, w]) => !esBorrador(w))
-    .map(([id, w]) => ({ id: w.id || id, inicio: inicioDeSemana(w, hoy) }))
+    .map(([id, w]) => ({ id: w.id || id, semana: w, inicio: inicioDeSemana(w, hoy) }))
     .filter(c => c.inicio)
     .sort((a, b) => a.inicio - b.inicio);
   const contiene = candidatas.find(c => hoyIso >= aIso(c.inicio) && hoyIso <= aIso(sumarDias(c.inicio, 6)));
-  if (contiene) return contiene.id;
+  if (contiene) {
+    const siguiente = candidatas.find(c => c.inicio > contiene.inicio);
+    const empiezaPronto = siguiente && aIso(siguiente.inicio) <= aIso(sumarDias(hoy, DIAS_PARA_ADELANTAR));
+    return empiezaPronto && isWeekFinished(contiene.semana, hoy) ? siguiente.id : contiene.id;
+  }
   const empezadas = candidatas.filter(c => aIso(c.inicio) <= hoyIso);
   return empezadas.length ? empezadas[empezadas.length - 1].id : null;
 }

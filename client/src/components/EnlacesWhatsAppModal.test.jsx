@@ -24,7 +24,7 @@ afterEach(() => {
 });
 
 const pintar = (props = {}) =>
-  render(<EnlacesWhatsAppModal abierto onCerrar={() => {}} workersList={equipo} weekId="week_3" weekName="Semana 3" {...props} />);
+  render(<EnlacesWhatsAppModal abierto onCerrar={() => {}} workersList={equipo} {...props} />);
 
 describe('EnlacesWhatsAppModal', () => {
   it('cerrado no pinta nada', () => {
@@ -46,11 +46,11 @@ describe('EnlacesWhatsAppModal', () => {
     expect(screen.getByDisplayValue(/\?socias&token=abc$/)).toBeInTheDocument();
   });
 
-  it('"Abrir" abre la vista del trabajador en su semana', () => {
+  it('"Abrir" abre su enlace fijo, sin semana', () => {
     const abrir = vi.spyOn(window, 'open').mockImplementation(() => null);
     pintar();
     fireEvent.click(screen.getAllByRole('button', { name: /Abrir/ })[0]);
-    expect(abrir).toHaveBeenCalledWith(expect.stringContaining('?week=week_3&worker=Ana'), '_blank');
+    expect(abrir).toHaveBeenCalledWith(expect.stringMatching(/\?worker=Ana$/), '_blank');
   });
 
   it('el botón de WhatsApp de un trabajador abre WhatsApp con su enlace', () => {
@@ -60,7 +60,9 @@ describe('EnlacesWhatsAppModal', () => {
     const url = abrir.mock.calls[0][0];
     expect(url).toMatch(/^https:\/\/api\.whatsapp\.com\/send\?text=/);
     expect(decodeURIComponent(url)).toContain('Hola Ana');
-    expect(decodeURIComponent(url)).toContain('Semana 3');
+    expect(decodeURIComponent(url)).toContain('?worker=Ana');
+    expect(decodeURIComponent(url)).not.toContain('week');
+    expect(decodeURIComponent(url)).toContain('siempre el mismo');
   });
 
   it('la X cierra', () => {

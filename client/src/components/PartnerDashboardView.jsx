@@ -5,6 +5,7 @@ import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../data/shiftCal
 import { fusionarSaldosConEquipo, buscarPorNombreDeSaldo } from '../data/saldosEquipo';
 import { enlaceSocias } from '../data/enlaces';
 import { esBorrador } from '../data/anticipacion';
+import { tareasDeLaVispera, fichadosDelDia } from '../data/vispera';
 import { useCopiado } from '../hooks/useCopiado';
 import { useAvisarCambios } from '../hooks/useAvisarCambios';
 import TeamBalancesTab from './dashboard/TeamBalancesTab';
@@ -19,8 +20,7 @@ import AdminSettingsModal from './AdminSettingsModal';
 import SemanaBorradorBanner from './SemanaBorradorBanner';
 import CabeceraPanel from './panel/CabeceraPanel';
 import MenuLateral from './panel/MenuLateral';
-import BarraPestanas from './panel/BarraPestanas';
-import NavegacionMovil from './panel/NavegacionMovil';
+import { BarraPestanas, BarraInferior } from './panel/NavegacionPrincipal';
 import AvisarCambiosModal from './panel/AvisarCambiosModal';
 import { crearAcciones } from './panel/acciones';
 import { pestanaDesdeUrl, guardarPestanaEnUrl } from './panel/pestanas';
@@ -149,6 +149,12 @@ export default function PartnerDashboardView({
   // fichajes están indexados por el nombre corto del equipo ("Marta").
   const findWorkerHours = (nombreSaldo) => buscarPorNombreDeSaldo(workerBalances, nombreSaldo);
 
+  // El lunes anterior a la semana abierta: sus tareas y quién fichó ese día.
+  const vispera = useMemo(() => {
+    const v = tareasDeLaVispera(allWeeks, activeWeekData);
+    return v ? { ...v, fichados: fichadosDelDia(paidShifts, v.fecha) } : null;
+  }, [allWeeks, activeWeekData, paidShifts]);
+
   const actualizarSemana = (weekId, partialUpdate) => {
     if (onUpdateWeek) onUpdateWeek({ ...activeWeekData, ...partialUpdate });
   };
@@ -206,7 +212,7 @@ export default function PartnerDashboardView({
         />
       )}
 
-      <BarraPestanas activa={activeTab} onSeleccionar={handleTabClick} contadores={{ fichajes: clockEntries.length }} />
+      <BarraPestanas activa={activeTab} onSeleccionar={handleTabClick} contadorFichajes={clockEntries.length} />
 
       {activeTab === 'balances' && (
         <TeamBalancesTab
@@ -265,6 +271,7 @@ export default function PartnerDashboardView({
           workersList={workersList}
           onToggleTask={onToggleTask}
           onUpdateWeek={actualizarSemana}
+          vispera={vispera}
         />
       )}
 
@@ -296,7 +303,7 @@ export default function PartnerDashboardView({
         onDesbloquear={handleDesbloquear}
       />
 
-      <NavegacionMovil activa={activeTab} onSeleccionar={handleTabClick} onAbrirMenu={() => setIsMobileDrawerOpen(true)} />
+      <BarraInferior activa={activeTab} onSeleccionar={handleTabClick} onAbrirMenu={() => setIsMobileDrawerOpen(true)} />
 
       <AvisarCambiosModal
         abierto={aviso.abierto}

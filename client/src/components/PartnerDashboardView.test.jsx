@@ -54,21 +54,21 @@ describe('PartnerDashboardView', () => {
     pintar();
     expect(screen.getByRole('heading', { name: /Panel de Control Gula Logística/ })).toBeInTheDocument();
     expect(screen.getAllByRole('tab')).toHaveLength(7);
-    expect(screen.getByRole('tab', { name: 'Actividad en Tiempo Real' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Actividad en tiempo real' })).toHaveAttribute('aria-selected', 'true');
     await waitFor(() => expect(screen.getByText(/Monitor de Actividad en Tiempo Real/)).toBeInTheDocument());
   });
 
   it('cambiar de pestaña la muestra y la deja en la URL', async () => {
     pintar();
-    fireEvent.click(screen.getByRole('tab', { name: 'Flota & Bodas' }));
-    expect(screen.getByRole('tab', { name: 'Flota & Bodas' })).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(screen.getByRole('tab', { name: 'Flota y bodas' }));
+    expect(screen.getByRole('tab', { name: 'Flota y bodas' })).toHaveAttribute('aria-selected', 'true');
     expect(new URLSearchParams(window.location.search).get('tab')).toBe('logistics');
   });
 
   it('respeta la pestaña que pide la URL', () => {
     window.history.replaceState({}, '', '/gula-logistics/?tab=grafo');
     pintar();
-    expect(screen.getByRole('tab', { name: 'Grafo & Flujo' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Grafo y flujo' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('las acciones de la barra llaman a sus funciones', () => {
@@ -96,7 +96,7 @@ describe('PartnerDashboardView', () => {
     const props = pintar();
     fireEvent.click(screen.getByRole('button', { name: 'Abrir Menú' }));
     const menu = screen.getByRole('dialog', { name: 'Menú de Gestión' });
-    fireEvent.click(within(menu).getByRole('button', { name: 'Nóminas y Horas Extra' }));
+    fireEvent.click(within(menu).getByRole('button', { name: 'Nóminas y horas extra' }));
     expect(props.onOpenPayroll).toHaveBeenCalled();
     expect(screen.queryByRole('dialog', { name: 'Menú de Gestión' })).toBeNull();
   });

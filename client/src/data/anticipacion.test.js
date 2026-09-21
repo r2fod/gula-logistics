@@ -33,6 +33,38 @@ describe('semanaPorDefecto', () => {
     expect(semanaPorDefecto(aceptada, new Date(2026, 8, 23))).toBe('b');
     expect(semanaPorDefecto(aceptada, new Date(2026, 8, 28))).toBe('b'); // lunes de cola de la 4
   });
+  describe('cuando la semana en curso ya ha terminado (lunes de cola)', () => {
+    const conCola = (dateRange, status) => ({
+      ...semana('week_3', 'Semana 3', dateRange, status),
+      schedule: {},
+      sundayMonday: { tasks: [{ text: 'Devolución', timeFrame: '11:30-12:30', targetDay: 'Lunes', assigned: ['Ana'] }] },
+    });
+    const dosSemanas = (status4 = 'Operativa Activa') => ({ week_3: conCola('Del 15 al 20 de Septiembre de 2026'), b: semana('b', 'Semana 4', 'Del 22 al 27 de Septiembre de 2026', status4) });
+
+    it('BUG evitado: el lunes por la noche, con la semana 3 terminada, al refrescar se abre la semana 4 (no la 3)', () => {
+      expect(semanaPorDefecto(dosSemanas(), new Date(2026, 8, 21, 20, 27))).toBe('b');
+    });
+
+    it('el lunes por la mañana, con tareas de la cola aún por hacer, sigue siendo la semana 3', () => {
+      expect(semanaPorDefecto(dosSemanas(), new Date(2026, 8, 21, 10, 0))).toBe('week_3');
+      expect(semanaPorDefecto(dosSemanas(), new Date(2026, 8, 21, 13, 0))).toBe('week_3'); // termina 12:30 + 45 min
+      expect(semanaPorDefecto(dosSemanas(), new Date(2026, 8, 21, 13, 20))).toBe('b');
+    });
+
+    it('un domingo (semana aún en curso) nunca salta a la siguiente', () => {
+      expect(semanaPorDefecto(dosSemanas(), new Date(2026, 8, 20, 23, 0))).toBe('week_3');
+    });
+
+    it('si la siguiente es un borrador o no existe, se queda en la que acaba de terminar', () => {
+      expect(semanaPorDefecto(dosSemanas('Borrador'), new Date(2026, 8, 21, 20, 0))).toBe('week_3');
+      expect(semanaPorDefecto({ week_3: dosSemanas().week_3 }, new Date(2026, 8, 21, 20, 0))).toBe('week_3');
+    });
+
+    it('si la siguiente empieza dentro de más de 3 días, no se adelanta', () => {
+      const lejana = { week_3: conCola('Del 15 al 20 de Septiembre de 2026'), c: semana('c', 'Semana 6', 'Del 6 al 11 de Octubre de 2026') };
+      expect(semanaPorDefecto(lejana, new Date(2026, 8, 21, 20, 0))).toBe('week_3');
+    });
+  });
   it('sin semanas legibles devuelve null (se conserva la actual)', () => {
     expect(semanaPorDefecto({ a: semana('a', 'X', 'fechas raras') }, LUNES_21)).toBeNull();
   });

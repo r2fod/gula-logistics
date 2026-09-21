@@ -1,9 +1,21 @@
-import React from 'react';
-import { Lock, Eye, Plus, Clock, Edit3, Trash2 } from 'lucide-react';
-import { fechaDeFichaje, horaDeFichaje } from '../../data/fichajes';
-import Tarjeta from '../ui/Tarjeta';
-import EstadoVacio from '../ui/EstadoVacio';
+import React, { useMemo, useState } from 'react';
+import { ClipboardList, Eye, Plus, Lock, SearchX, TriangleAlert, Timer, UserCheck } from 'lucide-react';
+import KpiCard from '../ui/KpiCard';
+import BarraFiltros from './fichajes/BarraFiltros';
+import GrupoDia from './fichajes/GrupoDia';
+import FilaFichaje, { PLANTILLA_FILA } from './fichajes/FilaFichaje';
+import { pairShiftsFromEntries, isZombieShift } from '../../data/shiftCalculations';
+import { filtrarFichajes, agruparPorDia, turnosPorSalida, contarPorTipo, personasDe, hayFiltros, claveDia } from '../../data/fichajesAgrupados';
+import { formatearHoras, formatearNumero } from '../../data/formatoFinanciero';
+import { formatTimeShort, formatDuration } from '../../utils/dateUtils';
+import { useAhora } from '../../hooks/useAhora';
 
+const PASO_FILA = 25; // ms entre fila y fila al aparecer
+const MAX_RETRASO = 400; // las listas largas no se hacen esperar
+
+// Historial de fichajes: resumen, quién está fichado ahora, filtros y los
+// fichajes por día (plegables), con cuánto duró y costó cada turno. Los datos
+// vienen ya filtrados/agrupados por data/fichajesAgrupados.js.
 export default function FichajesTab({
   clockEntries,
   adminUnlocked,
@@ -12,185 +24,173 @@ export default function FichajesTab({
   handleOpenEditEntry,
   onDeleteClockEntry
 }) {
-  return (
-    <Tarjeta variante="panel" className="p-6 space-y-5 animate-fadeIn">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Lock className="w-5 h-5 text-amber-400" />
-            <h3 className="text-xl font-extrabold text-white font-['Outfit']">
-              Historial de Fichajes Registrados
-            </h3>
-            {adminUnlocked ? (
-              <span className="px-2.5 py-0.5 text-[10px] font-extrabold bg-amber-500 text-slate-950 rounded-full">
-                CONTROL ADMINISTRATIVO
-              </span>
-            ) : (
-              <span className="px-2.5 py-0.5 text-[10px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full flex items-center gap-1">
-                <Eye className="w-3 h-3 text-blue-400" />
-                <span>MODO SOLO LECTURA (SOCIAS)</span>
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-slate-400 mt-1">
-            {adminUnlocked 
-              ? 'Como Administrador autorizado, puedes editar la fecha/hora o eliminar fichajes.' 
-              : 'Fichajes inmutables registrados por los trabajadores. Los datos están protegidos contra edición accidental.'}
-          </p>
-        </div>
+  const ahora = useAhora();
+  const [filtros, setFiltros] = useState({ consulta: '', tipo: 'todos', persona: 'todas' });
+  const [manual, setManual] = useState({}); // días que el usuario ha abierto o cerrado a mano
 
+  const cambiar = (parcial) => setFiltros(f => ({ ...f, ...parcial }));
+  const filtrando = hayFiltros(filtros);
+
+  const { shifts, activeShifts } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
+  const porSalida = useMemo(() => turnosPorSalida(shifts), [shifts]);
+  const visibles = useMemo(() => filtrarFichajes(clockEntries, filtros), [clockEntries, filtros]);
+  const grupos = useMemo(() => agruparPorDia(visibles, shifts), [visibles, shifts]);
+  const cuentas = useMemo(() => contarPorTipo(clockEntries), [clockEntries]);
+  const personas = useMemo(() => personasDe(clockEntries), [clockEntries]);
+
+  const enTurno = Object.values(activeShifts);
+  const idsEnCurso = new Set(enTurno.map(e => e.id));
+  const totalHoras = shifts.reduce((acc, s) => acc + s.durationHours, 0);
+  const hoy = claveDia({ timestamp: ahora.toISOString() });
+  const ayer = claveDia({ timestamp: new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - 1, 12).toISOString() });
+
+  // Por defecto solo el día más reciente está abierto; al filtrar se abren todos
+  // los que tengan resultados. Lo que el usuario abra o cierre a mano manda.
+  const estaAbierto = (g, i) => manual[g.clave] ?? (filtrando || i === 0);
+  const todosAbiertos = grupos.length > 0 && grupos.every(estaAbierto);
+  const alternarTodos = () => setManual(Object.fromEntries(grupos.map(g => [g.clave, !todosAbiertos])));
+
+  const perfil = (nombre) => workersList.find(w => w.name === nombre);
+  const eliminar = (entrada) => {
+    if (window.confirm('¿Estás seguro de que quieres borrar este fichaje?') && onDeleteClockEntry) onDeleteClockEntry(entrada.id);
+  };
+
+  return (
+    <div className="space-y-4 sm:space-y-6 animate-fadeIn">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400">
+            <ClipboardList className="h-5 w-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-lg font-extrabold text-white sm:text-xl">Historial de fichajes</h3>
+              {adminUnlocked ? (
+                <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-extrabold text-slate-950">CONTROL ADMINISTRATIVO</span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/20 px-2.5 py-0.5 text-[10px] font-extrabold text-blue-300">
+                  <Eye className="h-3 w-3" aria-hidden="true" /> SOLO LECTURA
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              {adminUnlocked
+                ? 'Como administrador puedes editar la fecha y la hora o eliminar fichajes.'
+                : 'Fichajes registrados por los trabajadores, protegidos contra edición accidental.'}
+            </p>
+          </div>
+        </div>
         {adminUnlocked ? (
           <button
+            type="button"
             onClick={handleOpenCreateEntry}
-            className="py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs flex items-center space-x-2 shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-extrabold text-slate-950 shadow-lg shadow-amber-500/20 transition-all hover:bg-amber-400 active:scale-95"
           >
-            <Plus className="w-4 h-4" />
-            <span>+ Añadir Fichaje Manual (Admin)</span>
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            <span>Añadir fichaje manual</span>
           </button>
         ) : (
-          <span className="text-xs text-slate-400 font-semibold bg-slate-950 px-3.5 py-2 rounded-xl border border-slate-800 flex items-center space-x-1.5">
-            <Lock className="w-3.5 h-3.5 text-amber-400" />
-            <span>Fichajes Inmutables (Protegidos)</span>
+          <span className="inline-flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-950 px-3.5 py-2 text-xs font-semibold text-slate-400">
+            <Lock className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
+            <span>Fichajes protegidos</span>
           </span>
         )}
       </div>
 
-      {clockEntries.length === 0 ? (
-        <EstadoVacio
-          icono={Clock}
-          titulo="No hay fichajes registrados en el sistema."
-          detalle="Los fichajes realizados por los trabajadores aparecerán aquí automáticamente."
-          tituloDestacado
-          className="py-12 bg-slate-950/60"
-        />
-      ) : (() => {
-        const byDay = {};
-        const sortedEntries = [...clockEntries].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        
-        sortedEntries.forEach(e => {
-          const day = fechaDeFichaje(e) || 'Sin Fecha';
-          if (!byDay[day]) byDay[day] = [];
-          byDay[day].push(e);
-        });
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+        <KpiCard titulo="Fichajes" valor={clockEntries.length} formato={(n) => formatearNumero(n, 0)} icono={ClipboardList} color="amber" pie={`${personas.length} ${personas.length === 1 ? 'persona' : 'personas'}`} retraso={60} />
+        <KpiCard titulo="Horas fichadas" valor={totalHoras} formato={formatearHoras} icono={Timer} color="emerald" pie={`${shifts.length} ${shifts.length === 1 ? 'turno cerrado' : 'turnos cerrados'}`} retraso={120} />
+        <KpiCard titulo="En turno ahora" valor={enTurno.length} formato={(n) => formatearNumero(n, 0)} icono={UserCheck} color="sky" pie={enTurno.length ? 'Con la entrada abierta' : 'Nadie fichado'} retraso={180} className="col-span-2 sm:col-span-1" />
+      </div>
 
-        const orderedDays = Object.keys(byDay).sort((a, b) => {
-          const dateA = new Date(a.split('/').reverse().join('-'));
-          const dateB = new Date(b.split('/').reverse().join('-'));
-          return dateB - dateA; 
-        });
-
-        const groupedEntries = orderedDays.map(day => ({ name: day, entries: byDay[day] }));
-
-        return (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
-                <th className="py-3.5 px-4">Fecha & Hora</th>
-                <th className="py-3.5 px-4">Trabajador</th>
-                <th className="py-3.5 px-4">Tipo</th>
-                <th className="py-3.5 px-4">Tarea / Concepto</th>
-                <th className="py-3.5 px-4">Tarifa (€/h)</th>
-                <th className="py-3.5 px-4">Estado Seguridad</th>
-                {adminUnlocked && <th className="py-3.5 px-4 text-center">Acciones Admin</th>}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {groupedEntries.map(({ name, entries }) => {
-                return (
-                  <React.Fragment key={name}>
-                    <tr className="bg-slate-950/80">
-                      <td colSpan={adminUnlocked ? 7 : 6} className="py-2 px-4">
-                        <span className="inline-flex items-center gap-2 text-xs font-extrabold text-amber-300">
-                          <span className="text-base">📅</span>
-                          <span>{name}</span>
-                          <span className="text-[10px] font-semibold text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-800">
-                            {entries.length} {entries.length === 1 ? 'fichaje' : 'fichajes'}
-                          </span>
-                        </span>
-                      </td>
-                    </tr>
-                    {entries.map((entry) => {
-                      const profile = workersList.find(w => w.name === entry.workerName);
-                      return (
-                <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
-                  <td className="py-3.5 px-4 font-mono text-slate-200">
-                    <div className="font-bold text-white">
-                      {horaDeFichaje(entry)}
-                    </div>
-                    <div className="text-[10px] text-slate-500">
-                          {fechaDeFichaje(entry)}
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{profile?.avatar || '👤'}</span>
-                      <span className="font-bold text-slate-200">{entry.workerName || entry.worker || entry.name || 'Desconocido'}</span>
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-4">
-                    {entry.type === 'entrada' ? (
-                      <span className="px-2.5 py-1 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold inline-flex items-center space-x-1">
-                        <span>🟢 ENTRADA</span>
-                      </span>
-                    ) : entry.type === 'fichaje' ? (
-                      <span className="px-2.5 py-1 rounded-full text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/30 font-bold inline-flex items-center space-x-1">
-                        <span>☑️ CHECK</span>
-                      </span>
-                    ) : (
-                      <span className="px-2.5 py-1 rounded-full text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold inline-flex items-center space-x-1">
-                        <span>🔴 SALIDA</span>
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3.5 px-4 text-slate-300 font-medium">
-                    {entry.taskName || entry.note || '—'}
-                  </td>
-                  <td className="py-3.5 px-4 font-bold text-amber-400 font-mono">
-                    {entry.rate || 10} €/h
-                  </td>
-                  <td className="py-3.5 px-4">
-                    <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 inline-flex items-center space-x-1">
-                      <Lock className="w-3 h-3 text-amber-400" />
-                      <span>Registrado</span>
-                    </span>
-                  </td>
-                  {adminUnlocked && (
-                    <td className="py-3.5 px-4 text-center">
-                      <div className="flex items-center justify-center space-x-2">
-                        <button
-                          onClick={() => handleOpenEditEntry(entry)}
-                          className="px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 text-xs font-bold flex items-center space-x-1.5 transition-all"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                          <span>Editar</span>
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            if (window.confirm('¿Estás seguro de que quieres borrar este fichaje?')) {
-                              if (onDeleteClockEntry) onDeleteClockEntry(entry.id);
-                            }
-                          }}
-                          className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all"
-                          title="Eliminar Fichaje (Admin)"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  )}
-                </tr>
-                      );
-                    })}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+      {enTurno.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 px-3.5 py-3 sm:px-5 animate-aparecer motion-reduce:animate-none">
+          <span className="mr-1 text-[11px] font-extrabold uppercase tracking-wider text-emerald-300">En turno ahora</span>
+          {enTurno.map(e => {
+            const olvidada = isZombieShift(e, ahora);
+            return (
+              <span
+                key={e.id}
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${olvidada ? 'border-amber-500/40 bg-amber-500/10 text-amber-200' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100'}`}
+              >
+                {olvidada ? (
+                  <TriangleAlert className="h-3.5 w-3.5 text-amber-400" aria-hidden="true" />
+                ) : (
+                  <span className="relative flex h-2 w-2" aria-hidden="true">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                  </span>
+                )}
+                <span aria-hidden="true">{perfil(e.workerName)?.avatar || '👤'}</span>
+                <span className="font-bold">{e.workerName}</span>
+                <span className="tabular-nums opacity-80">desde las {formatTimeShort(e.timestamp)} · {formatDuration(ahora - new Date(e.timestamp))}</span>
+                {olvidada && <span className="font-semibold">¿olvidó fichar la salida?</span>}
+              </span>
+            );
+          })}
         </div>
-        );
-      })()}
-    </Tarjeta>
+      )}
+
+      {clockEntries.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900 px-4 py-14 text-center">
+          <ClipboardList className="mx-auto h-9 w-9 animate-flotar text-slate-600" aria-hidden="true" />
+          <p className="mt-3 text-sm font-semibold text-slate-300">No hay fichajes registrados en el sistema.</p>
+          <p className="mt-1 text-xs text-slate-500">Los fichajes de los trabajadores aparecerán aquí automáticamente.</p>
+        </div>
+      ) : (
+        <>
+          <BarraFiltros
+            consulta={filtros.consulta} onConsulta={(consulta) => cambiar({ consulta })}
+            tipo={filtros.tipo} onTipo={(tipo) => cambiar({ tipo })}
+            persona={filtros.persona} onPersona={(persona) => cambiar({ persona })}
+            personas={personas} cuentas={cuentas}
+            hayFiltros={filtrando} onLimpiar={() => setFiltros({ consulta: '', tipo: 'todos', persona: 'todas' })}
+            todosAbiertos={todosAbiertos} onAlternarTodos={alternarTodos}
+          />
+
+          {grupos.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900 px-4 py-12 text-center">
+              <SearchX className="mx-auto h-8 w-8 text-slate-600" aria-hidden="true" />
+              <p className="mt-3 text-sm font-semibold text-slate-300">Ningún fichaje coincide con los filtros.</p>
+              <button type="button" onClick={() => setFiltros({ consulta: '', tipo: 'todos', persona: 'todas' })} className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs font-bold text-amber-400 hover:bg-amber-500/20">
+                Quitar filtros
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className={`hidden gap-x-3 px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 md:grid ${adminUnlocked ? PLANTILLA_FILA.admin : PLANTILLA_FILA.lectura}`} aria-hidden="true">
+                <span>Hora</span><span>Tipo</span><span>Trabajador</span><span>Tarea / concepto</span><span>Tarifa</span>{adminUnlocked && <span className="text-right">Acciones</span>}
+              </div>
+              {grupos.map((g, i) => (
+                <GrupoDia
+                  key={g.clave}
+                  grupo={g}
+                  etiqueta={g.clave === hoy ? 'Hoy' : g.clave === ayer ? 'Ayer' : null}
+                  abierto={estaAbierto(g, i)}
+                  onAlternar={() => setManual(m => ({ ...m, [g.clave]: !estaAbierto(g, i) }))}
+                  retraso={Math.min(i * 60, MAX_RETRASO)}
+                >
+                  <ul>
+                    {g.entradas.map((e, j) => (
+                      <FilaFichaje
+                        key={e.id}
+                        entrada={e}
+                        avatar={perfil(e.workerName)?.avatar}
+                        turno={e.type === 'salida' ? porSalida[e.id] : null}
+                        enCurso={e.type === 'entrada' && idsEnCurso.has(e.id)}
+                        admin={adminUnlocked}
+                        onEditar={handleOpenEditEntry}
+                        onEliminar={eliminar}
+                        retraso={Math.min(j * PASO_FILA, MAX_RETRASO)}
+                      />
+                    ))}
+                  </ul>
+                </GrupoDia>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }
