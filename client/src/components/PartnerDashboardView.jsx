@@ -52,7 +52,7 @@ import { parseEventAndTask } from '../data/eventNaming';
 import { esBorrador } from '../data/anticipacion';
 import SemanaBorradorBanner from './SemanaBorradorBanner';
 import { BarraPestanas, BarraInferior } from './dashboard/NavegacionPrincipal';
-import { tareasDeLaVispera } from '../data/vispera';
+import { tareasDeLaVispera, fichadosDelDia } from '../data/vispera';
 
 export default function PartnerDashboardView({ 
   activeWeekData, 
@@ -264,8 +264,11 @@ export default function PartnerDashboardView({
   // un modal, etc.), aunque no hubiera ni un fichaje nuevo.
   const { shifts: paidShifts } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
   const workerBalances = useMemo(() => aggregateShiftsByWorker(paidShifts, workersList), [paidShifts, workersList]);
-  // El lunes anterior a la semana abierta, con los preparativos que sirven a sus eventos.
-  const vispera = useMemo(() => tareasDeLaVispera(allWeeks, activeWeekData), [allWeeks, activeWeekData]);
+  // El lunes anterior a la semana abierta: sus tareas y quién fichó ese día.
+  const vispera = useMemo(() => {
+    const v = tareasDeLaVispera(allWeeks, activeWeekData);
+    return v ? { ...v, fichados: fichadosDelDia(paidShifts, v.fecha) } : null;
+  }, [allWeeks, activeWeekData, paidShifts]);
 
   // Los totales y el desglose por evento del Resumen Financiero los calcula su
   // pestaña, porque dependen del periodo elegido (semana, mes, año o todo).
