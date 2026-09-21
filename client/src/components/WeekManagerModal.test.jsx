@@ -78,3 +78,41 @@ describe('WeekManagerModal — bodas y eventos por día', () => {
     expect(options).toEqual(['Martes 22', 'Miércoles 23', 'Jueves 24', 'Viernes 25', 'Sábado 26', 'Domingo 27', 'Lunes 28']);
   });
 });
+
+describe('WeekManagerModal — clave de Gemini y errores', () => {
+  const rellenar = () => {
+    fireEvent.change(screen.getByPlaceholderText('ej. Semana 4'), { target: { value: 'Semana 4' } });
+    fireEvent.change(screen.getByPlaceholderText('ej. Del 22 al 27 de Septiembre'), { target: { value: 'Del 22 al 27 de septiembre' } });
+  };
+
+  it('sin clave guardada pide la clave, y si falla la generación NO ofrece crear la semana', async () => {
+    generate.mockResolvedValue({ generatedJson: null, errorMsg: 'Falta la clave de Gemini en este dispositivo. No se ha creado nada.' });
+    renderModal();
+    expect(screen.getByLabelText(/Clave de Gemini/)).toBeInTheDocument();
+    rellenar();
+    fireEvent.click(screen.getByRole('button', { name: /Generar Planificación Inteligente/ }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Falta la clave de Gemini');
+    expect(screen.queryByRole('button', { name: /Crear la Semana con esta Planificación/ })).not.toBeInTheDocument();
+  });
+
+  it('la clave pegada se guarda en este navegador y se manda al generar', async () => {
+    const setItem = vi.fn();
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem, removeItem: () => {} });
+    renderModal();
+    rellenar();
+    fireEvent.change(screen.getByLabelText(/Clave de Gemini/), { target: { value: ' CLAVE-DE-PRUEBA ' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar Planificación Inteligente/ }));
+
+    await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
+    expect(generate.mock.calls[0][0].apiKey).toBe(' CLAVE-DE-PRUEBA ');
+    expect(setItem).toHaveBeenCalledWith('gula_gemini_api_key', 'CLAVE-DE-PRUEBA');
+  });
+
+  it('con una clave ya guardada no enseña el campo, solo que hay clave', () => {
+    vi.stubGlobal('localStorage', { getItem: () => 'CLAVE', setItem: () => {}, removeItem: () => {} });
+    renderModal();
+    expect(screen.queryByLabelText(/Clave de Gemini/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Clave de Gemini guardada/)).toBeInTheDocument();
+  });
+});

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, Plus, X, Copy, Sparkles, RefreshCw, AlertCircle, Check, Truck, Users, PartyPopper, Trash2 } from 'lucide-react';
 import { generateScheduleWithGemini, buildWeekPrompt, WEEK_EVENT_DAYS, WEEK_EVENT_KINDS, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
@@ -20,12 +20,22 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
   // Bodas y eventos de la semana, uno por fila: { id, day, kind, place, time }.
   const [events, setEvents] = useState([]);
   const [extraNotes, setExtraNotes] = useState('');
-  const [apiKey] = useState(() => localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '');
+  // La clave de Gemini se guarda solo en este navegador (nunca en el código):
+  // cada móvil/ordenador la necesita pegada una vez. Sin ella no se puede
+  // generar (antes se enseñaba una demo con datos de otra semana).
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '');
+  const [showKeyInput, setShowKeyInput] = useState(() => !localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY));
+  const errorRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [generatedJson, setGeneratedJson] = useState(null);
 
   useBodyScrollLock(isOpen);
+
+  // El aviso sale debajo de los botones: en móvil quedaba fuera de pantalla.
+  useEffect(() => {
+    if (errorMsg) errorRef.current?.scrollIntoView?.({ block: 'nearest' });
+  }, [errorMsg]);
 
   if (!isOpen) return null;
 
@@ -77,6 +87,9 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
 
   const handleGenerate = async () => {
     if (!weekName.trim() || !dateRange.trim()) return;
+    if (apiKey.trim()) {
+      try { localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, apiKey.trim()); } catch { /* sin almacenamiento: se usa solo esta vez */ }
+    }
     setLoading(true);
     setErrorMsg('');
     setGeneratedJson(null);
@@ -316,6 +329,33 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
             />
           </div>
 
+          <div>
+            {showKeyInput ? (
+              <>
+                <label htmlFor="gemini-key" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                  Clave de Gemini (necesaria para generar)
+                </label>
+                <input
+                  id="gemini-key"
+                  type="password"
+                  autoComplete="off"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="AIzaSy..."
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500/60"
+                />
+                <p className="mt-1.5 text-[11px] text-slate-500">
+                  Se guarda solo en este navegador. Si no la tienes, se crea gratis en aistudio.google.com/apikey.
+                </p>
+              </>
+            ) : (
+              <p className="text-[11px] text-emerald-400 flex items-center gap-2">
+                <Check className="w-3.5 h-3.5" /> Clave de Gemini guardada en este dispositivo.
+                <button type="button" onClick={() => setShowKeyInput(true)} className="underline text-slate-400 hover:text-slate-200">Cambiar</button>
+              </p>
+            )}
+          </div>
+
           <div className="pt-2 flex items-center gap-3">
             <button
               type="button"
@@ -346,7 +386,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
           </div>
 
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
+            <div ref={errorRef} role="alert" className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{errorMsg}</span>
             </div>

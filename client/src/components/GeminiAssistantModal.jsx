@@ -90,7 +90,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
         {showApiKeyInput && (
           <form onSubmit={handleSaveApiKey} className="mb-6 p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-              Google Gemini API Key (Opcional)
+              Google Gemini API Key (necesaria para generar)
             </label>
             <div className="flex gap-2">
               <input
