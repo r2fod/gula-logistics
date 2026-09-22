@@ -144,7 +144,9 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
   const diasSemana = Object.entries(activeWeekData?.schedule || {});
   const rejilla = rejillaDeDias(diasSemana.length + (vispera ? 1 : 0));
 
-  const sharedTasks = (activeWeekData?.sundayMonday?.tasks || []).map((task, idx) => ({ task, idx }));
+  const sharedTasks = (activeWeekData?.sundayMonday?.tasks || [])
+    .map((task, idx) => ({ task, idx }))
+    .filter(({ task }) => typeof task === 'object' ? task.active !== false : true);
   const targetDayOf = (task) => (typeof task === 'object' && task.targetDay ? task.targetDay.toLowerCase() : null);
   const sharedGroups = [
     {
@@ -230,14 +232,17 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
         {vispera && (
           <TarjetaDia titulo={`Lunes ${vispera.fecha.getDate()}`} insignia="Víspera" colorInsignia="text-indigo-300">
             <ul className="space-y-2.5 text-xs text-slate-300">
-              {vispera.tareas.map(({ task, idx }) => (
-                <TareaDiaItem
-                  key={`vispera-${idx}`}
-                  task={task}
-                  hecha={isTaskEffectivelyDone(vispera.semana, 'domingo', task, currentTime)}
-                  filtro={selectedWorkerFilter}
-                />
-              ))}
+              {vispera.tareas.map(({ task, idx }) => {
+                if (typeof task === 'object' && task.active === false) return null;
+                return (
+                  <TareaDiaItem
+                    key={`vispera-${idx}`}
+                    task={task}
+                    hecha={isTaskEffectivelyDone(vispera.semana, 'domingo', task, currentTime)}
+                    filtro={selectedWorkerFilter}
+                  />
+                );
+              })}
             </ul>
             <p className="mt-3 text-[11px] leading-snug text-slate-500">
               Todo lo del lunes: devoluciones de la semana anterior y preparativos de los eventos de esta. Está guardado en la {vispera.semana.name}, donde se edita.
@@ -259,15 +264,18 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
         {diasSemana.map(([key, day], posicion) => (
           <TarjetaDia key={key} titulo={day.title} insignia={day.badge} className={posicion === diasSemana.length - 1 ? rejilla.ultima : ''}>
             <ul className="space-y-2.5 text-xs text-slate-300">
-              {(day.tasks || []).map((task, idx) => (
-                <TareaDiaItem
-                  key={idx}
-                  task={task}
-                  hecha={isTaskEffectivelyDone(activeWeekData, key, task, currentTime)}
-                  filtro={selectedWorkerFilter}
-                  alPulsar={onToggleTask ? () => onToggleTask(key, idx) : null}
-                />
-              ))}
+              {(day.tasks || []).map((task, idx) => {
+                if (typeof task === 'object' && task.active === false) return null;
+                return (
+                  <TareaDiaItem
+                    key={idx}
+                    task={task}
+                    hecha={isTaskEffectivelyDone(activeWeekData, key, task, currentTime)}
+                    filtro={selectedWorkerFilter}
+                    alPulsar={onToggleTask ? () => onToggleTask(key, idx) : null}
+                  />
+                );
+              })}
               {dynamicTasksByDay[key]?.map((task, idx) => renderDynamicTask(task, idx, key))}
             </ul>
           </TarjetaDia>
@@ -288,6 +296,8 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
             {(activeWeekData.saturdaySpecial.weddings || []).map((w, idx) => {
+              if (w.active === false) return null;
+              
               const isCompleted = isTaskEffectivelyDone(activeWeekData, 'sabado', w, currentTime);
               const wAssigned = w.assigned || [];
               const matchesFilter = !selectedWorkerFilter || wAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());

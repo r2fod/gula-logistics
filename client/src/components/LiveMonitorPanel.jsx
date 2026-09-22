@@ -51,22 +51,11 @@ export default function LiveMonitorPanel({
     return tasks.filter(t => isTaskAssignedTo(t, workerName));
   };
 
-  const DEFAULT_TASK_BY_WORKER = {
-    'Persona1': '🚚 Ruta Flota / Albacar & Fincas',
-    'Persona2': '🚚 Ruta Flota / Albacar & Fincas',
-    'Persona3': '🚚 Descarga Fincas / Backup Camión 2',
-    'Persona4': '📦 Almacén Base / Checklist Pedidos & Frío',
-    'Persona5': '📦 Pre-carga Almacén & Soporte Logística',
-    'Persona6': '🧹 Higienización & Vajilla Eventos',
-    'Persona7': '🧹 Higienización & Vajilla Eventos',
-    'Persona8': '📋 Supervisión Flota & Estiba Camiones'
-  };
-
   const getWorkerTaskInfo = (workerName) => {
     const allMatches = getAssignedTasksForWorker(workerName);
 
     if (allMatches.length === 0) {
-      return { text: DEFAULT_TASK_BY_WORKER[workerName] || '📋 Asignado en Operativa Activa', extraCount: 0 };
+      return { text: '📋 Asignado en Operativa Activa', extraCount: 0 };
     }
 
     const days = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];

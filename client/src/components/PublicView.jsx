@@ -50,7 +50,7 @@ export default function PublicView({
   // abierta seguía marcando un progreso menor al real.
   const ahora = new Date();
   const allWeekTasks = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo']
-    .flatMap(dayKey => getTaskListForDay(data, dayKey).map(t => ({ dayKey, t })));
+    .flatMap(dayKey => getTaskListForDay(data, dayKey).filter(t => typeof t === 'object' ? t.active !== false : true).map(t => ({ dayKey, t })));
   const completedTasksCount = allWeekTasks.filter(({ dayKey, t }) => isTaskEffectivelyDone(data, dayKey, t, ahora)).length;
   const taskProgressPercent = allWeekTasks.length > 0 ? Math.round((completedTasksCount / allWeekTasks.length) * 100) : 0;
 

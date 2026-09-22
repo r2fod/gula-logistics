@@ -3,6 +3,8 @@ import { Award, BarChart3, Bell, Calendar, Car, CheckCircle2, CheckSquare, Clock
 import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
+import WorkerViewTaskItem from './dashboard/WorkerViewTaskItem';
+import WorkerViewWeddingCard from './dashboard/WorkerViewWeddingCard';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
 import TaskTextWithEvent from './TaskTextWithEvent';
 import { getTaskListForDay, resolveTaskIndexByText, isTaskEffectivelyDone, isTaskAssignedTo, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart } from '../data/taskPlanning';
@@ -155,18 +157,18 @@ export default function WorkerView({
     if (['martes', 'miercoles', 'jueves', 'viernes'].includes(dayKey)) {
       const dayObj = activeWeekData.schedule?.[dayKey];
       if (dayObj && dayObj.tasks) {
-        tasks = dayObj.tasks.filter(isAssigned);
+        tasks = dayObj.tasks.filter(isAssigned).filter(t => typeof t === 'object' ? t.active !== false : true);
       }
     } else if (dayKey === 'sabado') {
       const wList = activeWeekData.saturdaySpecial?.weddings || [];
-      weddings = wList.filter(isAssigned);
+      weddings = wList.filter(isAssigned).filter(w => w.active !== false);
     } else if (dayKey === 'domingo' || dayKey === 'lunes') {
       // domingo y lunes comparten sundayMonday.tasks bajo un único bucket
       // real ('domingo' es la clave de storage) — confirmado con el
       // usuario que la pestaña "LUN" debe enseñar las mismas tareas que
       // "DOM", no quedarse vacía como antes (buscaba en schedule.lunes,
       // que no existe).
-      tasks = getTaskListForDay(activeWeekData, 'domingo').filter(isAssigned);
+      tasks = getTaskListForDay(activeWeekData, 'domingo').filter(isAssigned).filter(t => typeof t === 'object' ? t.active !== false : true);
       // Una tarea etiquetada "Domingo" (targetDay) no es del lunes: sin este
       // filtro la pestaña LUN enseñaba p.ej. la recogida del domingo bajo
       // "Lunes". Las sin etiquetar siguen en ambas (no se sabe cuál es).
@@ -315,15 +317,6 @@ export default function WorkerView({
     w.truck.toLowerCase().includes(currentWorkerObj.name.toLowerCase())
   );
 
-  // Filtered days list based on selected tab. En "Todos" se usa la lista
-  // sin 'lunes' (daysWithActivitiesForTotals) para no mostrar la misma
-  // tarjeta de domingo/lunes duplicada dos veces seguidas — seleccionando
-  // la pestaña "LUN" directamente sí se sigue viendo (usa la lista
-  // completa, esa sí incluye su propia entrada).
-  const displayedDays = selectedDayKey === 'all'
-    ? daysWithActivitiesForTotals
-    : daysWithActivities.filter(d => d.key === selectedDayKey);
-
   const todayIndex = new Date().getDay();
   const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
   const todayKey = dayNames[todayIndex];
@@ -354,6 +347,25 @@ export default function WorkerView({
     if (isExactlyYesterday) return false;
     return ordinal > todayOrdinal;
   };
+
+  // Filtered days list based on selected tab. En "Todos" se usa la lista
+  // sin 'lunes' (daysWithActivitiesForTotals) para no mostrar la misma
+  // tarjeta de domingo/lunes duplicada dos veces seguidas — seleccionando
+  // la pestaña "LUN" directamente sí se sigue viendo (usa la lista
+  // completa, esa sí incluye su propia entrada).
+  // NUEVO COMPORTAMIENTO: Para que el trabajador no tenga que hacer scroll,
+  // ordenamos los días colocando HOY y los días futuros primero, y enviamos
+  // los días pasados (ya completados) al final.
+  const displayedDays = selectedDayKey === 'all'
+    ? [...daysWithActivitiesForTotals].sort((a, b) => {
+        const isPast = (dayKey) => dayKey !== todayKey && !isDayInFuture(dayKey);
+        const aPast = isPast(a.key);
+        const bPast = isPast(b.key);
+        if (aPast && !bPast) return 1;
+        if (!aPast && bPast) return -1;
+        return 0;
+      })
+    : daysWithActivities.filter(d => d.key === selectedDayKey);
 
   // domingo y lunes comparten sundayMonday.tasks bajo un único bucket real
   // ('domingo' es la clave de storage) — toStorageDayKey evita repetir esa
@@ -872,101 +884,25 @@ export default function WorkerView({
                       {/* Tasks List */}
                       {dayGroup.tasks.length > 0 && (
                         <ul className="space-y-2 text-xs text-slate-200">
-                          {dayGroup.tasks.map((task, idx) => {
-                            const taskText = typeof task === 'object' ? task.text : task;
-                            const timeFrame = typeof task === 'object' ? task.timeFrame : null;
-                            
-                            // A task is considered visually completed if manually marked OR if its time has past
-                            const isCompleted = isTaskDone(dayGroup.key, task);
-                            
-                            const taskLabel = timeFrame
-                              ? `${taskText} (${timeFrame})`
-                              : taskText;
-
-                            return (
-                              <li 
-                                key={idx}
-                                className={`p-3 rounded-xl border transition-all flex flex-col space-y-2 ${
-                                  isCompleted
-                                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                                    : 'bg-slate-900 border-slate-800 text-slate-200'
-                                }`}
-                              >
-                                <div 
-                                  className="flex items-start space-x-2.5 cursor-pointer hover:text-white"
-                                  onClick={() => {
-                                    if (onToggleTask) {
-                                      const storageDayKey = toStorageDayKey(dayGroup.key);
-                                      const taskIdx = resolveRealTaskIndex(storageDayKey, taskText);
-                                      if (taskIdx !== null) onToggleTask(storageDayKey, taskIdx);
-                                    }
-                                  }}
-                                >
-                                  <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`} />
-                                  <span className={`font-medium ${isCompleted ? 'line-through opacity-70' : ''}`}>
-                                    <TaskTextWithEvent text={taskText} event={typeof task === 'object' ? task.event : undefined} />{timeFrame ? ` (${timeFrame})` : ''}
-                                  </span>
-                                  {typeof task === 'object' && task.targetDay && (
-                                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md whitespace-nowrap shrink-0 border ${
-                                      task.targetDay === 'Domingo'
-                                        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                        : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
-                                    }`}>
-                                      {task.targetDay.toUpperCase()}
-                                    </span>
-                                  )}
-                                </div>
-                                
-                                {/* Location Badge if available */}
-                                {typeof task === 'object' && (task.mapsUrl || task.location) && (
-                                  <div className="ml-6 flex">
-                                    {task.mapsUrl ? (
-                                      <a 
-                                        href={task.mapsUrl} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 px-2.5 py-1 rounded-lg transition-colors"
-                                      >
-                                        <MapPin className="w-3 h-3" />
-                                        {task.location || 'Abrir en Maps'}
-                                      </a>
-                                    ) : (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-800 text-slate-400 px-2.5 py-1 rounded-lg">
-                                        <MapPin className="w-3 h-3" />
-                                        {task.location}
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-
-                                {!isCompleted && (
-                                  isDayInFuture(dayGroup.key) ? (
-                                    <AvisoBloqueado className="mt-1 ml-6 self-start flex">Aún no ha llegado este día</AvisoBloqueado>
-                                  ) : jornadaGateClosed ? (
-                                    // El día ya llegó, pero faltan más de 5min para la hora de
-                                    // inicio de ESTA tarea concreta — evita fichar por error una
-                                    // tarea de última hora del día nada más empezar la jornada.
-                                    <AvisoBloqueado className="mt-1 ml-6 self-start flex">{gateText()}</AvisoBloqueado>
-                                  ) : (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setPrefilledTask(taskLabel);
-                                        const storageDayKey = toStorageDayKey(dayGroup.key);
-                                        const realTaskIndex = resolveRealTaskIndex(storageDayKey, taskText);
-                                        setTaskRef(realTaskIndex !== null ? { dayKey: storageDayKey, taskIndex: realTaskIndex } : null);
-                                        setIsClockModalOpen(true);
-                                      }}
-                                      className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95"
-                                    >
-                                      <Play className="w-3 h-3" />
-                                      <span>Fichar Esta Tarea</span>
-                                    </button>
-                                  )
-                                )}
-                              </li>
-                            );
-                          })}
+                          {dayGroup.tasks.map((task, idx) => (
+                            <WorkerViewTaskItem
+                              key={idx}
+                              task={task}
+                              dayKey={dayGroup.key}
+                              isCompleted={isTaskDone(dayGroup.key, task)}
+                              isDayInFuture={isDayInFuture(dayGroup.key)}
+                              jornadaGateClosed={jornadaGateClosed}
+                              gateText={gateText()}
+                              onToggleTask={onToggleTask}
+                              toStorageDayKey={toStorageDayKey}
+                              resolveRealTaskIndex={resolveRealTaskIndex}
+                              onClockIn={(label, ref) => {
+                                setPrefilledTask(label);
+                                setTaskRef(ref);
+                                setIsClockModalOpen(true);
+                              }}
+                            />
+                          ))}
                         </ul>
                       )}
 
@@ -977,87 +913,24 @@ export default function WorkerView({
                             <Award className="w-3.5 h-3.5 text-amber-400" />
                             <span>Boda Asignada Sábado</span>
                           </span>
-                          {dayGroup.weddings.map((w, idx) => {
-                            // El campo real es `timeFrame` (así lo guarda AdminTaskEditorModal
-                            // y así llega de Mongo) — `w.time` no existe en ninguna boda real,
-                            // así que esto nunca se daba por pasada ni mostraba su horario.
-                            const isCompleted = isTaskDone('sabado', w);
-                            
-                            return (
-                              <div key={idx} className={`p-3 sm:p-3.5 rounded-xl border space-y-1 transition-all ${
-                                isCompleted
-                                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                                  : 'bg-slate-900 border-amber-500/30'
-                              }`}>
-                                <div 
-                                  className="flex justify-between items-start cursor-pointer hover:text-white"
-                                  onClick={() => {
-                                    if (onToggleTask) {
-                                      const realIdx = resolveRealTaskIndex('sabado', getWeddingTaskName(w));
-                                      if (realIdx !== null) onToggleTask('sabado', realIdx);
-                                    }
-                                  }}
-                                >
-                                  <div className="flex items-start space-x-2.5">
-                                    <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`} />
-                                    <div>
-                                      <div className="flex items-center flex-wrap gap-2">
-                                        <span className={`font-black text-sm ${isCompleted ? 'line-through opacity-70' : 'text-white'}`}>
-                                          <MapPin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{w.location}
-                                        </span>
-                                        {w.timeFrame && (
-                                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 whitespace-nowrap">
-                                            <Clock className="w-3 h-3 inline mr-1" />
-                                            {w.timeFrame}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <p className="text-amber-400 font-bold text-xs mt-1">{w.truck}</p>
-                                      {w.note && <p className={`text-[11px] mt-1 ${isCompleted ? 'text-emerald-300/70' : 'text-slate-400'}`}>{w.note}</p>}
-                                    </div>
-                                  </div>
-                                </div>
-                                
-                                {w.mapsUrl && (
-                                  <div className="ml-6 pt-1">
-                                    <a 
-                                      href={w.mapsUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 px-2.5 py-1 rounded-lg transition-colors"
-                                    >
-                                      <MapPin className="w-3 h-3" />
-                                      Ruta a {w.location}
-                                    </a>
-                                  </div>
-                                )}
-
-                                {!isCompleted && (
-                                  <div className="ml-6 pt-1">
-                                    {isDayInFuture('sabado') ? (
-                                      <AvisoBloqueado>Aún no ha llegado este día</AvisoBloqueado>
-                                    ) : jornadaGateClosed ? (
-                                      <AvisoBloqueado>{gateText()}</AvisoBloqueado>
-                                    ) : (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setPrefilledTask(getWeddingTaskName(w));
-                                          const realTaskIndex = resolveRealTaskIndex('sabado', getWeddingTaskName(w));
-                                          setTaskRef(realTaskIndex !== null ? { dayKey: 'sabado', taskIndex: realTaskIndex } : null);
-                                          setIsClockModalOpen(true);
-                                        }}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95 mt-1"
-                                      >
-                                        <Play className="w-3 h-3" />
-                                        <span>Fichar Boda Sábado</span>
-                                      </button>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
+                          {dayGroup.weddings.map((w, idx) => (
+                            <WorkerViewWeddingCard
+                              key={idx}
+                              wedding={w}
+                              isCompleted={isTaskDone('sabado', w)}
+                              isDayInFuture={isDayInFuture('sabado')}
+                              jornadaGateClosed={jornadaGateClosed}
+                              gateText={gateText()}
+                              onToggleTask={onToggleTask}
+                              resolveRealTaskIndex={resolveRealTaskIndex}
+                              getWeddingTaskName={getWeddingTaskName}
+                              onClockIn={(label, ref) => {
+                                setPrefilledTask(label);
+                                setTaskRef(ref);
+                                setIsClockModalOpen(true);
+                              }}
+                            />
+                          ))}
                         </div>
                       )}
 

@@ -148,14 +148,7 @@ export default function ClockInModal({
             className="w-full font-medium mb-2"
           >
             <option value="">Selecciona o escribe una tarea...</option>
-            <option value="🚚 Ruta Albacar — Recogida Camión (Persona1 y Persona2)">🚚 Ruta Albacar — Recogida Camión</option>
-            <option value="📦 Pre-carga en Almacén Base (Persona3 y Persona5)">📦 Pre-carga en Almacén Base</option>
-            <option value="🚚 Descarga Fincas — Mas dels Refranys y Villajoyosa">🚚 Descarga Fincas (Mas dels Refranys)</option>
-            <option value="🚚 Ruta Carvillo — Recogida 90 Sillas Extra">🚚 Ruta Carvillo — 90 Sillas Extra</option>
-            <option value="🧹 Higienización & Limpieza Vajilla Eventos (Persona6 y Persona7)">🧹 Higienización & Limpieza Vajilla</option>
-            <option value="📋 Supervisión Flota & Validación Albaranes (Persona8 e Persona4)">📋 Supervisión Flota & Albaranes</option>
-            <option value="🏔️ Evento Boda Lugar1 de Chera (250 pax)">🏔️ Evento Boda Lugar1 de Chera</option>
-            <option value="🔄 Logística Inversa & Estiba Camiones">🔄 Logística Inversa & Estiba</option>
+            <option value="📋 Asignado en Operativa Activa">📋 Asignado en Operativa Activa</option>
           </Selector>
 
           <Input

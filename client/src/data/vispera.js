@@ -31,7 +31,7 @@ export function tareasDeLaVispera(semanas = {}, semana, hoy = new Date()) {
 
   const tareas = (previa.sundayMonday?.tasks || [])
     .map((task, idx) => ({ task, idx }))
-    .filter(({ task }) => task && typeof task === 'object' && resolveTaskEvalDay('domingo', task) === 'lunes')
+    .filter(({ task }) => task && typeof task === 'object' && task.active !== false && resolveTaskEvalDay('domingo', task) === 'lunes')
     .sort((a, b) => inicioHora(a.task) - inicioHora(b.task));
   return tareas.length ? { fecha, semana: previa, tareas } : null;
 }
