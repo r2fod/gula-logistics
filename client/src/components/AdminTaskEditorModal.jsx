@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, ChevronDown, ChevronUp, Edit3, MapPin, Plus, Save, Trash2, Users } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronUp, Edit3, MapPin, Plus, Save, Trash2, Users, Eye, EyeOff } from 'lucide-react';
 import { getTaskListForDay, buildTaskListPatch } from '../data/taskPlanning';
 import { collectEventNames, splitEventNames, parseEventAndTask, EVENT_CATEGORIES } from '../data/eventNaming';
 import Modal from './ui/Modal';
+import SelectorPosicion from './ui/SelectorPosicion';
 import CabeceraModal from './ui/CabeceraModal';
 import BotonCerrar from './ui/BotonCerrar';
-import { AreaTexto, Input, Selector } from './ui/Campo';
+import Boton from './ui/Boton';
+import { Campo, Input, Selector, AreaTexto } from './ui/Campo';
 
 const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 
@@ -72,7 +74,7 @@ function TimeRangeEditor({ value, onChange }) {
   );
 }
 
-export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, workersList = [], onSaveWeekData }) {
+export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, workersList = [], onSaveWeekData, onJumpToVispera }) {
   const [localWeek, setLocalWeek] = useState(null);
   const [activeDayId, setActiveDayId] = useState('martes');
   const wasOpenRef = useRef(false);
@@ -214,6 +216,17 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
     });
   };
 
+  const handleMoveTaskTo = (dayKey, taskIndex, targetIndex) => {
+    setLocalWeek(prev => {
+      if (!prev) return prev;
+      const list = [...getTaskListForDay(prev, dayKey)];
+      if (targetIndex < 0 || targetIndex >= list.length || targetIndex === taskIndex) return prev;
+      const [moved] = list.splice(taskIndex, 1);
+      list.splice(targetIndex, 0, moved);
+      return { ...prev, ...buildTaskListPatch(prev, dayKey, list) };
+    });
+  };
+
   const handleAddWedding = () => {
     setLocalWeek(prev => {
       if (!prev) return prev;
@@ -266,6 +279,20 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
           ...prev.saturdaySpecial,
           weddings
         }
+      };
+    });
+  };
+
+  const handleMoveWeddingTo = (weddingIndex, targetIndex) => {
+    setLocalWeek(prev => {
+      if (!prev?.saturdaySpecial?.weddings) return prev;
+      const weddings = [...prev.saturdaySpecial.weddings];
+      if (targetIndex < 0 || targetIndex >= weddings.length || targetIndex === weddingIndex) return prev;
+      const [moved] = weddings.splice(weddingIndex, 1);
+      weddings.splice(targetIndex, 0, moved);
+      return {
+        ...prev,
+        saturdaySpecial: { ...prev.saturdaySpecial, weddings }
       };
     });
   };
@@ -356,6 +383,16 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
           <span>📍</span>
           <span>Ir a:</span>
         </span>
+        {onJumpToVispera && (
+          <button
+            type="button"
+            onClick={onJumpToVispera}
+            className="px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap capitalize flex items-center gap-1.5 border bg-indigo-950/30 hover:bg-indigo-950/60 text-indigo-300 border-indigo-900/40 active:scale-95"
+            title="Ir a editar la víspera (lunes) que está guardada en la semana anterior"
+          >
+            <span>Lunes (Víspera) ⏪</span>
+          </button>
+        )}
         {days.filter(d => localWeek.schedule[d]).map(d => {
           const isActive = activeDayId === d;
           return (
@@ -490,34 +527,23 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                   const phoneValue = typeof task === 'object' ? (task.phone || '') : '';
                   const assignedValue = (typeof task === 'object' && Array.isArray(task.assigned)) ? task.assigned : [];
                   const truckValue = typeof task === 'object' ? (task.truck || '') : '';
+                  const isActiveTask = typeof task === 'object' && task.active !== false;
 
                   return (
-                    <div key={idx} className="flex gap-1.5 items-start bg-slate-900 border border-slate-700/90 rounded-xl p-2 sm:p-3 transition-all">
-                      {/* Reorder Up/Down Column */}
-                      <div className="flex flex-col items-center gap-1 shrink-0 pt-0.5">
-                        <button
-                          type="button"
-                          disabled={idx === 0}
-                          onClick={() => handleMoveTask(dayKey, idx, -1)}
-                          className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:hover:bg-slate-800 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
-                          title="Subir tarea"
-                        >
-                          <ChevronUp className="w-4 h-4" />
-                        </button>
-                        <span className="text-[10px] font-mono font-bold text-slate-400 select-none">
-                          #{idx + 1}
-                        </span>
-                        <button
-                          type="button"
-                          disabled={idx === currentTasks.length - 1}
-                          onClick={() => handleMoveTask(dayKey, idx, 1)}
-                          className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:hover:bg-slate-800 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
-                          title="Bajar tarea"
-                        >
-                          <ChevronDown className="w-4 h-4" />
-                        </button>
+                    <div 
+                      key={idx} 
+                      className={`relative bg-slate-900/50 p-4 sm:p-5 rounded-2xl border transition-all ${
+                        isActiveTask ? 'border-slate-700 hover:border-slate-600' : 'border-slate-800 opacity-50 grayscale hover:grayscale-0'
+                      }`}
+                    >
+                      <div className="absolute top-2 right-2 flex flex-col items-center gap-1">
+                        <SelectorPosicion 
+                          currentIndex={idx} 
+                          totalItems={currentTasks.length} 
+                          onChange={(targetIndex) => handleMoveTaskTo(dayKey, idx, targetIndex)}
+                        />
                       </div>
-
+                      <div className="mb-4 pr-16 flex items-center gap-3">
                       <div className="flex-1 min-w-0 space-y-2">
                         {/* Event / Task Split Inputs */}
                         {(() => {
@@ -562,7 +588,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                             <div className="flex flex-col gap-2">
                               <div>
                                 <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Evento (Ej: Boda Soto) — si es de varios, sepáralos con +</label>
-                                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                                <div className="flex flex-wrap gap-1.5 mb-1.5 w-full">
                                   {eventChips.map(name => {
                                     const on = selectedEvents.includes(name);
                                     return (
@@ -571,8 +597,8 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                                         type="button"
                                         aria-pressed={on}
                                         onClick={() => toggleEvent(name)}
-                                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition-colors ${
-                                          on ? 'bg-amber-500 border-amber-500 text-slate-950' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                                        className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors flex-grow sm:flex-grow-0 min-w-fit text-center ${
+                                          on ? 'bg-amber-500 border-amber-500 text-slate-950' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
                                         }`}
                                       >
                                         {name}
@@ -650,14 +676,34 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTask(dayKey, idx)}
-                        className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/20 transition-colors shrink-0 flex items-center justify-center mt-1"
-                        title="Eliminar tarea"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => handleTaskMetadataChange(dayKey, idx, 'active', !isActiveTask)}
+                          className={`p-1.5 flex-1 rounded-xl border transition-colors flex items-center justify-center gap-1.5 text-xs font-bold ${
+                            isActiveTask 
+                              ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                              : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                          }`}
+                        >
+                          {isActiveTask ? (
+                            <><EyeOff className="w-4 h-4" /> <span>Desactivar</span></>
+                          ) : (
+                            <><Eye className="w-4 h-4" /> <span>Activar</span></>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTask(dayKey, idx)}
+                          className="p-1.5 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/20 transition-colors flex items-center justify-center"
+                          title="Eliminar tarea"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   )
                 })}
@@ -704,34 +750,21 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
             </div>
 
             <div className="p-2 sm:p-4 space-y-3">
-              {(localWeek.saturdaySpecial.weddings || []).map((w, idx) => (
-                <div key={idx} className="flex gap-1.5 items-start bg-slate-900 border border-slate-800 rounded-xl p-2 sm:p-3">
-                  {/* Reorder Up/Down */}
-                  <div className="flex flex-col items-center gap-1 shrink-0 pt-0.5">
-                    <button
-                      type="button"
-                      disabled={idx === 0}
-                      onClick={() => handleMoveWedding(idx, -1)}
-                      className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
-                      title="Subir evento"
-                    >
-                      <ChevronUp className="w-4 h-4" />
-                    </button>
-                    <span className="text-[10px] font-mono font-bold text-slate-400 select-none">
-                      #{idx + 1}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={idx === (localWeek.saturdaySpecial.weddings || []).length - 1}
-                      onClick={() => handleMoveWedding(idx, 1)}
-                      className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
-                      title="Bajar evento"
-                    >
-                      <ChevronDown className="w-4 h-4" />
-                    </button>
+              {(localWeek.saturdaySpecial.weddings || []).map((w, idx) => {
+                const isActiveWedding = w.active !== false;
+                return (
+                <div key={idx} className={`relative bg-slate-900 border rounded-xl p-2 sm:p-3 transition-all ${
+                  isActiveWedding ? 'border-slate-800' : 'border-slate-800 opacity-50 grayscale hover:grayscale-0'
+                }`}>
+                  <div className="absolute top-2 right-2 flex flex-col items-center gap-1 z-10">
+                    <SelectorPosicion 
+                      currentIndex={idx} 
+                      totalItems={(localWeek.saturdaySpecial.weddings || []).length} 
+                      onChange={(targetIndex) => handleMoveWeddingTo(idx, targetIndex)}
+                    />
                   </div>
-
-                  <div className="flex-1 min-w-0 space-y-3">
+                  
+                  <div className="flex-1 min-w-0 space-y-3 pr-14">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Ubicación / Finca</label>
@@ -793,16 +826,36 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteWedding(idx)}
-                    className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/20 transition-colors shrink-0 flex items-center justify-center mt-1"
-                    title="Eliminar evento"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+
+                  <div className="flex items-center gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => handleWeddingChange(idx, 'active', !isActiveWedding)}
+                      className={`p-1.5 flex-1 rounded-xl border transition-colors flex items-center justify-center gap-1.5 text-xs font-bold ${
+                        isActiveWedding 
+                          ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                          : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                      }`}
+                    >
+                      {isActiveWedding ? (
+                        <><EyeOff className="w-4 h-4" /> <span>Desactivar</span></>
+                      ) : (
+                        <><Eye className="w-4 h-4" /> <span>Activar</span></>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteWedding(idx)}
+                      className="p-1.5 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/20 transition-colors shrink-0 flex items-center justify-center"
+                      title="Eliminar evento"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-              ))}
+              )
+              })}
 
               {/* Bottom Add Wedding Button */}
               <button
@@ -850,35 +903,21 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                 const assignedValue = (typeof task === 'object' && Array.isArray(task.assigned)) ? task.assigned : [];
                 const truckValue = typeof task === 'object' ? (task.truck || '') : '';
                 const targetDayValue = typeof task === 'object' ? (task.targetDay || '') : '';
+                const isActiveTask = typeof task === 'object' && task.active !== false;
 
                 return (
-                  <div key={idx} className="flex gap-1.5 items-start bg-slate-900 border border-slate-700 rounded-xl p-2 sm:p-3">
-                    {/* Reorder Up/Down */}
-                    <div className="flex flex-col items-center gap-1 shrink-0 pt-0.5">
-                      <button
-                        type="button"
-                        disabled={idx === 0}
-                        onClick={() => handleMoveTask('sundayMonday', idx, -1)}
-                        className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
-                        title="Subir tarea"
-                      >
-                        <ChevronUp className="w-4 h-4" />
-                      </button>
-                      <span className="text-[10px] font-mono font-bold text-slate-400 select-none">
-                        #{idx + 1}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={idx === (localWeek.sundayMonday.tasks || []).length - 1}
-                        onClick={() => handleMoveTask('sundayMonday', idx, 1)}
-                        className="w-6 h-6 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 disabled:opacity-20 disabled:cursor-not-allowed transition-all flex items-center justify-center shadow-sm"
-                        title="Bajar tarea"
-                      >
-                        <ChevronDown className="w-4 h-4" />
-                      </button>
+                  <div key={idx} className={`relative bg-slate-900 border rounded-xl p-2 sm:p-3 transition-all ${
+                    isActiveTask ? 'border-slate-700' : 'border-slate-800 opacity-50 grayscale hover:grayscale-0'
+                  }`}>
+                    <div className="absolute top-2 right-2 flex flex-col items-center gap-1 z-10">
+                      <SelectorPosicion 
+                        currentIndex={idx} 
+                        totalItems={(localWeek.sundayMonday.tasks || []).length} 
+                        onChange={(targetIndex) => handleMoveTaskTo('sundayMonday', idx, targetIndex)}
+                      />
                     </div>
 
-                    <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex-1 min-w-0 space-y-2 pr-14">
                       <AreaTexto
                         rows={3}
                         value={textValue}
@@ -949,14 +988,32 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteTask('sundayMonday', idx)}
-                      className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/20 transition-colors shrink-0 flex items-center justify-center mt-1"
-                      title="Eliminar tarea"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => handleTaskMetadataChange('sundayMonday', idx, 'active', !isActiveTask)}
+                        className={`p-1.5 flex-1 rounded-xl border transition-colors flex items-center justify-center gap-1.5 text-xs font-bold ${
+                          isActiveTask 
+                            ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
+                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                        }`}
+                      >
+                        {isActiveTask ? (
+                          <><EyeOff className="w-4 h-4" /> <span>Desactivar</span></>
+                        ) : (
+                          <><Eye className="w-4 h-4" /> <span>Activar</span></>
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTask('sundayMonday', idx)}
+                        className="p-1.5 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl border border-rose-500/20 transition-colors shrink-0 flex items-center justify-center"
+                        title="Eliminar tarea"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -977,13 +1034,14 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
 
       {/* Footer */}
       <div className="p-3 sm:p-6 border-t border-slate-800 shrink-0">
-        <button 
+        <Boton 
           onClick={handleSave}
-          className="w-full py-3.5 sm:py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-95 text-slate-950 font-black text-sm shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2"
+          variante="primario"
+          className="w-full"
         >
           <Save className="w-5 h-5" />
           Guardar y Actualizar Planning
-        </button>
+        </Boton>
       </div>
     </Modal>
   );

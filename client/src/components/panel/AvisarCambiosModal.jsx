@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Bell, Check } from 'lucide-react';
 import Modal from '../ui/Modal';
 import BotonCerrar from '../ui/BotonCerrar';
+import Boton from '../ui/Boton';
+import Chip from '../ui/Chip';
 
 // Elige a quién se avisa de que su planning ha cambiado (aviso push). Si no se
 // elige a nadie, se avisa a todos.
@@ -44,33 +46,31 @@ export default function AvisarCambiosModal({ abierto, onCerrar, workersList = []
 
         <div className="grid grid-cols-2 gap-2 mt-4">
           {workersList.map((w) => (
-            <button
+            <Chip
               key={w.name}
+              variante="indigo"
+              seleccionado={elegidos.includes(w.name)}
               onClick={() => alternar(w.name)}
-              className={`flex items-center justify-center gap-1.5 p-2 rounded-xl border text-[11px] font-bold transition-all ${elegidos.includes(w.name) ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300 shadow-md shadow-indigo-500/10' : 'bg-slate-950 border-slate-800 text-slate-400 hover:bg-slate-800'}`}
             >
               <span>{w.avatar}</span>
               <span className="truncate">{w.name}</span>
-            </button>
+            </Chip>
           ))}
         </div>
       </div>
 
       <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex gap-2 rounded-b-2xl">
-        <button
-          onClick={onCerrar}
-          className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-colors"
-        >
+        <Boton onClick={onCerrar} variante="secundario">
           Cancelar
-        </button>
-        <button
+        </Boton>
+        <Boton
           onClick={() => onEnviar(elegidos)}
           disabled={enviando}
-          className="flex-1 px-4 py-2 bg-indigo-500 hover:bg-indigo-400 text-white rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 disabled:opacity-50 transition-colors"
+          variante="indigo"
         >
           <Bell className={`w-3.5 h-3.5 ${enviando ? 'animate-pulse' : ''}`} />
           {enviando ? 'Enviando...' : 'Enviar Aviso'}
-        </button>
+        </Boton>
       </div>
     </Modal>
   );

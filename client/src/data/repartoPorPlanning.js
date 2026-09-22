@@ -49,7 +49,7 @@ export function listarTareasPlanificadas(weeksMap = {}, now = new Date()) {
     const semanaDesde = rango.start;
     const semanaHasta = new Date(rango.end.getFullYear(), rango.end.getMonth(), rango.end.getDate() + 2); // hasta el lunes de cola inclusive
     const anadir = (dayKey, task, texto, evento) => {
-      if (!task || typeof task !== 'object' || !Array.isArray(task.assigned) || !evento) return;
+      if (!task || typeof task !== 'object' || task.active === false || !Array.isArray(task.assigned) || !evento) return;
       const tramo = getTaskInterval(week, dayKey, task, now);
       if (!tramo) return;
       tareas.push({ evento, pax, asignados: task.assigned.map(plain), inicio: tramo.start, fin: tramo.end, texto, semanaDesde, semanaHasta });
@@ -59,6 +59,7 @@ export function listarTareasPlanificadas(weeksMap = {}, now = new Date()) {
     });
     (week.sundayMonday?.tasks || []).forEach(t => t?.text && anadir('domingo', t, t.text, eventoDeTarea(t.text, t.event)));
     (week.saturdaySpecial?.weddings || []).forEach(w => {
+      if (w.active === false) return;
       const texto = getWeddingTaskName(w);
       anadir('sabado', w, texto, w?.event || eventoDeTarea(texto, null));
     });
