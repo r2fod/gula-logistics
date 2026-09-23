@@ -283,36 +283,48 @@ export default function PayrollReportModal({
 
         {/* Top Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
-            <p className="text-xs text-slate-400 font-medium">Gasto Total Extras</p>
-            <p className="text-2xl font-bold text-amber-400 mt-1 font-['Outfit']">
+          <div className="bg-gradient-to-br from-amber-500/10 to-transparent p-4 rounded-2xl border border-amber-500/20 shadow-lg shadow-amber-500/5 relative overflow-hidden group hover:border-amber-500/40 transition-colors">
+            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-300">
+              <DollarSign className="w-16 h-16 text-amber-500" />
+            </div>
+            <p className="text-xs text-slate-400 font-medium relative z-10">Gasto Total Extras</p>
+            <p className="text-3xl font-bold text-amber-400 mt-1 font-['Outfit'] relative z-10">
               {formatearEuros(totalExtraCost)}
             </p>
-            <p className="text-[10px] text-slate-500 mt-0.5">Calculado a 10,00 €/h</p>
+            <p className="text-[10px] text-slate-500 mt-1 relative z-10">Calculado a 10,00 €/h</p>
           </div>
 
-          <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
-            <p className="text-xs text-slate-400 font-medium">Horas Extras Totales</p>
-            <p className="text-2xl font-bold text-emerald-400 mt-1 font-['Outfit']">
+          <div className="bg-gradient-to-br from-emerald-500/10 to-transparent p-4 rounded-2xl border border-emerald-500/20 shadow-lg shadow-emerald-500/5 relative overflow-hidden group hover:border-emerald-500/40 transition-colors">
+            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-300">
+              <Clock className="w-16 h-16 text-emerald-500" />
+            </div>
+            <p className="text-xs text-slate-400 font-medium relative z-10">Horas Extras Totales</p>
+            <p className="text-3xl font-bold text-emerald-400 mt-1 font-['Outfit'] relative z-10">
               {formatearHoras(totalExtraHours)}
             </p>
-            <p className="text-[10px] text-slate-500 mt-0.5">{filteredShifts.length} jornadas completadas</p>
+            <p className="text-[10px] text-slate-500 mt-1 relative z-10">{filteredShifts.length} jornadas completadas</p>
           </div>
 
-          <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
-            <p className="text-xs text-slate-400 font-medium">Valoración Interna Nóminas</p>
-            <p className="text-2xl font-bold text-indigo-400 mt-1 font-['Outfit']">
+          <div className="bg-gradient-to-br from-indigo-500/10 to-transparent p-4 rounded-2xl border border-indigo-500/20 shadow-lg shadow-indigo-500/5 relative overflow-hidden group hover:border-indigo-500/40 transition-colors">
+            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-300">
+              <Crown className="w-16 h-16 text-indigo-500" />
+            </div>
+            <p className="text-xs text-slate-400 font-medium relative z-10">Val. Interna Nóminas</p>
+            <p className="text-3xl font-bold text-indigo-400 mt-1 font-['Outfit'] relative z-10">
               {formatearEuros(totalPayrollValuation)}
             </p>
-            <p className="text-[10px] text-slate-500 mt-0.5">Irene + Raúl (control interno a 14,00 €/h)</p>
+            <p className="text-[10px] text-slate-500 mt-1 relative z-10 leading-tight">Control interno a 14,00 €/h</p>
           </div>
 
-          <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
-            <p className="text-xs text-slate-400 font-medium">Trabajadores en Turno</p>
-            <p className="text-2xl font-bold text-rose-400 mt-1 font-['Outfit']">
-              {activeClockedInCount} activos
+          <div className="bg-gradient-to-br from-rose-500/10 to-transparent p-4 rounded-2xl border border-rose-500/20 shadow-lg shadow-rose-500/5 relative overflow-hidden group hover:border-rose-500/40 transition-colors">
+            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity transform group-hover:scale-110 duration-300">
+              <Lock className="w-16 h-16 text-rose-500" />
+            </div>
+            <p className="text-xs text-slate-400 font-medium relative z-10">Trabajadores en Turno</p>
+            <p className="text-3xl font-bold text-rose-400 mt-1 font-['Outfit'] relative z-10">
+              {activeClockedInCount} <span className="text-lg font-medium text-rose-400/70">activos</span>
             </p>
-            <p className="text-[10px] text-slate-500 mt-0.5">Fichaje de entrada abierto</p>
+            <p className="text-[10px] text-slate-500 mt-1 relative z-10 leading-tight">Fichaje de entrada abierto</p>
           </div>
         </div>
 
@@ -406,9 +418,9 @@ export default function PayrollReportModal({
                       <div className="bg-slate-900/60 rounded-lg p-2.5">
                         <span className="block text-[10px] text-slate-500 uppercase tracking-wide mb-1">📅 {s.startDate}</span>
                         {s.ranges && s.ranges.map((r, i) => (
-                          <div key={i} className="text-slate-200 font-mono text-xs flex items-center gap-1.5 mb-0.5">
-                            <Clock className="w-3 h-3 text-emerald-400" />
-                            {r}
+                          <div key={i} className="text-slate-200 font-mono text-[11px] flex items-center gap-1.5 mb-1 bg-slate-950/60 px-2 py-1 rounded-md border border-slate-800/60">
+                            <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
+                            <span>{r.replace(' a ', ' ➔ ')}</span>
                           </div>
                         ))}
                       </div>
@@ -484,10 +496,15 @@ export default function PayrollReportModal({
                         <td className="py-3 px-3 text-slate-300 font-medium">
                           {s.startDate}
                         </td>
-                        <td className="py-3 px-3 font-mono text-slate-300 space-y-1">
-                          {s.ranges && s.ranges.map((r, i) => (
-                            <div key={i}>{r}</div>
-                          ))}
+                        <td className="py-3 px-3 font-mono text-slate-300">
+                          <div className="flex flex-col gap-1">
+                            {s.ranges && s.ranges.map((r, i) => (
+                              <div key={i} className="inline-flex items-center gap-1.5 bg-slate-950/60 border border-slate-800/60 px-2 py-1 rounded-md w-max text-[11px]">
+                                <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
+                                <span>{r.replace(' a ', ' ➔ ')}</span>
+                              </div>
+                            ))}
+                          </div>
                         </td>
                         <td className="py-3 px-3">
                           <div className={`font-semibold ${s.isAnomalous ? 'text-rose-400' : 'text-emerald-400'}`}>
