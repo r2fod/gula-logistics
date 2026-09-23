@@ -53,8 +53,10 @@ import { useWorkers } from './hooks/useWorkers';
 import { useBalances } from './hooks/useBalances';
 import { useClockings } from './hooks/useClockings';
 import { useWeeks } from './hooks/useWeeks';
+import { useDialog } from './contexts/DialogContext';
 
 export default function App() {
+  const { alert, confirm } = useDialog();
   const { workersList, setWorkersList, handleRemoveWorker } = useWorkers();
   const { balancesData, setBalancesData, handleAddWorker } = useBalances(workersList, setWorkersList);
   
@@ -152,17 +154,20 @@ export default function App() {
     const semanas = await fetchWeeksFromAPI();
     const semana = semanas?.[weekId];
     const rango = semana && parseWeekRange(semana.meta?.dateRange, new Date());
-    if (!rango) { alert('No se pudo leer el rango de fechas de esta semana.'); return; }
-    if (!window.confirm('Se volverá a generar este borrador desde el calendario y se PERDERÁN los cambios que hayas hecho en él. ¿Continuar?')) return;
+    if (!rango) { await alert('No se pudo leer el rango de fechas de esta semana.', { type: 'error' }); return; }
+    
+    const isConfirmed = await confirm('Se volverá a generar este borrador desde el calendario y se PERDERÁN los cambios que hayas hecho en él. ¿Continuar?', { type: 'warning' });
+    if (!isConfirmed) return;
+    
     const clave = `${rango.start.getFullYear()}-${String(rango.start.getMonth() + 1).padStart(2, '0')}-${String(rango.start.getDate()).padStart(2, '0')}`;
     const r = await anticiparSemanas({
       semanas, hoy: new Date(), roster: workersList,
       leerApuntes: fetchCalendarioApuntes, crearBorrador: createDraftWeekInAPI,
       inicios: [rango.start], reemplazar: true, idsForzados: { [clave]: weekId },
     });
-    if (r.estado === 'no-configurado') { alert('El calendario no está configurado en el servidor (variables CALENDARIO_* en Render).'); return; }
-    if (r.estado === 'error') { alert(`No se pudo leer el calendario: ${r.error}`); return; }
-    if (r.creadas.length === 0) { alert(`No se ha regenerado: ${r.omitidas[0]?.motivo || 'sin cambios'}.`); return; }
+    if (r.estado === 'no-configurado') { await alert('El calendario no está configurado en el servidor (variables CALENDARIO_* en Render).', { type: 'error' }); return; }
+    if (r.estado === 'error') { await alert(`No se pudo leer el calendario: ${r.error}`, { type: 'error' }); return; }
+    if (r.creadas.length === 0) { await alert(`No se ha regenerado: ${r.omitidas[0]?.motivo || 'sin cambios'}.`, { type: 'info' }); return; }
     const nuevas = await fetchWeeksFromAPI();
     if (nuevas) setAllWeeks(nuevas);
   };
@@ -379,7 +384,7 @@ export default function App() {
 
 
 
-  const handleJumpToVispera = () => {
+  const handleJumpToVispera = async () => {
     // Buscar la semana cronológicamente anterior a la actual
     if (!activeWeek?.meta?.dateRange) return;
     
@@ -396,7 +401,7 @@ export default function App() {
       const prevWeekId = currentWeekIds[currentIndex - 1];
       setActiveWeekId(prevWeekId);
     } else {
-      alert("No se ha encontrado la semana anterior en el registro local.");
+      await alert("No se ha encontrado la semana anterior en el registro local.", { type: 'info' });
     }
   };
 

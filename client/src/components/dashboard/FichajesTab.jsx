@@ -9,6 +9,7 @@ import { filtrarFichajes, agruparPorDia, turnosPorSalida, contarPorTipo, persona
 import { formatearHoras, formatearNumero } from '../../data/formatoFinanciero';
 import { formatTimeShort, formatDuration } from '../../utils/dateUtils';
 import { useAhora } from '../../hooks/useAhora';
+import { useDialog } from '../../contexts/DialogContext';
 
 const PASO_FILA = 25; // ms entre fila y fila al aparecer
 const MAX_RETRASO = 400; // las listas largas no se hacen esperar
@@ -25,6 +26,7 @@ export default function FichajesTab({
   onDeleteClockEntry
 }) {
   const ahora = useAhora();
+  const { confirm } = useDialog();
   const [filtros, setFiltros] = useState({ consulta: '', tipo: 'todos', persona: 'todas' });
   const [manual, setManual] = useState({}); // días que el usuario ha abierto o cerrado a mano
 
@@ -51,8 +53,8 @@ export default function FichajesTab({
   const alternarTodos = () => setManual(Object.fromEntries(grupos.map(g => [g.clave, !todosAbiertos])));
 
   const perfil = (nombre) => workersList.find(w => w.name === nombre);
-  const eliminar = (entrada) => {
-    if (window.confirm('¿Estás seguro de que quieres borrar este fichaje?') && onDeleteClockEntry) onDeleteClockEntry(entrada.id);
+  const eliminar = async (entrada) => {
+    if (await confirm('¿Estás seguro de que quieres borrar este fichaje?', { type: 'warning' }) && onDeleteClockEntry) onDeleteClockEntry(entrada.id);
   };
 
   return (

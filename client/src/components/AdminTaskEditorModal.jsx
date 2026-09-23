@@ -1033,15 +1033,17 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
       </div>
 
       {/* Footer */}
-      <div className="p-3 sm:p-6 border-t border-slate-800 shrink-0">
-        <Boton 
+      <div className="p-4 sm:p-6 border-t border-slate-800/60 bg-slate-900/50 backdrop-blur-md shrink-0 rounded-b-2xl">
+        <button 
+          type="button"
           onClick={handleSave}
-          variante="primario"
-          className="w-full"
+          className="w-full relative overflow-hidden group flex items-center justify-center gap-2 px-6 py-3.5 sm:py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-extrabold text-sm sm:text-base shadow-lg shadow-amber-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
         >
-          <Save className="w-5 h-5" />
-          Guardar y Actualizar Planning
-        </Boton>
+          {/* Subtle sheen effect */}
+          <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent group-hover:animate-[shimmer_1.5s_infinite]"></div>
+          <Save className="w-5 h-5 relative z-10" />
+          <span className="relative z-10">Guardar y Actualizar Planning</span>
+        </button>
       </div>
     </Modal>
   );

@@ -14,6 +14,7 @@ import { getWeddingTaskName } from '../data/eventNaming';
 import { formatTimeShort, formatWeekdayDay } from '../utils/dateUtils';
 import { formatearHoras } from '../data/formatoFinanciero';
 import EstadoVacio from './ui/EstadoVacio';
+import { useDialog } from '../contexts/DialogContext';
 
 
 // Texto del botón de empezar la jornada: se elige uno al azar al abrir la
@@ -54,6 +55,7 @@ export default function WorkerView({
   onToggleGeneralView,
   onOpenAdminDashboard
 }) {
+  const { confirm } = useDialog();
   const [isClockModalOpen, setIsClockModalOpen] = useState(false);
   const [prefilledTask, setPrefilledTask] = useState(null); // for task-level clock-in
   const [taskRef, setTaskRef] = useState(null); // { dayKey, taskIndex } — para marcar la tarea como hecha al fichar salida
@@ -576,8 +578,8 @@ export default function WorkerView({
               {/* BOTÓN DESHACER: Disponible solo durante los primeros 15 min */}
               {activeShift && (new Date() - new Date(activeShift.timestamp) < 15 * 60 * 1000) && (
                 <button
-                  onClick={() => {
-                    if (window.confirm('¿Seguro que quieres anular este fichaje de entrada? Hazlo solo si le diste por error.')) {
+                  onClick={async () => {
+                    if (await confirm('¿Seguro que quieres anular este fichaje de entrada? Hazlo solo si le diste por error.', { type: 'warning' })) {
                       onDeleteClockEntry(activeShift.id);
                     }
                   }}

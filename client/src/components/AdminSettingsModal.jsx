@@ -4,8 +4,10 @@ import { changeAdminPassword } from '../data/apiService';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input } from './ui/Campo';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function AdminSettingsModal({ isOpen, onClose }) {
+  const { alert, confirm } = useDialog();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -101,13 +103,13 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
           <button
             type="button"
             onClick={async () => {
-              if (window.confirm("¿Seguro que quieres optimizar la Base de Datos? Se purgarán los fichajes borrados.")) {
+              if (await confirm("¿Seguro que quieres optimizar la Base de Datos? Se purgarán los fichajes borrados.", { type: 'warning' })) {
                 try {
                   const { optimizeDatabase } = await import('../data/apiService');
                   const res = await optimizeDatabase();
-                  alert(res.message || 'Optimizado con éxito');
+                  await alert(res.message || 'Optimizado con éxito', { type: 'success' });
                 } catch(e) {
-                  alert('Error: ' + e.message);
+                  await alert('Error: ' + e.message, { type: 'error' });
                 }
               }
             }}

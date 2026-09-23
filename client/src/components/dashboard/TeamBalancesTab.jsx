@@ -3,6 +3,7 @@ import { AlertTriangle, Banknote, Bus, ChevronDown, ChevronUp, Clock, Edit3, Lig
 import { formatearEuros, formatearEurosConSigno, formatearHoras, formatearNumero } from '../../data/formatoFinanciero';
 import { Input } from '../ui/Campo';
 import BarraProgreso from '../ui/BarraProgreso';
+import { useDialog } from '../../contexts/DialogContext';
 
 // Horas tal como se escriben DENTRO del texto de un concepto ("4,5" → "4.5", sin ceros de
 // sobra). Ese texto se guarda en Mongo: no cambiar el formato, o los conceptos nuevos
@@ -17,6 +18,7 @@ export default function TeamBalancesTab({
   persistWorkerBalance,
   findWorkerHours
 }) {
+  const { confirm } = useDialog();
   const [expandedWorkerId, setExpandedWorkerId] = useState('jefferson');
   const [addingConceptFor, setAddingConceptFor] = useState(null);
   const [newConceptMode, setNewConceptMode] = useState('turno');
@@ -249,7 +251,7 @@ export default function TeamBalancesTab({
   };
 
   const handleDeleteDynamicShift = async (entryIds) => {
-    if (window.confirm('¿Estás seguro de que quieres borrar este fichaje? Esta acción eliminará los registros de entrada y salida asociados.')) {
+    if (await confirm('¿Estás seguro de que quieres borrar este fichaje? Esta acción eliminará los registros de entrada y salida asociados.', { type: 'warning' })) {
       if (onDeleteClockEntry) {
         for (const id of entryIds) {
           await onDeleteClockEntry(id);

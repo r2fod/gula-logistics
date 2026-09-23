@@ -8,6 +8,7 @@ import { esBorrador } from '../data/anticipacion';
 import { tareasDeLaVispera, fichadosDelDia } from '../data/vispera';
 import { useCopiado } from '../hooks/useCopiado';
 import { useAvisarCambios } from '../hooks/useAvisarCambios';
+import { useDialog } from '../contexts/DialogContext';
 import TeamBalancesTab from './dashboard/TeamBalancesTab';
 import FinancialSummaryTab from './dashboard/FinancialSummaryTab';
 import LogisticsTab from './dashboard/LogisticsTab';
@@ -58,6 +59,7 @@ export default function PartnerDashboardView({
   onOpenTaskEditor,
   onToggleTask
 }) {
+  const { alert, confirm } = useDialog();
   const [activeTab, setActiveTab] = useState(() => pestanaDesdeUrl(window.location.search));
   const [adminUnlocked, setAdminUnlocked] = useState(isAdmin);
   const [isAdminEditOpen, setIsAdminEditOpen] = useState(false);
@@ -115,7 +117,7 @@ export default function PartnerDashboardView({
       // El cambio ya se ve en pantalla (arriba, optimista) pero NO llegó a
       // Mongo — sin este aviso, desaparecía solo en el siguiente refresco
       // sin que nadie supiera por qué.
-      alert('⚠️ No se pudo guardar este cambio de saldo en el servidor (posible sesión de administrador caducada o sin conexión). Se ve aquí pero puede desaparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite el cambio.');
+      await alert('⚠️ No se pudo guardar este cambio de saldo en el servidor (posible sesión de administrador caducada o sin conexión). Se ve aquí pero puede desaparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite el cambio.', { type: 'warning' });
     }
   };
 
@@ -173,6 +175,7 @@ export default function PartnerDashboardView({
       vistaPublica: onTogglePublicView && (() => onTogglePublicView(false)),
       claves: () => setIsAdminSettingsOpen(true),
       nuevaSemana: onOpenAddWeek,
+      generarBorrador: onRegenerateDraft ? () => onRegenerateDraft(activeWeekId) : undefined,
     }
   );
 
@@ -203,8 +206,8 @@ export default function PartnerDashboardView({
         <SemanaBorradorBanner
           week={activeWeekData}
           adminUnlocked={adminUnlocked}
-          onAceptar={() => {
-            if (!window.confirm('¿Aceptar esta semana y activarla? Dejará de ser un borrador.')) return;
+          onAceptar={async () => {
+            if (!(await confirm('¿Aceptar esta semana y activarla? Dejará de ser un borrador.', { type: 'warning' }))) return;
             const { avisos, ...metaSinAvisos } = activeWeekData.meta || {};
             if (onUpdateWeek) onUpdateWeek({ ...activeWeekData, meta: { ...metaSinAvisos, status: 'Operativa Activa', aceptadaEl: new Date().toISOString() } });
           }}
