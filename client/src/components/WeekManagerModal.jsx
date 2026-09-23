@@ -176,27 +176,36 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
 
       <div className="space-y-5">
         {onForceAutoDraft && (
-          <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-4 text-sm justify-between">
-            <div className="text-indigo-200">
-              <strong className="text-indigo-300 block mb-0.5">¿Tienes los eventos listos en el Calendario Gula?</strong>
-              Puedes generar automáticamente los borradores de las próximas semanas importando todo directamente.
+          <div className="relative overflow-hidden bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-transparent border border-indigo-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-4 text-sm justify-between shadow-lg shadow-indigo-900/20 backdrop-blur-sm">
+            {/* Ambient glow */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+            
+            <div className="text-indigo-100 relative z-10">
+              <strong className="text-indigo-300 block mb-1 text-base flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                ¿Tienes los eventos listos en el Calendario Gula?
+              </strong>
+              <p className="text-slate-300 text-xs leading-relaxed max-w-xl">
+                Puedes generar automáticamente los borradores de las próximas semanas importando todo directamente.
+              </p>
             </div>
             <button
               type="button"
               onClick={handleAutoCalendar}
               disabled={calendarLoading || loading}
-              className="shrink-0 whitespace-nowrap bg-indigo-500 hover:bg-indigo-400 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 flex items-center gap-2"
+              className="relative overflow-hidden group shrink-0 whitespace-nowrap bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2 z-10"
             >
-              {calendarLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              <span>Generar desde Calendario</span>
+              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent group-hover:animate-[shimmer_1.5s_infinite]"></div>
+              {calendarLoading ? <RefreshCw className="w-4 h-4 animate-spin relative z-10" /> : <RefreshCw className="w-4 h-4 relative z-10" />}
+              <span className="relative z-10">Generar desde Calendario</span>
             </button>
           </div>
         )}
         
-        <div className="relative flex items-center py-2">
-            <div className="flex-grow border-t border-slate-800"></div>
-            <span className="shrink-0 mx-4 text-xs font-semibold uppercase tracking-wider text-slate-500">O crea una con el Asistente AI</span>
-            <div className="flex-grow border-t border-slate-800"></div>
+        <div className="relative flex items-center py-3">
+            <div className="flex-grow border-t border-slate-800/80 shadow-[0_1px_0_0_rgba(255,255,255,0.02)]"></div>
+            <span className="shrink-0 mx-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-500 bg-slate-900/50 px-3 py-1 rounded-full backdrop-blur-sm border border-slate-800/50">O crea una con el Asistente AI</span>
+            <div className="flex-grow border-t border-slate-800/80 shadow-[0_1px_0_0_rgba(255,255,255,0.02)]"></div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -488,17 +497,18 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
             type="button"
             onClick={handleGenerate}
             disabled={!canGenerate}
-            className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-indigo-500 hover:opacity-95 text-slate-950 text-xs font-bold shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+            className="group relative overflow-hidden flex-1 py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-amber-400 to-orange-500 hover:opacity-95 text-slate-950 text-sm font-extrabold shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center space-x-2 disabled:opacity-50 disabled:hover:scale-100"
           >
+            <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent group-hover:animate-[shimmer_1.5s_infinite]"></div>
             {loading ? (
               <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Generando Planificación con Gemini AI...</span>
+                <RefreshCw className="w-5 h-5 animate-spin relative z-10" />
+                <span className="relative z-10 tracking-wide">Generando Planificación con Gemini AI...</span>
               </>
             ) : (
               <>
-                <Sparkles className="w-4 h-4" />
-                <span>Generar Planificación Inteligente</span>
+                <Sparkles className="w-5 h-5 relative z-10" />
+                <span className="relative z-10 tracking-wide">Generar Planificación Inteligente</span>
               </>
             )}
           </button>
@@ -555,10 +565,11 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
 
             <button
               onClick={handleApply}
-              className="w-full py-3.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center space-x-2"
+              className="group relative overflow-hidden w-full py-4 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-sm font-extrabold shadow-lg shadow-emerald-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center space-x-2"
             >
-              <Plus className="w-4 h-4" />
-              <span>Crear la Semana con esta Planificación</span>
+              <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent group-hover:animate-[shimmer_1.5s_infinite]"></div>
+              <Plus className="w-5 h-5 relative z-10" />
+              <span className="relative z-10 tracking-wide">Crear la Semana con esta Planificación</span>
             </button>
           </div>
         )}
