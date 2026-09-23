@@ -4,6 +4,7 @@ import AdminClockEditModal from './AdminClockEditModal';
 import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../data/shiftCalculations';
 import { horaDeFichaje, fechaDeFichaje } from '../data/fichajes';
 import { formatearEuros, formatearHoras } from '../data/formatoFinanciero';
+import BotonCerrar from "./ui/BotonCerrar";
 import Modal from './ui/Modal';
 import EstadoVacio from './ui/EstadoVacio';
 import CabeceraModal from './ui/CabeceraModal';
@@ -219,22 +220,27 @@ export default function PayrollReportModal({
 
   return (
     <>
-      <Modal onCerrar={onClose} ancho="4xl">
-        {/* Modal Title */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-5">
-          <CabeceraModal
-            icono={DollarSign}
-            titulo="Informe de Fichajes, Horas & Nóminas"
-            subtitulo="Control de horas trabajadas y tarificación. Modificación restringida a Administración."
-            insignia={
-              <span className="px-2 py-0.5 text-[10px] font-extrabold rounded bg-slate-800 text-amber-400 border border-amber-500/30 flex items-center gap-1 shrink-0">
-                <Lock className="w-3 h-3 text-amber-400" />
-                <span>Fichajes Bloqueados</span>
-              </span>
-            }
-          />
+      <Modal onCerrar={onClose} ancho="6xl" disposicion="columna" botonCerrar={false}>
+        {/* Fixed Header */}
+        <div className="p-3 sm:p-5 border-b border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shrink-0 bg-slate-900/50 backdrop-blur-md">
+          <div className="flex-1 flex items-start sm:items-center justify-between w-full">
+            <CabeceraModal
+              icono={DollarSign}
+              titulo="Informe de Fichajes, Horas & Nóminas"
+              subtitulo="Control de horas trabajadas y tarificación. Modificación restringida a Administración."
+              insignia={
+                <span className="px-2 py-0.5 text-[10px] font-extrabold rounded bg-slate-800 text-amber-400 border border-amber-500/30 flex items-center gap-1 shrink-0">
+                  <Lock className="w-3 h-3 text-amber-400" />
+                  <span>Fichajes Bloqueados</span>
+                </span>
+              }
+            />
+            <div className="sm:hidden ml-2">
+              <BotonCerrar onClick={onClose} />
+            </div>
+          </div>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             {isAdmin && (
               <button
                 onClick={handleOpenCreateNew}
@@ -261,8 +267,14 @@ export default function PayrollReportModal({
                 </>
               )}
             </button>
+            <div className="hidden sm:block ml-2">
+              <BotonCerrar onClick={onClose} />
+            </div>
           </div>
         </div>
+
+        {/* Scrollable Body */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
 
         {/* Lock Info Banner */}
         <div className="bg-slate-950/80 border border-slate-800 p-3 rounded-2xl mb-5 flex items-center justify-between text-xs text-slate-300">
@@ -465,7 +477,7 @@ export default function PayrollReportModal({
               </div>
 
               {/* Desktop Table View (hidden sm:block) */}
-              <div className="hidden sm:block overflow-x-auto no-scrollbar">
+              <div className="hidden sm:block overflow-x-auto pb-4 custom-scrollbar">
                 <table className="w-full min-w-[680px] text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
@@ -562,7 +574,7 @@ export default function PayrollReportModal({
           filteredRawEntries.length === 0 ? (
             <EstadoVacio icono={Clock} titulo="No hay fichajes individuales registrados." />
           ) : (
-            <div className="overflow-x-auto no-scrollbar">
+            <div className="overflow-x-auto pb-4 custom-scrollbar">
               <table className="w-full min-w-[620px] text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
@@ -794,6 +806,7 @@ export default function PayrollReportModal({
             )}
           </div>
         )}
+        </div>
       </Modal>
 
       {/* Admin Clock Edit Modal */}
