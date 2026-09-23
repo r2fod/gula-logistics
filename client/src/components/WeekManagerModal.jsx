@@ -14,7 +14,7 @@ import { AreaTexto, Input, Selector } from './ui/Campo';
 // qué bodas y eventos hay cada día) y con eso se arma un prompt para el mismo
 // motor de Gemini que ya usaba el Asistente AI suelto — sustituye al
 // formulario simple de antes (solo nombre + fechas + clonar).
-export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, currentWeekName, currentWeekTrucks = [], workersList = [] }) {
+export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForceAutoDraft, currentWeekName, currentWeekTrucks = [], workersList = [] }) {
   const [weekName, setWeekName] = useState('');
   const [dateRange, setDateRange] = useState('');
   const [cloneCurrent, setCloneCurrent] = useState(true);
@@ -35,6 +35,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [generatedJson, setGeneratedJson] = useState(null);
+  const [calendarLoading, setCalendarLoading] = useState(false);
 
   // El aviso sale debajo de los botones: en móvil quedaba fuera de pantalla.
   useEffect(() => {
@@ -51,7 +52,32 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
     setExtraNotes('');
     setGeneratedJson(null);
     setErrorMsg('');
+    setCalendarLoading(false);
     onClose();
+  };
+
+  const handleAutoCalendar = async () => {
+    if (!onForceAutoDraft) return;
+    setCalendarLoading(true);
+    setErrorMsg('');
+    const res = await onForceAutoDraft();
+    setCalendarLoading(false);
+    if (!res) {
+      setErrorMsg('No se devolvió respuesta del servidor.');
+      return;
+    }
+    if (res.error) {
+      setErrorMsg(`Error leyendo el calendario: ${res.error}`);
+      return;
+    }
+    if (res.creadas > 0) {
+      // Todo fue bien, cerramos el modal porque ya se han añadido al listado
+      resetAndClose();
+    } else if (res.omitidas > 0) {
+      setErrorMsg(`No se ha creado ningún borrador (se han omitido ${res.omitidas} semanas, seguramente por estar vacías o ya existir). Revisa los avisos principales.`);
+    } else {
+      setErrorMsg('No se detectaron semanas para crear a partir del calendario.');
+    }
   };
 
   const toggleTruck = (name) => {
@@ -136,7 +162,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
     resetAndClose();
   };
 
-  const canGenerate = weekName.trim() && dateRange.trim() && !loading;
+  const canGenerate = weekName.trim() && dateRange.trim() && !loading && !calendarLoading;
 
   return (
     <Modal onCerrar={resetAndClose} ancho="2xl">
@@ -145,10 +171,34 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, curren
         degradado="amber-indigo"
         titulo="Crear Nueva Semana"
         subtitulo="Responde unas preguntas y Gemini AI te arma la planificación"
-        className="mb-6"
+        className="mb-4"
       />
 
       <div className="space-y-5">
+        {onForceAutoDraft && (
+          <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-4 text-sm justify-between">
+            <div className="text-indigo-200">
+              <strong className="text-indigo-300 block mb-0.5">¿Tienes los eventos listos en el Calendario Gula?</strong>
+              Puedes generar automáticamente los borradores de las próximas semanas importando todo directamente.
+            </div>
+            <button
+              type="button"
+              onClick={handleAutoCalendar}
+              disabled={calendarLoading || loading}
+              className="shrink-0 whitespace-nowrap bg-indigo-500 hover:bg-indigo-400 text-white font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 flex items-center gap-2"
+            >
+              {calendarLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              <span>Generar desde Calendario</span>
+            </button>
+          </div>
+        )}
+        
+        <div className="relative flex items-center py-2">
+            <div className="flex-grow border-t border-slate-800"></div>
+            <span className="shrink-0 mx-4 text-xs font-semibold uppercase tracking-wider text-slate-500">O crea una con el Asistente AI</span>
+            <div className="flex-grow border-t border-slate-800"></div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
