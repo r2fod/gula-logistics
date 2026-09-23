@@ -377,6 +377,27 @@ export default function App() {
 
 
 
+  const handleJumpToVispera = () => {
+    // Buscar la semana cronológicamente anterior a la actual
+    if (!activeWeek?.meta?.dateRange) return;
+    
+    // Simplificación: la semana que tenga una fecha de fin inmediatamente anterior (o cercana)
+    const currentWeekIds = Object.keys(allWeeks).sort((a, b) => {
+      // week_1234567890 (timestamp en ms)
+      const tA = parseInt(a.replace('week_', '')) || 0;
+      const tB = parseInt(b.replace('week_', '')) || 0;
+      return tA - tB;
+    });
+
+    const currentIndex = currentWeekIds.indexOf(activeWeekId);
+    if (currentIndex > 0) {
+      const prevWeekId = currentWeekIds[currentIndex - 1];
+      setActiveWeekId(prevWeekId);
+    } else {
+      alert("No se ha encontrado la semana anterior en el registro local.");
+    }
+  };
+
   if (activeWorker) {
     return (
       <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans selection:bg-amber-500 selection:text-slate-950 relative">
@@ -610,6 +631,7 @@ export default function App() {
         activeWeekData={activeWeek}
         workersList={workersList}
         onSaveWeekData={handleUpdateActiveWeek}
+        onJumpToVispera={handleJumpToVispera}
       />
 
       <AdminLoginModal
