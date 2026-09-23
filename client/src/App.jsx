@@ -394,10 +394,15 @@ export default function App() {
       const rangeA = getWeekRange(allWeeks[a]);
       const rangeB = getWeekRange(allWeeks[b]);
       
-      const tA = rangeA?.start ? rangeA.start.getTime() : (parseInt(a.replace('week_', '')) || 0);
-      const tB = rangeB?.start ? rangeB.start.getTime() : (parseInt(b.replace('week_', '')) || 0);
+      if (rangeA?.start && rangeB?.start) {
+        return rangeA.start.getTime() - rangeB.start.getTime();
+      }
       
-      return tA - tB;
+      // Fallback a comparar por el número en el nombre o ID ("Semana 3" -> 3)
+      const numA = parseInt(allWeeks[a]?.name?.match(/(\d+)/)?.[1] || a.match(/(\d+)/)?.[1]) || 0;
+      const numB = parseInt(allWeeks[b]?.name?.match(/(\d+)/)?.[1] || b.match(/(\d+)/)?.[1]) || 0;
+      
+      return numA - numB;
     });
 
     const currentIndex = currentWeekIds.indexOf(activeWeekId);
