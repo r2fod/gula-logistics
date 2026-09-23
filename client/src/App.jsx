@@ -90,14 +90,47 @@ export default function App() {
   const {
     clockEntries,
     setClockEntries,
-    activeClockEntries,
-    deletedClockEntries,
+    activeClockEntries: rawActiveClockEntries,
+    deletedClockEntries: rawDeletedClockEntries,
     handleClockEntryCreated,
     handleUpdateClockEntry,
     handleDeleteClockEntry,
     handleRestoreClockEntry,
     handleClearClockEntries
   } = useClockings(markTaskCompleted);
+
+  // Filtrar fichajes para mostrar SOLO los de la semana que estamos consultando.
+  // Permite cerrar y consultar nóminas o historiales semana por semana sin mezclar datos.
+  const activeClockEntries = useMemo(() => {
+    if (!activeWeek || !activeWeek.meta || !activeWeek.meta.dateRange) return rawActiveClockEntries;
+    const range = parseWeekRange(activeWeek.meta.dateRange);
+    if (!range) return rawActiveClockEntries;
+    
+    // Las semanas van de lunes a domingo. Añadimos un pequeño margen por si el trabajador
+    // ficha su salida de madrugada el lunes siguiente.
+    const start = range.start.getTime();
+    const end = range.end.getTime() + (6 * 60 * 60 * 1000); // Hasta las 06:00 del lunes sig.
+    
+    return rawActiveClockEntries.filter(e => {
+      const entryTime = new Date(e.timestamp).getTime();
+      return entryTime >= start && entryTime <= end;
+    });
+  }, [rawActiveClockEntries, activeWeek]);
+
+  // Filtrar igual la papelera para mantener la coherencia en la vista de Admin
+  const deletedClockEntries = useMemo(() => {
+    if (!activeWeek || !activeWeek.meta || !activeWeek.meta.dateRange) return rawDeletedClockEntries;
+    const range = parseWeekRange(activeWeek.meta.dateRange);
+    if (!range) return rawDeletedClockEntries;
+    
+    const start = range.start.getTime();
+    const end = range.end.getTime() + (6 * 60 * 60 * 1000);
+    
+    return rawDeletedClockEntries.filter(e => {
+      const entryTime = new Date(e.timestamp).getTime();
+      return entryTime >= start && entryTime <= end;
+    });
+  }, [rawDeletedClockEntries, activeWeek]);
 
   // Tareas en las que alguien está fichado ahora mismo: el reloj no las da por
   // hechas mientras tanto ("en proceso"). Por ref, igual que arriba, porque el
