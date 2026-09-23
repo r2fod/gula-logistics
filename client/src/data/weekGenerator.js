@@ -126,11 +126,17 @@ function extraerAlquileres(apuntes, inicio, fin) {
       return { titulo: limpio, fecha: a.fecha, hora: h ? aMin(`${h[1]}:${h[2]}`) : null, esDevolucion };
     });
 
-  const mensuales = apuntes
+  const mensualesMap = new Map();
+  apuntes
     .filter(a => a.tipo === 'recogida' && a.hasta && a.hasta >= aIso(inicio) && a.fecha <= aIso(fin))
-    .map(a => a.titulo.replace(/\b\d{1,2}:\d{2}\b/g, '').replace(/[,\s]+$/g, '').replace(/^\s*(?:a las\s*)?/i, '').trim());
+    .forEach(a => {
+      const nombre = a.titulo.replace(/\b\d{1,2}:\d{2}\b/g, '').replace(/[,\s]+$/g, '').replace(/^\s*(?:a las\s*)?/i, '').trim();
+      if (!mensualesMap.has(nombre.toLowerCase())) {
+        mensualesMap.set(nombre.toLowerCase(), { nombre, desde: a.fecha, hasta: a.hasta });
+      }
+    });
 
-  return { tareas, mensuales: [...new Set(mensuales)] };
+  return { tareas, mensuales: Array.from(mensualesMap.values()) };
 }
 
 function extraerVacaciones(apuntes, roster) {
@@ -385,14 +391,16 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
     team: (plantilla.team || []).map(t => ({ ...t })),
     trucks: (() => {
       const trucksBase = (plantilla.trucks || []).map(t => ({ ...t, pickupCompleted: false, returnCompleted: false }));
-      // Agregar los alquileres mensuales del calendario si no están ya en la lista
-      alquileresMensuales.forEach(nombre => {
-        if (!trucksBase.some(t => t.name.toLowerCase() === nombre.toLowerCase())) {
-          trucksBase.push({ name: nombre, tag: 'ALQUILER', isMonthlyRental: true, status: 'Operativo', pickupCompleted: false, returnCompleted: false });
+      // Agregar los alquileres continuos del calendario si no están ya en la lista
+      alquileresMensuales.forEach(m => {
+        if (!trucksBase.some(t => t.name.toLowerCase() === m.nombre.toLowerCase())) {
+          trucksBase.push({ name: m.nombre, tag: 'ALQUILER', isContinuousRental: true, continuousStart: m.desde, continuousEnd: m.hasta, status: 'Operativo', pickupCompleted: false, returnCompleted: false });
         } else {
-          // Si ya existe, nos aseguramos de que esté marcado como alquiler continuo
-          const t = trucksBase.find(t => t.name.toLowerCase() === nombre.toLowerCase());
-          t.isMonthlyRental = true;
+          // Si ya existe, nos aseguramos de que esté marcado como alquiler continuo y actualizamos las fechas
+          const t = trucksBase.find(t => t.name.toLowerCase() === m.nombre.toLowerCase());
+          t.isContinuousRental = true;
+          t.continuousStart = m.desde;
+          t.continuousEnd = m.hasta;
           t.tag = 'ALQUILER';
         }
       });

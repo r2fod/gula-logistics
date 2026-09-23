@@ -121,20 +121,42 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
                   <label className="flex items-center gap-2 cursor-pointer group">
                     <input 
                       type="checkbox"
-                      checked={truck.isMonthlyRental || false}
-                      onChange={(e) => handleUpdateTruck(idx, 'isMonthlyRental', e.target.checked)}
+                      checked={truck.isContinuousRental || false}
+                      onChange={(e) => handleUpdateTruck(idx, 'isContinuousRental', e.target.checked)}
                       className="w-4 h-4 rounded border-slate-700 bg-slate-900/50 text-amber-500 focus:ring-amber-500 focus:ring-offset-slate-950 transition-colors"
                     />
                     <span className="text-xs font-medium text-slate-400 group-hover:text-slate-300 transition-colors">
-                      Alquiler todo el mes
+                      Alquiler Continuo (Larga Duración)
                     </span>
                   </label>
                 </div>
                 
-                {truck.isMonthlyRental ? (
-                  <div className="mb-4 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs flex items-center gap-3">
-                    <AlertCircle className="w-5 h-5 shrink-0" />
-                    <p>El vehículo está marcado como alquiler continuo. No se generarán tareas automáticas semanales de recogida ni devolución para este camión.</p>
+                {truck.isContinuousRental ? (
+                  <div className="mb-4 space-y-4">
+                    <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 shrink-0" />
+                      <p>El vehículo está en alquiler continuo. No se generarán tareas semanales repetitivas de recogida y devolución.</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Fecha de inicio</label>
+                        <Input
+                          type="date"
+                          value={truck.continuousStart || ''}
+                          onChange={(e) => handleUpdateTruck(idx, 'continuousStart', e.target.value)}
+                          redondeo="lg" fondo="medio" borde="marcado"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-400 mb-1">Fecha de fin</label>
+                        <Input
+                          type="date"
+                          value={truck.continuousEnd || ''}
+                          onChange={(e) => handleUpdateTruck(idx, 'continuousEnd', e.target.value)}
+                          redondeo="lg" fondo="medio" borde="marcado"
+                        />
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
