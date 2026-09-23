@@ -443,7 +443,14 @@ export async function fetchCalendarioApuntes(desde, hasta) {
   try {
     const res = await fetch(`${API_BASE}/calendario/eventos?desde=${desde}&hasta=${hasta}`, { headers: { ...authHeaders() } });
     if (res.status === 503) return { configurado: false, apuntes: [] };
-    if (!res.ok) return { configurado: true, apuntes: [], error: `HTTP ${res.status}` };
+    if (!res.ok) {
+      try {
+        const errorData = await res.json();
+        return { configurado: true, apuntes: [], error: errorData.error || `HTTP ${res.status}` };
+      } catch (e) {
+        return { configurado: true, apuntes: [], error: `HTTP ${res.status}` };
+      }
+    }
     return await res.json();
   } catch (err) {
     return { configurado: true, apuntes: [], error: err.message };
