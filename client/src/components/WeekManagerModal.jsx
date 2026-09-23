@@ -4,6 +4,7 @@ import { generateScheduleWithGemini, buildWeekPrompt, WEEK_EVENT_DAYS, WEEK_EVEN
 import Modal from './ui/Modal';
 import Tarjeta from './ui/Tarjeta';
 import CabeceraModal from './ui/CabeceraModal';
+import BotonCerrar from './ui/BotonCerrar';
 import { parseWeekRange, getDayLabel } from '../data/taskPlanning';
 import { buildEventName } from '../data/eventNaming';
 import { AreaTexto, Input, Selector } from './ui/Campo';
@@ -165,16 +166,18 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
   const canGenerate = weekName.trim() && dateRange.trim() && !loading && !calendarLoading;
 
   return (
-    <Modal onCerrar={resetAndClose} ancho="2xl">
-      <CabeceraModal
-        icono={Sparkles}
-        degradado="amber-indigo"
-        titulo="Crear Nueva Semana"
-        subtitulo="Responde unas preguntas y Gemini AI te arma la planificación"
-        className="mb-4"
-      />
+    <Modal onCerrar={resetAndClose} ancho="3xl" disposicion="columna" botonCerrar={false}>
+      <div className="p-3 sm:p-5 border-b border-slate-800 flex items-center justify-between shrink-0">
+        <CabeceraModal
+          icono={Sparkles}
+          degradado="amber-indigo"
+          titulo="Crear Nueva Semana"
+          subtitulo="Responde unas preguntas y Gemini AI te arma la planificación"
+        />
+        <BotonCerrar onClick={resetAndClose} />
+      </div>
 
-      <div className="space-y-5">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-7 space-y-5">
         {onForceAutoDraft && (
           <div className="relative overflow-hidden bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-transparent border border-indigo-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-4 text-sm justify-between shadow-lg shadow-indigo-900/20 backdrop-blur-sm">
             {/* Ambient glow */}
