@@ -43,6 +43,7 @@ jobs:
           npm run build
         env:
           VITE_API_URL: https://gula-logistics.onrender.com/api
+          VITE_VAPID_PUBLIC_KEY: BHbjmqaP_ifrABmYMmRq5t5k20-tEztQ-mtU9VrETBAn-3IJt0mhm2KMp7oIaCwluXzuzPJ6nggzniMHbqvEOkE
 
       - name: Configurar GitHub Pages
         uses: actions/configure-pages@v5
