@@ -588,23 +588,27 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                             <div className="flex flex-col gap-2">
                               <div>
                                 <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Evento (Ej: Boda Soto) — si es de varios, sepáralos con +</label>
-                                <div className="flex flex-wrap gap-1.5 mb-1.5 w-full">
-                                  {eventChips.map(name => {
-                                    const on = selectedEvents.includes(name);
-                                    return (
-                                      <button
-                                        key={name}
-                                        type="button"
-                                        aria-pressed={on}
-                                        onClick={() => toggleEvent(name)}
-                                        className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-colors flex-grow sm:flex-grow-0 min-w-fit text-center ${
-                                          on ? 'bg-amber-500 border-amber-500 text-slate-950' : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
-                                        }`}
-                                      >
-                                        {name}
-                                      </button>
-                                    );
-                                  })}
+                                <div className="relative">
+                                  <div className="flex flex-nowrap overflow-x-auto gap-2 mb-2 w-full pb-2 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x">
+                                    {eventChips.map(name => {
+                                      const on = selectedEvents.includes(name);
+                                      return (
+                                        <button
+                                          key={name}
+                                          type="button"
+                                          aria-pressed={on}
+                                          onClick={() => toggleEvent(name)}
+                                          className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] sm:text-xs font-bold border transition-colors snap-start ${
+                                            on ? 'bg-amber-500 border-amber-500 text-slate-950 shadow-md shadow-amber-500/20' : 'bg-slate-900/80 border-slate-700/50 text-slate-300 hover:text-white hover:bg-slate-800'
+                                          }`}
+                                        >
+                                          {name}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                  {/* Right fade gradient to indicate scroll */}
+                                  <div className="absolute top-0 right-0 bottom-2 w-8 bg-gradient-to-l from-slate-950 to-transparent pointer-events-none rounded-r-lg"></div>
                                 </div>
                                 <Input
                                   type="text"
