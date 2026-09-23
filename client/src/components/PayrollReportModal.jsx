@@ -8,6 +8,7 @@ import Modal from './ui/Modal';
 import EstadoVacio from './ui/EstadoVacio';
 import CabeceraModal from './ui/CabeceraModal';
 import { Selector } from './ui/Campo';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function PayrollReportModal({
   isOpen,
@@ -22,6 +23,7 @@ export default function PayrollReportModal({
   onClockEntryCreated,
   activeWeekData = null
 }) {
+  const { confirm } = useDialog();
   const [copied, setCopied] = useState(false);
   const [filterWorker, setFilterWorker] = useState('all');
   const [viewTab, setViewTab] = useState('shifts'); // 'shifts' | 'raw_entries' | 'estimated' | 'trash'
@@ -615,8 +617,8 @@ export default function PayrollReportModal({
                                 <span>Editar</span>
                               </button>
                               <button
-                                onClick={() => {
-                                  if (window.confirm('¿Seguro que quieres borrar este fichaje? Irá a la papelera.')) {
+                                onClick={async () => {
+                                  if (await confirm('¿Seguro que quieres borrar este fichaje? Irá a la papelera.', { type: 'warning' })) {
                                     if (onDeleteEntry) onDeleteEntry(entry.id);
                                   }
                                 }}
@@ -774,8 +776,8 @@ export default function PayrollReportModal({
                         </td>
                         <td className="py-3 px-3 text-center">
                           <button
-                            onClick={() => {
-                              if (window.confirm('¿Restaurar este fichaje a los saldos activos?')) {
+                            onClick={async () => {
+                              if (await confirm('¿Restaurar este fichaje a los saldos activos?')) {
                                 onRestoreEntry && onRestoreEntry(entry.id);
                               }
                             }}

@@ -3,6 +3,7 @@ import { logisticsData as BASE_DATA } from '../data/logisticsData';
 import { saveWeeksToAPI, patchTaskCompletionInAPI } from '../data/apiService';
 import { semanaPorDefecto } from '../data/anticipacion';
 import { getTaskListForDay, buildTaskListPatch, getTaskPastStatus, isTaskEffectivelyDone, isWeekFinished, ensureYearInDateRange, clearWeekCompletion, TASK_COMPLETION_GRACE_MINUTES } from '../data/taskPlanning';
+import { useDialog } from '../contexts/DialogContext';
 
 const ALL_DAY_KEYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'domingo', 'sabado'];
 
@@ -13,6 +14,7 @@ const BASE_WEEK_3 = {
 };
 
 export function useWeeks() {
+  const { alert } = useDialog();
   const [allWeeks, setAllWeeks] = useState(() => {
     try {
       const saved = localStorage.getItem('gula_logistics_all_weeks_v10');
@@ -67,12 +69,12 @@ export function useWeeks() {
       if (result.data) {
         applyLocalWeeksState({ ...newWeeks, ...result.data });
       }
-      alert(result.message || '⚠️ Alguien más ha guardado cambios en esta semana mientras la editabas. Se ha recargado la versión más reciente — revisa y repite tu cambio si todavía hace falta.');
+      await alert(result.message || '⚠️ Alguien más ha guardado cambios en esta semana mientras la editabas. Se ha recargado la versión más reciente — revisa y repite tu cambio si todavía hace falta.', { type: 'warning' });
       return;
     }
 
     if (!result) {
-      alert('⚠️ No se pudo guardar en el servidor (posible sesión de administrador caducada). El cambio se ve aquí pero puede desaparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite el cambio.');
+      await alert('⚠️ No se pudo guardar en el servidor (posible sesión de administrador caducada). El cambio se ve aquí pero puede desaparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite el cambio.', { type: 'warning' });
       return;
     }
 

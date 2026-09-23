@@ -1,4 +1,4 @@
-import { Clock, Bell, Edit3, Users, DollarSign, Wand2, Share2, Copy, Check, Eye, KeyRound, Plus } from 'lucide-react';
+import { Clock, Bell, Edit3, Users, DollarSign, Wand2, Share2, Copy, Check, Eye, KeyRound, Plus, RefreshCw } from 'lucide-react';
 
 // Secciones del menú lateral, en orden.
 export const SECCIONES_MENU = [
@@ -76,6 +76,10 @@ export function crearAcciones({ admin = false, avisando = false, enlaceSociasCop
     {
       id: 'nuevaSemana', etiqueta: 'Semana', etiquetaMenu: 'Añadir nueva semana', icono: Plus, colorIcono: 'text-amber-400', tono: 'semana',
       lugares: ['cabecera', 'menu'], seccion: 'configuracion', visible: admin, onClick: alHacer.nuevaSemana,
+    },
+    {
+      id: 'generarBorrador', etiqueta: 'Borrador Manual', etiquetaMenu: 'Generar borrador de semana manual', icono: RefreshCw, colorIcono: 'text-emerald-400', tono: 'aviso',
+      lugares: ['cabecera', 'menu'], seccion: 'configuracion', visible: admin && !!alHacer.generarBorrador, onClick: alHacer.generarBorrador,
     },
   ];
 

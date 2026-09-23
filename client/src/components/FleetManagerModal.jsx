@@ -4,8 +4,10 @@ import { uploadRentalPdf } from '../data/apiService';
 import Modal from './ui/Modal';
 import BotonCerrar from './ui/BotonCerrar';
 import { Input, Selector } from './ui/Campo';
+import { useDialog } from '../contexts/DialogContext';
 
 export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onUpdateWeek }) {
+  const { confirm } = useDialog();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
 
@@ -28,8 +30,8 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
     onUpdateWeek(activeWeekData.id, { trucks: newTrucks });
   };
 
-  const handleDeleteTruck = (idx) => {
-    if (window.confirm("¿Estás seguro de eliminar este camión?")) {
+  const handleDeleteTruck = async (idx) => {
+    if (await confirm("¿Estás seguro de eliminar este camión?", { type: 'warning' })) {
       const newTrucks = trucks.filter((_, i) => i !== idx);
       onUpdateWeek(activeWeekData.id, { trucks: newTrucks });
     }

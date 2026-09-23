@@ -7,8 +7,10 @@ import {
   restoreClockEntryInAPI
 } from '../data/apiService';
 import { getActiveShiftForWorker } from '../data/shiftCalculations';
+import { useDialog } from '../contexts/DialogContext';
 
 export function useClockings(markTaskCompleted) {
+  const { alert } = useDialog();
   const [clockEntries, setClockEntries] = useState(() => {
     try {
       const saved = localStorage.getItem('gula_clock_entries_v1');
@@ -53,7 +55,7 @@ export function useClockings(markTaskCompleted) {
       // Editar un fichaje (hora, tarifa, tarea...) es una acción deliberada
       // de admin — antes, si fallaba el guardado real, el cambio se veía
       // aquí pero desaparecía solo en el siguiente refresco sin aviso.
-      alert('⚠️ No se pudo guardar este cambio de fichaje en el servidor (posible sesión de administrador caducada o sin conexión). Se ve aquí pero puede desaparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite el cambio.');
+      await alert('⚠️ No se pudo guardar este cambio de fichaje en el servidor (posible sesión de administrador caducada o sin conexión). Se ve aquí pero puede desaparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite el cambio.', { type: 'warning' });
     }
   };
 
@@ -71,7 +73,7 @@ export function useClockings(markTaskCompleted) {
     // refresco de 20s, sin ninguna explicación.
     const ok = await deleteClockEntryInAPI(entryId);
     if (!ok) {
-      alert('⚠️ No se pudo mover este fichaje a la papelera en el servidor (posible sesión de administrador caducada o sin conexión). Puede volver a aparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite el borrado.');
+      await alert('⚠️ No se pudo mover este fichaje a la papelera en el servidor (posible sesión de administrador caducada o sin conexión). Puede volver a aparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite el borrado.', { type: 'warning' });
     }
   };
 
@@ -86,7 +88,7 @@ export function useClockings(markTaskCompleted) {
 
     const ok = await restoreClockEntryInAPI(entryId);
     if (!ok) {
-      alert('⚠️ No se pudo restaurar este fichaje en el servidor (posible sesión de administrador caducada o sin conexión). Puede volver a desaparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite la restauración.');
+      await alert('⚠️ No se pudo restaurar este fichaje en el servidor (posible sesión de administrador caducada o sin conexión). Puede volver a desaparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite la restauración.', { type: 'warning' });
     }
   };
 
