@@ -28,6 +28,7 @@ import {
   retryPendingClockEntries
 } from './data/apiService';
 import { getInProgressTaskKeys } from './data/shiftCalculations';
+import { getWeekRange } from './data/taskPlanning';
 import { anticiparSemanas } from './data/anticipacion';
 import { semanaInicialDeEnlace } from './data/enlaces';
 import { parseWeekRange } from './data/taskPlanning';
@@ -388,11 +389,14 @@ export default function App() {
     // Buscar la semana cronológicamente anterior a la actual
     if (!activeWeek?.meta?.dateRange) return;
     
-    // Simplificación: la semana que tenga una fecha de fin inmediatamente anterior (o cercana)
+    // Sort weeks by their parsed date range start time. Fallback to ID-based sorting if unparseable.
     const currentWeekIds = Object.keys(allWeeks).sort((a, b) => {
-      // week_1234567890 (timestamp en ms)
-      const tA = parseInt(a.replace('week_', '')) || 0;
-      const tB = parseInt(b.replace('week_', '')) || 0;
+      const rangeA = getWeekRange(allWeeks[a]);
+      const rangeB = getWeekRange(allWeeks[b]);
+      
+      const tA = rangeA?.start ? rangeA.start.getTime() : (parseInt(a.replace('week_', '')) || 0);
+      const tB = rangeB?.start ? rangeB.start.getTime() : (parseInt(b.replace('week_', '')) || 0);
+      
       return tA - tB;
     });
 
