@@ -109,27 +109,29 @@ export default function App() {
   // configurado. Por ref porque el efecto que la dispara se monta una vez.
   const [avisoAnticipacion, setAvisoAnticipacion] = useState(null);
   const anticipacionEnCursoRef = useRef(false);
-  const ejecutarAnticipacion = async () => {
+  const ejecutarAnticipacion = async (force = false) => {
     if (!getStoredAdminToken() || anticipacionEnCursoRef.current) return;
     const CLAVE = 'gula_anticipacion_v1';
     let ultima = 0;
     try { ultima = Number(localStorage.getItem(CLAVE) || 0); } catch { /* sin almacenamiento */ }
-    if (Date.now() - ultima < 6 * 60 * 60 * 1000) return;
+    if (!force && (Date.now() - ultima < 6 * 60 * 60 * 1000)) return;
     anticipacionEnCursoRef.current = true;
     try {
       const semanas = await fetchWeeksFromAPI();
-      if (!semanas) return;
+      if (!semanas) return { ok: false };
       const r = await anticiparSemanas({
         semanas, hoy: new Date(), roster: workersList,
         leerApuntes: fetchCalendarioApuntes, crearBorrador: createDraftWeekInAPI,
       });
-      if (r.estado === 'error') return; // se reintenta en el siguiente ciclo
+      if (r.estado === 'error') return { ok: false, error: r.error };
+      if (r.estado === 'no-configurado') return { ok: false, error: 'El servidor aún no tiene configuradas las claves del calendario.' };
       try { localStorage.setItem(CLAVE, String(Date.now())); } catch { /* sin almacenamiento */ }
       if (r.creadas.length > 0) {
         const nuevas = await fetchWeeksFromAPI();
         if (nuevas) setAllWeeks(nuevas);
         setAvisoAnticipacion(`📅 Borrador${r.creadas.length > 1 ? 'es' : ''} preparado${r.creadas.length > 1 ? 's' : ''} desde el calendario: ${r.creadas.map(c => `${c.name} (${c.dateRange.replace(/^Del /, '')})`).join(' · ')}. Revísalo${r.creadas.length > 1 ? 's' : ''} y acéptalo${r.creadas.length > 1 ? 's' : ''} en el selector de semanas.`);
       }
+      return { ok: true, creadas: r.creadas.length, omitidas: r.omitidas.length, detallesOmitidas: r.omitidas };
     } finally {
       anticipacionEnCursoRef.current = false;
     }
@@ -599,6 +601,7 @@ export default function App() {
         isOpen={isWeekModalOpen}
         onClose={() => setIsWeekModalOpen(false)}
         onCreateWeek={handleCreateWeek}
+        onForceAutoDraft={() => ejecutarAnticipacion(true)}
         currentWeekName={activeWeek.name}
         currentWeekTrucks={activeWeek.trucks || []}
         workersList={workersList}
