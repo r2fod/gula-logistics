@@ -77,10 +77,10 @@ export default function AvisarCambiosModal({ abierto, onCerrar, workersList = []
           onClick={() => onEnviar(elegidos)}
           disabled={enviando}
           variante="indigo"
-          className="flex-1"
+          className="flex-1 whitespace-nowrap"
         >
-          <Bell className={`w-4 h-4 ${enviando ? 'animate-pulse' : ''}`} />
-          {enviando ? 'Enviando Aviso...' : 'Enviar Aviso Push'}
+          <Bell className={`w-4 h-4 shrink-0 ${enviando ? 'animate-pulse' : ''}`} />
+          <span>{enviando ? 'Enviando Aviso...' : 'Enviar Aviso Push'}</span>
         </Boton>
       </div>
     </Modal>
