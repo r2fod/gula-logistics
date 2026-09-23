@@ -469,51 +469,51 @@ export default function PayrollReportModal({
                 <table className="w-full min-w-[680px] text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
-                      <th className="py-3 px-3">Trabajador</th>
-                      <th className="py-3 px-3">Tipo / Tarifa</th>
-                      <th className="py-3 px-3">Fecha</th>
-                      <th className="py-3 px-3">Tramos / Horarios</th>
-                      <th className="py-3 px-3">Horas Totales</th>
-                      <th className="py-3 px-3 text-right">Coste (€)</th>
-                      <th className="py-3 px-3 text-center">Estado / Admin</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Trabajador</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Tipo / Tarifa</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Fecha</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Tramos / Horarios</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Horas Totales</th>
+                      <th className="py-3 px-3 text-right whitespace-nowrap">Coste (€)</th>
+                      <th className="py-3 px-3 text-center whitespace-nowrap">Estado / Admin</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
                     {filteredShifts.map((s) => (
                       <tr key={s.id} className="hover:bg-slate-950/50 transition-colors">
-                        <td className="py-3 px-3 font-bold text-white">
+                        <td className="py-3 px-3 font-bold text-white whitespace-nowrap">
                           {s.workerName}
                         </td>
-                        <td className="py-3 px-3">
+                        <td className="py-3 px-3 whitespace-nowrap">
                           {s.isSalaried ? (
-                            <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold">
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold whitespace-nowrap">
                               Nómina Fija
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold whitespace-nowrap">
                               Extra (10,00 €/h)
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-slate-300 font-medium">
+                        <td className="py-3 px-3 text-slate-300 font-medium whitespace-nowrap">
                           {s.startDate}
                         </td>
-                        <td className="py-3 px-3 font-mono text-slate-300">
+                        <td className="py-3 px-3 font-mono text-slate-300 whitespace-nowrap">
                           <div className="flex flex-col gap-1">
                             {s.ranges && s.ranges.map((r, i) => (
-                              <div key={i} className="inline-flex items-center gap-1.5 bg-slate-950/60 border border-slate-800/60 px-2 py-1 rounded-md w-max text-[11px]">
+                              <div key={i} className="inline-flex items-center gap-1.5 bg-slate-950/60 border border-slate-800/60 px-2 py-1 rounded-md w-max text-[11px] whitespace-nowrap">
                                 <Clock className="w-3 h-3 text-emerald-400 shrink-0" />
                                 <span>{r.replace(' a ', ' ➔ ')}</span>
                               </div>
                             ))}
                           </div>
                         </td>
-                        <td className="py-3 px-3">
-                          <div className={`font-semibold ${s.isAnomalous ? 'text-rose-400' : 'text-emerald-400'}`}>
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <div className={`font-semibold ${s.isAnomalous ? 'text-rose-400' : 'text-emerald-400'} whitespace-nowrap`}>
                             {formatearHoras(s.durationHours)} totales
                           </div>
                           {s.isAnomalous && (
-                            <div className="text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1 py-0.5 rounded mt-1 inline-flex items-center gap-1" title="El sistema ha capado este turno a 14h automáticamente por seguridad. Revisa las horas reales.">
+                            <div className="text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 px-1 py-0.5 rounded mt-1 inline-flex items-center gap-1 whitespace-nowrap" title="El sistema ha capado este turno a 14h automáticamente por seguridad. Revisa las horas reales.">
                               <AlertTriangle className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Capado 14h
                             </div>
                           )}
@@ -521,12 +521,12 @@ export default function PayrollReportModal({
                         <td className="py-3 px-3 text-right font-bold text-amber-400 font-mono text-sm">
                           {s.isSalaried ? formatearEuros(0) : formatearEuros(s.cost)}
                         </td>
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-3 px-3 text-center whitespace-nowrap">
                           {isAdmin ? (
-                            <div className="flex items-center justify-center gap-1.5">
+                            <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                               <button
                                 onClick={() => handleOpenEdit(s.startEntry)}
-                                className="flex items-center gap-1 px-2 h-9 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-colors"
+                                className="flex items-center gap-1 px-2 h-9 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-colors whitespace-nowrap"
                                 title="Editar Fichaje de Entrada (Admin)"
                               >
                                 <Edit3 className="w-3.5 h-3.5 shrink-0" />
@@ -534,7 +534,7 @@ export default function PayrollReportModal({
                               </button>
                               <button
                                 onClick={() => handleOpenEdit(s.endEntry)}
-                                className="flex items-center gap-1 px-2 h-9 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-colors"
+                                className="flex items-center gap-1 px-2 h-9 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-colors whitespace-nowrap"
                                 title="Editar Fichaje de Salida (Admin)"
                               >
                                 <Edit3 className="w-3.5 h-3.5 shrink-0" />
@@ -542,7 +542,7 @@ export default function PayrollReportModal({
                               </button>
                             </div>
                           ) : (
-                            <span className="text-[10px] text-slate-400 font-medium flex items-center justify-center space-x-1">
+                            <span className="text-[10px] text-slate-400 font-medium flex items-center justify-center space-x-1 whitespace-nowrap">
                               <Lock className="w-3 h-3 text-slate-400" />
                               <span>Bloqueado</span>
                             </span>
