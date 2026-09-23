@@ -116,8 +116,8 @@ function extraerEventos(apuntes, inicio, fin) {
 }
 
 function extraerAlquileres(apuntes, inicio, fin) {
-  // Los alquileres continuos ("Camión X" con `hasta`) son disponibilidad, no tareas.
-  return apuntes
+  // Los alquileres continuos ("Camión X" con `hasta`) son disponibilidad, no tareas semanales.
+  const tareas = apuntes
     .filter(a => a.tipo === 'recogida' && !a.hasta && a.fecha >= aIso(inicio) && a.fecha <= aIso(fin))
     .map(a => {
       const h = a.titulo.match(/(\d{1,2}):(\d{2})/);
@@ -125,6 +125,12 @@ function extraerAlquileres(apuntes, inicio, fin) {
       const limpio = a.titulo.replace(/\b\d{1,2}:\d{2}\b/g, '').replace(/[,\s]+$/g, '').replace(/^\s*(?:a las\s*)?/i, '').trim();
       return { titulo: limpio, fecha: a.fecha, hora: h ? aMin(`${h[1]}:${h[2]}`) : null, esDevolucion };
     });
+
+  const mensuales = apuntes
+    .filter(a => a.tipo === 'recogida' && a.hasta && a.hasta >= aIso(inicio) && a.fecha <= aIso(fin))
+    .map(a => a.titulo.replace(/\b\d{1,2}:\d{2}\b/g, '').replace(/[,\s]+$/g, '').replace(/^\s*(?:a las\s*)?/i, '').trim());
+
+  return { tareas, mensuales: [...new Set(mensuales)] };
 }
 
 function extraerVacaciones(apuntes, roster) {
@@ -161,7 +167,7 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
   const finSemana = fechas.lunes;
 
   const { eventos, descargas, avisosFusion } = extraerEventos(apuntes, inicioMartes, fechas.domingo);
-  const alquileres = extraerAlquileres(apuntes, inicioMartes, finSemana);
+  const { tareas: alquileres, mensuales: alquileresMensuales } = extraerAlquileres(apuntes, inicioMartes, finSemana);
   const vacaciones = extraerVacaciones(apuntes, roster);
   const pools = clasificarEquipo(roster);
   const avisos = [...avisosFusion];
@@ -377,7 +383,21 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
       avisos: [...new Set(avisos)],
     },
     team: (plantilla.team || []).map(t => ({ ...t })),
-    trucks: (plantilla.trucks || []).map(t => ({ ...t, pickupCompleted: false, returnCompleted: false })),
+    trucks: (() => {
+      const trucksBase = (plantilla.trucks || []).map(t => ({ ...t, pickupCompleted: false, returnCompleted: false }));
+      // Agregar los alquileres mensuales del calendario si no están ya en la lista
+      alquileresMensuales.forEach(nombre => {
+        if (!trucksBase.some(t => t.name.toLowerCase() === nombre.toLowerCase())) {
+          trucksBase.push({ name: nombre, tag: 'ALQUILER', isMonthlyRental: true, status: 'Operativo', pickupCompleted: false, returnCompleted: false });
+        } else {
+          // Si ya existe, nos aseguramos de que esté marcado como alquiler continuo
+          const t = trucksBase.find(t => t.name.toLowerCase() === nombre.toLowerCase());
+          t.isMonthlyRental = true;
+          t.tag = 'ALQUILER';
+        }
+      });
+      return trucksBase;
+    })(),
     events: eventos.filter(e => e.pax).map(e => ({ name: e.nombre, pax: e.pax })),
     schedule,
     saturdaySpecial: {
