@@ -478,11 +478,17 @@ export async function createDraftWeekInAPI(weekId, week, reemplazar = false) {
 
 export async function deleteWeekFromAPI(weekId) {
   try {
-    const res = await fetch(`${API_BASE}/logistics/weeks/${weekId}`, {
+    const res = await fetch(`${API_BASE}/logistics/weeks/${encodeURIComponent(weekId)}`, {
       method: 'DELETE',
       headers: { ...authHeaders() },
     });
-    return await res.json().catch(() => ({ success: false }));
+    
+    const contentType = res.headers.get("content-type");
+    if (contentType && contentType.indexOf("application/json") !== -1) {
+      return await res.json();
+    } else {
+      return { success: false, message: `El servidor respondió con un error no esperado (Status ${res.status}). Es posible que el backend aún se esté actualizando, inténtalo en un par de minutos.` };
+    }
   } catch (err) {
     return { success: false, message: err.message };
   }
