@@ -86,12 +86,19 @@ export async function anticiparSemanas({ semanas, hoy = new Date(), roster = [],
   const creadas = [];
   const omitidas = [];
   for (const inicio of candidatos) {
-    const { week, resumen } = generarBorrador({
-      inicio, apuntes: lectura.apuntes, roster, plantilla, nombre: siguienteNombre(semanas, creadas.length), ahora: hoy,
-    });
-    if (resumen.eventos === 0 && resumen.alquileres === 0) { omitidas.push({ inicio, motivo: 'sin eventos ni alquileres en el calendario' }); continue; }
     // Regenerar un borrador conserva SU id (idsForzados[fecha]); si no, el determinista.
     const weekId = idsForzados[aIso(inicio)] || weekIdParaInicio(inicio);
+    const existingWeek = semanas?.[weekId] || Object.values(semanas || {}).find(w => w.id === weekId);
+    
+    // Si la semana ya existía (ej. estamos regenerando un borrador), conservamos su número/nombre.
+    // Si es nueva, le asignamos el siguiente nombre libre.
+    const nombreParaBorrador = existingWeek?.name || siguienteNombre(semanas, creadas.length);
+
+    const { week, resumen } = generarBorrador({
+      inicio, apuntes: lectura.apuntes, roster, plantilla, nombre: nombreParaBorrador, ahora: hoy,
+    });
+    if (resumen.eventos === 0 && resumen.alquileres === 0) { omitidas.push({ inicio, motivo: 'sin eventos ni alquileres en el calendario' }); continue; }
+    
     const r = await crearBorrador(weekId, { ...week, id: weekId }, reemplazar);
     if (r?.ok) creadas.push({ weekId, name: week.name, dateRange: week.meta.dateRange, resumen });
     else omitidas.push({ inicio, motivo: r?.existe ? 'ya existe' : `no se pudo guardar${r?.status ? ` (${r.status})` : ''}` });

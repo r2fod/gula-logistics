@@ -35,6 +35,7 @@ export default function PartnerDashboardView({
   activeWeekId,
   onSelectWeek,
   onRegenerateDraft,
+  onEliminarSemana,
   anticipacionAviso,
   onCerrarAnticipacionAviso,
 
@@ -212,6 +213,7 @@ export default function PartnerDashboardView({
             if (onUpdateWeek) onUpdateWeek({ ...activeWeekData, meta: { ...metaSinAvisos, status: 'Operativa Activa', aceptadaEl: new Date().toISOString() } });
           }}
           onRegenerar={onRegenerateDraft ? () => onRegenerateDraft(activeWeekId) : undefined}
+          onEliminar={onEliminarSemana ? () => onEliminarSemana(activeWeekId) : undefined}
         />
       )}
 

@@ -205,6 +205,26 @@ export default function App() {
     if (nuevas) setAllWeeks(nuevas);
   };
 
+  const eliminarSemana = async (weekId) => {
+    const isConfirmed = await confirm('¿Estás seguro de que quieres eliminar esta semana permanentemente? Esta acción no se puede deshacer.', { type: 'warning' });
+    if (!isConfirmed) return;
+    
+    const res = await deleteWeekFromAPI(weekId);
+    if (res && res.success) {
+      const nuevas = await fetchWeeksFromAPI();
+      if (nuevas) {
+        setAllWeeks(nuevas);
+        // Si borramos la semana actual, intentar cambiar a la primera que haya
+        if (activeWeekId === weekId) {
+          const keys = Object.keys(nuevas);
+          setActiveWeekId(keys.length > 0 ? keys[0] : null);
+        }
+      }
+    } else {
+      await alert(`Error al eliminar la semana: ${res?.message || 'Error desconocido'}`, { type: 'error' });
+    }
+  };
+
 
   const [activeWorker, setActiveWorker] = useState(null);
   const [isPublicPreviewMode, setIsPublicPreviewMode] = useState(() => {
@@ -593,6 +613,7 @@ export default function App() {
         onSelectWeek={setActiveWeekId}
         onUpdateWeek={handleUpdateActiveWeek}
         onRegenerateDraft={regenerarBorrador}
+        onEliminarSemana={eliminarSemana}
         anticipacionAviso={avisoAnticipacion}
         onCerrarAnticipacionAviso={() => setAvisoAnticipacion(null)}
         workersList={workersList}
