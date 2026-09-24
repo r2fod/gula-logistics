@@ -3,7 +3,7 @@ import { Check, FilePenLine, RefreshCw } from 'lucide-react';
 
 // Aviso de una semana en BORRADOR (propuesta generada desde el calendario,
 // pendiente de que un admin la revise y la acepte).
-export default function SemanaBorradorBanner({ week, adminUnlocked, onAceptar, onRegenerar }) {
+export default function SemanaBorradorBanner({ week, adminUnlocked, onAceptar, onRegenerar, onEliminar }) {
   const avisos = week?.meta?.avisos || [];
   return (
     <section className="relative overflow-hidden rounded-3xl border border-amber-500/20 bg-slate-900/40 p-5 sm:p-6 shadow-2xl backdrop-blur-xl group">
@@ -36,9 +36,14 @@ export default function SemanaBorradorBanner({ week, adminUnlocked, onAceptar, o
               <RefreshCw className="w-4 h-4" aria-hidden="true" /> Regenerar desde el calendario
             </button>
           )}
+          {onEliminar && (
+            <button type="button" onClick={onEliminar} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-950/40 hover:bg-red-900/60 text-red-400 hover:text-red-300 text-xs font-bold border border-red-900/50 transition-all hover:scale-105">
+              ✕ Descartar borrador
+            </button>
+          )}
         </div>
       ) : (
-        <p className="text-xs text-slate-500 mt-2">Solo un administrador puede aceptarla.</p>
+        <p className="text-xs text-slate-500 mt-2">Solo un administrador puede aceptarla o borrarla.</p>
       )}
       </div>
     </section>

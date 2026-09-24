@@ -476,6 +476,18 @@ export async function createDraftWeekInAPI(weekId, week, reemplazar = false) {
   }
 }
 
+export async function deleteWeekFromAPI(weekId) {
+  try {
+    const res = await fetch(`${API_BASE}/logistics/weeks/${weekId}`, {
+      method: 'DELETE',
+      headers: { ...authHeaders() },
+    });
+    return await res.json().catch(() => ({ success: false }));
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
 export async function uploadRentalPdf(file) {
   const formData = new FormData();
   formData.append('file', file);
