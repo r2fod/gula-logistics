@@ -25,7 +25,8 @@ import {
   fetchWeeksFromAPI,
   fetchCalendarioApuntes,
   createDraftWeekInAPI,
-  retryPendingClockEntries
+  retryPendingClockEntries,
+  deleteWeekFromAPI
 } from './data/apiService';
 import { getInProgressTaskKeys } from './data/shiftCalculations';
 import { getWeekRange } from './data/taskPlanning';
