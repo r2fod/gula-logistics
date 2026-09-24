@@ -90,8 +90,8 @@ export default function App() {
   const {
     clockEntries,
     setClockEntries,
-    activeClockEntries: rawActiveClockEntries,
-    deletedClockEntries: rawDeletedClockEntries,
+    activeClockEntries,
+    deletedClockEntries,
     handleClockEntryCreated,
     handleUpdateClockEntry,
     handleDeleteClockEntry,
@@ -99,38 +99,37 @@ export default function App() {
     handleClearClockEntries
   } = useClockings(markTaskCompleted);
 
-  // Filtrar fichajes para mostrar SOLO los de la semana que estamos consultando.
-  // Permite cerrar y consultar nóminas o historiales semana por semana sin mezclar datos.
-  const activeClockEntries = useMemo(() => {
-    if (!activeWeek || !activeWeek.meta || !activeWeek.meta.dateRange) return rawActiveClockEntries;
+  // Filtrar fichajes SOLO para las vistas de los trabajadores y nóminas (así ven solo su semana).
+  // Para el PartnerDashboard (saldos y financiero) usamos los originales (activeClockEntries)
+  // para no romper el historial global.
+  const currentWeekClockEntries = useMemo(() => {
+    if (!activeWeek || !activeWeek.meta || !activeWeek.meta.dateRange) return activeClockEntries;
     const range = parseWeekRange(activeWeek.meta.dateRange);
-    if (!range) return rawActiveClockEntries;
+    if (!range) return activeClockEntries;
     
-    // Las semanas van de lunes a domingo. Añadimos un pequeño margen por si el trabajador
-    // ficha su salida de madrugada el lunes siguiente.
     const start = range.start.getTime();
-    const end = range.end.getTime() + (6 * 60 * 60 * 1000); // Hasta las 06:00 del lunes sig.
+    const end = range.end.getTime() + (6 * 60 * 60 * 1000); 
     
-    return rawActiveClockEntries.filter(e => {
+    return activeClockEntries.filter(e => {
       const entryTime = new Date(e.timestamp).getTime();
       return entryTime >= start && entryTime <= end;
     });
-  }, [rawActiveClockEntries, activeWeek]);
+  }, [activeClockEntries, activeWeek]);
 
-  // Filtrar igual la papelera para mantener la coherencia en la vista de Admin
-  const deletedClockEntries = useMemo(() => {
-    if (!activeWeek || !activeWeek.meta || !activeWeek.meta.dateRange) return rawDeletedClockEntries;
+  // Misma lógica para la papelera de borrados si hace falta
+  const currentWeekDeletedClockEntries = useMemo(() => {
+    if (!activeWeek || !activeWeek.meta || !activeWeek.meta.dateRange) return deletedClockEntries;
     const range = parseWeekRange(activeWeek.meta.dateRange);
-    if (!range) return rawDeletedClockEntries;
+    if (!range) return deletedClockEntries;
     
     const start = range.start.getTime();
     const end = range.end.getTime() + (6 * 60 * 60 * 1000);
     
-    return rawDeletedClockEntries.filter(e => {
+    return deletedClockEntries.filter(e => {
       const entryTime = new Date(e.timestamp).getTime();
       return entryTime >= start && entryTime <= end;
     });
-  }, [rawDeletedClockEntries, activeWeek]);
+  }, [deletedClockEntries, activeWeek]);
 
   // Tareas en las que alguien está fichado ahora mismo: el reloj no las da por
   // hechas mientras tanto ("en proceso"). Por ref, igual que arriba, porque el
@@ -455,7 +454,7 @@ export default function App() {
           workerName={activeWorker}
           workersList={workersList}
           activeWeekData={activeWeek}
-          clockEntries={activeClockEntries}
+          clockEntries={currentWeekClockEntries}
           isAdmin={isAdmin}
           onToggleTask={(dayKey, taskIdx) => toggleTask(dayKey, taskIdx)}
           onClockEntryCreated={handleClockEntryCreated}
@@ -517,7 +516,7 @@ export default function App() {
           <PublicView
             data={activeWeek}
             workersList={workersList}
-            clockEntries={activeClockEntries}
+            clockEntries={currentWeekClockEntries}
             onClockEntryCreated={handleClockEntryCreated}
             onOpenClockModal={(workerName) => {
               if (workerName) setActiveWorker(workerName);
@@ -531,7 +530,7 @@ export default function App() {
           onClose={() => setIsClockInModalOpen(false)}
           workersList={workersList}
           initialWorkerName={activeWorker}
-          clockEntries={activeClockEntries}
+          clockEntries={currentWeekClockEntries}
           onClockEntryCreated={handleClockEntryCreated}
         />
       </div>
@@ -553,7 +552,7 @@ export default function App() {
           <PublicView
             data={activeWeek}
             workersList={workersList}
-            clockEntries={activeClockEntries}
+            clockEntries={currentWeekClockEntries}
             onOpenLogin={() => setIsAdminLoginOpen(true)}
             onClockEntryCreated={handleClockEntryCreated}
             onOpenClockModal={(workerName) => {
@@ -568,7 +567,7 @@ export default function App() {
           onClose={() => setIsClockInModalOpen(false)}
           workersList={workersList}
           initialWorkerName={activeWorker}
-          clockEntries={activeClockEntries}
+          clockEntries={currentWeekClockEntries}
           onClockEntryCreated={handleClockEntryCreated}
         />
 
@@ -626,14 +625,14 @@ export default function App() {
         onClose={() => setIsClockInModalOpen(false)}
         workersList={workersList}
         initialWorkerName={activeWorker}
-        clockEntries={activeClockEntries}
+        clockEntries={currentWeekClockEntries}
         onClockEntryCreated={handleClockEntryCreated}
       />
 
       <PayrollReportModal
         isOpen={isPayrollModalOpen}
         onClose={() => setIsPayrollModalOpen(false)}
-        entries={activeClockEntries}
+        entries={currentWeekClockEntries}
         workersList={workersList}
         onClearEntries={handleClearClockEntries}
         isAdmin={isAdmin}
