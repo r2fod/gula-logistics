@@ -18,7 +18,10 @@ export function crearFichaje({ trabajador, tipo, fecha = new Date(), ...extra })
     // coincidan en el mismo milisegundo (típico si varios empiezan la jornada a
     // la misma hora en punto) chocaban contra el índice único de `id` en Mongo,
     // y el segundo fallaba con un 500 silencioso.
-    id: crypto.randomUUID(),
+    // Fallback manual para móviles conectados por HTTP (insecure context) donde crypto.randomUUID no existe.
+    id: typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID() 
+      : Date.now().toString(36) + Math.random().toString(36).substring(2, 10),
     workerName: trabajador.name,
     role: trabajador.role,
     isPayroll: trabajador.isPayroll,
