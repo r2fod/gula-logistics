@@ -386,6 +386,7 @@ export default function WorkerView({
     : getNextTaskStart(activeWeekData, immediateTask.dayKey, immediateTask.rawTask, currentTime);
   const jornadaGateClosed = !!firstTaskStart && isTaskTooEarlyToStart(activeWeekData, immediateTask.dayKey, immediateTask.rawTask, currentTime);
   const gateText = () => {
+    if (!firstTaskStart) return '';
     const opens = new Date(firstTaskStart.getTime() - 5 * 60 * 1000);
     const hhmm = formatTimeShort(opens);
     return opens.toDateString() === currentTime.toDateString()
