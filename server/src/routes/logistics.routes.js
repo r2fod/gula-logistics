@@ -236,6 +236,29 @@ router.post('/weeks/draft', requireAdmin, async (req, res) => {
   }
 });
 
+// DELETE /api/logistics/weeks/:weekId - Eliminar una semana
+router.delete('/weeks/:weekId', requireAdmin, async (req, res) => {
+  try {
+    const { weekId } = req.params;
+    if (mongoose.connection.readyState === 1) {
+      const result = await LogisticsWeek.deleteOne({ weekId });
+      if (result.deletedCount === 0) {
+        return res.status(404).json({ success: false, message: 'Semana no encontrada' });
+      }
+      delete currentMemoryWeeks[weekId];
+    } else {
+      if (!currentMemoryWeeks[weekId]) {
+        return res.status(404).json({ success: false, message: 'Semana no encontrada' });
+      }
+      delete currentMemoryWeeks[weekId];
+    }
+    return res.json({ success: true, message: 'Semana eliminada' });
+  } catch (error) {
+    console.error('Error al eliminar semana:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // PATCH /api/logistics/weeks/:weekId/tasks - Marca/desmarca UNA tarea como
 // completada. Sin requireAdmin a propósito: es lo único que necesita el
 // flujo de un trabajador (autocompletar su tarea al fichar salida, o
