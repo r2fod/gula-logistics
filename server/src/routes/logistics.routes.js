@@ -269,7 +269,7 @@ router.delete('/weeks/:weekId', requireAdmin, async (req, res) => {
 router.patch('/weeks/:weekId/tasks', async (req, res) => {
   try {
     const { weekId } = req.params;
-    const { dayKey, taskIndex, completed, reopened } = req.body;
+    const { dayKey, taskIndex, completed, reopened, completedAt } = req.body;
 
     if (typeof dayKey !== 'string' || !dayKey || !Number.isInteger(taskIndex) || taskIndex < 0 || typeof completed !== 'boolean') {
       return res.status(400).json({ error: 'dayKey (string), taskIndex (entero >= 0) y completed (booleano) son obligatorios' });
@@ -308,11 +308,15 @@ router.patch('/weeks/:weekId/tasks', async (req, res) => {
     // a `completed`; el endpoint sigue sin poder escribir nada más.
     const currentCompleted = !!(current && typeof current === 'object' && current.completed);
     const currentReopened = !!(current && typeof current === 'object' && current.reopened);
-    if (currentCompleted === completed && (reopened === undefined || currentReopened === reopened)) {
+    if (currentCompleted === completed && (reopened === undefined || currentReopened === reopened) && (!completedAt)) {
       return res.json({ success: true, unchanged: true, data: week });
     }
 
-    const changes = reopened === undefined ? { completed } : { completed, reopened };
+    const changes = { completed, reopened: reopened !== undefined ? reopened : currentReopened };
+    if (completedAt !== undefined) {
+      changes.completedAt = completedAt;
+    }
+    
     const updatedTask = (current && typeof current === 'object') ? { ...current, ...changes } : { text: current, ...changes };
     const fieldPath = isSabado
       ? `saturdaySpecial.weddings.${taskIndex}`

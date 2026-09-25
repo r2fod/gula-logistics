@@ -417,13 +417,14 @@ export async function saveWeeksToAPI(weeksPayload) {
  * el servidor solo permite tocar los campos `completed` y `reopened` de esa
  * tarea, nunca el resto del documento de la semana.
  */
-export async function patchTaskCompletionInAPI(weekId, dayKey, taskIndex, completed, reopened) {
+export async function patchTaskCompletionInAPI(weekId, dayKey, taskIndex, completed, reopened, completedAt) {
   try {
     const res = await fetch(`${API_BASE}/logistics/weeks/${weekId}/tasks`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       // `reopened` (opcional): true si alguien la desmarcó a propósito.
-      body: JSON.stringify(typeof reopened === 'boolean' ? { dayKey, taskIndex, completed, reopened } : { dayKey, taskIndex, completed })
+      // `completedAt`: hora real de completado.
+      body: JSON.stringify({ dayKey, taskIndex, completed, reopened, completedAt })
     });
     if (res.ok) {
       return await res.json();

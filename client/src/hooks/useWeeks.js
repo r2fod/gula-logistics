@@ -102,14 +102,18 @@ export function useWeeks() {
     if (taskItem === undefined) return;
     const newCompleted = !isTaskEffectivelyDone(activeWeek, dayKey, taskItem, new Date());
     const reopened = !newCompleted;
+    
+    // Si se acaba de marcar como completada, guardamos la hora real
+    const completedAt = newCompleted ? new Date().toISOString() : null;
+    
     if (typeof taskItem === 'object') {
-      list[taskIdx] = { ...taskItem, completed: newCompleted, reopened };
+      list[taskIdx] = { ...taskItem, completed: newCompleted, reopened, completedAt };
     } else {
-      list[taskIdx] = { text: taskItem, completed: newCompleted, reopened };
+      list[taskIdx] = { text: taskItem, completed: newCompleted, reopened, completedAt };
     }
     applyLocalWeeksState({ ...allWeeks, [activeWeekId]: { ...activeWeek, ...buildTaskListPatch(activeWeek, dayKey, list) } });
     lastLocalEditRef.current = Date.now();
-    patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, newCompleted, reopened);
+    patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, newCompleted, reopened, completedAt);
   };
 
   const markTaskCompleted = (dayKey, taskIdx) => {
