@@ -1,4 +1,4 @@
-import { Clock, Bell, Edit3, Users, DollarSign, Wand2, Share2, Copy, Check, Eye, KeyRound, Plus, RefreshCw } from 'lucide-react';
+import { Clock, Bell, Edit3, Users, DollarSign, Wand2, Share2, Copy, Check, Eye, KeyRound, Plus, RefreshCw, BrainCircuit } from 'lucide-react';
 
 // Secciones del menú lateral, en orden.
 export const SECCIONES_MENU = [
@@ -72,6 +72,10 @@ export function crearAcciones({ admin = false, avisando = false, enlaceSociasCop
     {
       id: 'claves', etiqueta: 'Clave', etiquetaMenu: 'Claves y configuración', icono: KeyRound, colorIcono: 'text-slate-400', tono: 'claves',
       lugares: ['cabecera', 'menu'], seccion: 'configuracion', visible: admin, onClick: alHacer.claves,
+    },
+    {
+      id: 'memoriaIa', etiqueta: 'Memoria IA', etiquetaMenu: 'Grafo de Conocimiento IA', icono: BrainCircuit, colorIcono: 'text-indigo-400', tono: 'neutro',
+      lugares: ['cabecera', 'menu'], seccion: 'configuracion', visible: admin && !!alHacer.memoriaIa, onClick: alHacer.memoriaIa,
     },
     {
       id: 'nuevaSemana', etiqueta: 'Semana', etiquetaMenu: 'Añadir nueva semana', icono: Plus, colorIcono: 'text-amber-400', tono: 'semana',
