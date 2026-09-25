@@ -12,6 +12,8 @@ import notificationsRoutes from './routes/notifications.routes.js';
 import calendarioRoutes from './routes/calendario.routes.js';
 import rosterRoutes from './routes/roster.routes.js';
 
+import aiMemoryRoutes from './routes/aiMemory.routes.js';
+
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -52,6 +54,7 @@ app.use('/api/balances', balancesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/calendario', calendarioRoutes);
 app.use('/api/roster', rosterRoutes);
+app.use('/api/aimemory', aiMemoryRoutes);
 
 // Endpoint de verificación de salud
 app.get('/api/health', (req, res) => {

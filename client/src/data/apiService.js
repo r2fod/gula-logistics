@@ -556,3 +556,53 @@ export async function saveRosterToAPI(workers) {
     return false;
   }
 }
+
+// --- AI MEMORY API ---
+export async function getAiMemories() {
+  try {
+    const adminToken = getStoredAdminToken();
+    const headers = { 'Content-Type': 'application/json' };
+    if (adminToken) headers['Authorization'] = `Bearer ${adminToken}`;
+    const res = await fetch(`${API_BASE}/aimemory`, { headers });
+    if (!res.ok) throw new Error('Error getting AI memories');
+    return await res.json();
+  } catch (error) {
+    console.error('getAiMemories error:', error);
+    return [];
+  }
+}
+
+export async function addAiMemory(content) {
+  try {
+    const adminToken = getStoredAdminToken();
+    const headers = { 'Content-Type': 'application/json' };
+    if (adminToken) headers['Authorization'] = `Bearer ${adminToken}`;
+    const res = await fetch(`${API_BASE}/aimemory`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ content })
+    });
+    if (!res.ok) throw new Error('Error adding AI memory');
+    return await res.json();
+  } catch (error) {
+    console.error('addAiMemory error:', error);
+    return null;
+  }
+}
+
+export async function deleteAiMemory(id) {
+  try {
+    const adminToken = getStoredAdminToken();
+    const headers = { 'Content-Type': 'application/json' };
+    if (adminToken) headers['Authorization'] = `Bearer ${adminToken}`;
+    const res = await fetch(`${API_BASE}/aimemory/${id}`, {
+      method: 'DELETE',
+      headers
+    });
+    if (!res.ok) throw new Error('Error deleting AI memory');
+    return await res.json();
+  } catch (error) {
+    console.error('deleteAiMemory error:', error);
+    return null;
+  }
+}
