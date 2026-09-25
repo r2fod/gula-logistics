@@ -18,6 +18,7 @@ import LiveMonitorPanel from './LiveMonitorPanel';
 import AdminClockEditModal from './AdminClockEditModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminSettingsModal from './AdminSettingsModal';
+import AdminAiMemoryModal from './AdminAiMemoryModal';
 import SemanaBorradorBanner from './SemanaBorradorBanner';
 import CabeceraPanel from './panel/CabeceraPanel';
 import MenuLateral from './panel/MenuLateral';
@@ -67,6 +68,7 @@ export default function PartnerDashboardView({
   const [editingEntry, setEditingEntry] = useState(null);
   const [internalBalancesData, setInternalBalancesData] = useState(externalBalancesData || initialBalancesData);
   const [isAdminSettingsOpen, setIsAdminSettingsOpen] = useState(false);
+  const [isAdminAiMemoryOpen, setIsAdminAiMemoryOpen] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [enlaceCopiado, copiarEnlace] = useCopiado();
   const aviso = useAvisarCambios();
@@ -175,6 +177,7 @@ export default function PartnerDashboardView({
       copiarEnlaceSocias: () => copiarEnlace(enlaceSocias()),
       vistaPublica: onTogglePublicView && (() => onTogglePublicView(false)),
       claves: () => setIsAdminSettingsOpen(true),
+      memoriaIa: () => setIsAdminAiMemoryOpen(true),
       nuevaSemana: onOpenAddWeek,
       generarBorrador: onRegenerateDraft ? () => onRegenerateDraft(activeWeekId) : undefined,
     }
@@ -297,6 +300,11 @@ export default function PartnerDashboardView({
       <AdminSettingsModal
         isOpen={isAdminSettingsOpen}
         onClose={() => setIsAdminSettingsOpen(false)}
+      />
+
+      <AdminAiMemoryModal
+        isOpen={isAdminAiMemoryOpen}
+        onClose={() => setIsAdminAiMemoryOpen(false)}
       />
 
       <MenuLateral
