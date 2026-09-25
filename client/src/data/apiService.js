@@ -525,3 +525,33 @@ export async function optimizeDatabase() {
   }
   return await res.json();
 }
+
+export async function fetchRosterFromAPI() {
+  try {
+    const res = await fetch(`${API_BASE}/roster`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.workers || null;
+  } catch (err) {
+    console.error("Failed to fetch roster:", err);
+    return null;
+  }
+}
+
+export async function saveRosterToAPI(workers) {
+  try {
+    const token = getStoredAdminToken();
+    const res = await fetch(`${API_BASE}/roster`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ workers })
+    });
+    return res.ok;
+  } catch (err) {
+    console.error("Failed to save roster:", err);
+    return false;
+  }
+}

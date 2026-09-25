@@ -62,6 +62,11 @@ export function useBalances(workersList, setWorkersList) {
     saveWorkerBalanceToAPI(newBalanceProfile.id, newBalanceProfile).catch(err => {
       console.warn("Failed to persist new worker balance to API", err);
     });
+
+    // 4. Update the centralized roster in the database
+    import('../data/apiService').then(({ saveRosterToAPI }) => {
+      saveRosterToAPI(updatedWorkers).catch(() => {});
+    });
   };
 
   return {
