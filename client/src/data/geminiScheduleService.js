@@ -122,7 +122,7 @@ function computeHistoricalDelays(allWeeks) {
   return `\n10. APRENDIZAJE HISTÓRICO: El sistema ha analizado las horas de finalización reales pasadas y detectado estos patrones de la plantilla:\n` + delays.map(d => `- ${d}`).join('\n') + `\nPor favor, MODIFICA inteligentemente los horarios de las tareas en el JSON añadiendo este margen (retrasando la hora de fin) para generar un 'timeFrame' mucho más realista.`;
 }
 
-function buildSystemPrompt(activeWeekData, roster = [], allWeeks = {}) {
+function buildSystemPrompt(activeWeekData, roster = [], allWeeks = {}, aiMemories = []) {
   // Construimos las reglas de negocio dinámicamente basadas en los roles de los trabajadores
   const workerRules = roster.length > 0 ? roster.map(w => {
     const role = w.role.toLowerCase();
@@ -145,10 +145,14 @@ function buildSystemPrompt(activeWeekData, roster = [], allWeeks = {}) {
   // Analizamos el historial de allWeeks para detectar si las tareas reales suelen retrasarse
   const historyRule = computeHistoricalDelays(allWeeks);
 
+  const memoryRules = aiMemories.length > 0 
+    ? `\nPREFERENCIAS DEL USUARIO (MEMORIA A LARGO PLAZO):\n${aiMemories.map(m => `- ${m.content}`).join('\n')}\nTen en cuenta obligatoriamente estas preferencias operativas al asignar o ajustar tareas.` 
+    : '';
+
   return `Eres el Asistente Experto en Logística de "Gula Logística".
 REGLAS DE NEGOCIO IMPORTANTES:
 1. Para las tareas de RECOGIDA, asigna SIEMPRE a una sola persona, a menos que el usuario pida explícitamente que asigne a dos.
-${workerRules}
+${workerRules}${memoryRules}
 3. Al planificar recogidas (especialmente recogidas de camión), prográmalas SIEMPRE por la mañana temprano, a menos que se indique lo contrario.
 4. Cuando se descargue en un evento, ten en cuenta que también hay MONTAJE DE ESTRUCTURA. Esto debe reflejarse en el texto y el tiempo estimado de la tarea.
 5. Genera las tareas como OBJETOS, intentando siempre separar el texto de la tarea (ej: "Recoger material") del horario (ej: "09:00 - 11:30") y de la ubicación (ej: "Alquileres Norte").
@@ -206,14 +210,7 @@ export function validateGeneratedSchedule(json) {
 // interfaz dejaba "Crear la Semana con esta Planificación": el usuario
 // generaba la semana nueva y salía con los eventos de la anterior. Un dato
 // inventado que parece real es peor que un error claro.
-export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData, eventNames = [], roster = [] }) {
-  // Sin fallback a import.meta.env.VITE_GEMINI_API_KEY a propósito:
-  // cualquier variable con prefijo VITE_ se compila tal cual en el JS
-  // público del bundle (GitHub Pages), así que un "default" ahí
-  // filtraría la clave a cualquiera que inspeccione el bundle en cuanto
-  // se configurara y desplegara. La única clave válida es la que cada
-  // admin pega a mano en este mismo navegador (persistida solo en su
-  // localStorage, nunca compilada).
+export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData, eventNames = [], roster = [], allWeeks = {}, aiMemories = [] }) {
   const activeApiKey = (apiKey || '').trim();
 
   if (!activeApiKey) {
@@ -223,7 +220,36 @@ export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekDat
     };
   }
 
-  const systemPrompt = buildSystemPrompt(activeWeekData, roster);
+  // EXTRACCIÓN DE MEMORIA EN SEGUNDO PLANO
+  let extractedMemory = null;
+  try {
+    const memPrompt = `Analiza el siguiente texto del usuario: "${prompt}".\n¿El usuario está expresando una regla, preferencia o hecho general que debe recordarse a largo plazo para futuras planificaciones? (Ej: "A Gonzalo no le gusta el camión X", "Las bodas dobles necesitan más tiempo").\nSi es así, extrae esa regla como una frase corta y clara. Si es solo una orden puntual para esta semana (Ej: "Pon a Jose mañana", "Quita a Irene del viernes"), responde EXACTAMENTE y únicamente con la palabra: NO_MEMORY.`;
+    
+    for (const model of GEMINI_MODELS) {
+      const memRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': activeApiKey },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: memPrompt }] }],
+          generationConfig: { responseMimeType: 'text/plain' }
+        })
+      });
+      if (memRes.status !== 404) {
+        if (memRes.ok) {
+          const memData = await memRes.json();
+          const memText = (memData.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+          if (memText && memText !== 'NO_MEMORY' && !memText.includes('NO_MEMORY')) {
+            extractedMemory = memText;
+          }
+        }
+        break;
+      }
+    }
+  } catch (e) {
+    console.warn("Fallo al extraer memoria (silencioso):", e);
+  }
+
+  const systemPrompt = buildSystemPrompt(activeWeekData, roster, allWeeks, aiMemories);
   const body = JSON.stringify({
     contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\nSolicitud del usuario: ${prompt}` }] }],
     generationConfig: { responseMimeType: 'application/json' }
@@ -257,12 +283,13 @@ export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekDat
     if (invalid) throw new Error(invalid);
 
     // Si la IA se salta el formato "Evento - Tarea", se completa aquí.
-    return { generatedJson: normalizeGeneratedEvents(parsed, eventNames), errorMsg: '' };
+    return { generatedJson: normalizeGeneratedEvents(parsed, eventNames), errorMsg: '', extractedMemory };
   } catch (err) {
     console.error(err);
     return {
       generatedJson: null,
-      errorMsg: `No se pudo generar con Gemini: ${err.message}. No se ha creado nada; inténtalo de nuevo.`
+      errorMsg: `No se pudo generar con Gemini: ${err.message}. No se ha creado nada; inténtalo de nuevo.`,
+      extractedMemory
     };
   }
 }

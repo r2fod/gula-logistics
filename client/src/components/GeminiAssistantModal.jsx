@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Sparkles, Check, AlertCircle, RefreshCw, Key, Wand2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sparkles, Check, AlertCircle, RefreshCw, Key, Wand2, BrainCircuit, Trash2 } from 'lucide-react';
 import { generateScheduleWithGemini, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
+import { getAiMemories, addAiMemory, deleteAiMemory } from '../data/apiService';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input, AreaTexto } from './ui/Campo';
@@ -12,6 +13,15 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
   const [loading, setLoading] = useState(false);
   const [generatedJson, setGeneratedJson] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  
+  const [aiMemories, setAiMemories] = useState([]);
+  const [showMemories, setShowMemories] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      getAiMemories().then(setAiMemories).catch(console.error);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -23,7 +33,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
 
   const samplePrompts = [
     "Reorganiza las cargas de mañana: pon a Ricardo y Jeferson en la carga del Gula, y a Gonzalo en la del Covey.",
-    "Quita a Irene de las tareas del sábado y ponla a hacer las recogidas de almacén el viernes por la mañana.",
+    "A partir de ahora, recuerda que Gonzalo prefiere no conducir el camión Albacar los sábados.",
     "Ajusta automáticamente todos los horarios previstos basándote en los retrasos reales de semanas pasadas."
   ];
 
@@ -35,10 +45,21 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
     setErrorMsg('');
     setGeneratedJson(null);
 
-    const { generatedJson: result, errorMsg: err } = await generateScheduleWithGemini({ prompt, apiKey, activeWeekData, roster: workersList, allWeeks });
+    const { generatedJson: result, errorMsg: err, extractedMemory } = await generateScheduleWithGemini({ prompt, apiKey, activeWeekData, roster: workersList, allWeeks, aiMemories });
     setGeneratedJson(result);
     if (err) setErrorMsg(err);
+    
+    if (extractedMemory) {
+      const newMem = await addAiMemory(extractedMemory);
+      if (newMem) setAiMemories(prev => [newMem, ...prev]);
+    }
+    
     setLoading(false);
+  };
+
+  const handleDeleteMemory = async (id) => {
+    await deleteAiMemory(id);
+    setAiMemories(prev => prev.filter(m => m._id !== id));
   };
 
   const handleApply = () => {
@@ -61,16 +82,51 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
           </span>
         }
         acciones={
-          <button
-            onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-            className="mr-10 p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white transition-colors"
-            title="Configurar Gemini API Key"
-          >
-            <Key className="w-4 h-4" />
-          </button>
+          <div className="flex gap-2 mr-10">
+            <button
+              onClick={() => setShowMemories(!showMemories)}
+              className={`p-2 rounded-xl transition-colors ${showMemories ? 'bg-indigo-500/20 text-indigo-400' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+              title="Memoria a Largo Plazo de Gemini"
+            >
+              <BrainCircuit className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+              className={`p-2 rounded-xl transition-colors ${showApiKeyInput ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+              title="Configurar Gemini API Key"
+            >
+              <Key className="w-4 h-4" />
+            </button>
+          </div>
         }
         className="mb-6"
       />
+
+      {/* AI Memory Viewer */}
+      {showMemories && (
+        <div className="mb-6 p-4 rounded-2xl bg-indigo-950/20 border border-indigo-500/20 space-y-3">
+          <label className="block text-xs font-semibold text-indigo-300 uppercase tracking-wider flex items-center gap-2">
+            <BrainCircuit className="w-4 h-4" />
+            Memoria Semántica de IA ({aiMemories.length})
+          </label>
+          <p className="text-[11px] text-slate-400">Las preferencias que le digas a Gemini en el chat se guardarán aquí y se aplicarán siempre a futuros horarios de forma automática.</p>
+          
+          <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+            {aiMemories.length === 0 ? (
+              <div className="text-xs text-slate-500 italic">No hay recuerdos guardados todavía.</div>
+            ) : (
+              aiMemories.map(mem => (
+                <div key={mem._id} className="flex justify-between items-start gap-2 bg-slate-900/50 p-2.5 rounded-xl border border-slate-800">
+                  <span className="text-xs text-slate-300">{mem.content}</span>
+                  <button onClick={() => handleDeleteMemory(mem._id)} className="text-rose-400 hover:text-rose-300 shrink-0" title="Borrar recuerdo">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* API Key Input Form */}
       {showApiKeyInput && (
