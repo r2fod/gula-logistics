@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { fetchRosterFromAPI, saveRosterToAPI } from '../data/apiService';
 
 export const DEFAULT_WORKERS_LIST = [
   { name: "Gonzalo", role: "Conductor Flota (Veterano)", truck: "Camión Covey (Alquiler)", avatar: "🚛", isPayroll: false, rate: 10 },
@@ -21,10 +22,20 @@ export function useWorkers() {
     }
   });
 
+  useEffect(() => {
+    fetchRosterFromAPI().then(apiWorkers => {
+      if (apiWorkers && apiWorkers.length > 0) {
+        setWorkersList(apiWorkers);
+        localStorage.setItem('gula_workers_v1', JSON.stringify(apiWorkers));
+      }
+    }).catch(() => {});
+  }, []);
+
   const handleRemoveWorker = (workerName) => {
     const updatedWorkers = workersList.filter(w => w.name !== workerName);
     setWorkersList(updatedWorkers);
     localStorage.setItem('gula_workers_v1', JSON.stringify(updatedWorkers));
+    saveRosterToAPI(updatedWorkers).catch(() => {});
   };
 
   return {
