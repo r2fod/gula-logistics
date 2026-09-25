@@ -13,100 +13,13 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
   // Auto-completion logic based on time
   const currentTime = new Date();
 
-  // Dynamic Fleet Tasks Injection
-  const trucks = activeWeekData?.trucks || [];
+  // Dynamic Fleet Tasks Injection REMOVED
+  // Tareas dinámicas de flota removidas porque generaban duplicados
+  // (la IA ya las saca del calendario como tareas normales que sí se pueden asignar).
   const dynamicTasksByDay = {
     martes: [], miercoles: [], jueves: [], viernes: [], sabado: [], domingo: [], lunes: []
   };
 
-  const normalizeDay = (dayStr) => {
-    if (!dayStr) return null;
-    const d = dayStr.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    return d;
-  };
-
-  trucks.forEach((truck, tIdx) => {
-    if (truck.tag === 'ALQUILER') {
-      const pDay = normalizeDay(truck.pickupDay);
-      if (pDay && dynamicTasksByDay[pDay]) {
-        dynamicTasksByDay[pDay].push({
-          isDynamic: true, type: 'pickup', truckIndex: tIdx,
-          text: `🚚 Recogida: ${truck.name}`,
-          timeFrame: truck.pickupTime,
-          completed: !!truck.pickupCompleted,
-          pdfUrl: truck.pdfUrl
-        });
-      }
-      
-      const rDay = normalizeDay(truck.returnDay);
-      if (rDay && dynamicTasksByDay[rDay]) {
-        dynamicTasksByDay[rDay].push({
-          isDynamic: true, type: 'return', truckIndex: tIdx,
-          text: `🔙 Devolución: ${truck.name}`,
-          timeFrame: truck.returnTime,
-          completed: !!truck.returnCompleted,
-          pdfUrl: truck.pdfUrl
-        });
-      }
-    }
-  });
-
-  const handleDynamicToggle = (task) => {
-    if (!onUpdateWeek) return;
-    const newTrucks = [...trucks];
-    const field = task.type === 'pickup' ? 'pickupCompleted' : 'returnCompleted';
-    newTrucks[task.truckIndex] = { ...newTrucks[task.truckIndex], [field]: !newTrucks[task.truckIndex][field] };
-    onUpdateWeek(activeWeekData.id, { trucks: newTrucks });
-  };
-
-  const renderDynamicTask = (task, idx, dayKey) => {
-    // Las tareas de flota (recogida/devolución de camión) solo cuentan lo que
-    // marca su casilla: su clic cambia esa casilla, así que mostrar además "hecha
-    // por la hora" dejaba tachada una que no se podía desmarcar.
-    const isCompleted = !!task.completed;
-    
-    return (
-      <li 
-        key={`dyn-${idx}`} 
-        onClick={() => handleDynamicToggle(task)}
-        className={`flex items-start gap-3 p-3 rounded-2xl border cursor-pointer transition-all ${
-          isCompleted 
-            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 line-through opacity-60' 
-            : 'bg-amber-500/5 border-amber-500/40 hover:border-amber-400 text-amber-200 shadow-sm shadow-amber-500/5'
-        }`}
-      >
-        <div className="mt-0.5 shrink-0">
-          {isCompleted ? (
-            <div className="w-4 h-4 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center">
-              <Check className="w-2.5 h-2.5 text-emerald-400" />
-            </div>
-          ) : (
-            <Clock className="text-amber-400 w-4 h-4" />
-          )}
-        </div>
-        <div className="flex-1 leading-relaxed">
-          <span className={isCompleted ? 'line-through' : 'font-semibold'}>{task.text}</span>
-          {task.timeFrame && (
-            <span className="ml-2 text-[10px] font-bold bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-lg inline-flex items-center gap-1 align-middle whitespace-nowrap border border-amber-500/30">
-              <Clock className="w-3 h-3" />
-              {task.timeFrame}
-            </span>
-          )}
-          {task.pdfUrl && (
-            <a 
-              href={task.pdfUrl}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="ml-2 text-[10px] font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded-lg border border-slate-700 inline-flex items-center gap-1 align-middle no-underline"
-            >
-              PDF
-            </a>
-          )}
-        </div>
-      </li>
-    );
-  };
 
   // Tarea de la lista compartida domingo/lunes. isTaskEffectivelyDone usa el targetDay
   // de la tarea y, si no lo tiene, la evalúa como lunes (no se tacha el
@@ -276,7 +189,6 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
                   />
                 );
               })}
-              {dynamicTasksByDay[key]?.map((task, idx) => renderDynamicTask(task, idx, key))}
             </ul>
           </TarjetaDia>
         ))}
@@ -328,15 +240,6 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
               );
             })}
           </div>
-
-          {dynamicTasksByDay['sabado']?.length > 0 && (
-            <div className="pt-4 mt-2 border-t border-amber-500/20">
-              <h4 className="text-xs font-semibold text-amber-400/80 mb-3 uppercase tracking-wider">Logística de Flota</h4>
-              <ul className="space-y-2.5 text-xs text-slate-300 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {dynamicTasksByDay['sabado'].map((task, idx) => renderDynamicTask(task, idx, 'sabado'))}
-              </ul>
-            </div>
-          )}
         </section>
       )}
 
@@ -358,11 +261,6 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs sm:text-sm text-slate-300">
                 {group.tasks.map(({ task, idx }) => renderSharedTask(task, idx))}
-                {group.dynamicKey && dynamicTasksByDay[group.dynamicKey]?.map((task, idx) => (
-                  <div key={`${group.dynamicKey}-${idx}`} className="p-4 rounded-2xl border bg-amber-500/5 border-amber-500/20 hover:border-amber-400/50 transition-all">
-                    <ul className="m-0 p-0 list-none">{renderDynamicTask(task, idx, group.dynamicKey)}</ul>
-                  </div>
-                ))}
               </div>
             </div>
           ))}

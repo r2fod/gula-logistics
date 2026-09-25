@@ -373,10 +373,11 @@ export function isTaskEffectivelyDone(weekData, dayKey, task, now = new Date(), 
     if (task.completed) return true;
     if (task.reopened) return false;
   }
-  // Una semana TERMINADA lo tiene todo hecho, también lo que no tiene horario
-  // (el reloj no puede decir que terminó) o lo tiene mal escrito.
-  if (isWeekFinished(weekData, now, graceMinutes)) return true;
-  return isTaskPast(weekData, dayKey, task, now, graceMinutes);
+  // A petición del usuario, las tareas YA NO se marcan solas cuando pasa su hora.
+  // Solo se marcan cuando los chicos hacen clic en ellas.
+  // if (isWeekFinished(weekData, now, graceMinutes)) return true;
+  // return isTaskPast(weekData, dayKey, task, now, graceMinutes);
+  return false;
 }
 
 // ¿Ha terminado la semana? Sí cuando ya pasó su último día (el domingo del
