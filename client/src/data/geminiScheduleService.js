@@ -64,18 +64,98 @@ export function buildWeekPrompt({ weekName, dateRange, trucks = [], workers = []
   return parts.filter(Boolean).join(' ');
 }
 
-function buildSystemPrompt(activeWeekData) {
+function computeHistoricalDelays(allWeeks) {
+  let loadDelay = 0; let loadCount = 0;
+  let cleanDelay = 0; let cleanCount = 0;
+  let assemblyDelay = 0; let assemblyCount = 0;
+
+  Object.values(allWeeks).forEach(week => {
+    const days = [week.schedule?.martes, week.schedule?.miercoles, week.schedule?.jueves, week.schedule?.viernes, week.sundayMonday, week.saturdaySpecial];
+    days.forEach(day => {
+      const tasks = day?.tasks || day?.weddings || [];
+      tasks.forEach(t => {
+        if (t.completedAt && t.timeFrame && typeof t.timeFrame === 'string') {
+          const parts = t.timeFrame.split('-');
+          if (parts.length === 2) {
+             const expectedEnd = parts[1].trim(); // "11:30"
+             const [eH, eM] = expectedEnd.split(':').map(Number);
+             const endDate = new Date(t.completedAt);
+             const aH = endDate.getHours();
+             const aM = endDate.getMinutes();
+             if (!isNaN(eH) && !isNaN(eM) && !isNaN(aH) && !isNaN(aM)) {
+                let diffMins = (aH * 60 + aM) - (eH * 60 + eM);
+                // Si la tarea termina pasada la medianoche y estaba prevista antes (ej. 23:00 a 01:00)
+                if (diffMins < -12 * 60) diffMins += 24 * 60;
+                
+                const text = (t.text || '').toLowerCase();
+                if (text.includes('carga') || text.includes('recogi')) {
+                  loadDelay += diffMins; loadCount++;
+                } else if (text.includes('limpieza')) {
+                  cleanDelay += diffMins; cleanCount++;
+                } else if (text.includes('montaje') || text.includes('descarga')) {
+                  assemblyDelay += diffMins; assemblyCount++;
+                }
+             }
+          }
+        }
+      });
+    });
+  });
+
+  const delays = [];
+  // Solo aplicamos la sugerencia si hay al menos 3 ocurrencias para tener un mínimo de validez estadística
+  if (loadCount > 3) {
+     const avg = Math.round(loadDelay / loadCount);
+     if (avg > 15) delays.push(`Las Cargas y Recogidas suelen retrasarse una media de ${avg} minutos frente a lo planificado.`);
+  }
+  if (cleanCount > 3) {
+     const avg = Math.round(cleanDelay / cleanCount);
+     if (avg > 15) delays.push(`La Limpieza suele retrasarse una media de ${avg} minutos frente a lo planificado.`);
+  }
+  if (assemblyCount > 3) {
+     const avg = Math.round(assemblyDelay / assemblyCount);
+     if (avg > 15) delays.push(`Las Descargas y Montajes suelen retrasarse una media de ${avg} minutos frente a lo planificado.`);
+  }
+  
+  if (delays.length === 0) return '';
+  
+  return `\n10. APRENDIZAJE HISTÓRICO: El sistema ha analizado las horas de finalización reales pasadas y detectado estos patrones de la plantilla:\n` + delays.map(d => `- ${d}`).join('\n') + `\nPor favor, MODIFICA inteligentemente los horarios de las tareas en el JSON añadiendo este margen (retrasando la hora de fin) para generar un 'timeFrame' mucho más realista.`;
+}
+
+function buildSystemPrompt(activeWeekData, roster = [], allWeeks = {}) {
+  // Construimos las reglas de negocio dinámicamente basadas en los roles de los trabajadores
+  const workerRules = roster.length > 0 ? roster.map(w => {
+    const role = w.role.toLowerCase();
+    if (role.includes('limpieza')) {
+      return `${w.name} SOLO hace limpieza de vajilla y utensilios en eventos, NUNCA cargas, descargas ni montaje de estructura.`;
+    }
+    if (role.includes('ayudante') || role.includes('apoyo')) {
+      return `${w.name} ayuda como apoyo en cargas, descargas y montaje de estructura cuando hace falta.`;
+    }
+    if (role.includes('jefe')) {
+      return `${w.name} (Jefe) NO hace cargas ni descargas manuales regulares, no lo asignes a esas tareas bajo ningún concepto, enfócalo en supervisión.`;
+    }
+    if (role.includes('conductor')) {
+      return `${w.name} es conductor y debe ser asignado preferentemente a cargas, descargas y recogidas que requieran conducción (${w.truck || 'camión'}).`;
+    }
+    return '';
+  }).filter(Boolean).map((rule, idx) => `2.${idx + 1}. ${rule}`).join('\n')
+  : '2. Asigna las tareas a los trabajadores correspondientes de forma lógica.';
+
+  // Analizamos el historial de allWeeks para detectar si las tareas reales suelen retrasarse
+  const historyRule = computeHistoricalDelays(allWeeks);
+
   return `Eres el Asistente Experto en Logística de "Gula Logística".
 REGLAS DE NEGOCIO IMPORTANTES:
 1. Para las tareas de RECOGIDA, asigna SIEMPRE a una sola persona, a menos que el usuario pida explícitamente que asigne a dos.
-2. Irene y Raúl NO hacen cargas ni descargas, NO los asignes a esas tareas bajo ningún concepto. Jose y Kerly SOLO hacen limpieza de vajilla y utensilios en eventos, NUNCA cargas, descargas ni montaje de estructura. Jeferson SÍ ayuda como apoyo en cargas, descargas y montaje de estructura cuando hace falta.
+${workerRules}
 3. Al planificar recogidas (especialmente recogidas de camión), prográmalas SIEMPRE por la mañana temprano, a menos que se indique lo contrario.
 4. Cuando se descargue en un evento, ten en cuenta que también hay MONTAJE DE ESTRUCTURA. Esto debe reflejarse en el texto y el tiempo estimado de la tarea.
 5. Genera las tareas como OBJETOS, intentando siempre separar el texto de la tarea (ej: "Recoger material") del horario (ej: "09:00 - 11:30") y de la ubicación (ej: "Alquileres Norte").
 6. Para cada tarea, si es fuera de la base, GENERA UN ENLACE DE GOOGLE MAPS válido para la ubicación usando este formato exacto: "https://www.google.com/maps/search/?api=1&query=Nombre+Del+Sitio". Si es en la base, déjalo vacío "".
 7. En "sundayMonday.tasks" (domingo y lunes comparten lista) pon SIEMPRE "targetDay": "Domingo" o "Lunes" según el día real de cada tarea; sin él la app no sabe a qué día pertenece.
 8. FORMATO DEL TEXTO DE CADA TAREA (de él salen los costes por evento y por persona): "EVENTO - Tarea", con un guion normal entre espacios UNA sola vez. EVENTO es el nombre exacto de la boda o evento (ej. "Boda Ana y Luis", "Evento Catering Norte") cuando la tarea es de ese evento; si es logística general, una de estas categorías: ${EVENT_CATEGORIES.map(c => `"${c}"`).join(', ')} ("Logística Preparación" = recogidas y devoluciones de camión o material, preparación de material, supervisión; "Logística Carga" = cargas de camión; "Limpieza Eventos" = limpieza de vajilla y utensilios). Si una tarea sirve a VARIOS eventos a la vez (ej. una recogida de material para dos bodas), pon los nombres separados por " + " antes del guion: "Boda Ana y Luis + Boda Eva y Pau - Recoger material Alquileres Norte" (su coste se reparte a partes iguales). La parte "Tarea" es corta y concreta, sin guiones con espacios ni horas ni nombres de personas (van en timeFrame y assigned). Ejemplos: "Boda Ana y Luis - Descarga + Montaje Estructura", "Boda Ana y Luis - Recoger generador", "Boda Ana y Luis - Logística Cierre", "Boda Ana y Luis - Supervisión", "Logística Preparación - Recogida Camión Covey", "Logística Preparación - Devolución Alquileres Norte", "Logística Carga - Carga Camión Miércoles", "Limpieza Eventos - Limpieza eventos".
-9. Te pasaré la SEMANA ACTUAL en formato JSON. Si el usuario te pide un cambio o ajuste, MODIFICA el JSON actual de forma inteligente, preservando lo que no cambie, y devuelve el JSON completo actualizado.
+9. Te pasaré la SEMANA ACTUAL en formato JSON. Si el usuario te pide un cambio o ajuste, MODIFICA el JSON actual de forma inteligente, preservando lo que no cambie, y devuelve el JSON completo actualizado.${historyRule}
 
 Este es el JSON ACTUAL de la semana (únelo con los cambios que pide el usuario):
 ${JSON.stringify(activeWeekData || {}, null, 2)}
@@ -126,7 +206,7 @@ export function validateGeneratedSchedule(json) {
 // interfaz dejaba "Crear la Semana con esta Planificación": el usuario
 // generaba la semana nueva y salía con los eventos de la anterior. Un dato
 // inventado que parece real es peor que un error claro.
-export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData, eventNames = [] }) {
+export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData, eventNames = [], roster = [] }) {
   // Sin fallback a import.meta.env.VITE_GEMINI_API_KEY a propósito:
   // cualquier variable con prefijo VITE_ se compila tal cual en el JS
   // público del bundle (GitHub Pages), así que un "default" ahí
@@ -143,7 +223,7 @@ export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekDat
     };
   }
 
-  const systemPrompt = buildSystemPrompt(activeWeekData);
+  const systemPrompt = buildSystemPrompt(activeWeekData, roster);
   const body = JSON.stringify({
     contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\nSolicitud del usuario: ${prompt}` }] }],
     generationConfig: { responseMimeType: 'application/json' }

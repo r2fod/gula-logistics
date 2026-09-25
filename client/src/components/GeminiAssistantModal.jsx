@@ -5,7 +5,7 @@ import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input, AreaTexto } from './ui/Campo';
 
-export default function GeminiAssistantModal({ isOpen, onClose, onApplyGeneratedSchedule, activeWeekData }) {
+export default function GeminiAssistantModal({ isOpen, onClose, onApplyGeneratedSchedule, activeWeekData, allWeeks = {}, workersList = [] }) {
   const [prompt, setPrompt] = useState('');
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
@@ -22,9 +22,9 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
   };
 
   const samplePrompts = [
-    "Genera la planificación de la Semana 4 para 3 bodas simultáneas el sábado con los 3 camiones (Gula, Covey, Albacar) y reparto de Gonzalo, Ricardo y Johan.",
-    "Crea las tareas del martes y miércoles para pre-carga en almacén y recogida del Camión Albacar con 90 sillas extra.",
-    "Genera la logística inversa de domingo y lunes para descarga de los 3 camiones y devolución de material a Dealde."
+    "Reorganiza las cargas de mañana: pon a Ricardo y Jeferson en la carga del Gula, y a Gonzalo en la del Covey.",
+    "Quita a Irene de las tareas del sábado y ponla a hacer las recogidas de almacén el viernes por la mañana.",
+    "Ajusta automáticamente todos los horarios previstos basándote en los retrasos reales de semanas pasadas."
   ];
 
   const handleGenerate = async (e) => {
@@ -35,7 +35,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
     setErrorMsg('');
     setGeneratedJson(null);
 
-    const { generatedJson: result, errorMsg: err } = await generateScheduleWithGemini({ prompt, apiKey, activeWeekData });
+    const { generatedJson: result, errorMsg: err } = await generateScheduleWithGemini({ prompt, apiKey, activeWeekData, roster: workersList, allWeeks });
     setGeneratedJson(result);
     if (err) setErrorMsg(err);
     setLoading(false);

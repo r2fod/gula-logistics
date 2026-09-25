@@ -673,6 +673,7 @@ export default function App() {
         currentWeekName={activeWeek.name}
         currentWeekTrucks={activeWeek.trucks || []}
         workersList={workersList}
+        allWeeks={allWeeks}
       />
 
       <GeminiAssistantModal
@@ -680,6 +681,8 @@ export default function App() {
         onClose={() => setIsGeminiModalOpen(false)}
         onApplyGeneratedSchedule={handleApplyGeminiSchedule}
         activeWeekData={activeWeek}
+        allWeeks={allWeeks}
+        workersList={workersList}
       />
 
       <EnlacesWhatsAppModal

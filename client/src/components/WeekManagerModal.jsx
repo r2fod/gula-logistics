@@ -15,7 +15,7 @@ import { AreaTexto, Input, Selector } from './ui/Campo';
 // qué bodas y eventos hay cada día) y con eso se arma un prompt para el mismo
 // motor de Gemini que ya usaba el Asistente AI suelto — sustituye al
 // formulario simple de antes (solo nombre + fechas + clonar).
-export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForceAutoDraft, currentWeekName, currentWeekTrucks = [], workersList = [] }) {
+export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForceAutoDraft, currentWeekName, currentWeekTrucks = [], workersList = [], allWeeks = {} }) {
   const [weekName, setWeekName] = useState('');
   const [dateRange, setDateRange] = useState('');
   const [cloneCurrent, setCloneCurrent] = useState(true);
@@ -139,7 +139,9 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
     const { generatedJson: result, errorMsg: err } = await generateScheduleWithGemini({
       prompt: buildPrompt(),
       apiKey,
-      eventNames: events.map(e => buildEventName(e, dayLabel))
+      eventNames: events.map(e => buildEventName(e, dayLabel)),
+      roster: workersList,
+      allWeeks
     });
 
     setGeneratedJson(result);
