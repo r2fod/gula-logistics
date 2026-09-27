@@ -34,8 +34,9 @@ export const urlBase = () => `${window.location.origin}${window.location.pathnam
 // Enlace fijo de un trabajador (ver `construirEnlaceTrabajador`) con la dirección actual.
 export const enlaceTrabajador = (nombre) => construirEnlaceTrabajador(window.location.origin, window.location.pathname, nombre);
 
-// Panel de socias. Con `token` (sesión de admin) el enlace ya entra sin clave.
-export const enlaceSocias = (token) => `${urlBase()}?socias${token ? `&token=${token}` : ''}`;
+// Panel de socias. `tokenSocias` es el token de SOLO LECTURA que genera el servidor
+// (crearTokenSociasEnAPI), nunca la sesión de admin; sin él el enlace no da acceso.
+export const enlaceSocias = (tokenSocias) => `${urlBase()}?socias${tokenSocias ? `&acceso=${encodeURIComponent(tokenSocias)}` : ''}`;
 
 // Vista pública (sin saldos ni nóminas).
 export const enlaceVistaPublica = () => `${urlBase()}?view=public`;

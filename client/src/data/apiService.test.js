@@ -5,6 +5,12 @@ import {
   fetchClockEntriesFromAPI,
   getPendingClockEntriesSnapshot,
   saveWeeksToAPI,
+  setStoredSociasToken,
+  getStoredSociasToken,
+  setStoredAdminToken,
+  cerrarAccesosGuardados,
+  fetchBalancesFromAPI,
+  comprobarSesionEnAPI,
 } from './apiService';
 
 // Fichaje mínimo de prueba: entra si el worker/type/timestamp bastan para
@@ -149,5 +155,54 @@ describe('saveWeeksToAPI (control de concurrencia)', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
     const result = await saveWeeksToAPI({ week_3: {} });
     expect(result).toBeNull();
+  });
+});
+
+describe('enlace de socias (solo lectura)', () => {
+  // Token con la misma forma que los del servidor: cuerpo base64url + firma.
+  const tokenCon = (cuerpo) => `${btoa(JSON.stringify(cuerpo)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')}.firma`;
+
+  it('se guarda con la caducidad que lleva dentro y deja de valer al pasar', () => {
+    const t = tokenCon({ role: 'socias', exp: Date.now() + 60000 });
+    setStoredSociasToken(t);
+    expect(getStoredSociasToken()).toBe(t);
+    setStoredSociasToken(tokenCon({ role: 'socias', exp: Date.now() - 1 }));
+    expect(getStoredSociasToken()).toBeNull();
+  });
+
+  it('las lecturas llevan el enlace de socias si no hay sesión de admin (y la de admin si la hay)', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ rol: 'socias' }) });
+    const t = tokenCon({ role: 'socias', exp: Date.now() + 60000 });
+    setStoredSociasToken(t);
+    expect(await comprobarSesionEnAPI()).toBe('socias');
+    expect(fetch.mock.calls[0][1].headers.Authorization).toBe(`Bearer ${t}`);
+    setStoredAdminToken('ADMIN', Date.now() + 60000);
+    await comprobarSesionEnAPI();
+    expect(fetch.mock.calls[1][1].headers.Authorization).toBe('Bearer ADMIN');
+  });
+
+  it('comprobarSesionEnAPI: 401 = no vale (null); sin red = no se sabe (undefined, no se cierra nada)', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 401 });
+    expect(await comprobarSesionEnAPI()).toBeNull();
+    global.fetch = vi.fn().mockRejectedValue(new Error('sin red'));
+    expect(await comprobarSesionEnAPI()).toBeUndefined();
+  });
+
+  it('BUG evitado: sin acceso (401) NO enseña los saldos guardados de otra vez en este navegador', async () => {
+    localStorage.setItem('gula_balances_data_v1', JSON.stringify({ workers: [{ id: 'ana', name: 'Ana', breakdown: [{ concept: 'x', amount: 1 }], currentBalance: 1 }] }));
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 401 });
+    const datos = await fetchBalancesFromAPI();
+    expect(JSON.stringify(datos)).not.toContain('Ana');
+    expect(localStorage.getItem('gula_balances_data_v1')).toBeNull();
+  });
+
+  it('cerrar accesos borra sesión de admin, enlace de socias y copia de saldos', () => {
+    setStoredAdminToken('ADMIN', Date.now() + 60000);
+    setStoredSociasToken(tokenCon({ role: 'socias', exp: Date.now() + 60000 }));
+    localStorage.setItem('gula_balances_data_v1', '{}');
+    cerrarAccesosGuardados();
+    expect(localStorage.getItem('gula_admin_token_v1')).toBeNull();
+    expect(getStoredSociasToken()).toBeNull();
+    expect(localStorage.getItem('gula_balances_data_v1')).toBeNull();
   });
 });

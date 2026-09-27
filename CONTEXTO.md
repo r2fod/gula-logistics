@@ -3,7 +3,7 @@
 ## Qué es
 Logística de eventos y catering (bodas, banquetes, corporativos) en la zona de Valencia. La app coordina el planning semanal (tareas, recogidas, bodas), la flota, el fichaje de horas del equipo, los saldos/acuerdos con cada persona y el resumen de costes por evento.
 
-**Quién la usa:** el admin (panel completo, con sesión), las socias (panel de saldos y costes), cada trabajador con su enlace fijo `?worker=Nombre` (su semana y sus fichajes) y una vista pública sin datos económicos.
+**Quién la usa:** el admin (panel completo, con sesión), las socias (mismo panel en solo lectura, con un enlace que genera el admin en "Enlaces de WhatsApp"/"Link Socias": caduca a los 90 días y se puede anular), cada trabajador con su enlace fijo `?worker=Nombre` (su semana y sus fichajes) y una vista pública sin datos económicos.
 
 ## Equipo y flota
 - El equipo vive en Mongo (`/api/roster`, editable desde la app). Roles: conductores de flota, apoyo de logística y preparación, limpieza de vajilla, base/checklist y jefe de logística. La mayoría cobra por hora como extra; dos personas están en nómina fija; algunas tienen ayuda de transporte por día y una tiene una bolsa mensual de horas. **Las cifras y los nombres están en Mongo, no en el repo.**

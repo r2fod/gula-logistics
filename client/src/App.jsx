@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  ShieldCheck
+  ShieldCheck,
+  ShieldAlert
 } from 'lucide-react';
 
 import WeekManagerModal from './components/WeekManagerModal';
@@ -21,6 +22,9 @@ import {
   fetchClockEntriesFromAPI,
   getStoredAdminToken,
   setStoredAdminToken,
+  getStoredSociasToken,
+  setStoredSociasToken,
+  comprobarSesionEnAPI,
   logoutAdmin,
   fetchWeeksFromAPI,
   fetchCalendarioApuntes,
@@ -201,26 +205,16 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     return params.get('view') === 'public';
   });
+  // El panel (planificación + saldos) solo se abre con acceso REAL: sesión de admin
+  // o enlace de socias de solo lectura (`acceso=`). Antes bastaba `?socias` o
+  // `?admin` en la URL y los saldos salían de un endpoint público.
   const [isPartnerMode, setIsPartnerMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    const viewParam = params.get('view');
-
-    // ❗ CRITICAL: Si hay ?worker= en la URL, SIEMPRE modo trabajador (ignora localStorage)
-    const workerParam = params.get('worker');
-    if (workerParam) return false;
-
-    if (viewParam === 'public') return false;
-
-    const hasSociasFlag = params.has('socias') || params.get('socias') !== null;
-    const hasAdminFlag = params.has('admin') || params.get('admin') === 'true';
-    const tokenParam = params.get('token') || params.get('key');
-    const roleParam = params.get('role');
-
-    // A real admin session token (not a fakeable flag) also defaults back to partner view.
-    const savedAdminMode = !!getStoredAdminToken();
-
-    return (hasSociasFlag || hasAdminFlag || !!tokenParam || roleParam === 'socias' || viewParam === 'socias' || roleParam === 'admin' || savedAdminMode);
+    if (params.get('worker') || params.get('view') === 'public') return false;
+    return !!(getStoredAdminToken() || getStoredSociasToken() || params.get('token') || params.get('key') || params.get('acceso'));
   });
+  // Aviso en la vista pública cuando un enlace de socias ya no da acceso.
+  const [avisoAcceso, setAvisoAcceso] = useState('');
 
   // Modals
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -248,10 +242,8 @@ export default function App() {
     const weekParam = params.get('week');
     const workerParam = params.get('worker');
     const tokenParam = params.get('token') || params.get('key');
-    const roleParam = params.get('role');
-    const viewParam = params.get('view') || params.get('modal');
-    const hasSociasFlag = params.has('socias') || params.get('socias') !== null;
-    const hasAdminFlag = params.has('admin') || params.get('admin') === 'true';
+    const accesoParam = params.get('acceso');
+    const hasSociasFlag = params.has('socias');
 
     // Qué semana se abre (ver data/enlaces.js): un trabajador siempre ve la de hoy,
     // aunque su enlace sea uno viejo con ?week=; un borrador solo lo abre un admin.
@@ -292,12 +284,15 @@ export default function App() {
     // (lee ?tab=/?view= al montar y abre la pestaña 'balances' con datos
     // reales de la API) — no hace falta un modal aparte con datos viejos.
 
-    // A real, server-issued admin session token travelling in the link
-    // (shared by an admin via "Copiar Link Socias") unlocks the same access
-    // as logging in directly — no password baked into the URL or the bundle.
+    // `acceso=`: enlace de socias de SOLO LECTURA (lo genera el servidor).
+    // `token=`/`key=`: sesión de admin en la URL — solo la de enlaces viejos;
+    // la app ya no la mete en ningún enlace, y cambiar la clave la anula.
+    if (accesoParam) setStoredSociasToken(accesoParam);
     if (tokenParam) {
       setStoredAdminToken(tokenParam, Date.now() + 30 * 24 * 60 * 60 * 1000);
       setIsAdminUnlocked(true);
+    }
+    if (tokenParam || accesoParam) {
       // Ya está guardado en localStorage — quitarlo de la barra de
       // direcciones ahora mismo. Sin esto, el token seguía viajando en la
       // URL visible (capturas de pantalla, historial del navegador) y, si
@@ -310,13 +305,27 @@ export default function App() {
         const cleanUrl = new URL(window.location.href);
         cleanUrl.searchParams.delete('token');
         cleanUrl.searchParams.delete('key');
+        cleanUrl.searchParams.delete('acceso');
         window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
       } catch (e) {
         console.error(e);
       }
     }
-    if (hasSociasFlag || hasAdminFlag || roleParam === 'socias' || roleParam === 'admin' || !!tokenParam) {
-      setIsPartnerMode(true);
+    if (tokenParam || accesoParam) setIsPartnerMode(true);
+    else if (hasSociasFlag && !hasAdminSession && !getStoredSociasToken()) {
+      setAvisoAcceso('Este enlace de socias ya no da acceso. Pide al administrador el enlace nuevo.');
+    }
+
+    // Un enlace de socias guardado puede haber caducado o haberse anulado: se
+    // comprueba al abrir para no enseñar un panel sin datos. Si no se puede
+    // comprobar (sin red, servidor dormido) no se cierra nada.
+    if (!hasAdminSession && (accesoParam || getStoredSociasToken())) {
+      comprobarSesionEnAPI().then(rol => {
+        if (rol !== null) return;
+        logoutAdmin();
+        setIsPartnerMode(false);
+        setAvisoAcceso('Tu enlace de socias ha caducado o se ha anulado. Pide uno nuevo al administrador.');
+      });
     }
 
     // Sync sensitive clock entries from backend MongoDB Atlas
@@ -386,9 +395,12 @@ export default function App() {
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => !!getStoredAdminToken());
   const isAdmin = isAdminUnlocked;
 
+  // Salir cierra también el enlace de socias de este navegador y vuelve a la
+  // vista pública: sin acceso, el panel ya no tiene saldos que enseñar.
   const handleAdminLogout = () => {
     logoutAdmin();
     setIsAdminUnlocked(false);
+    setIsPartnerMode(false);
   };
 
 
@@ -515,6 +527,12 @@ export default function App() {
       <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans relative">
         <BackgroundAnimation viewMode="public" />
         <div className="w-full space-y-4 relative z-10">
+          {avisoAcceso && (
+            <div role="status" className="flex items-start gap-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200 animate-fadeIn">
+              <ShieldAlert className="w-4 h-4 mt-0.5 shrink-0 text-amber-400" aria-hidden="true" />
+              <span>{avisoAcceso}</span>
+            </div>
+          )}
           <PublicView
             data={activeWeek}
             workersList={workersList}
@@ -634,6 +652,7 @@ export default function App() {
         abierto={isShareModalOpen}
         onCerrar={() => setIsShareModalOpen(false)}
         workersList={workersList}
+        admin={isAdmin}
       />
 
       <AdminWorkerEditorModal

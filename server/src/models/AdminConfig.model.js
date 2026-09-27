@@ -8,7 +8,10 @@ const AdminConfigSchema = new mongoose.Schema({
   passwordHash: { type: String, required: true },
   // Bumped on every password change so previously issued tokens (including
   // long-lived shared "socias" links) stop working immediately.
-  tokenVersion: { type: Number, default: 1 }
+  tokenVersion: { type: Number, default: 1 },
+  // Versión de los enlaces de socias (solo lectura): subirla anula todos los
+  // enlaces de socias ya enviados sin tocar la sesión de admin.
+  sociasVersion: { type: Number, default: 1 }
 }, {
   timestamps: true
 });

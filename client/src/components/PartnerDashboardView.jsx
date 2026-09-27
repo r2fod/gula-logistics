@@ -3,10 +3,10 @@ import { initialBalancesData } from '../data/balancesData';
 import { fetchBalancesFromAPI, saveWorkerBalanceToAPI } from '../data/apiService';
 import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../data/shiftCalculations';
 import { fusionarSaldosConEquipo, buscarPorNombreDeSaldo } from '../data/saldosEquipo';
-import { enlaceSocias } from '../data/enlaces';
 import { esBorrador } from '../data/anticipacion';
 import { tareasDeLaVispera, fichadosDelDia } from '../data/vispera';
 import { useCopiado } from '../hooks/useCopiado';
+import { useEnlaceSocias } from '../hooks/useEnlaceSocias';
 import { useAvisarCambios } from '../hooks/useAvisarCambios';
 import { useDialog } from '../contexts/DialogContext';
 import TeamBalancesTab from './dashboard/TeamBalancesTab';
@@ -71,6 +71,7 @@ export default function PartnerDashboardView({
   const [isAdminAiMemoryOpen, setIsAdminAiMemoryOpen] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [enlaceCopiado, copiarEnlace] = useCopiado();
+  const enlaceSocias = useEnlaceSocias(adminUnlocked);
   const aviso = useAvisarCambios();
 
   const handleTabClick = (tabKey) => {
@@ -165,7 +166,7 @@ export default function PartnerDashboardView({
   };
 
   const acciones = crearAcciones(
-    { admin: adminUnlocked, avisando: aviso.enviando, enlaceSociasCopiado: !!enlaceCopiado },
+    { admin: adminUnlocked, avisando: aviso.enviando, enlaceSociasCopiado: !!enlaceCopiado, enlaceSociasCargando: enlaceSocias.cargando },
     {
       fichar: onOpenClockIn,
       avisar: aviso.abrir,
@@ -174,7 +175,10 @@ export default function PartnerDashboardView({
       nominas: onOpenPayroll,
       gemini: onOpenGemini,
       compartir: onOpenShareModal,
-      copiarEnlaceSocias: () => copiarEnlace(enlaceSocias()),
+      copiarEnlaceSocias: async () => {
+        if (enlaceSocias.enlace) return copiarEnlace(enlaceSocias.enlace);
+        await alert(enlaceSocias.error ? `No se pudo generar el enlace de socias: ${enlaceSocias.error}` : 'El enlace de socias se está generando; vuelve a pulsar en un momento.', { type: 'info' });
+      },
       vistaPublica: onTogglePublicView && (() => onTogglePublicView(false)),
       claves: () => setIsAdminSettingsOpen(true),
       memoriaIa: () => setIsAdminAiMemoryOpen(true),

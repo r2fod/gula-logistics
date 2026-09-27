@@ -31,6 +31,23 @@ beforeEach(() => {
   mongoose.connection.readyState = 1;
 });
 
+describe('GET /api/balances (dinero: solo admin o enlace de socias)', () => {
+  it('BUG evitado: sin sesión NO devuelve los saldos (antes eran públicos)', async () => {
+    const r = await request(buildApp()).get('/api/balances');
+    expect(r.status).toBe(401);
+    expect(WorkerBalance.find).not.toHaveBeenCalled();
+  });
+
+  it('con enlace de socias o sesión de admin sí', async () => {
+    WorkerBalance.find.mockReturnValue({ sort: vi.fn().mockResolvedValue([{ id: 'ana', name: 'Ana' }]) });
+    const socias = `Bearer ${signToken({ role: 'socias', v: 1, sv: 1 })}`;
+    const r = await request(buildApp()).get('/api/balances').set('Authorization', socias);
+    expect(r.status).toBe(200);
+    expect(r.body.workers).toEqual([{ id: 'ana', name: 'Ana' }]);
+    expect((await request(buildApp()).get('/api/balances').set('Authorization', adminAuthHeader())).status).toBe(200);
+  });
+});
+
 describe('PUT /api/balances/:id (actualización parcial de saldo)', () => {
   it('BUG real: un payload parcial sin $set lo trataría MongoDB como reemplazo total del documento, borrando name/avatar/purseInfo/etc.', async () => {
     // Este es justo el payload que manda persistWorkerBalance en

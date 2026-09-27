@@ -6,6 +6,7 @@ vi.mock('../data/apiService', () => ({
   fetchBalancesFromAPI: vi.fn().mockResolvedValue(null),
   saveWorkerBalanceToAPI: vi.fn().mockResolvedValue({}),
   getStoredAdminToken: () => null,
+  crearTokenSociasEnAPI: vi.fn().mockResolvedValue({ ok: true, token: 'solo.lectura', expiresAt: Date.now() + 1000 }),
 }));
 vi.mock('../data/pushService', () => ({ sendPushNotification: vi.fn().mockResolvedValue({}) }));
 
@@ -42,6 +43,7 @@ const pintar = (extra = {}) => {
 beforeEach(() => {
   window.history.replaceState({}, '', '/gula-logistics/');
   vi.spyOn(window, 'alert').mockImplementation(() => {});
+  if (!navigator.clipboard) Object.defineProperty(navigator, 'clipboard', { value: { writeText: async () => {} }, configurable: true });
 });
 
 afterEach(() => {
@@ -120,6 +122,18 @@ describe('PartnerDashboardView', () => {
     expect(within(aviso).getByText('Aviso enviado correctamente a 1 trabajador(es).')).toBeInTheDocument();
     fireEvent.click(within(aviso).getByRole('button', { name: 'Entendido' }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Avisar cambios' })).toBeNull());
+  });
+
+  it('"Link Socias" copia el enlace de SOLO LECTURA (acceso=), y sin admin no se ofrece', async () => {
+    const copiar = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+    pintar();
+    const boton = screen.getAllByRole('button', { name: /Link Socias/ })[0];
+    await waitFor(() => expect(boton).not.toBeDisabled());
+    fireEvent.click(boton);
+    await waitFor(() => expect(copiar).toHaveBeenCalledWith(expect.stringMatching(/\?socias&acceso=solo\.lectura$/)));
+    cleanup();
+    pintar({ isAdmin: false });
+    expect(screen.queryByRole('button', { name: /Link Socias/ })).toBeNull();
   });
 
   it('"Clave" abre los ajustes de administrador', () => {

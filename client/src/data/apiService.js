@@ -4,23 +4,31 @@ import { initialBalancesData } from './balancesData';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const TOKEN_STORAGE_KEY = 'gula_admin_token_v1';
+// Enlace de socias: token firmado de SOLO LECTURA (saldos y panel), aparte de
+// la sesión de admin. Lo genera el admin (crearTokenSociasEnAPI) y llega en la URL.
+const SOCIAS_TOKEN_STORAGE_KEY = 'gula_socias_token_v1';
+const BALANCES_CACHE_KEY = 'gula_balances_data_v1';
 
-/**
- * Admin session token helpers (backed by the server, not a hardcoded password)
- */
-export function getStoredAdminToken() {
+function leerTokenGuardado(clave) {
   try {
-    const raw = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const raw = localStorage.getItem(clave);
     if (!raw) return null;
     const { token, expiresAt } = JSON.parse(raw);
     if (!token || !expiresAt || Date.now() > expiresAt) {
-      localStorage.removeItem(TOKEN_STORAGE_KEY);
+      localStorage.removeItem(clave);
       return null;
     }
     return token;
   } catch {
     return null;
   }
+}
+
+/**
+ * Admin session token helpers (backed by the server, not a hardcoded password)
+ */
+export function getStoredAdminToken() {
+  return leerTokenGuardado(TOKEN_STORAGE_KEY);
 }
 
 export function setStoredAdminToken(token, expiresAt) {
@@ -31,9 +39,64 @@ export function clearStoredAdminToken() {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
+export function getStoredSociasToken() {
+  return leerTokenGuardado(SOCIAS_TOKEN_STORAGE_KEY);
+}
+
+// Guarda el token de un enlace de socias con su caducidad real (va dentro del
+// token; el servidor es quien la hace cumplir, esto solo evita guardar de más).
+export function setStoredSociasToken(token) {
+  let expiresAt = Date.now() + 90 * 24 * 60 * 60 * 1000;
+  try {
+    const cuerpo = JSON.parse(atob(token.split('.')[0].replace(/-/g, '+').replace(/_/g, '/')));
+    if (Number.isFinite(cuerpo.exp)) expiresAt = cuerpo.exp;
+  } catch { /* token raro: se guarda con la caducidad por defecto y el servidor decide */ }
+  localStorage.setItem(SOCIAS_TOKEN_STORAGE_KEY, JSON.stringify({ token, expiresAt }));
+}
+
+// Cierra cualquier acceso de este navegador (admin y socias) y borra la copia
+// local de los saldos, para que no queden en un dispositivo compartido.
+export function cerrarAccesosGuardados() {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  localStorage.removeItem(SOCIAS_TOKEN_STORAGE_KEY);
+  localStorage.removeItem(BALANCES_CACHE_KEY);
+}
+
+// La sesión de admin manda; si no la hay, el enlace de socias (solo sirve para
+// lecturas: el servidor rechaza con él todo lo que escribe).
 function authHeaders() {
-  const token = getStoredAdminToken();
+  const token = getStoredAdminToken() || getStoredSociasToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// Admin: genera un enlace de socias nuevo. `anularAnteriores` deja sin efecto
+// todos los ya enviados. Devuelve { ok, token, expiresAt } o { ok: false, error }.
+export async function crearTokenSociasEnAPI({ anularAnteriores = false } = {}) {
+  try {
+    const res = await fetch(`${API_BASE}/auth/socias-token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ anularAnteriores })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error || `Error ${res.status}` };
+    return { ok: true, token: data.token, expiresAt: data.expiresAt };
+  } catch {
+    return { ok: false, error: 'No se pudo contactar con el servidor.' };
+  }
+}
+
+// ¿Sigue valiendo el acceso de este navegador? 'admin' | 'socias' | null (no vale)
+// | undefined (no se pudo comprobar: sin red o servidor dormido; no se cierra nada).
+export async function comprobarSesionEnAPI() {
+  try {
+    const res = await fetch(`${API_BASE}/auth/sesion`, { headers: authHeaders() });
+    if (res.status === 401) return null;
+    if (!res.ok) return undefined;
+    return (await res.json()).rol || null;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -79,7 +142,7 @@ export async function changeAdminPassword(currentPassword, newPassword) {
 }
 
 export function logoutAdmin() {
-  clearStoredAdminToken();
+  cerrarAccesosGuardados();
 }
 
 /**
@@ -306,11 +369,16 @@ export function hasRealBalancesData(data) {
 export async function fetchBalancesFromAPI() {
   try {
     const res = await fetch(`${API_BASE}/balances`, { headers: { ...authHeaders() } });
+    // Sin acceso (sin sesión, enlace caducado o anulado): ni la copia local.
+    if (res.status === 401) {
+      localStorage.removeItem(BALANCES_CACHE_KEY);
+      return initialBalancesData;
+    }
     if (res.ok) {
       const data = await res.json();
       if (hasRealBalancesData(data)) {
         try {
-          localStorage.setItem('gula_balances_data_v1', JSON.stringify(data));
+          localStorage.setItem(BALANCES_CACHE_KEY, JSON.stringify(data));
         } catch (e) {}
         return data;
       }
@@ -321,13 +389,13 @@ export async function fetchBalancesFromAPI() {
 
   // Fallback to localStorage only if it contains real populated data
   try {
-    const saved = localStorage.getItem('gula_balances_data_v1');
+    const saved = localStorage.getItem(BALANCES_CACHE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (hasRealBalancesData(parsed)) {
         return parsed;
       } else {
-        localStorage.removeItem('gula_balances_data_v1');
+        localStorage.removeItem(BALANCES_CACHE_KEY);
       }
     }
   } catch (e) {

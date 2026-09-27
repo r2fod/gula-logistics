@@ -71,10 +71,10 @@ describe('enlaces con la dirección actual', () => {
     expect(enlaceTrabajador('Ana María')).toBe(`${urlBase()}?worker=Ana%20Mar%C3%ADa`);
   });
 
-  it('el de socias entra sin clave solo si hay token', () => {
+  it('el de socias lleva su token de solo lectura en `acceso` (nunca en `token`, que es sesión de admin)', () => {
     expect(enlaceSocias()).toBe(`${urlBase()}?socias`);
     expect(enlaceSocias(null)).toBe(`${urlBase()}?socias`);
-    expect(enlaceSocias('abc')).toBe(`${urlBase()}?socias&token=abc`);
+    expect(enlaceSocias('abc.def')).toBe(`${urlBase()}?socias&acceso=abc.def`);
   });
 
   it('la vista pública tiene su parámetro', () => {
