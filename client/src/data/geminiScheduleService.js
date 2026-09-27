@@ -5,6 +5,8 @@
 // con las mismas reglas de negocio — mantenerlas en dos sitios las habría
 // desincronizado en cuanto alguien ajustara una sola copia.
 import { EVENT_CATEGORIES, buildEventName, normalizeGeneratedEvents } from './eventNaming';
+import { textoAprendizajeParaPrompt } from './aprendizajeFichajes';
+import { esMemoriaActiva } from './memoriaIa';
 
 export const GEMINI_API_KEY_STORAGE_KEY = 'gula_gemini_api_key';
 
@@ -64,65 +66,7 @@ export function buildWeekPrompt({ weekName, dateRange, trucks = [], workers = []
   return parts.filter(Boolean).join(' ');
 }
 
-function computeHistoricalDelays(allWeeks) {
-  let loadDelay = 0; let loadCount = 0;
-  let cleanDelay = 0; let cleanCount = 0;
-  let assemblyDelay = 0; let assemblyCount = 0;
-
-  Object.values(allWeeks).forEach(week => {
-    const days = [week.schedule?.martes, week.schedule?.miercoles, week.schedule?.jueves, week.schedule?.viernes, week.sundayMonday, week.saturdaySpecial];
-    days.forEach(day => {
-      const tasks = day?.tasks || day?.weddings || [];
-      tasks.forEach(t => {
-        if (t.completedAt && t.timeFrame && typeof t.timeFrame === 'string') {
-          const parts = t.timeFrame.split('-');
-          if (parts.length === 2) {
-             const expectedEnd = parts[1].trim(); // "11:30"
-             const [eH, eM] = expectedEnd.split(':').map(Number);
-             const endDate = new Date(t.completedAt);
-             const aH = endDate.getHours();
-             const aM = endDate.getMinutes();
-             if (!isNaN(eH) && !isNaN(eM) && !isNaN(aH) && !isNaN(aM)) {
-                let diffMins = (aH * 60 + aM) - (eH * 60 + eM);
-                // Si la tarea termina pasada la medianoche y estaba prevista antes (ej. 23:00 a 01:00)
-                if (diffMins < -12 * 60) diffMins += 24 * 60;
-                
-                const text = (t.text || '').toLowerCase();
-                if (text.includes('carga') || text.includes('recogi')) {
-                  loadDelay += diffMins; loadCount++;
-                } else if (text.includes('limpieza')) {
-                  cleanDelay += diffMins; cleanCount++;
-                } else if (text.includes('montaje') || text.includes('descarga')) {
-                  assemblyDelay += diffMins; assemblyCount++;
-                }
-             }
-          }
-        }
-      });
-    });
-  });
-
-  const delays = [];
-  // Solo aplicamos la sugerencia si hay al menos 3 ocurrencias para tener un mínimo de validez estadística
-  if (loadCount > 3) {
-     const avg = Math.round(loadDelay / loadCount);
-     if (avg > 15) delays.push(`Las Cargas y Recogidas suelen retrasarse una media de ${avg} minutos frente a lo planificado.`);
-  }
-  if (cleanCount > 3) {
-     const avg = Math.round(cleanDelay / cleanCount);
-     if (avg > 15) delays.push(`La Limpieza suele retrasarse una media de ${avg} minutos frente a lo planificado.`);
-  }
-  if (assemblyCount > 3) {
-     const avg = Math.round(assemblyDelay / assemblyCount);
-     if (avg > 15) delays.push(`Las Descargas y Montajes suelen retrasarse una media de ${avg} minutos frente a lo planificado.`);
-  }
-  
-  if (delays.length === 0) return '';
-  
-  return `\n10. APRENDIZAJE HISTÓRICO: El sistema ha analizado las horas de finalización reales pasadas y detectado estos patrones de la plantilla:\n` + delays.map(d => `- ${d}`).join('\n') + `\nPor favor, MODIFICA inteligentemente los horarios de las tareas en el JSON añadiendo este margen (retrasando la hora de fin) para generar un 'timeFrame' mucho más realista.`;
-}
-
-function buildSystemPrompt(activeWeekData, roster = [], allWeeks = {}, aiMemories = []) {
+function buildSystemPrompt(activeWeekData, roster = [], aiMemories = [], aprendizaje = null) {
   // Construimos las reglas de negocio dinámicamente basadas en los roles de los trabajadores
   const workerRules = roster.length > 0 ? roster.map(w => {
     const role = w.role.toLowerCase();
@@ -142,11 +86,14 @@ function buildSystemPrompt(activeWeekData, roster = [], allWeeks = {}, aiMemorie
   }).filter(Boolean).map((rule, idx) => `2.${idx + 1}. ${rule}`).join('\n')
   : '2. Asigna las tareas a los trabajadores correspondientes de forma lógica.';
 
-  // Analizamos el historial de allWeeks para detectar si las tareas reales suelen retrasarse
-  const historyRule = computeHistoricalDelays(allWeeks);
+  // Lo aprendido de los fichajes reales (duraciones y quién hace qué), ver
+  // aprendizajeFichajes.js. Antes se miraba la hora del clic en "hecha".
+  const historyRule = textoAprendizajeParaPrompt(aprendizaje);
 
-  const memoryRules = aiMemories.length > 0 
-    ? `\nPREFERENCIAS DEL USUARIO (MEMORIA A LARGO PLAZO):\n${aiMemories.map(m => `- ${m.content}`).join('\n')}\nTen en cuenta obligatoriamente estas preferencias operativas al asignar o ajustar tareas.` 
+  // Solo las reglas aprobadas: las propuestas por el asistente esperan al admin.
+  const activas = aiMemories.filter(esMemoriaActiva);
+  const memoryRules = activas.length > 0
+    ? `\nPREFERENCIAS DEL USUARIO (MEMORIA A LARGO PLAZO):\n${activas.map(m => `- ${m.content}`).join('\n')}\nTen en cuenta obligatoriamente estas preferencias operativas al asignar o ajustar tareas.`
     : '';
 
   return `Eres el Asistente Experto en Logística de "Gula Logística".
@@ -254,7 +201,7 @@ export function validateGeneratedSchedule(json) {
 // interfaz dejaba "Crear la Semana con esta Planificación": el usuario
 // generaba la semana nueva y salía con los eventos de la anterior. Un dato
 // inventado que parece real es peor que un error claro.
-export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData, eventNames = [], roster = [], allWeeks = {}, aiMemories = [] }) {
+export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData, eventNames = [], roster = [], aiMemories = [], aprendizaje = null }) {
   const activeApiKey = (apiKey || '').trim();
 
   if (!activeApiKey) {
@@ -264,7 +211,7 @@ export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekDat
     };
   }
 
-  const systemPrompt = buildSystemPrompt(activeWeekData, roster, allWeeks, aiMemories);
+  const systemPrompt = buildSystemPrompt(activeWeekData, roster, aiMemories, aprendizaje);
   const body = JSON.stringify({
     contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\nSolicitud del usuario: ${prompt}` }] }],
     generationConfig: { responseMimeType: 'application/json' }

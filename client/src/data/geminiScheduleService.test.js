@@ -217,3 +217,28 @@ describe('extraerMemoriaDelPrompt — recuerdos a largo plazo', () => {
     expect(await extraerMemoriaDelPrompt({ prompt: 'x', apiKey: 'k' })).toBeNull();
   });
 });
+
+describe('memoria y aprendizaje en el prompt', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const promptEnviado = async (args) => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse(semanaOk));
+    vi.stubGlobal('fetch', fetchMock);
+    await generateScheduleWithGemini({ prompt: 'x', apiKey: 'k', ...args });
+    return JSON.parse(fetchMock.mock.calls[0][1].body).contents[0].parts[0].text;
+  };
+
+  it('solo pasa las reglas ACTIVAS (las propuestas esperan a que el admin las apruebe)', async () => {
+    const texto = await promptEnviado({ aiMemories: [
+      { content: 'Regla aprobada' }, { content: 'Regla nueva activa', estado: 'activa' }, { content: 'Regla sin aprobar', estado: 'propuesta' },
+    ] });
+    expect(texto).toContain('- Regla aprobada');
+    expect(texto).toContain('- Regla nueva activa');
+    expect(texto).not.toContain('Regla sin aprobar');
+  });
+
+  it('incluye lo aprendido de los fichajes reales', async () => {
+    const aprendizaje = { porTipo: [{ tipo: 'Carga', tareas: 4, planificadoMin: 60, realMin: 90, desvioMin: 30 }], porPersona: {} };
+    expect(await promptEnviado({ aprendizaje })).toContain('- Carga: planificadas 1 h de media, reales 1 h 30 (+30 min, 4 tareas).');
+    expect(await promptEnviado({})).not.toContain('APRENDIZAJE DE LOS FICHAJES');
+  });
+});

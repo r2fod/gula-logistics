@@ -23,6 +23,9 @@ _Solo lo que sigue abierto (actualizado el 27/09/2026). Lo resuelto se borra de 
 - [ ] Detección de solapes de horario por persona.
 - [ ] Revisión responsive sistemática 320–1920 px del resto de vistas.
 
+## Asistente IA (27/09)
+- [ ] Memoria del asistente hecha (grafo visual, reglas propuestas → aprobar, aprendizaje de fichajes). Pendiente: probarlo con sesión de admin en producción (pestaña Memoria IA) y ver que Gemini genera horarios razonables con el aprendizaje. Solo mide tramos "limpios": se aprende más si la gente ficha cada tarea al cambiar.
+
 ## 🟢 Código
 - [ ] ESLint del cliente: 49 errores y 126 avisos ya existentes (bloques `catch {}` vacíos, dependencias de efectos…). No añadir nuevos.
 - [ ] Archivos grandes: `AdminTaskEditorModal` (~1050 líneas), `WorkerView` (~1100), `PayrollReportModal` (~830), `TeamBalancesTab` (~790). Siguientes piezas: fila de tarea/tarjeta de boda de `WorkerView`, `Boton`, `Chip` seleccionable, `PuntoEstado`.

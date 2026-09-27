@@ -33,6 +33,7 @@ import { pestanaDesdeUrl, guardarPestanaEnUrl } from './panel/pestanas';
 export default function PartnerDashboardView({
   activeWeekData,
   allWeeks = {},
+  aprendizaje = null,
   activeWeekId,
   onSelectWeek,
   onRegenerateDraft,
@@ -309,6 +310,9 @@ export default function PartnerDashboardView({
       <AdminAiMemoryModal
         isOpen={isAdminAiMemoryOpen}
         onClose={() => setIsAdminAiMemoryOpen(false)}
+        workersList={workersList}
+        allWeeks={allWeeks}
+        aprendizaje={aprendizaje}
       />
 
       <MenuLateral

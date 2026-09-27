@@ -626,51 +626,37 @@ export async function saveRosterToAPI(workers) {
 }
 
 // --- AI MEMORY API ---
+// Reglas del asistente (/api/aimemory, solo admin). Devuelven null si falla
+// (getAiMemories, lista vacía) — el asistente sigue funcionando sin ellas.
+async function peticionMemoria(ruta = '', { method = 'GET', body } = {}) {
+  try {
+    const res = await fetch(`${API_BASE}/aimemory${ruta}`, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (!res.ok) throw new Error(`Error ${res.status} en ${method} /aimemory${ruta}`);
+    return await res.json();
+  } catch (error) {
+    console.error('Memoria IA:', error.message);
+    return null;
+  }
+}
+
 export async function getAiMemories() {
-  try {
-    const adminToken = getStoredAdminToken();
-    const headers = { 'Content-Type': 'application/json' };
-    if (adminToken) headers['Authorization'] = `Bearer ${adminToken}`;
-    const res = await fetch(`${API_BASE}/aimemory`, { headers });
-    if (!res.ok) throw new Error('Error getting AI memories');
-    return await res.json();
-  } catch (error) {
-    console.error('getAiMemories error:', error);
-    return [];
-  }
+  return (await peticionMemoria()) || [];
 }
 
-export async function addAiMemory(content) {
-  try {
-    const adminToken = getStoredAdminToken();
-    const headers = { 'Content-Type': 'application/json' };
-    if (adminToken) headers['Authorization'] = `Bearer ${adminToken}`;
-    const res = await fetch(`${API_BASE}/aimemory`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ content })
-    });
-    if (!res.ok) throw new Error('Error adding AI memory');
-    return await res.json();
-  } catch (error) {
-    console.error('addAiMemory error:', error);
-    return null;
-  }
+// `estado: 'propuesta'` para las que sugiere el asistente (no entran en el
+// prompt hasta aprobarlas); sin él, activa.
+export function addAiMemory(content, { estado, origen } = {}) {
+  return peticionMemoria('', { method: 'POST', body: { content, estado, origen } });
 }
 
-export async function deleteAiMemory(id) {
-  try {
-    const adminToken = getStoredAdminToken();
-    const headers = { 'Content-Type': 'application/json' };
-    if (adminToken) headers['Authorization'] = `Bearer ${adminToken}`;
-    const res = await fetch(`${API_BASE}/aimemory/${id}`, {
-      method: 'DELETE',
-      headers
-    });
-    if (!res.ok) throw new Error('Error deleting AI memory');
-    return await res.json();
-  } catch (error) {
-    console.error('deleteAiMemory error:', error);
-    return null;
-  }
+export function aprobarAiMemory(id) {
+  return peticionMemoria(`/${id}`, { method: 'PATCH', body: { estado: 'activa' } });
+}
+
+export function deleteAiMemory(id) {
+  return peticionMemoria(`/${id}`, { method: 'DELETE' });
 }

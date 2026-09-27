@@ -34,6 +34,7 @@ import {
 } from './data/apiService';
 import { pairShiftsFromEntries } from './data/shiftCalculations';
 import { fichajesDeLaSemana } from './data/fichajes';
+import { aprenderDeFichajes } from './data/aprendizajeFichajes';
 import { semanaDeLaVispera } from './data/vispera';
 import { getWeekRange } from './data/taskPlanning';
 import { anticiparSemanas } from './data/anticipacion';
@@ -99,12 +100,17 @@ export default function App() {
   // financiero) se usan todos (activeClockEntries) para no romper el histórico.
   // La ventana y los turnos abiertos los decide fichajesDeLaSemana (data/fichajes.js).
   const rangoSemanaActiva = useMemo(() => getWeekRange(activeWeek), [activeWeek]);
+  const turnosFichados = useMemo(() => pairShiftsFromEntries(activeClockEntries), [activeClockEntries]);
   const currentWeekClockEntries = useMemo(() => {
-    const abiertos = Object.values(pairShiftsFromEntries(activeClockEntries).activeShifts);
+    const abiertos = Object.values(turnosFichados.activeShifts);
     // fichajesDeLaSemana de data/fichajes.js se encarga de todo: 
     // ventana correcta [martes 00:00, martes siguiente 00:00) y turnos abiertos.
     return fichajesDeLaSemana(activeClockEntries, rangoSemanaActiva, abiertos);
-  }, [activeClockEntries, rangoSemanaActiva]);
+  }, [activeClockEntries, turnosFichados, rangoSemanaActiva]);
+
+  // Lo que el asistente aprende de los fichajes reales (duraciones y quién hace
+  // qué): lo reciben Gemini (asistente y nueva semana) y el panel Memoria IA.
+  const aprendizaje = useMemo(() => aprenderDeFichajes(turnosFichados.shifts, allWeeks), [turnosFichados, allWeeks]);
 
   // Misma ventana para la papelera de borrados (ahí no hay turnos abiertos que conservar).
   const currentWeekDeletedClockEntries = useMemo(
@@ -573,6 +579,7 @@ export default function App() {
       <PartnerDashboardView
         activeWeekData={activeWeek}
         allWeeks={allWeeks}
+        aprendizaje={aprendizaje}
         activeWeekId={activeWeekId}
         onSelectWeek={setActiveWeekId}
         onUpdateWeek={handleUpdateActiveWeek}
@@ -636,7 +643,7 @@ export default function App() {
         currentWeekName={activeWeek.name}
         currentWeekTrucks={activeWeek.trucks || []}
         workersList={workersList}
-        allWeeks={allWeeks}
+        aprendizaje={aprendizaje}
       />
 
       <GeminiAssistantModal
@@ -644,8 +651,8 @@ export default function App() {
         onClose={() => setIsGeminiModalOpen(false)}
         onApplyGeneratedSchedule={handleApplyGeminiSchedule}
         activeWeekData={activeWeek}
-        allWeeks={allWeeks}
         workersList={workersList}
+        aprendizaje={aprendizaje}
       />
 
       <EnlacesWhatsAppModal

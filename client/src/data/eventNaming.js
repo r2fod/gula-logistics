@@ -140,7 +140,7 @@ export function getEventShares(eventNames, paxByEvent = {}) {
 // aparte en `task.event` (o `wedding.event`) y aquí se enlaza por el texto.
 // Prioridad: evento escrito en el texto > `event` de la tarea. Devuelve null si
 // el texto no es de ninguna tarea conocida (jornada general, tareas libres...).
-const normLabel = (s) => plain(s)
+export const normalizarEtiquetaTarea = (s) => plain(s)
   .replace(/\s*\(\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}\)\s*$/, '')
   .replace(/\s+/g, ' ')
   .trim();
@@ -151,7 +151,7 @@ const normLabel = (s) => plain(s)
 // tuviera otro tamaño). Los borradores se ignoran.
 export function buildTaskContextResolver(weeksMap = {}) {
   const byLabel = new Map();
-  const add = (label, event, week) => { if (label && event) byLabel.set(normLabel(label), { event, pax: paxDeSemana(week) }); };
+  const add = (label, event, week) => { if (label && event) byLabel.set(normalizarEtiquetaTarea(label), { event, pax: paxDeSemana(week) }); };
 
   Object.values(weeksMap || {}).filter(w => !esBorradorSemana(w)).forEach(week => {
     const lists = [...Object.values(week?.schedule || {}).map(d => d?.tasks), week?.sundayMonday?.tasks];
@@ -164,7 +164,7 @@ export function buildTaskContextResolver(weeksMap = {}) {
     (week?.saturdaySpecial?.weddings || []).forEach(w => add(getWeddingTaskName(w), w.event, week));
   });
 
-  return (taskName) => byLabel.get(normLabel(taskName)) || null;
+  return (taskName) => byLabel.get(normalizarEtiquetaTarea(taskName)) || null;
 }
 
 export function buildTaskEventResolver(weeksMap = {}) {

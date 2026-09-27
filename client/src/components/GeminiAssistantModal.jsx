@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Sparkles, Check, AlertCircle, RefreshCw, Key, Wand2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sparkles, Check, AlertCircle, RefreshCw, Key, Wand2, BrainCircuit, X } from 'lucide-react';
 import { generateScheduleWithGemini, extraerMemoriaDelPrompt, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
-import { getAiMemories, addAiMemory } from '../data/apiService';
+import { useMemoriaIa } from '../hooks/useMemoriaIa';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input, AreaTexto } from './ui/Campo';
 
-export default function GeminiAssistantModal({ isOpen, onClose, onApplyGeneratedSchedule, activeWeekData, allWeeks = {}, workersList = [] }) {
+// `aprendizaje` (App, aprenderDeFichajes): lo que se sabe de los fichajes reales,
+// que Gemini recibe junto con las reglas activas de la memoria.
+export default function GeminiAssistantModal({ isOpen, onClose, onApplyGeneratedSchedule, activeWeekData, workersList = [], aprendizaje = null }) {
   const [prompt, setPrompt] = useState('');
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
@@ -14,13 +16,10 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
   const [generatedJson, setGeneratedJson] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   
-  const [aiMemories, setAiMemories] = useState([]);
-
-  useEffect(() => {
-    if (isOpen) {
-      getAiMemories().then(setAiMemories).catch(console.error);
-    }
-  }, [isOpen]);
+  const memoria = useMemoriaIa(isOpen);
+  // Regla que el asistente ha sacado de lo que se le pidió: se guarda como
+  // propuesta y aquí se pregunta si recordarla (no la usa hasta aprobarla).
+  const [propuesta, setPropuesta] = useState(null);
 
   if (!isOpen) return null;
 
@@ -31,9 +30,9 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
   };
 
   const samplePrompts = [
-    "Reorganiza las cargas de mañana: pon a Persona2 y Persona5 en la carga del Gula, y a Persona1 en la del Covey.",
-    "A partir de ahora, recuerda que Persona1 prefiere no conducir el camión Albacar los sábados.",
-    "Ajusta automáticamente todos los horarios previstos basándote en los retrasos reales de semanas pasadas."
+    'Reorganiza las cargas de mañana para que cada conductor lleve el camión con el que ya ha ido esta semana.',
+    'A partir de ahora, recuerda que las bodas de más de 200 pax llevan un apoyo más en la carga.',
+    'Ajusta los horarios de la semana a lo que duran de verdad las tareas según los fichajes.'
   ];
 
   const handleGenerate = async (e) => {
@@ -43,19 +42,20 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
     setLoading(true);
     setErrorMsg('');
     setGeneratedJson(null);
+    setPropuesta(null);
 
-    // La planificación y el posible recuerdo a largo plazo van a la vez (el
-    // recuerdo no retrasa la respuesta). El servidor no guarda duplicados.
+    // La planificación y la posible regla nueva van a la vez (la regla no retrasa
+    // la respuesta). El servidor no guarda duplicados.
     const [{ generatedJson: result, errorMsg: err }, recuerdo] = await Promise.all([
-      generateScheduleWithGemini({ prompt, apiKey, activeWeekData, roster: workersList, allWeeks, aiMemories }),
+      generateScheduleWithGemini({ prompt, apiKey, activeWeekData, roster: workersList, aiMemories: memoria.activas, aprendizaje }),
       extraerMemoriaDelPrompt({ prompt, apiKey })
     ]);
     setGeneratedJson(result);
     if (err) setErrorMsg(err);
 
     if (recuerdo) {
-      const newMem = await addAiMemory(recuerdo);
-      if (newMem && !aiMemories.some(m => m._id === newMem._id)) setAiMemories(prev => [newMem, ...prev]);
+      const regla = await memoria.proponer(recuerdo);
+      if (regla?.estado === 'propuesta') setPropuesta(regla);
     }
 
     setLoading(false);
@@ -125,7 +125,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
             rows={3}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Escribe tu solicitud (ej: Planifica la Semana 4 para 2 bodas en Lugar1 de Chera y asigna los 3 camiones a Persona1, Persona2 y Persona3)..."
+            placeholder="Escribe tu solicitud (ej.: planifica la semana con dos bodas el sábado y reparte los tres camiones entre los conductores)..."
             tamano="xl"
             redondeo="2xl"
             acento="amber-suave"
@@ -174,6 +174,25 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
         <div className="mt-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center space-x-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{errorMsg}</span>
+        </div>
+      )}
+
+      {/* Regla propuesta: se recuerda solo si el admin dice que sí */}
+      {propuesta && (
+        <div role="status" className="mt-4 space-y-2 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-3 animate-aparecer motion-reduce:animate-none">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-indigo-200">
+            <BrainCircuit className="h-4 w-4" aria-hidden="true" /> ¿Lo recuerdo para las próximas planificaciones?
+          </p>
+          <p className="text-sm text-slate-200">«{propuesta.content}»</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={async () => { if (await memoria.aprobar(propuesta._id)) setPropuesta(null); }} className="flex items-center gap-1 rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-400">
+              <Check className="h-3.5 w-3.5" aria-hidden="true" /> Recordar
+            </button>
+            <button type="button" onClick={async () => { await memoria.descartar(propuesta._id); setPropuesta(null); }} className="flex items-center gap-1 rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white">
+              <X className="h-3.5 w-3.5" aria-hidden="true" /> No hace falta
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-400">Si no eliges, queda pendiente en Memoria IA.</p>
         </div>
       )}
 
