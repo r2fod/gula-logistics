@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Banknote, Bus, ChevronDown, ChevronUp, Clock, Edit3, Lightbulb, MessageCircle, Plus, ScrollText, Share2, Trash2, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Banknote, BarChart3, Bus, ChevronDown, ChevronUp, Clock, Edit3, Lightbulb, MessageCircle, Plus, ScrollText, Share2, Trash2, TrendingUp } from 'lucide-react';
 import { formatearEuros, formatearEurosConSigno, formatearHoras, formatearNumero } from '../../data/formatoFinanciero';
 import { Input } from '../ui/Campo';
 import BarraProgreso from '../ui/BarraProgreso';
 import { useDialog } from '../../contexts/DialogContext';
+import { repartirBolsa, tieneBolsa } from '../../data/bolsaHoras';
+import GrupoConceptos from './saldos/GrupoConceptos';
 
 // Horas tal como se escriben DENTRO del texto de un concepto ("4,5" → "4.5", sin ceros de
 // sobra). Ese texto se guarda en Mongo: no cambiar el formato, o los conceptos nuevos
@@ -16,10 +18,11 @@ export default function TeamBalancesTab({
   adminUnlocked,
   onDeleteClockEntry,
   persistWorkerBalance,
-  findWorkerHours
+  findWorkerHours,
+  onVerEnResumen = null
 }) {
   const { confirm } = useDialog();
-  const [expandedWorkerId, setExpandedWorkerId] = useState('Persona5');
+  const [expandedWorkerId, setExpandedWorkerId] = useState(null);
   const [addingConceptFor, setAddingConceptFor] = useState(null);
   const [newConceptMode, setNewConceptMode] = useState('turno');
   const [newConceptText, setNewConceptText] = useState('');
@@ -326,52 +329,40 @@ export default function TeamBalancesTab({
 
               const hours = findWorkerHours(worker.name);
               let dynamicCost = 0;
-              let dynamicShifts = [];
-              // Arranca desde lo YA consumido de la bolsa (turnos metidos a
-              // mano, persistido en purseInfo.consumedHours) — si empezara
-              // siempre en 0, un trabajador con la bolsa ya agotada por
-              // turnos manuales seguiría pagando sus fichajes automáticos a
-              // la tarifa base de bolsa en vez de a la tarifa extra que le
-              // corresponde una vez superadas las horas de la bolsa.
-              let consumedBolsa = worker.purseInfo?.consumedHours || 0;
+              const dynamicShifts = [];
+              // Quien tiene bolsa paga sus fichajes con la misma regla que el Resumen
+              // Financiero (bolsaHoras.js): arranca desde lo YA consumido a mano.
+              const turnosDia = hours?.shifts || [];
+              const repartoBolsa = tieneBolsa(worker) ? repartirBolsa(turnosDia.map(s => s.durationHours), worker.purseInfo) : null;
 
-              if (hours && hours.shifts && hours.shifts.length > 0) {
-                hours.shifts.forEach(s => {
-                  let computedCost = 0;
-                  let computedConcept = '';
-                  const timeRangeText = s.ranges ? s.ranges.join(' y ') : `${s.startTime} a ${s.endTime}`;
+              turnosDia.forEach((s, i) => {
+                const timeRangeText = s.ranges ? s.ranges.join(' y ') : `${s.startTime} a ${s.endTime}`;
+                let computedCost = s.cost;
+                let computedConcept = `🕒 ${s.startDate} [${timeRangeText}] - ${fmtHours(s.durationHours)}h a ${s.rate}€/h`;
 
-                  if (worker.isSpecialPurse && worker.purseInfo) {
-                    const p = worker.purseInfo;
-                    const remaining = Math.max(0, p.totalHours - consumedBolsa);
-                    const purseHours = Math.min(s.durationHours, remaining);
-                    const extraHours = Math.max(0, s.durationHours - purseHours);
-                    computedCost = purseHours * p.hourlyRate + extraHours * p.extraRateAfter80h;
-                    
-                    if (extraHours === 0) {
-                      computedConcept = `🕒 ${s.startDate} [${timeRangeText}] - ${fmtHours(s.durationHours)}h a ${p.hourlyRate}€/h (Bolsa)`;
-                    } else if (purseHours === 0) {
-                      computedConcept = `🕒 ${s.startDate} [${timeRangeText}] - ${fmtHours(s.durationHours)}h a ${p.extraRateAfter80h}€/h (Extra)`;
-                    } else {
-                      computedConcept = `🕒 ${s.startDate} [${timeRangeText}] - ${fmtHours(purseHours)}h a ${p.hourlyRate}€/h + ${fmtHours(extraHours)}h a ${p.extraRateAfter80h}€/h`;
-                    }
-                    consumedBolsa += s.durationHours;
+                if (repartoBolsa) {
+                  const p = worker.purseInfo;
+                  const { horasBolsa: purseHours, horasExtra: extraHours, coste } = repartoBolsa[i];
+                  computedCost = coste;
+                  if (extraHours === 0) {
+                    computedConcept = `🕒 ${s.startDate} [${timeRangeText}] - ${fmtHours(s.durationHours)}h a ${p.hourlyRate}€/h (Bolsa)`;
+                  } else if (purseHours === 0) {
+                    computedConcept = `🕒 ${s.startDate} [${timeRangeText}] - ${fmtHours(s.durationHours)}h a ${p.extraRateAfter80h}€/h (Extra)`;
                   } else {
-                    computedCost = s.cost;
-                    computedConcept = `🕒 ${s.startDate} [${timeRangeText}] - ${fmtHours(s.durationHours)}h a ${s.rate}€/h`;
+                    computedConcept = `🕒 ${s.startDate} [${timeRangeText}] - ${fmtHours(purseHours)}h a ${p.hourlyRate}€/h + ${fmtHours(extraHours)}h a ${p.extraRateAfter80h}€/h`;
                   }
+                }
 
-                  dynamicCost += computedCost;
-                  dynamicShifts.push({
-                    concept: computedConcept,
-                    amount: computedCost,
-                    isDynamic: true,
-                    entryIds: s.entryIds || [],
-                    timestamp: s.startEntry?.timestamp || s.startDate || 0
-                  });
+                dynamicCost += computedCost;
+                dynamicShifts.push({
+                  concept: computedConcept,
+                  amount: computedCost,
+                  isDynamic: true,
+                  entryIds: s.entryIds || [],
+                  timestamp: s.startEntry?.timestamp || s.startDate || 0
                 });
-              }
-              
+              });
+
               const displayBalance = worker.currentBalance + dynamicCost;
               const derivedStatusType = worker.statusType === 'payroll' 
                 ? 'payroll'
@@ -389,8 +380,9 @@ export default function TeamBalancesTab({
                   }`}
                 >
                   <div>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center space-x-3">
+                    {/* flex-wrap: en tarjetas estrechas (3 columnas a ~1024 px) el saldo baja de línea en vez de salirse */}
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex min-w-0 items-center space-x-3">
                         <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl shrink-0 shadow-inner">
                           {worker.avatar}
                         </div>
@@ -428,14 +420,14 @@ export default function TeamBalancesTab({
                         </div>
                       </div>
 
-                      <div className="text-right shrink-0">
+                      <div className="ml-auto text-right shrink-0">
                         <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider">
                           {worker.statusType === 'payroll' ? 'Coste Extra' : 'Saldo Actual'}
                         </span>
                         {worker.statusType === 'payroll' ? (
                           <span className="text-xl font-extrabold text-amber-400 font-mono">0,00 €</span>
                         ) : (
-                          <span className={`text-2xl sm:text-3xl font-extrabold font-mono ${
+                          <span className={`text-2xl xl:text-3xl font-extrabold font-mono whitespace-nowrap ${
                             displayBalance > 0 ? 'text-emerald-400' : displayBalance < 0 ? 'text-rose-400' : 'text-slate-400'
                           }`}>
                             {formatearEurosConSigno(displayBalance)}
@@ -454,7 +446,7 @@ export default function TeamBalancesTab({
                       </div>
                     )}
 
-                    {/* Special Persona5 Purse Box */}
+                    {/* Bolsa mensual de horas */}
                     {worker.isSpecialPurse && worker.purseInfo && (
                       <div className="mt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
                         <div className="flex items-center justify-between text-xs">
@@ -482,7 +474,7 @@ export default function TeamBalancesTab({
                             </span>
                           </div>
                           <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                            <span className="text-slate-400 block text-[10px]">Acumulado Septiembre:</span>
+                            <span className="text-slate-400 block text-[10px]">Acumulado en la bolsa:</span>
                             <span className="font-bold text-emerald-400">{formatearHoras(worker.purseInfo.consumedHours)} ({formatearEuros(worker.purseInfo.consumedValue)})</span>
                           </div>
                         </div>
@@ -523,44 +515,39 @@ export default function TeamBalancesTab({
                       </div>
                     )}
 
-                    {/* Breakdown */}
-                    <div className="mt-4 space-y-2">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Desglose de Conceptos & Turnos
-                      </span>
-                      <div className={`space-y-1.5 pr-1 ${(worker.breakdown || []).length + dynamicShifts.length > 5 ? 'max-h-[32rem] overflow-y-auto custom-scrollbar' : ''}`}>
-                        {[...dynamicShifts.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)), ...(worker.breakdown || [])].map((item, idx) => (
-                          <div
-                            key={idx}
-                            className={`p-2.5 rounded-xl border text-xs flex items-center justify-between gap-2 ${
-                              item.amount < 0
-                                ? 'bg-rose-500/10 border-rose-500/30 text-rose-200'
-                                : item.isDynamic
-                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-100'
-                                : 'bg-slate-800/80 border-slate-700 text-slate-200'
-                            }`}
+                    {/* Desglose: lo que se suma solo (fichajes) y lo apuntado a mano, por separado */}
+                    <div className="mt-4 space-y-4">
+                      <GrupoConceptos
+                        titulo="Turnos fichados"
+                        ayuda="Se suman solos desde los fichajes."
+                        items={[...dynamicShifts].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))}
+                        total={dynamicCost}
+                        fichado
+                        vacio="Sin fichajes todavía."
+                        onBorrar={adminUnlocked ? (item) => handleDeleteDynamicShift(item.entryIds) : null}
+                        borrando={savingBalanceId === worker.id}
+                        tituloBorrar="Borrar jornada fichada"
+                        accion={onVerEnResumen && dynamicShifts.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => onVerEnResumen(worker.name)}
+                            aria-label={`Ver las horas de ${worker.name} por evento en el Resumen Financiero`}
+                            className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 focus:outline-none focus-visible:underline"
                           >
-                            <span className="font-medium break-words min-w-0 flex-1 pr-2">{item.concept}</span>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className={`font-bold font-mono ${
-                                item.amount > 0 ? 'text-emerald-400' : item.amount < 0 ? 'text-rose-400' : 'text-slate-400'
-                              }`}>
-                                {item.amount > 0 ? formatearEurosConSigno(item.amount) : formatearEuros(item.amount)}
-                              </span>
-                              {adminUnlocked && (
-                                <button
-                                  onClick={() => item.isDynamic ? handleDeleteDynamicShift(item.entryIds) : handleDeleteConcept(worker, idx - dynamicShifts.length)}
-                                  disabled={savingBalanceId === worker.id}
-                                  className="text-slate-500 hover:text-rose-400 transition-colors disabled:opacity-40"
-                                  title={item.isDynamic ? "Borrar jornada fichada" : "Eliminar concepto manual"}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                            <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" /> Ver sus horas por evento en el Resumen Financiero
+                          </button>
+                        )}
+                      />
+                      <GrupoConceptos
+                        titulo="Apuntado a mano"
+                        ayuda="Turnos a mano, transporte, bolsa y ajustes (roturas, adelantos…)."
+                        items={worker.breakdown || []}
+                        total={(worker.breakdown || []).reduce((suma, it) => suma + (Number(it.amount) || 0), 0)}
+                        vacio="Nada apuntado a mano."
+                        onBorrar={adminUnlocked ? (item, idx) => handleDeleteConcept(worker, idx) : null}
+                        borrando={savingBalanceId === worker.id}
+                        tituloBorrar="Eliminar concepto manual"
+                      />
 
                       {adminUnlocked && (
                         addingConceptFor === worker.id ? (

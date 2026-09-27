@@ -135,3 +135,21 @@ describe('FichajesTab', () => {
     expect(screen.queryByPlaceholderText(/Buscar por persona/)).toBeNull();
   });
 });
+
+describe('FichajesTab — papelera', () => {
+  const borrado = { id: 'b1', workerName: 'Eva', type: 'entrada', timestamp: new Date(2026, 8, 20, 9, 0).toISOString(), taskName: 'Carga', deleted: true };
+
+  it('BUG evitado: la papelera enseña los fichajes borrados (en Nóminas salía siempre vacía) y se pueden restaurar', () => {
+    const restaurar = vi.fn();
+    renderTab({ adminUnlocked: true, fichajesBorrados: [borrado], onRestoreClockEntry: restaurar });
+    fireEvent.click(screen.getByRole('button', { name: /Papelera/ }));
+    expect(screen.getByText('Carga')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Restaurar/ }));
+    expect(restaurar).toHaveBeenCalledWith('b1');
+  });
+
+  it('sin admin no hay papelera', () => {
+    renderTab({ fichajesBorrados: [borrado], onRestoreClockEntry: vi.fn() });
+    expect(screen.queryByRole('button', { name: /Papelera/ })).toBeNull();
+  });
+});

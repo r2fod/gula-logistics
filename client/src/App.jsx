@@ -7,7 +7,6 @@ import {
 import WeekManagerModal from './components/WeekManagerModal';
 import GeminiAssistantModal from './components/GeminiAssistantModal';
 import ClockInModal from './components/ClockInModal';
-import PayrollReportModal from './components/PayrollReportModal';
 import PartnerDashboardView from './components/PartnerDashboardView';
 import AdminWorkerEditorModal from './components/AdminWorkerEditorModal';
 import AdminTaskEditorModal from './components/AdminTaskEditorModal';
@@ -91,8 +90,7 @@ export default function App() {
     handleClockEntryCreated,
     handleUpdateClockEntry,
     handleDeleteClockEntry,
-    handleRestoreClockEntry,
-    handleClearClockEntries
+    handleRestoreClockEntry
   } = useClockings(markTaskCompleted);
 
   // Fichajes SOLO de la semana activa para las vistas de los trabajadores y
@@ -111,12 +109,6 @@ export default function App() {
   // Lo que el asistente aprende de los fichajes reales (duraciones y quién hace
   // qué): lo reciben Gemini (asistente y nueva semana) y el panel Memoria IA.
   const aprendizaje = useMemo(() => aprenderDeFichajes(turnosFichados.shifts, allWeeks), [turnosFichados, allWeeks]);
-
-  // Misma ventana para la papelera de borrados (ahí no hay turnos abiertos que conservar).
-  const currentWeekDeletedClockEntries = useMemo(
-    () => fichajesDeLaSemana(deletedClockEntries, rangoSemanaActiva),
-    [deletedClockEntries, rangoSemanaActiva]
-  );
 
   // Anticipación automática de semanas (desde el calendario, como BORRADOR).
   // Solo con sesión de admin; como mucho cada 6 h por navegador; idempotente
@@ -227,7 +219,6 @@ export default function App() {
   const [isWeekModalOpen, setIsWeekModalOpen] = useState(false);
   const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
   const [isClockInModalOpen, setIsClockInModalOpen] = useState(false);
-  const [isPayrollModalOpen, setIsPayrollModalOpen] = useState(false);
   const [isWorkerEditorModalOpen, setIsWorkerEditorModalOpen] = useState(false);
   const [isTaskEditorModalOpen, setIsTaskEditorModalOpen] = useState(false);
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
@@ -601,7 +592,6 @@ export default function App() {
           if (workerName && typeof workerName === 'string') setActiveWorker(workerName);
           setIsClockInModalOpen(true);
         }}
-        onOpenPayroll={() => setIsPayrollModalOpen(true)}
         onOpenGemini={() => setIsGeminiModalOpen(true)}
         onOpenShareModal={() => setIsShareModalOpen(true)}
         onOpenAddWeek={() => setIsWeekModalOpen(true)}
@@ -609,6 +599,8 @@ export default function App() {
         onToggleTask={(dayKey, taskIdx) => toggleTask(dayKey, taskIdx)}
         onUpdateClockEntry={handleUpdateClockEntry}
         onDeleteClockEntry={handleDeleteClockEntry}
+        onRestoreClockEntry={handleRestoreClockEntry}
+        deletedClockEntries={deletedClockEntries}
         onClockEntryCreated={handleClockEntryCreated}
       />
 
@@ -619,20 +611,6 @@ export default function App() {
         initialWorkerName={activeWorker}
         clockEntries={currentWeekClockEntries}
         onClockEntryCreated={handleClockEntryCreated}
-      />
-
-      <PayrollReportModal
-        isOpen={isPayrollModalOpen}
-        onClose={() => setIsPayrollModalOpen(false)}
-        entries={currentWeekClockEntries}
-        workersList={workersList}
-        onClearEntries={handleClearClockEntries}
-        isAdmin={isAdmin}
-        onUpdateEntry={handleUpdateClockEntry}
-        onDeleteEntry={handleDeleteClockEntry}
-        onRestoreEntry={handleRestoreClockEntry}
-        onClockEntryCreated={handleClockEntryCreated}
-        activeWeekData={activeWeek}
       />
 
       <WeekManagerModal

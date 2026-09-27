@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Wallet, Banknote, Users, Clock, Inbox, Layers, BarChart3, PieChart, Info, TrendingUp, TrendingDown } from 'lucide-react';
+import { Wallet, Banknote, Users, Clock, Inbox, Layers, BarChart3, PieChart, Info, TrendingUp, TrendingDown, Copy, Check } from 'lucide-react';
 import { aggregateShiftsByWorker } from '../../data/shiftCalculations';
-import { buildPaxRegistry, buildTaskContextResolver } from '../../data/eventNaming';
+import { buildPaxRegistry, buildTaskContextResolver, esBorradorSemana } from '../../data/eventNaming';
 import { summarizeByEvent } from '../../data/eventSummary';
 import { repartirTiempoSinTarea } from '../../data/repartoPorPlanning';
 import { getWeekRange } from '../../data/taskPlanning';
@@ -13,6 +13,14 @@ import Seccion from '../ui/Seccion';
 import FilaDesglose from './financiero/FilaDesglose';
 import GraficoEvolucion from './financiero/GraficoEvolucion';
 import DonutHoras from './financiero/DonutHoras';
+import ConceptosAMano from './financiero/ConceptosAMano';
+import PrevistoPlanning from './financiero/PrevistoPlanning';
+import { aplicarTarifaDeBolsa } from '../../data/bolsaHoras';
+import { conceptosDelPeriodo } from '../../data/conceptosSaldos';
+import { estimarHorasPlanning } from '../../data/estimadoPlanning';
+import { textoResumenWhatsApp } from '../../data/resumenWhatsApp';
+import { coincideNombre } from '../../data/nombresTrabajadores';
+import { useCopiado } from '../../hooks/useCopiado';
 
 // Con el planning de la semana abierta (la del selector de arriba) como punto de
 // partida; si no tiene fechas legibles, la semana de hoy.
@@ -40,9 +48,17 @@ const TotalPie = ({ horas, coste }) => (
   </div>
 );
 
-export default function FinancialSummaryTab({ shifts = [], workersList = [], allWeeks = {}, activeWeekData = null }) {
-  const [modo, setModo] = useState('semana');
+// `saldos`: fichas de Saldos & Acuerdos (bolsa de horas y conceptos a mano).
+// `enfoque`: { persona } al llegar desde "Ver en Resumen" de Saldos — todo el
+// histórico, con esa persona abierta en "Coste por trabajador".
+export default function FinancialSummaryTab({ shifts = [], workersList = [], allWeeks = {}, activeWeekData = null, saldos = [], enfoque = null }) {
+  const [modo, setModo] = useState(() => (enfoque?.persona ? 'todo' : 'semana'));
   const [ancla, setAncla] = useState(() => anclaInicial(activeWeekData));
+  const [copiado, copiar] = useCopiado();
+
+  // Quien tiene bolsa de horas cuesta lo mismo que en Saldos & Acuerdos (bolsaHoras.js).
+  // Se aplica al histórico entero: la bolsa se va gastando turno a turno.
+  const turnosConTarifa = useMemo(() => aplicarTarifaDeBolsa(shifts, saldos), [shifts, saldos]);
 
   // El resumen sigue a la semana que se elige arriba: al cambiarla, el periodo pasa a
   // ser esa semana (o el mes o año que la contiene). Las flechas y los botones de
@@ -51,7 +67,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
   useEffect(() => { setAncla(inicioActiva ? new Date(inicioActiva) : new Date()); }, [inicioActiva]);
 
   const rango = useMemo(() => rangoDePeriodo(modo, ancla, allWeeks), [modo, ancla, allWeeks]);
-  const turnos = useMemo(() => turnosDelPeriodo(shifts, rango), [shifts, rango]);
+  const turnos = useMemo(() => turnosDelPeriodo(turnosConTarifa, rango), [turnosConTarifa, rango]);
 
   const balancesList = useMemo(() => Object.values(aggregateShiftsByWorker(turnos, workersList)), [turnos, workersList]);
   const conHoras = useMemo(() => balancesList.filter(w => w.totalHours > 0).sort((a, b) => b.totalCost - a.totalCost), [balancesList]);
@@ -78,8 +94,17 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
   const variacion = useMemo(() => {
     if (modo === 'todo') return null;
     const anterior = rangoDePeriodo(modo, moverPeriodo(modo, ancla, -1), allWeeks);
-    return variacionPorcentual(costeTotal(turnos), costeTotal(turnosDelPeriodo(shifts, anterior)));
-  }, [modo, ancla, allWeeks, shifts, turnos]);
+    return variacionPorcentual(costeTotal(turnos), costeTotal(turnosDelPeriodo(turnosConTarifa, anterior)));
+  }, [modo, ancla, allWeeks, turnosConTarifa, turnos]);
+
+  // Lo apuntado a mano en Saldos en este periodo, y lo previsto por el planning
+  // de la semana (solo en la vista de una semana).
+  const conceptos = useMemo(() => conceptosDelPeriodo(saldos, rango, { incluirSinFecha: modo === 'todo' }), [saldos, rango, modo]);
+  const estimado = useMemo(() => {
+    if (modo !== 'semana') return null;
+    const semana = Object.values(semanasDelPeriodo(allWeeks, rango)).find(w => w && !esBorradorSemana(w));
+    return semana ? estimarHorasPlanning(semana, workersList) : null;
+  }, [modo, allWeeks, rango, workersList]);
 
   const ultimoFichaje = useMemo(() => {
     const tiempos = shifts.map(s => new Date(s.startEntry?.timestamp).getTime()).filter(t => !isNaN(t));
@@ -93,6 +118,11 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
     setModo(nuevo);
   };
   const siguienteEsFuturo = modo !== 'todo' && rangoDePeriodo(modo, moverPeriodo(modo, ancla, 1), allWeeks).desde > new Date();
+
+  const personaEnfocada = enfoque?.persona ? conHoras.find(w => coincideNombre(w.name, enfoque.persona))?.name : null;
+  const copiarParaWhatsApp = () => copiar(textoResumenWhatsApp({
+    etiqueta: rango.etiqueta, personas: conHoras, totalExtras: totalExtraExpense, totalNomina: totalPayrollValuation, totalHoras, conceptos, estimado,
+  }));
 
   const extras = balancesList.filter(w => !w.isPayroll && w.totalHours > 0);
   const enNomina = balancesList.filter(w => w.isPayroll && w.totalHours > 0);
@@ -124,6 +154,16 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
           onSiguiente={() => setAncla(moverPeriodo(modo, ancla, 1))}
           siguienteDeshabilitado={siguienteEsFuturo}
         />
+        <div className="mt-3 flex justify-end border-t border-slate-800 pt-3">
+          <button
+            type="button"
+            onClick={copiarParaWhatsApp}
+            className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs font-bold text-slate-200 transition-colors hover:border-emerald-500/50 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70"
+          >
+            {copiado ? <Check className="h-3.5 w-3.5 text-emerald-400" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}
+            <span className={copiado ? 'text-emerald-400' : ''}>{copiado ? '¡Copiado!' : 'Copiar resumen para WhatsApp'}</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -247,6 +287,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
                       .map(evt => ({ nombre: evt.eventName, horas: evt.workers[w.name].hours, coste: evt.workers[w.name].cost }))
                       .sort((a, b) => b.coste - a.coste)}
                     retraso={520 + i * PASO_FILA}
+                    destacada={w.name === personaEnfocada}
                   />
                 ))}
               </ul>
@@ -254,6 +295,17 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
           </div>
         </>
       )}
+
+      <div className={`grid grid-cols-1 gap-4 sm:gap-6 items-stretch ${estimado ? 'lg:grid-cols-2' : ''}`}>
+        <ConceptosAMano conceptos={conceptos} extrasFichados={totalExtraExpense} todo={modo === 'todo'} retraso={560} />
+        {estimado && (
+          <PrevistoPlanning
+            estimado={estimado}
+            fichadas={Object.fromEntries(balancesList.map(w => [w.name, w.totalHours]))}
+            retraso={600}
+          />
+        )}
+      </div>
     </div>
   );
 }

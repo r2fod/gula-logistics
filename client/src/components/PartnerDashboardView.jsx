@@ -50,13 +50,14 @@ export default function PartnerDashboardView({
   onLogoutAdmin,
   onOpenAdminLogin,
   onOpenClockIn,
-  onOpenPayroll,
   onOpenGemini,
   onOpenShareModal,
   onOpenAddWeek,
   onTogglePublicView,
   onUpdateClockEntry,
   onDeleteClockEntry,
+  onRestoreClockEntry,
+  deletedClockEntries = [],
   onClockEntryCreated,
   onOpenWorkerEditor,
   onOpenTaskEditor,
@@ -75,9 +76,19 @@ export default function PartnerDashboardView({
   const enlaceSocias = useEnlaceSocias(adminUnlocked);
   const aviso = useAvisarCambios();
 
+  // Persona a enseñar en el Resumen Financiero al llegar desde Saldos ("Ver en
+  // Resumen"); cualquier otro cambio de pestaña la olvida.
+  const [enfoqueResumen, setEnfoqueResumen] = useState(null);
+
   const handleTabClick = (tabKey) => {
+    setEnfoqueResumen(null);
     setActiveTab(tabKey);
     guardarPestanaEnUrl(tabKey);
+  };
+
+  const verEnResumen = (persona) => {
+    handleTabClick('financial');
+    setEnfoqueResumen({ persona });
   };
 
   useEffect(() => {
@@ -173,7 +184,7 @@ export default function PartnerDashboardView({
       avisar: aviso.abrir,
       editarPlanning: onOpenTaskEditor,
       editarEquipo: onOpenWorkerEditor,
-      nominas: onOpenPayroll,
+      nominas: () => handleTabClick('financial'),
       gemini: onOpenGemini,
       compartir: onOpenShareModal,
       copiarEnlaceSocias: async () => {
@@ -235,6 +246,7 @@ export default function PartnerDashboardView({
           onDeleteClockEntry={onDeleteClockEntry}
           persistWorkerBalance={persistWorkerBalance}
           findWorkerHours={findWorkerHours}
+          onVerEnResumen={verEnResumen}
         />
       )}
 
@@ -246,6 +258,8 @@ export default function PartnerDashboardView({
           handleOpenCreateEntry={handleOpenCreateEntry}
           handleOpenEditEntry={handleOpenEditEntry}
           onDeleteClockEntry={onDeleteClockEntry}
+          fichajesBorrados={deletedClockEntries}
+          onRestoreClockEntry={onRestoreClockEntry}
         />
       )}
 
@@ -267,6 +281,8 @@ export default function PartnerDashboardView({
           workersList={workersList}
           allWeeks={allWeeks}
           activeWeekData={activeWeekData}
+          saldos={mergedBalancesData.workers}
+          enfoque={enfoqueResumen}
         />
       )}
 

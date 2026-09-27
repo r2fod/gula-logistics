@@ -32,7 +32,7 @@ const pintar = (extra = {}) => {
   const props = {
     activeWeekData: semana, allWeeks: { week_3: semana }, activeWeekId: 'week_3', onSelectWeek: vi.fn(),
     workersList: equipo, clockEntries: [], isAdmin: true,
-    onOpenClockIn: vi.fn(), onOpenPayroll: vi.fn(), onOpenGemini: vi.fn(), onOpenShareModal: vi.fn(), onOpenAddWeek: vi.fn(),
+    onOpenClockIn: vi.fn(), onOpenGemini: vi.fn(), onOpenShareModal: vi.fn(), onOpenAddWeek: vi.fn(),
     onOpenTaskEditor: vi.fn(), onOpenWorkerEditor: vi.fn(), onTogglePublicView: vi.fn(), onLogoutAdmin: vi.fn(), onOpenAdminLogin: vi.fn(),
     ...extra,
   };
@@ -76,12 +76,10 @@ describe('PartnerDashboardView', () => {
   it('las acciones de la barra llaman a sus funciones', () => {
     const props = pintar();
     fireEvent.click(screen.getAllByRole('button', { name: 'Fichar' })[0]);
-    fireEvent.click(screen.getByRole('button', { name: 'Nóminas' }));
     fireEvent.click(screen.getByRole('button', { name: 'Gemini AI' }));
     fireEvent.click(screen.getByRole('button', { name: 'Planning' }));
     fireEvent.click(screen.getByRole('button', { name: 'Trabajador' }));
     expect(props.onOpenClockIn).toHaveBeenCalled();
-    expect(props.onOpenPayroll).toHaveBeenCalled();
     expect(props.onOpenGemini).toHaveBeenCalled();
     expect(props.onOpenTaskEditor).toHaveBeenCalled();
     expect(props.onOpenWorkerEditor).toHaveBeenCalled();
@@ -99,8 +97,15 @@ describe('PartnerDashboardView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Abrir Menú' }));
     const menu = screen.getByRole('dialog', { name: 'Menú de Gestión' });
     fireEvent.click(within(menu).getByRole('button', { name: 'Nóminas y horas extra' }));
-    expect(props.onOpenPayroll).toHaveBeenCalled();
+    expect(screen.getByRole('tab', { name: 'Resumen financiero' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.queryByRole('dialog', { name: 'Menú de Gestión' })).toBeNull();
+    expect(props).not.toHaveProperty('onOpenPayroll');
+  });
+
+  it('"Nóminas" ya no abre un informe aparte: lleva al Resumen Financiero', () => {
+    pintar();
+    fireEvent.click(screen.getByRole('button', { name: 'Nóminas' }));
+    expect(screen.getByRole('tab', { name: 'Resumen financiero' })).toHaveAttribute('aria-selected', 'true');
   });
 
   it('salir cierra la sesión de admin y quita las acciones de administración', () => {

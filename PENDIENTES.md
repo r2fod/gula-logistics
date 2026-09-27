@@ -10,9 +10,8 @@ _Solo lo que sigue abierto (actualizado el 27/09/2026). Lo resuelto se borra de 
 - [ ] **Variables del calendario en Render** (`CALENDARIO_PROJECT_ID`, `CALENDARIO_API_KEY`, `CALENDARIO_CODIGO`; mejor el código de solo lectura). Sin ellas no hay borradores automáticos. Comprobar con `GET /api/calendario/estado` (admin).
 
 ## 🟡 Funcional
-- [ ] **Informe "Fichajes, Horas & Nóminas" (botón Nóminas):** se solapa con Resumen Financiero e Historial de Fichajes, sus cifras no cuadran con ellos, no tiene periodo y lleva "Reset Admin" (borra TODOS los fichajes). Propuesta: llevar "Copiar WhatsApp", "Estimado (Planning)" y la papelera a las pestañas y quitar el modal. **Decisión del usuario.**
 - [ ] **`taskRef` apunta a la tarea por índice**: si el admin reordena un día con alguien fichado en él, la salida marcaría otra tarea. Pasar a `id` exige antes dar id a las tareas que no lo tienen (manual, ver `CLAUDE.md`).
-- [ ] **Tareas desactivadas (`active === false`):** la comprobación está copiada en 6 archivos y falta en `TaskFlowGraphView`, `LiveMonitorPanel` y el "Estimado (Planning)" de Nóminas. Un solo helper en `taskPlanning.js`.
+- [ ] **Tareas desactivadas (`active === false`):** la comprobación está copiada en varios archivos y falta en `TaskFlowGraphView` y `LiveMonitorPanel`. Un solo helper en `taskPlanning.js`.
 - [ ] **`LiveMonitorPanel` mira las tareas de HOY de la semana activa**: con otra semana elegida enseñaría las suyas como si fueran de hoy. Filtrar por fecha real.
 - [ ] **Regla "base/checklist y jefe de logística no cargan":** el usuario quitó ese texto de las tarjetas de equipo (21/09) pero sigue en el generador y en el prompt de Gemini. ¿Sigue vigente?
 - [ ] **Ficha de Saldos con el nombre mal escrito** (una letra de más): corregir `name` en Atlas → `workerbalances` (no el `id`). La app lo puentea mientras tanto.
@@ -26,9 +25,13 @@ _Solo lo que sigue abierto (actualizado el 27/09/2026). Lo resuelto se borra de 
 ## Asistente IA (27/09)
 - [ ] Memoria del asistente hecha (grafo visual, reglas propuestas → aprobar, aprendizaje de fichajes). Pendiente: probarlo con sesión de admin en producción (pestaña Memoria IA) y ver que Gemini genera horarios razonables con el aprendizaje. Solo mide tramos "limpios": se aprende más si la gente ficha cada tarea al cambiar.
 
+## Saldos y Resumen Financiero (28/09)
+- [ ] Los conceptos a mano de Saldos no llevan campo de fecha (solo los turnos y el transporte la llevan escrita, sin año): las horas de bolsa, roturas y adelantos solo se pueden sumar en «Todo». Si se quiere verlos por semana o mes, guardar una `fecha` en cada concepto nuevo al crearlo.
+- [ ] Revisar en producción con sesión de admin: Saldos (dos grupos), "Ver sus horas por evento", el Resumen con lo apuntado a mano y lo previsto, copiar para WhatsApp y la papelera del Historial.
+
 ## 🟢 Código
 - [ ] ESLint del cliente: 49 errores y 126 avisos ya existentes (bloques `catch {}` vacíos, dependencias de efectos…). No añadir nuevos.
-- [ ] Archivos grandes: `AdminTaskEditorModal` (~1050 líneas), `WorkerView` (~1100), `PayrollReportModal` (~830), `TeamBalancesTab` (~790). Siguientes piezas: fila de tarea/tarjeta de boda de `WorkerView`, `Boton`, `Chip` seleccionable, `PuntoEstado`.
+- [ ] Archivos grandes: `AdminTaskEditorModal` (~1050 líneas), `WorkerView` (~1100), `TeamBalancesTab` (~760). Siguientes piezas: fila de tarea/tarjeta de boda de `WorkerView`, `Boton`, `Chip` seleccionable, `PuntoEstado`.
 - [ ] Normalizar las tareas a objeto al cargar la semana y quitar los `typeof task === 'object' ? task.text : task` repartidos.
 - [ ] `npm audit` del cliente: `vite`/`esbuild` (solo afectan a `npm run dev`); arreglarlo es subir `vite` de versión mayor, en rama aparte.
 

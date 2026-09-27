@@ -177,3 +177,54 @@ describe('FinancialSummaryTab — desglose y comparación', () => {
     expect(within(tarjeta('Coste de personal')).getByText(/Extras \+ valoración de nómina/)).toBeTruthy();
   });
 });
+
+describe('FinancialSummaryTab — Saldos & Acuerdos y planning', () => {
+  beforeEach(() => vi.useFakeTimers({ toFake: ['Date'] }));
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+
+  const pintar = (props = {}) => render(<FinancialSummaryTab shifts={shifts} workersList={[]} allWeeks={{ week_3: semana3 }} activeWeekData={semana3} {...props} />);
+  const bolsa = { name: 'Ana Gula', isSpecialPurse: true, purseInfo: { totalHours: 80, consumedHours: 0, hourlyRate: 8, extraRateAfter80h: 12 } };
+
+  it('BUG evitado: quien tiene bolsa de horas cuesta lo mismo que en Saldos (antes, a la tarifa del fichaje)', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 18, 0));
+    pintar({ saldos: [bolsa] });
+    expect(within(tarjeta('Extras a pagar')).getByText('28,00 €')).toBeTruthy(); // 3,5 h a 8 €/h, no a 10
+  });
+
+  it('enseña lo apuntado a mano en Saldos del periodo y lo que suma con los extras fichados', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 18, 0));
+    const saldos = [{ name: 'Eva', breakdown: [{ concept: '🕒 16/09 (17:00 a 20:30 - 3.5h a 10€/h)', amount: 35 }, { concept: 'Rotura', amount: -5 }] }];
+    pintar({ saldos });
+    const seccion = screen.getByText('Apuntado a mano en Saldos & Acuerdos').closest('section') || screen.getByText('Apuntado a mano en Saldos & Acuerdos').parentElement.parentElement.parentElement;
+    expect(within(seccion).getByText('Turnos apuntados a mano')).toBeTruthy();
+    expect(within(seccion).getByText('70,00 €')).toBeTruthy(); // 35 fichados + 35 a mano
+    expect(within(seccion).getByText(/1 concepto no lleva fecha/)).toBeTruthy(); // la rotura, solo en «Todo»
+  });
+
+  it('en una semana, lo previsto por el planning frente a lo fichado', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 18, 0));
+    pintar();
+    const fila = screen.getByRole('rowheader', { name: 'Ana' }).closest('tr');
+    expect(within(fila).getAllByText('3,5 h')).toHaveLength(2); // previsto 20:00-23:30 y fichado 3,5 h
+    fireEvent.click(screen.getByRole('button', { name: 'Mes' }));
+    expect(screen.queryByText('Previsto según el planning')).toBeNull();
+  });
+
+  it('copia el resumen del periodo para WhatsApp', async () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 18, 0));
+    const escribir = vi.fn().mockResolvedValue();
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: escribir }, configurable: true });
+    pintar();
+    fireEvent.click(screen.getByRole('button', { name: /Copiar resumen para WhatsApp/ }));
+    expect(escribir).toHaveBeenCalledWith(expect.stringContaining('📅 Semana 3 · 15 sept – 21 sept 2026'));
+  });
+
+  it('desde "Ver en Resumen" de Saldos: todo el histórico con esa persona abierta', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 18, 0));
+    pintar({ enfoque: { persona: 'Ana Gula' } });
+    expect(screen.getByText('Todo el histórico')).toBeTruthy();
+    const abiertas = screen.getAllByRole('button', { expanded: true });
+    expect(abiertas.map(b => b.textContent).join('|')).toMatch(/Ana/);
+    expect(abiertas.some(b => /Luis/.test(b.textContent))).toBe(false);
+  });
+});

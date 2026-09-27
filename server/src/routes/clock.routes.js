@@ -183,18 +183,7 @@ router.put('/:id/restore', requireAdmin, async (req, res) => {
   }
 });
 
-// DELETE /api/clock - Clear all entries (Admin reset)
-router.delete('/', requireAdmin, async (req, res) => {
-  try {
-    if (mongoose.connection.readyState === 1) {
-      await ClockEntry.deleteMany({});
-    }
-    memoryClockEntries = [];
-    return res.json({ success: true, message: 'Todos los fichajes eliminados correctamente' });
-  } catch (error) {
-    console.error('Error al vaciar fichajes:', error);
-    return res.status(500).json({ error: error.message });
-  }
-});
+// (Ya no existe DELETE /api/clock sin id: vaciaba TODOS los fichajes de golpe
+// desde un botón sin confirmación. Borrar es siempre uno a uno, a la papelera.)
 
 export default router;

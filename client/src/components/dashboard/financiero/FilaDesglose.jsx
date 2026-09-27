@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useEntrada } from '../../../hooks/useAnimaciones';
 import Desplegable from '../../ui/Desplegable';
@@ -9,14 +9,20 @@ import BarraProgreso from '../../ui/BarraProgreso';
 // horas, una barra con su parte del total que crece al aparecer, y un detalle
 // que se despliega al pulsarla (quién trabajó en el evento / en qué eventos
 // trabajó la persona).
-export default function FilaDesglose({ icono = null, titulo, insignia = null, nota = null, horas, coste, porcentaje, detalle = [], retraso = 0 }) {
-  const [abierta, setAbierta] = useState(false);
+// `destacada`: llega desde otra pantalla ("Ver en Resumen" de Saldos) — sale abierta,
+// resaltada y a la vista.
+export default function FilaDesglose({ icono = null, titulo, insignia = null, nota = null, horas, coste, porcentaje, detalle = [], retraso = 0, destacada = false }) {
+  const [abierta, setAbierta] = useState(destacada);
+  const fila = useRef(null);
+  useEffect(() => {
+    if (destacada) fila.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
+  }, [destacada]);
   const listo = useEntrada();
   const anchura = listo ? Math.max(0, Math.min(100, porcentaje)) : 0;
   const hayDetalle = detalle.length > 0;
 
   return (
-    <li className="border-b border-slate-800/70 last:border-b-0 animate-aparecer motion-reduce:animate-none" style={{ animationDelay: `${retraso}ms` }}>
+    <li ref={fila} className={`border-b border-slate-800/70 last:border-b-0 animate-aparecer motion-reduce:animate-none ${destacada ? 'bg-amber-500/5 ring-1 ring-inset ring-amber-500/40' : ''}`} style={{ animationDelay: `${retraso}ms` }}>
       <button
         type="button"
         onClick={() => hayDetalle && setAbierta(a => !a)}

@@ -7,6 +7,10 @@ vi.mock('../models/AdminConfig.model.js', () => ({
   AdminConfig: { findOne: vi.fn().mockResolvedValue(null), create: vi.fn() },
 }));
 
+// Varios tests hacen 10-16 peticiones seguidas: con toda la batería a la vez, a
+// veces pasaban de los 5 s por defecto y fallaban sin motivo real.
+vi.setConfig({ testTimeout: 15000 });
+
 const authRoutes = (await import('./auth.routes.js')).default;
 const { AdminConfig } = await import('../models/AdminConfig.model.js');
 const { signToken, verifyToken } = await import('../utils/authToken.js');
