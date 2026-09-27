@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act } from '../test/render';
 
 const patch = vi.fn();
 vi.mock('../data/apiService', () => ({
@@ -29,45 +29,39 @@ const montar = () => {
   return renderHook(() => useWeeks());
 };
 
-describe('useWeeks — marcar y desmarcar tareas', () => {
+describe('useWeeks — marcar y desmarcar tareas (solo a mano)', () => {
   beforeEach(() => { vi.useFakeTimers(); patch.mockReset(); });
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
-  it('BUG evitado: pulsar una tarea que SE VE hecha por la hora la DESMARCA y queda reopened (antes la marcaba de verdad)', () => {
-    vi.setSystemTime(new Date(2026, 8, 21, 11, 0)); // 10:45 ya pasó -> se ve hecha
+  it('pulsar una tarea pendiente la marca con la hora real; pulsarla otra vez la desmarca', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 11, 0)); // ya pasó su hora: aun así sigue pendiente hasta que alguien la pulse
     const { result } = montar();
+    expect(result.current.activeWeek.sundayMonday.tasks[0].completed).toBe(false);
+
     act(() => result.current.toggleTask('domingo', 0));
+    const hora = new Date(2026, 8, 21, 11, 0).toISOString();
+    expect(patch).toHaveBeenLastCalledWith('week_3', 'domingo', 0, true, false, hora);
+    expect(result.current.activeWeek.sundayMonday.tasks[0]).toMatchObject({ completed: true, reopened: false, completedAt: hora });
 
-    expect(patch).toHaveBeenCalledWith('week_3', 'domingo', 0, false, true);
-    expect(result.current.activeWeek.sundayMonday.tasks[0]).toMatchObject({ completed: false, reopened: true });
-  });
-
-  it('BUG evitado: una tarea desmarcada a propósito NO se vuelve a marcar sola', () => {
-    vi.setSystemTime(new Date(2026, 8, 21, 11, 0));
-    const { result } = montar();
-    act(() => result.current.toggleTask('domingo', 0)); // desmarcar
-    patch.mockReset();
-
-    act(() => result.current.autoCompletePastTasks());
-    expect(patch).not.toHaveBeenCalledWith('week_3', 'domingo', 0, true, false);
-  });
-
-  it('marcar de nuevo a mano vale y quita reopened', () => {
-    vi.setSystemTime(new Date(2026, 8, 21, 8, 0)); // aún no pasó su hora -> se ve pendiente
-    const { result } = montar();
     act(() => result.current.toggleTask('domingo', 0));
-    expect(patch).toHaveBeenLastCalledWith('week_3', 'domingo', 0, true, false);
-    expect(result.current.activeWeek.sundayMonday.tasks[0]).toMatchObject({ completed: true, reopened: false });
+    expect(patch).toHaveBeenLastCalledWith('week_3', 'domingo', 0, false, true, null);
+    expect(result.current.activeWeek.sundayMonday.tasks[0]).toMatchObject({ completed: false, completedAt: null });
   });
 
-  it('el reloj marca las pasadas pero NO las que están en proceso (alguien fichado en ellas)', () => {
-    vi.setSystemTime(new Date(2026, 8, 21, 11, 0));
+  it('la salida de un fichaje de la tarea la marca (con hora) y no la vuelve a escribir si ya estaba hecha', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 10, 5));
     const { result } = montar();
-    // la de las 15:00 del domingo también pasó (es lunes 11:00): la 1 se marca, la 0 está en proceso
-    act(() => result.current.autoCompletePastTasks(new Set(['domingo:0'])));
+    act(() => result.current.markTaskCompleted('domingo', 0));
+    expect(patch).toHaveBeenCalledTimes(1);
+    expect(patch).toHaveBeenCalledWith('week_3', 'domingo', 0, true, false, new Date(2026, 8, 21, 10, 5).toISOString());
 
-    expect(patch).toHaveBeenCalledWith('week_3', 'domingo', 1, true, false);
-    expect(patch).not.toHaveBeenCalledWith('week_3', 'domingo', 0, true, false);
+    act(() => result.current.markTaskCompleted('domingo', 0));
+    expect(patch).toHaveBeenCalledTimes(1);
+  });
+
+  it('BUG evitado: el hook ya no ofrece nada que marque tareas solas por la hora', () => {
+    const { result } = montar();
+    expect(result.current.autoCompletePastTasks).toBeUndefined();
   });
 });
 
@@ -89,39 +83,6 @@ describe('useWeeks — crear semana con eventos', () => {
     act(() => result.current.handleCreateWeek({ name: 'Semana 5', dateRange: 'Del 29 de septiembre al 4 de octubre', cloneCurrent: true }));
     const sinEventos = Object.values(result.current.allWeeks).find(w => w.name === 'Semana 5');
     expect(sinEventos.events).toEqual([]);
-  });
-});
-
-describe('useWeeks — semanas terminadas', () => {
-  beforeEach(() => { vi.useFakeTimers(); patch.mockReset(); });
-  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
-
-  it('al terminar la semana se guarda como hecho lo que quede sin marcar (también sin horario), y no se repite', () => {
-    vi.setSystemTime(new Date(2026, 8, 21, 16, 0)); // lunes tarde: la semana 15-20 ya terminó
-    const w = semana();
-    w.sundayMonday.tasks.push({ text: 'Sin horario', assigned: ['Ana'], completed: false });
-    vi.stubGlobal('localStorage', { store: { gula_logistics_all_weeks_v10: JSON.stringify({ week_3: w }) }, getItem(k) { return this.store[k] ?? null; }, setItem(k, v) { this.store[k] = v; }, removeItem(k) { delete this.store[k]; } });
-    const { result } = renderHook(() => useWeeks());
-
-    act(() => result.current.autoCompletePastTasks());
-    const indices = patch.mock.calls.filter(c => c[3] === true).map(c => c[2]).sort();
-    expect(indices).toEqual([0, 1, 2]); // las tres, incluida la que no tiene horario
-    expect(result.current.activeWeek.sundayMonday.tasks.every(t => t.completed)).toBe(true);
-
-    patch.mockReset();
-    act(() => result.current.autoCompletePastTasks());
-    expect(patch).not.toHaveBeenCalled(); // ya cerrada: no vuelve a escribir
-  });
-
-  it('respeta lo desmarcado a propósito y las tareas en proceso', () => {
-    vi.setSystemTime(new Date(2026, 8, 21, 16, 0));
-    const w = semana();
-    w.sundayMonday.tasks[0].reopened = true;
-    vi.stubGlobal('localStorage', { store: { gula_logistics_all_weeks_v10: JSON.stringify({ week_3: w }) }, getItem(k) { return this.store[k] ?? null; }, setItem(k, v) { this.store[k] = v; }, removeItem(k) { delete this.store[k]; } });
-    const { result } = renderHook(() => useWeeks());
-    act(() => result.current.autoCompletePastTasks(new Set(['domingo:1'])));
-    expect(patch).not.toHaveBeenCalledWith('week_3', 'domingo', 0, true, false); // reabierta
-    expect(patch).not.toHaveBeenCalledWith('week_3', 'domingo', 1, true, false); // en proceso
   });
 });
 

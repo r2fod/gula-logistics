@@ -139,14 +139,17 @@ export default function WorkerView({
   // lista), y su título lo dice.
   const dayLabel = (key) => getDayLabel(activeWeekData, key, currentTime);
   const dayNumber = (key) => dayLabel(key).replace(/^\D+/, '');
+  // Orden de Gula: la semana va de martes a domingo y el lunes es su COLA (el
+  // día siguiente al domingo), así que va el último — antes salía "LUN 28"
+  // delante de "MAR 22".
   const weekDays = [
-    { key: 'lunes', label: 'LUN', date: dayNumber('lunes'), title: dayLabel('lunes'), badge: 'Devoluciones & Limpieza' },
     { key: 'martes', label: 'MAR', date: dayNumber('martes'), title: activeWeekData.schedule?.martes?.title || dayLabel('martes'), badge: activeWeekData.schedule?.martes?.badge || 'Arranque Flota' },
     { key: 'miercoles', label: 'MIÉ', date: dayNumber('miercoles'), title: activeWeekData.schedule?.miercoles?.title || dayLabel('miercoles'), badge: activeWeekData.schedule?.miercoles?.badge || 'Descarga Fincas' },
     { key: 'jueves', label: 'JUE', date: dayNumber('jueves'), title: activeWeekData.schedule?.jueves?.title || dayLabel('jueves'), badge: activeWeekData.schedule?.jueves?.badge || 'Eventos' },
     { key: 'viernes', label: 'VIE', date: dayNumber('viernes'), title: activeWeekData.schedule?.viernes?.title || dayLabel('viernes'), badge: activeWeekData.schedule?.viernes?.badge || 'Cierre Crítico' },
     { key: 'sabado', label: 'SÁB', date: dayNumber('sabado'), title: dayLabel('sabado'), badge: getWeddingsBadge(activeWeekData) },
-    { key: 'domingo', label: 'DOM', date: dayNumber('domingo'), title: `${dayLabel('domingo')} y ${dayLabel('lunes')}`, badge: 'Descarga & Vajilla' }
+    { key: 'domingo', label: 'DOM', date: dayNumber('domingo'), title: `${dayLabel('domingo')} y ${dayLabel('lunes')}`, badge: 'Descarga & Vajilla' },
+    { key: 'lunes', label: 'LUN', date: dayNumber('lunes'), title: dayLabel('lunes'), badge: 'Devoluciones & Limpieza' }
   ];
 
   // Helper to extract assigned tasks & weddings for a day for current worker
@@ -327,7 +330,7 @@ export default function WorkerView({
   // fichar por error una tarea de dentro de varios días). Compara por
   // orden de día de la semana (lunes→domingo), el mismo criterio que ya
   // usa "Hoy" (todayKey) arriba — no por fecha exacta del calendario.
-  const weekDayOrder = weekDays.map(d => d.key);
+  const weekDayOrder = [...dayNames.slice(1), dayNames[0]]; // lunes→domingo (calendario)
   const todayOrdinal = weekDayOrder.indexOf(todayKey);
   const isDayInFuture = (dayKey) => {
     // Por FECHA REAL cuando la semana tiene fechas legibles: así una semana

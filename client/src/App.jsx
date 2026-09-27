@@ -28,8 +28,9 @@ import {
   retryPendingClockEntries,
   deleteWeekFromAPI
 } from './data/apiService';
-import { getInProgressTaskKeys, pairShiftsFromEntries } from './data/shiftCalculations';
+import { pairShiftsFromEntries } from './data/shiftCalculations';
 import { fichajesDeLaSemana } from './data/fichajes';
+import { semanaDeLaVispera } from './data/vispera';
 import { getWeekRange } from './data/taskPlanning';
 import { anticiparSemanas } from './data/anticipacion';
 import { semanaInicialDeEnlace } from './data/enlaces';
@@ -72,22 +73,10 @@ export default function App() {
     handleUpdateActiveWeek,
     toggleTask,
     markTaskCompleted,
-    autoCompletePastTasks,
     handleCreateWeek,
     handleApplyGeminiSchedule,
     lastLocalEditRef
   } = useWeeks();
-
-  // El efecto del sondeo de 20s se monta UNA vez ([] de dependencias), así
-  // que llamaba siempre a la versión de autoCompletePastTasks de la primera
-  // render — con la semana tal como estaba al abrir la app. Si desde
-  // entonces las tareas ya se habían completado, esa copia vieja seguía
-  // viéndolas pendientes y repetía el mismo PATCH cada 20s para siempre,
-  // subiendo `updatedAt` en cada vuelta y haciendo que los guardados del
-  // admin chocaran con "Alguien más ha guardado cambios". Con la ref, cada
-  // tick usa la última versión (ve el estado real).
-  const autoCompletePastTasksRef = useRef(autoCompletePastTasks);
-  autoCompletePastTasksRef.current = autoCompletePastTasks;
 
   const {
     clockEntries,
@@ -116,13 +105,6 @@ export default function App() {
     () => fichajesDeLaSemana(deletedClockEntries, rangoSemanaActiva),
     [deletedClockEntries, rangoSemanaActiva]
   );
-
-  // Tareas en las que alguien está fichado ahora mismo: el reloj no las da por
-  // hechas mientras tanto ("en proceso"). Por ref, igual que arriba, porque el
-  // sondeo de 20s no se vuelve a montar.
-  const inProgressKeysRef = useRef(new Set());
-  const inProgressKeys = useMemo(() => getInProgressTaskKeys(activeClockEntries), [activeClockEntries]);
-  inProgressKeysRef.current = inProgressKeys;
 
   // Anticipación automática de semanas (desde el calendario, como BORRADOR).
   // Solo con sesión de admin; como mucho cada 6 h por navegador; idempotente
@@ -363,12 +345,6 @@ export default function App() {
   // Poll for fresh clock entries so the Live Monitor reflects fichajes made
   // from other workers' own links (their phones) without a manual refresh.
   useEffect(() => {
-    // Pasada inicial al montar, para ponerse al día con tareas que ya
-    // pasaron mientras la app estaba cerrada — no solo esperar al primer
-    // tick del intervalo de 20s.
-    if (getStoredAdminToken()) {
-      autoCompletePastTasksRef.current(inProgressKeysRef.current);
-    }
     // En cuanto el móvil recupera cobertura, reintentar YA los fichajes
     // pendientes en vez de esperar hasta 20s al siguiente tick del
     // intervalo — importante en fincas de boda con cobertura intermitente.
@@ -393,14 +369,6 @@ export default function App() {
           if (remoteWeeks) setAllWeeks(remoteWeeks);
         });
       }
-      // Auto-completar tareas pasadas (con margen) solo desde una sesión de
-      // admin real — leído fresco en cada tick (no de un estado capturado
-      // por el efecto, que quedaría desactualizado si el admin inicia
-      // sesión después de montar la app) para que no lo dispare cada
-      // trabajador desde su propio móvil a la vez.
-      if (getStoredAdminToken()) {
-        autoCompletePastTasksRef.current(inProgressKeysRef.current);
-      }
     }, 20000);
     return () => {
       clearInterval(interval);
@@ -423,33 +391,23 @@ export default function App() {
 
 
 
+  // Del editor de una semana al de la semana donde está guardado su lunes de
+  // víspera (semanaDeLaVispera). El editor solo carga su copia de la semana al
+  // ABRIRSE: antes se cambiaba la semana activa con el editor abierto, que seguía
+  // enseñando la semana de antes, y "Guardar" la mandaba con la clave de la otra
+  // semana (el servidor lo rechazaba como conflicto y se perdían los cambios). Ahora
+  // se avisa de que lo no guardado se pierde, se cierra, se cambia y se reabre.
   const handleJumpToVispera = async () => {
-    // Buscar la semana cronológicamente anterior a la actual
-    if (!activeWeek?.meta?.dateRange) return;
-    
-    // Sort weeks by their parsed date range start time. Fallback to ID-based sorting if unparseable.
-    const currentWeekIds = Object.keys(allWeeks).sort((a, b) => {
-      const rangeA = getWeekRange(allWeeks[a]);
-      const rangeB = getWeekRange(allWeeks[b]);
-      
-      if (rangeA?.start && rangeB?.start) {
-        return rangeA.start.getTime() - rangeB.start.getTime();
-      }
-      
-      // Fallback a comparar por el número en el nombre o ID ("Semana 3" -> 3)
-      const numA = parseInt(allWeeks[a]?.name?.match(/(\d+)/)?.[1] || a.match(/(\d+)/)?.[1]) || 0;
-      const numB = parseInt(allWeeks[b]?.name?.match(/(\d+)/)?.[1] || b.match(/(\d+)/)?.[1]) || 0;
-      
-      return numA - numB;
-    });
-
-    const currentIndex = currentWeekIds.indexOf(activeWeekId);
-    if (currentIndex > 0) {
-      const prevWeekId = currentWeekIds[currentIndex - 1];
-      setActiveWeekId(prevWeekId);
-    } else {
-      await alert("No se ha encontrado la semana anterior en el registro local.", { type: 'info' });
+    const vispera = semanaDeLaVispera(allWeeks, activeWeek);
+    if (!vispera) {
+      await alert('No hay en el planning una semana anterior cuyo lunes sea la víspera de esta.', { type: 'info' });
+      return;
     }
+    const seguir = await confirm(`Se cerrará este editor y se abrirá el de la ${vispera.semana.name || 'semana anterior'}. Lo que no hayas guardado aquí se perderá. ¿Seguir?`, { type: 'warning' });
+    if (!seguir) return;
+    setIsTaskEditorModalOpen(false);
+    setActiveWeekId(vispera.clave);
+    setTimeout(() => setIsTaskEditorModalOpen(true), 0);
   };
 
   if (activeWorker) {

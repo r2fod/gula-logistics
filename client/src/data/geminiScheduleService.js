@@ -191,6 +191,50 @@ Genera una respuesta EXCLUSIVAMENTE en formato JSON válido sin texto previo ni 
 // se retira: solo se pasa al siguiente si el modelo no existe (404).
 export const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest'];
 
+// POST a Gemini probando GEMINI_MODELS por orden (solo pasa al siguiente si el
+// modelo no existe, 404). La clave va en la cabecera, no en la URL, para que no
+// quede en historiales ni registros de red. Devuelve la última Response.
+async function llamarGemini(apiKey, body) {
+  let res = null;
+  for (const model of GEMINI_MODELS) {
+    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body
+    });
+    if (res.status !== 404) break;
+  }
+  return res;
+}
+
+// Lo más largo que se guarda como recuerdo de la IA (el servidor pone el mismo tope).
+export const MAX_MEMORIA_IA = 300;
+
+// ¿Expresa el texto del usuario una preferencia general que deba recordarse para
+// siempre? Devuelve esa regla en una frase corta o null. Va APARTE de la
+// generación (se lanza a la vez, sin retrasarla) y nunca lanza. Todo lo que no
+// parezca una frase corta — JSON, párrafos, "NO_MEMORY" con adornos — se descarta:
+// lo que se guarda aquí entra en TODOS los prompts futuros como "obligatorio".
+export async function extraerMemoriaDelPrompt({ prompt, apiKey }) {
+  const clave = (apiKey || '').trim();
+  if (!clave || !prompt?.trim()) return null;
+  const memPrompt = `Analiza el siguiente texto del usuario: "${prompt}".\n¿El usuario está expresando una regla, preferencia o hecho general que debe recordarse a largo plazo para futuras planificaciones? (Ej: "A Luis no le gusta el camión X", "Las bodas dobles necesitan más tiempo").\nSi es así, extrae esa regla como una frase corta y clara. Si es solo una orden puntual para esta semana (Ej: "Pon a Ana mañana", "Quita a Eva del viernes"), responde EXACTAMENTE y únicamente con la palabra: NO_MEMORY.`;
+  try {
+    const res = await llamarGemini(clave, JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: memPrompt }] }],
+      generationConfig: { responseMimeType: 'text/plain' }
+    }));
+    if (!res?.ok) return null;
+    const data = await res.json();
+    const texto = (data.candidates?.[0]?.content?.parts?.[0]?.text || '').trim().replace(/^["'«]|["'»]$/g, '').trim();
+    if (!texto || texto.includes('NO_MEMORY') || texto.length > MAX_MEMORIA_IA || /[{}\n]/.test(texto)) return null;
+    return texto;
+  } catch (e) {
+    console.warn('No se pudo extraer un recuerdo del prompt (se sigue sin él):', e);
+    return null;
+  }
+}
+
 // Comprobación mínima de que lo que devolvió la IA tiene forma de semana.
 // Devuelve un texto de error, o '' si es válido.
 export function validateGeneratedSchedule(json) {
@@ -220,35 +264,6 @@ export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekDat
     };
   }
 
-  // EXTRACCIÓN DE MEMORIA EN SEGUNDO PLANO
-  let extractedMemory = null;
-  try {
-    const memPrompt = `Analiza el siguiente texto del usuario: "${prompt}".\n¿El usuario está expresando una regla, preferencia o hecho general que debe recordarse a largo plazo para futuras planificaciones? (Ej: "A Persona1 no le gusta el camión X", "Las bodas dobles necesitan más tiempo").\nSi es así, extrae esa regla como una frase corta y clara. Si es solo una orden puntual para esta semana (Ej: "Pon a Persona7 mañana", "Quita a Persona4 del viernes"), responde EXACTAMENTE y únicamente con la palabra: NO_MEMORY.`;
-    
-    for (const model of GEMINI_MODELS) {
-      const memRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': activeApiKey },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: memPrompt }] }],
-          generationConfig: { responseMimeType: 'text/plain' }
-        })
-      });
-      if (memRes.status !== 404) {
-        if (memRes.ok) {
-          const memData = await memRes.json();
-          const memText = (memData.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
-          if (memText && memText !== 'NO_MEMORY' && !memText.includes('NO_MEMORY')) {
-            extractedMemory = memText;
-          }
-        }
-        break;
-      }
-    }
-  } catch (e) {
-    console.warn("Fallo al extraer memoria (silencioso):", e);
-  }
-
   const systemPrompt = buildSystemPrompt(activeWeekData, roster, allWeeks, aiMemories);
   const body = JSON.stringify({
     contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\nSolicitud del usuario: ${prompt}` }] }],
@@ -256,17 +271,7 @@ export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekDat
   });
 
   try {
-    let res = null;
-    for (const model of GEMINI_MODELS) {
-      // La clave va en la cabecera (no en la URL) para que no quede en
-      // historiales ni registros de red.
-      res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': activeApiKey },
-        body
-      });
-      if (res.status !== 404) break;
-    }
+    const res = await llamarGemini(activeApiKey, body);
 
     if (!res.ok) {
       const hint = res.status === 400 || res.status === 403 ? ' — comprueba que la clave es correcta' : res.status === 429 ? ' — demasiadas peticiones, espera un minuto' : '';
@@ -283,13 +288,12 @@ export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekDat
     if (invalid) throw new Error(invalid);
 
     // Si la IA se salta el formato "Evento - Tarea", se completa aquí.
-    return { generatedJson: normalizeGeneratedEvents(parsed, eventNames), errorMsg: '', extractedMemory };
+    return { generatedJson: normalizeGeneratedEvents(parsed, eventNames), errorMsg: '' };
   } catch (err) {
     console.error(err);
     return {
       generatedJson: null,
-      errorMsg: `No se pudo generar con Gemini: ${err.message}. No se ha creado nada; inténtalo de nuevo.`,
-      extractedMemory
+      errorMsg: `No se pudo generar con Gemini: ${err.message}. No se ha creado nada; inténtalo de nuevo.`
     };
   }
 }

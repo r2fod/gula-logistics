@@ -2,6 +2,20 @@
 
 _Actualizado tras dos sesiones de trabajo en paralelo (Gemini/Antigravity + Claude), verificando en vivo lo que hizo cada uno (19-20/09/2026)._
 
+## Revisión de los cambios de otras sesiones (27/09/2026)
+
+_45 commits nuevos en `main` revisados uno a uno. La rama de trabajo propia con "tareas activables, lunes en el editor, chips de evento y reordenar" NO se fusiona: `main` ya trae esas cuatro cosas (campo `active`, `SelectorPosicion`, salto a la víspera, chips con scroll)._
+
+- ~~**Quien fichaba en domingo salía "FUERA DE TURNO"**~~ (desplegado el 27/09 por la mañana): la ventana de fichajes de la semana acababa el domingo a las 06:00. `fichajesDeLaSemana` (data/fichajes.js) cubre de martes 00:00 a lunes de cola incluido y conserva los turnos abiertos. Un trabajador creó 3 entradas seguidas al no verse en turno: **quedan 2 entradas duplicadas del 27/09 (11:07 y 11:07) — borrar solo si el usuario lo confirma**.
+- ~~**Las tareas se seguían marcando solas en Mongo**~~: el 25/09 se quitó el tachado por hora de la VISTA, pero `autoCompletePastTasks`/`cerrarSemanasTerminadas` seguían guardando `completed:true` cada 20 s desde cualquier sesión de admin (y al terminar la semana, todas). Quitado todo el auto-marcado (y `getInProgressTaskKeys`, que solo servía para eso); `markTaskCompleted` (salida de un fichaje) guarda también `completedAt`.
+- ~~**"Lunes (Víspera)" del editor podía guardar una semana con los datos de otra**~~: cambiaba la semana activa con el editor abierto, pero el editor conservaba la semana anterior y al "Guardar" la mandaba con la clave de la otra (el servidor respondía 409 y se perdían los cambios). Ahora cierra y reabre el editor con la semana de la víspera (pide confirmación si hay cambios sin guardar) y busca esa semana con `semanaDeLaVispera` (la misma función que la tarjeta del Cuadrante; ya no salta a una semana más vieja si falta la anterior).
+- ~~**Servidor: `DELETE /weeks/:id` borraba cualquier semana**~~ — ahora solo borradores (409 si está aceptada). ~~**`PATCH` (público) guardaba `completedAt` sin validar**~~ — solo fecha ISO o null; marcar una tarea ya hecha no la reescribe.
+- ~~**Memoria de la IA**~~: la extracción de "recuerdos" iba EN SERIE antes de la generación (el doble de espera) y guardaba cualquier respuesta que no fuera exactamente `NO_MEMORY` — en un caso real podía guardar la semana entera como "regla obligatoria" para todos los prompts. Ahora va en paralelo (`extraerMemoriaDelPrompt`), descarta JSON/párrafos/textos largos, y el servidor exige 1–300 caracteres y no duplica.
+- ~~**Vista de trabajador: "LUN 28" salía antes que "MAR 22"**~~ — el lunes (cola) va el último.
+- ~~**47 tests del cliente y 4 del servidor fallaban en `main`**~~ (sin `DialogProvider`, textos de botones cambiados, reglas de auto-marcado ya retiradas). `client/src/test/render.jsx` monta los proveedores de la app; 489 + 86 tests en verde. `PremiumDialog` tiene ahora nombre accesible y la X etiquetada.
+- ~~**`server/query_clockings.js`**~~ — script de depuración con un nombre real y un esquema que no es el de verdad; eliminado.
+- [ ] **Pendientes que deja esta revisión**: (1) `GET /api/roster` es público y devuelve tarifa y si está en nómina de cada persona, y `roster.routes.js` lleva nombres y tarifas reales escritos en el código (el repo es público); (2) el comprobado de "tarea inactiva" (`active === false`) está repetido en ~8 sitios y falta en `TaskFlowGraphView`, `LiveMonitorPanel` y el "Estimado (Planning)" de Nóminas; (3) ESLint da errores ya existentes (bloques `catch {}` vacíos en `App.jsx`, etc.); (4) el prompt de Gemini lleva nombres reales en su JSON de ejemplo.
+
 ## Refactor de código duplicado del cliente (21/09/2026)
 
 _Sin cambiar lo que hace la app; en commits pequeños, con `npx vitest run` (485 tests) y `npm run build` en verde en cada paso y las pantallas tocadas comprobadas en el navegador (escritorio y 320 px, sin desbordes)._

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, waitFor } from '../../test/render';
 import FichajesTab from './FichajesTab';
 
 let n = 0;
@@ -104,7 +104,7 @@ describe('FichajesTab', () => {
     expect(grupo('Lunes 21 de septiembre')).toBeTruthy();
   });
 
-  it('en solo lectura no hay acciones; con admin se puede editar, eliminar (con confirmación) y añadir', () => {
+  it('en solo lectura no hay acciones; con admin se puede editar, eliminar (con confirmación) y añadir', async () => {
     const editar = vi.fn(); const borrar = vi.fn(); const crear = vi.fn();
     const { unmount } = renderTab();
     expect(screen.queryByRole('button', { name: 'Editar' })).toBeNull();
@@ -118,14 +118,15 @@ describe('FichajesTab', () => {
     fireEvent.click(within(filaEva).getByRole('button', { name: 'Editar' }));
     expect(editar).toHaveBeenCalledWith(expect.objectContaining({ workerName: 'Eva' }));
 
-    const confirmar = vi.spyOn(window, 'confirm');
-    confirmar.mockReturnValueOnce(false);
-    fireEvent.click(screen.getByRole('button', { name: /Eliminar el fichaje de Eva/ }));
+    const responder = async (boton) => {
+      fireEvent.click(screen.getByRole('button', { name: /Eliminar el fichaje de Eva/ }));
+      fireEvent.click(within(await screen.findByRole('dialog', { name: 'Confirmación' })).getByRole('button', { name: boton }));
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Confirmación' })).toBeNull());
+    };
+    await responder('Cancelar');
     expect(borrar).not.toHaveBeenCalled(); // dijo que no
-    confirmar.mockReturnValueOnce(true);
-    fireEvent.click(screen.getByRole('button', { name: /Eliminar el fichaje de Eva/ }));
+    await responder('Aceptar');
     expect(borrar).toHaveBeenCalledWith(fichajes[6].id);
-    confirmar.mockRestore();
   });
 
   it('sin fichajes muestra un estado vacío, sin filtros', () => {

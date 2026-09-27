@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, within } from '../test/render';
 
 vi.mock('../data/apiService', () => ({
   fetchBalancesFromAPI: vi.fn().mockResolvedValue(null),
@@ -113,10 +113,13 @@ describe('PartnerDashboardView', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Avisar Cambios' }));
     const modal = screen.getByRole('dialog', { name: 'Avisar cambios' });
     fireEvent.click(within(modal).getByRole('button', { name: /Ana/ }));
-    fireEvent.click(within(modal).getByRole('button', { name: 'Enviar Aviso' }));
+    fireEvent.click(within(modal).getByRole('button', { name: /Enviar Aviso/ }));
     await waitFor(() => expect(sendPushNotification).toHaveBeenCalledWith(expect.any(String), expect.any(String), ['Ana']));
+    // Confirma el envío con el aviso de la app y, al darle a "Entendido", se cierra el selector.
+    const aviso = await screen.findByRole('dialog', { name: 'Aviso' });
+    expect(within(aviso).getByText('Aviso enviado correctamente a 1 trabajador(es).')).toBeInTheDocument();
+    fireEvent.click(within(aviso).getByRole('button', { name: 'Entendido' }));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Avisar cambios' })).toBeNull());
-    expect(window.alert).toHaveBeenCalledWith('Aviso enviado correctamente a 1 trabajador(es).');
   });
 
   it('"Clave" abre los ajustes de administrador', () => {

@@ -2,10 +2,8 @@ import { useState, useRef } from 'react';
 import { logisticsData as BASE_DATA } from '../data/logisticsData';
 import { saveWeeksToAPI, patchTaskCompletionInAPI } from '../data/apiService';
 import { semanaPorDefecto } from '../data/anticipacion';
-import { getTaskListForDay, buildTaskListPatch, getTaskPastStatus, isTaskEffectivelyDone, isWeekFinished, ensureYearInDateRange, clearWeekCompletion, TASK_COMPLETION_GRACE_MINUTES } from '../data/taskPlanning';
+import { getTaskListForDay, buildTaskListPatch, isTaskEffectivelyDone, ensureYearInDateRange, clearWeekCompletion } from '../data/taskPlanning';
 import { useDialog } from '../contexts/DialogContext';
-
-const ALL_DAY_KEYS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'domingo', 'sabado'];
 
 const BASE_WEEK_3 = {
   id: "week_3",
@@ -92,20 +90,17 @@ export function useWeeks() {
     updateWeeks(newWeeks);
   };
 
-  // El clic actúa sobre lo que se VE (isTaskEffectivelyDone), no sobre el
-  // dato suelto: si la tarea sale hecha por su hora aunque no esté marcada,
-  // pulsarla la DESMARCA. Desmarcar deja `reopened: true` para que el reloj no
-  // la vuelva a marcar sola; marcarla lo quita.
+  // Las tareas SOLO se marcan a mano (clic aquí, o la salida de un fichaje de
+  // esa tarea en markTaskCompleted): nada las marca solas al pasar su hora. El
+  // clic invierte lo que se VE (isTaskEffectivelyDone) y, al marcar, guarda la
+  // hora real (`completedAt`).
   const toggleTask = (dayKey, taskIdx) => {
     const list = [...getTaskListForDay(activeWeek, dayKey)];
     const taskItem = list[taskIdx];
     if (taskItem === undefined) return;
     const newCompleted = !isTaskEffectivelyDone(activeWeek, dayKey, taskItem, new Date());
     const reopened = !newCompleted;
-    
-    // Si se acaba de marcar como completada, guardamos la hora real
     const completedAt = newCompleted ? new Date().toISOString() : null;
-    
     if (typeof taskItem === 'object') {
       list[taskIdx] = { ...taskItem, completed: newCompleted, reopened, completedAt };
     } else {
@@ -120,11 +115,12 @@ export function useWeeks() {
     const list = [...getTaskListForDay(activeWeek, dayKey)];
     const taskItem = list[taskIdx];
     if (taskItem === undefined) return;
+    const completedAt = new Date().toISOString();
     if (typeof taskItem === 'object') {
       if (taskItem.completed) return;
-      list[taskIdx] = { ...taskItem, completed: true, reopened: false };
+      list[taskIdx] = { ...taskItem, completed: true, reopened: false, completedAt };
     } else {
-      list[taskIdx] = { text: taskItem, completed: true, reopened: false };
+      list[taskIdx] = { text: taskItem, completed: true, reopened: false, completedAt };
     }
     applyLocalWeeksState({ ...allWeeks, [activeWeekId]: { ...activeWeek, ...buildTaskListPatch(activeWeek, dayKey, list) } });
     // Igual que toggleTask: sin esto, el polling de 20s podía traer de
@@ -132,75 +128,7 @@ export function useWeeks() {
     // desmarcar la tarea que se acaba de completar (el mismo bug que ya
     // se arregló para el toggle manual, pero aquí faltaba).
     lastLocalEditRef.current = Date.now();
-    patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, true, false);
-  };
-
-  // Una semana TERMINADA lo tiene todo hecho: además de mostrarlo así
-  // (isTaskEffectivelyDone), se guarda en Mongo lo que quede sin marcar — tareas
-  // sin horario, mal escritas... — en cualquier semana terminada, no solo la
-  // activa. Respeta lo desmarcado a propósito (`reopened`). Idempotente: el
-  // servidor no escribe si la tarea ya estaba marcada.
-  const cerrarSemanasTerminadas = (now = new Date(), inProgressKeys = new Set()) => {
-    let cambios = false;
-    const semanas = { ...allWeeks };
-    Object.entries(allWeeks).forEach(([weekId, week]) => {
-      if (!isWeekFinished(week, now)) return;
-      let semana = week;
-      ALL_DAY_KEYS.forEach(dayKey => {
-        const lista = [...getTaskListForDay(semana, dayKey)];
-        let tocada = false;
-        lista.forEach((task, idx) => {
-          if (typeof task !== 'object' || task === null || task.completed || task.reopened) return;
-          if (weekId === activeWeekId && inProgressKeys.has(`${dayKey}:${idx}`)) return; // alguien está fichado en ella
-          lista[idx] = { ...task, completed: true, reopened: false };
-          patchTaskCompletionInAPI(weekId, dayKey, idx, true, false);
-          tocada = true;
-        });
-        if (tocada) { semana = { ...semana, ...buildTaskListPatch(semana, dayKey, lista) }; cambios = true; }
-      });
-      semanas[weekId] = semana;
-    });
-    if (cambios) {
-      applyLocalWeeksState(semanas);
-      lastLocalEditRef.current = Date.now();
-    }
-  };
-
-  // Recorre TODAS las tareas de la semana activa (días normales, domingo/
-  // lunes, y bodas de sábado) y marca como completadas de verdad en Mongo
-  // las que ya pasaron su horario con margen de sobra (TASK_COMPLETION_
-  // GRACE_MINUTES) y todavía no lo estaban. markTaskCompleted ya es idempotente
-  // (no hace nada si una tarea ya estaba completada), así que llamar a esto
-  // varias veces seguidas es seguro — no vuelve a desmarcar nada.
-  //
-  // Es lo ÚNICO que escribe "completada" sin que nadie lo pulse, así que es
-  // deliberadamente prudente: getTaskPastStatus compara contra la FECHA REAL
-  // de cada tarea (rango de meta.dateRange), no contra el día de la semana
-  // suelto, y solo se marca con `=== true` — null (dateRange ilegible) o
-  // false (sin horario utilizable, día futuro, semana futura) no tocan nada.
-  // Una tarea de la lista domingo/lunes sin `targetDay` se evalúa como lunes
-  // (ver resolveTaskEvalDay). markTaskCompleted recibe el dayKey original
-  // ('domingo'), que es donde de verdad vive guardada la tarea.
-  //
-  // No marca (1) una tarea que alguien DESMARCÓ a propósito (`reopened`), ni
-  // (2) una tarea "en proceso": `inProgressKeys` son las "dayKey:taskIndex" en
-  // las que hay alguien fichado ahora mismo (ver getInProgressTaskKeys).
-  const autoCompletePastTasks = (inProgressKeys = new Set()) => {
-    const now = new Date();
-    cerrarSemanasTerminadas(now, inProgressKeys);
-    // Si la activa ya está terminada, lo de arriba lo ha cerrado todo: seguir con
-    // el repaso tarea a tarea repetiría los PATCH y pisaría ese estado local.
-    if (isWeekFinished(activeWeek, now)) return;
-    ALL_DAY_KEYS.forEach(dayKey => {
-      const list = getTaskListForDay(activeWeek, dayKey);
-      list.forEach((task, idx) => {
-        if (typeof task === 'object' && task !== null && (task.completed || task.reopened)) return;
-        if (inProgressKeys.has(`${dayKey}:${idx}`)) return;
-        if (getTaskPastStatus(activeWeek, dayKey, task, now, TASK_COMPLETION_GRACE_MINUTES) === true) {
-          markTaskCompleted(dayKey, idx);
-        }
-      });
-    });
+    patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, true, false, completedAt);
   };
 
   // aiGeneratedJson (opcional): viene del asistente guiado de
@@ -264,7 +192,6 @@ export function useWeeks() {
     handleUpdateActiveWeek,
     toggleTask,
     markTaskCompleted,
-    autoCompletePastTasks,
     handleCreateWeek,
     handleApplyGeminiSchedule,
     lastLocalEditRef

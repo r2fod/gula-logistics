@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tareasDeLaVispera, fichadosDelDia } from './vispera';
+import { tareasDeLaVispera, fichadosDelDia, semanaDeLaVispera } from './vispera';
 import { pairShiftsFromEntries } from './shiftCalculations';
 
 const hoy = new Date(2026, 8, 21, 20, 0);
@@ -61,5 +61,27 @@ describe('fichadosDelDia', () => {
   it('un día sin fichajes da una lista vacía', () => {
     expect(fichadosDelDia(shifts, new Date(2026, 8, 25))).toEqual([]);
     expect(fichadosDelDia(undefined, new Date())).toEqual([]);
+  });
+});
+
+describe('semanaDeLaVispera — dónde está guardado el lunes de la víspera', () => {
+  const anterior = { name: 'Semana 3', meta: { dateRange: 'Del 15 al 20 de Septiembre de 2026' } };
+  const actual = { name: 'Semana 4', meta: { dateRange: 'Del 22 al 27 de Septiembre de 2026' } };
+  const hoy = new Date(2026, 8, 21, 20, 0);
+
+  it('devuelve la CLAVE de la semana (aunque el objeto no tenga campo id) y la fecha del lunes', () => {
+    const r = semanaDeLaVispera({ week_3: anterior, week_x: actual }, actual, hoy);
+    expect(r.clave).toBe('week_3');
+    expect(r.fecha).toEqual(new Date(2026, 8, 21));
+  });
+
+  it('BUG evitado: si falta la semana justo anterior NO salta a una más vieja', () => {
+    const muyVieja = { name: 'Semana 1', meta: { dateRange: 'Del 1 al 6 de Septiembre de 2026' } };
+    expect(semanaDeLaVispera({ a: muyVieja, b: actual }, actual, hoy)).toBeNull();
+  });
+
+  it('un borrador no cuenta como semana de la víspera', () => {
+    const borrador = { ...anterior, meta: { ...anterior.meta, status: 'Borrador' } };
+    expect(semanaDeLaVispera({ a: borrador, b: actual }, actual, hoy)).toBeNull();
   });
 });

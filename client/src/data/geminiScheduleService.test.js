@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { buildWeekPrompt, generateScheduleWithGemini, validateGeneratedSchedule, GEMINI_MODELS } from './geminiScheduleService';
+import { buildWeekPrompt, generateScheduleWithGemini, validateGeneratedSchedule, extraerMemoriaDelPrompt, GEMINI_MODELS } from './geminiScheduleService';
 
 const base = { weekName: 'Semana 4', dateRange: 'Del 22 al 27 de Septiembre de 2026', trucks: ['Camión Gula'], workers: ['Ana', 'Luis'] };
 const dia = { martes: 'Martes 22', viernes: 'Viernes 25', sabado: 'Sábado 26' };
@@ -185,5 +185,35 @@ describe('buildWeekPrompt — recogidas y devoluciones de alquiler', () => {
 
   it('sin recogidas no añade nada al prompt', () => {
     expect(buildWeekPrompt({ ...base, dayLabel, events: [], rentals: [] })).not.toContain('Recogidas y devoluciones de alquiler');
+  });
+});
+
+describe('extraerMemoriaDelPrompt — recuerdos a largo plazo', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const responde = (text) => vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] }) }));
+
+  it('devuelve la regla en una frase (sin comillas) y manda la clave en la cabecera', async () => {
+    responde('"Las bodas dobles necesitan más tiempo"');
+    expect(await extraerMemoriaDelPrompt({ prompt: 'x', apiKey: 'k' })).toBe('Las bodas dobles necesitan más tiempo');
+    const [url, opts] = fetch.mock.calls[0];
+    expect(url).not.toContain('k?');
+    expect(opts.headers['x-goog-api-key']).toBe('k');
+  });
+
+  it('BUG evitado: NO guarda como regla un JSON, un párrafo largo o un NO_MEMORY con adornos', async () => {
+    for (const text of ['NO_MEMORY', 'NO_MEMORY.', JSON.stringify({ meta: {} }), 'x'.repeat(301), 'línea uno\nlínea dos']) {
+      responde(text);
+      expect(await extraerMemoriaDelPrompt({ prompt: 'x', apiKey: 'k' })).toBeNull();
+    }
+  });
+
+  it('sin clave, sin texto o si la API falla, null y sin lanzar', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error('sin red'));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(await extraerMemoriaDelPrompt({ prompt: 'x', apiKey: ' ' })).toBeNull();
+    expect(await extraerMemoriaDelPrompt({ prompt: '  ', apiKey: 'k' })).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(await extraerMemoriaDelPrompt({ prompt: 'x', apiKey: 'k' })).toBeNull();
   });
 });
