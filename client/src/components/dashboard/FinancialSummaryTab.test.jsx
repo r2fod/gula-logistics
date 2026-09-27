@@ -198,7 +198,19 @@ describe('FinancialSummaryTab — Saldos & Acuerdos y planning', () => {
     const seccion = screen.getByText('Apuntado a mano en Saldos & Acuerdos').closest('section') || screen.getByText('Apuntado a mano en Saldos & Acuerdos').parentElement.parentElement.parentElement;
     expect(within(seccion).getByText('Turnos apuntados a mano')).toBeTruthy();
     expect(within(seccion).getByText('70,00 €')).toBeTruthy(); // 35 fichados + 35 a mano
-    expect(within(seccion).getByText(/1 concepto no lleva fecha/)).toBeTruthy(); // la rotura, solo en «Todo»
+    expect(within(seccion).getByText(/1 concepto antiguo no lleva fecha/)).toBeTruthy(); // la rotura, solo en «Todo»
+  });
+
+  it('BUG evitado: un pago en efectivo no resta del coste; en «Todo» se ve lo pagado y lo que queda por pagar', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 18, 0));
+    const saldos = [{ name: 'Eva', breakdown: [{ concept: '🕒 16/09 (17:00 a 20:30 - 3.5h a 10€/h)', amount: 35 }, { concept: 'Pago en efectivo', amount: -50 }] }];
+    pintar({ saldos });
+    fireEvent.click(screen.getByRole('button', { name: 'Todo' }));
+    const pie = screen.getByText('Coste: extras fichados + a mano').closest('footer');
+    expect(within(pie).getByText('90,00 €')).toBeTruthy(); // 55 fichados (todo el histórico) + 35 a mano; el pago no resta
+    expect(within(pie).getByText('Ya pagado')).toBeTruthy();
+    expect(within(pie).getByText('50,00 €')).toBeTruthy();
+    expect(within(pie).getByText('40,00 €')).toBeTruthy(); // queda por pagar
   });
 
   it('en una semana, lo previsto por el planning frente a lo fichado', () => {

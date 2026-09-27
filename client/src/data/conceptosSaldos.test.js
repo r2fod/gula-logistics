@@ -50,3 +50,34 @@ describe('conceptosDelPeriodo', () => {
     expect(conceptosDelPeriodo(undefined, null).items).toEqual([]);
   });
 });
+
+describe('pagos (lo ya entregado al trabajador)', () => {
+  it('reconoce los pagos: por su tipo guardado o, en los antiguos, por el texto y el signo', () => {
+    expect(tipoDeConcepto({ concept: 'Lo que sea', amount: -50, tipo: 'pago' })).toBe('pago');
+    expect(tipoDeConcepto({ concept: 'Pago en efectivo', amount: -100 })).toBe('pago');
+    expect(tipoDeConcepto({ concept: 'Adelanto nómina', amount: -50 })).toBe('pago');
+    expect(tipoDeConcepto({ concept: 'Pago Bizum', amount: -20 })).toBe('pago');
+    expect(tipoDeConcepto({ concept: 'Rotura de copas', amount: -12 })).toBe('ajuste');
+    expect(tipoDeConcepto({ concept: 'Pago pendiente de horas', amount: 30 })).toBe('ajuste'); // positivo: no es un pago hecho
+    expect(tipoDeConcepto({ concept: '🕒 16/09 (17:00 a 20:30 - 3.5h a 10€/h + 10€ transporte)', amount: 45 })).toBe('turno');
+  });
+
+  it('BUG evitado: los pagos no cuentan como coste (antes restaban del "coste apuntado a mano")', () => {
+    const conPagos = [{ name: 'Ana', statusType: 'success', breakdown: [
+      { concept: '🕒 16/09 (17:00 a 20:30 - 3.5h a 10€/h)', amount: 35 },
+      { concept: 'Pago en efectivo', amount: -100 },
+      { concept: 'Rotura', amount: -5 },
+    ] }];
+    const r = conceptosDelPeriodo(conPagos, { desde: null, hasta: null }, { ahora });
+    expect(r.total).toBe(30); // 35 - 5: el pago no es coste
+    expect(r.pagado).toBe(100);
+    expect(r.porTipo.pago).toEqual({ importe: -100, conceptos: 1 });
+  });
+
+  it('la fecha guardada manda: un pago de hoy entra en su semana aunque el texto no la lleve', () => {
+    const fichasConFecha = [{ name: 'Ana', breakdown: [{ concept: 'Pago en efectivo', amount: -60, tipo: 'pago', date: '2026-09-23' }] }];
+    const r = conceptosDelPeriodo(fichasConFecha, semana(22), { ahora });
+    expect(r.pagado).toBe(60);
+    expect(r.sinFechaFuera).toBe(0);
+  });
+});

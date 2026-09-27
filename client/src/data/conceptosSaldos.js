@@ -1,32 +1,47 @@
-// Conceptos metidos A MANO en Saldos & Acuerdos (ficha.breakdown: { concept, amount }).
-// Los turnos fichados no están aquí (se suman solos desde los fichajes); esto es lo
-// que el Resumen Financiero no veía: turnos apuntados a mano, ayuda de transporte,
-// horas de bolsa y ajustes (roturas, adelantos, saldos iniciales).
+// Conceptos metidos A MANO en Saldos & Acuerdos (ficha.breakdown: { concept, amount,
+// date?, tipo? }). Saldos es lo que se le DEBE a cada persona: turnos fichados (se
+// suman solos) + esto. Aquí hay dos cosas distintas:
+//   · coste apuntado a mano: turnos que no se ficharon, ayuda de transporte, horas
+//     de bolsa y ajustes (roturas, saldos iniciales);
+//   · PAGOS: dinero ya entregado (efectivo, Bizum, adelantos). Restan del saldo,
+//     pero no son coste: el Resumen Financiero los enseña aparte.
 //
-// No llevan campo de fecha: los turnos y el transporte la llevan escrita al
-// principio del texto ("🕒 15/09 …", sin año); la línea de bolsa y los ajustes no,
-// así que solo se pueden colocar en "Todo" (no se inventa en qué semana cayeron).
+// Desde el 28/09 cada concepto nuevo lleva `tipo` y `date` (AAAA-MM-DD). Los
+// anteriores no: el tipo se deduce del texto y la fecha, de "🕒 15/09 …" (sin año);
+// sin fecha solo se pueden colocar en "Todo" (no se inventa en qué semana cayeron).
 
 export const TIPOS_CONCEPTO = {
   turno: 'Turnos apuntados a mano',
   transporte: 'Ayuda de transporte',
   bolsa: 'Horas de bolsa apuntadas a mano',
-  ajuste: 'Ajustes (roturas, adelantos, saldos iniciales…)',
+  ajuste: 'Ajustes (roturas, saldos iniciales…)',
+  pago: 'Pagado (efectivo, Bizum, adelantos)',
 };
 
-export function tipoDeConcepto(concepto = '') {
-  const texto = String(concepto).trim();
+const PAGO = /adelanto|anticip|pag(o|ad|ar)|efectivo|bizum|transferen|liquida|entregad/i;
+
+// Tipo de un concepto (objeto del desglose, o solo su texto e importe).
+export function tipoDeConcepto(item = {}, importe = item?.amount) {
+  const concepto = typeof item === 'string' ? item : item?.concept;
+  if (item && typeof item === 'object' && TIPOS_CONCEPTO[item.tipo]) return item.tipo;
+  const texto = String(concepto || '').trim();
   if (/^valor acumulado horas bolsa/i.test(texto)) return 'bolsa';
+  if (texto.startsWith('🕒') && /\d h a |\dh a /.test(texto)) return 'turno'; // aunque lleve "+ 10€ transporte"
   if (/transporte/i.test(texto)) return 'transporte';
   if (texto.startsWith('🕒')) return 'turno';
+  if (Number(importe) < 0 && PAGO.test(texto)) return 'pago';
   return 'ajuste';
 }
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 
-// Fecha escrita al principio ("🕒 15/09 …"). Sin año: el último 15/09 que no quede
-// más de una semana en el futuro respecto a `referencia`. null si no la lleva.
-export function fechaDeConcepto(concepto = '', referencia = new Date()) {
+// Fecha del concepto: la guardada (`date`, AAAA-MM-DD) o la escrita al principio del
+// texto ("🕒 15/09 …"; sin año: el último 15/09 que no quede más de una semana en el
+// futuro respecto a `referencia`). null si no tiene.
+export function fechaDeConcepto(item = '', referencia = new Date()) {
+  const guardada = /^(\d{4})-(\d{2})-(\d{2})$/.exec(typeof item === 'object' ? item?.date || '' : '');
+  if (guardada) return new Date(Number(guardada[1]), Number(guardada[2]) - 1, Number(guardada[3]));
+  const concepto = typeof item === 'object' ? item?.concept : item;
   const m = /^🕒\s*(\d{1,2})\/(\d{1,2})(?!\/\d)/.exec(String(concepto).trim());
   if (!m) return null;
   const dia = Number(m[1]);
@@ -44,7 +59,8 @@ const esNomina = (ficha) => ficha?.statusType === 'payroll';
 // es 0) dentro del periodo `rango` ({ desde, hasta }, nulos = todo). Los que no
 // tienen fecha solo entran con `incluirSinFecha` (vista "Todo").
 // { porTipo: { tipo: { importe, conceptos } }, items: [{ persona, concepto, importe, tipo, fecha }],
-//   total, sinFechaFuera: nº de conceptos sin fecha que se han dejado fuera }
+//   total (coste: SIN los pagos), pagado (lo entregado, en positivo),
+//   sinFechaFuera: nº de conceptos sin fecha que se han dejado fuera }
 export function conceptosDelPeriodo(fichas = [], rango = null, { incluirSinFecha = false, ahora = new Date() } = {}) {
   const porTipo = {};
   const items = [];
@@ -55,8 +71,8 @@ export function conceptosDelPeriodo(fichas = [], rango = null, { incluirSinFecha
     (ficha.breakdown || []).forEach(item => {
       const importe = Number(item?.amount);
       if (!item?.concept || !Number.isFinite(importe)) return;
-      const tipo = tipoDeConcepto(item.concept);
-      const fecha = fechaDeConcepto(item.concept, ahora);
+      const tipo = tipoDeConcepto(item, importe);
+      const fecha = fechaDeConcepto(item, ahora);
       const incluido = fecha ? dentro(fecha) : (incluirSinFecha || !rango?.desde);
       if (!incluido) {
         if (!fecha) sinFechaFuera += 1;
@@ -69,6 +85,7 @@ export function conceptosDelPeriodo(fichas = [], rango = null, { incluirSinFecha
     });
   });
 
-  const total = items.reduce((suma, it) => suma + it.importe, 0);
-  return { porTipo, items, total, sinFechaFuera };
+  const total = items.filter(it => it.tipo !== 'pago').reduce((suma, it) => suma + it.importe, 0);
+  const pagado = -items.filter(it => it.tipo === 'pago').reduce((suma, it) => suma + it.importe, 0);
+  return { porTipo, items, total, pagado, sinFechaFuera };
 }

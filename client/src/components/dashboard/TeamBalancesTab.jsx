@@ -123,6 +123,12 @@ export default function TeamBalancesTab({
     return { hours, rate, amount, concept, dateLabel, isPurse: false, includeTransport };
   };
 
+  // Fecha de hoy como AAAA-MM-DD (la de un pago o un ajuste: cuando se apunta).
+  const hoyISO = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   const resetAddConceptForm = () => {
     setAddingConceptFor(null);
     setNewConceptText('');
@@ -139,8 +145,10 @@ export default function TeamBalancesTab({
     setSavingBalanceId(worker.id);
 
     try {
+      // Cada concepto nuevo lleva su tipo y su fecha (el Resumen Financiero los
+      // coloca en su semana; los antiguos se deducen del texto, ver conceptosSaldos.js).
       if (!preview.isPurse) {
-        const newItem = { concept: preview.concept, amount: preview.amount, isPositive: true };
+        const newItem = { concept: preview.concept, amount: preview.amount, isPositive: true, tipo: 'turno', date: newShiftDate };
         const newBreakdown = [...(worker.breakdown || []), newItem];
         const newBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
 
@@ -167,7 +175,8 @@ export default function TeamBalancesTab({
         const bolsaLine = {
           concept: `Valor Acumulado Horas Bolsa (${newConsumedHours}h a ${p.hourlyRate}€/h)`,
           amount: newConsumedValue,
-          isPositive: true
+          isPositive: true,
+          tipo: 'bolsa' // acumulado: sin fecha
         };
         const bolsaLineIdx = newBreakdown.findIndex(it => it.concept.startsWith('Valor Acumulado Horas Bolsa'));
         if (bolsaLineIdx !== -1) newBreakdown[bolsaLineIdx] = bolsaLine;
@@ -178,7 +187,9 @@ export default function TeamBalancesTab({
         newBreakdown.push({
           concept: `🕒 ${preview.dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(preview.extraHours)}h a ${p.extraRateAfter80h}€/h · Extra tras bolsa)`,
           amount: preview.extraHours * p.extraRateAfter80h,
-          isPositive: true
+          isPositive: true,
+          tipo: 'turno',
+          date: newShiftDate
         });
       }
 
@@ -192,7 +203,9 @@ export default function TeamBalancesTab({
         newBreakdown.push({
           concept: `🕒 ${preview.dateLabel} — 10€ ayuda transporte`,
           amount: 10,
-          isPositive: true
+          isPositive: true,
+          tipo: 'transporte',
+          date: newShiftDate
         });
       }
 
@@ -212,7 +225,9 @@ export default function TeamBalancesTab({
     setSavingBalanceId(worker.id);
 
     try {
-      const newItem = { concept: newConceptText.trim(), amount, isPositive: amount >= 0 };
+      // "Adelanto" = dinero ya entregado (efectivo, Bizum…): resta del saldo como
+      // siempre, y con `tipo: 'pago'` el Resumen no lo toma por un coste.
+      const newItem = { concept: newConceptText.trim(), amount, isPositive: amount >= 0, tipo: newConceptMode === 'pago' ? 'pago' : 'ajuste', date: hoyISO() };
       const newBreakdown = [...(worker.breakdown || []), newItem];
       const newBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
 
