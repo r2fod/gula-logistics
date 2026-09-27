@@ -122,3 +122,14 @@ describe('POST /api/clock', () => {
     expect(res.body.rate).toBe(14);
   });
 });
+
+describe('DELETE /api/clock (sin id)', () => {
+  it('BUG evitado: ya no se pueden borrar TODOS los fichajes de golpe, ni con sesión de admin', async () => {
+    const { signToken } = await import('../utils/authToken.js');
+    process.env.AUTH_TOKEN_SECRET = process.env.AUTH_TOKEN_SECRET || 'secreto-de-test-no-real';
+    ClockEntry.deleteMany = vi.fn();
+    const res = await request(buildApp()).delete('/api/clock').set('Authorization', `Bearer ${signToken({ role: 'admin', v: 1 })}`);
+    expect(res.status).toBe(404);
+    expect(ClockEntry.deleteMany).not.toHaveBeenCalled();
+  });
+});

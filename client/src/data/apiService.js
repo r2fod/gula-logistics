@@ -335,20 +335,6 @@ export async function restoreClockEntryInAPI(entryId) {
 }
 
 /**
- * Clear all clock entries in MongoDB / Backend API
- */
-export async function clearAllClockEntriesInAPI() {
-  try {
-    await fetch(`${API_BASE}/clock`, {
-      method: 'DELETE',
-      headers: { ...authHeaders() }
-    });
-  } catch (err) {
-    console.warn('Backend API clear failed:', err.message);
-  }
-}
-
-/**
  * Helper to check whether a balances dataset has real numbers/breakdowns
  * and is not just an empty placeholder template of zeroes. Exportada para
  * que useBalances.js use exactamente el mismo criterio al leer su propia

@@ -22,6 +22,7 @@ _Resumen de lo que ya está hecho y por qué es así. El detalle de cada cambio 
 - **IA:** ante un fallo, error claro y ninguna acción siguiente (hubo una "demo" que se aplicaba como si fuera real). Los modelos caducan: lista de candidatos (`GEMINI_MODELS`). Los recuerdos se extraen aparte y se filtran.
 
 ## Fichajes y dinero
+- **Saldos y Resumen Financiero cuentan igual** (28/09): la bolsa de horas se paga con la misma regla en los dos (`bolsaHoras.js`); Saldos separa "turnos fichados" de "apuntado a mano"; el Resumen enseña lo apuntado a mano y, al pie, extras fichados + a mano (lo que se paga), lo previsto por el planning y el texto para WhatsApp. Se quitó el informe de Nóminas: su papelera salía siempre vacía y su "Reset Admin" borraba TODOS los fichajes con un clic (el servidor ya no tiene `DELETE /api/clock` sin id).
 - `GET /api/clock` devuelve lo más reciente primero: para saber quién está en turno, ordenar antes (`sortEntriesByTimestamp`, `getActiveShiftForWorker`, `pairShiftsFromEntries`).
 - Horas redondeadas a la **media hora** (`Math.round(h*2)/2`), tope 14 h facturables por turno; turno abierto > 16 h = "REVISAR" (no se cierra solo).
 - Fichajes sin cobertura: cola persistente + reintento cada 20 s y al volver la red; el servidor es idempotente por `id`.

@@ -4,6 +4,7 @@ import KpiCard from '../ui/KpiCard';
 import BarraFiltros from './fichajes/BarraFiltros';
 import GrupoDia from './fichajes/GrupoDia';
 import FilaFichaje, { PLANTILLA_FILA } from './fichajes/FilaFichaje';
+import Papelera from './fichajes/Papelera';
 import { pairShiftsFromEntries, isZombieShift } from '../../data/shiftCalculations';
 import { filtrarFichajes, agruparPorDia, turnosPorSalida, contarPorTipo, personasDe, hayFiltros, claveDia } from '../../data/fichajesAgrupados';
 import { formatearHoras, formatearNumero } from '../../data/formatoFinanciero';
@@ -23,7 +24,9 @@ export default function FichajesTab({
   workersList,
   handleOpenCreateEntry,
   handleOpenEditEntry,
-  onDeleteClockEntry
+  onDeleteClockEntry,
+  fichajesBorrados = [],
+  onRestoreClockEntry = null
 }) {
   const ahora = useAhora();
   const { confirm } = useDialog();
@@ -193,6 +196,8 @@ export default function FichajesTab({
           )}
         </>
       )}
+
+      {adminUnlocked && onRestoreClockEntry && <Papelera borrados={fichajesBorrados} onRestaurar={onRestoreClockEntry} />}
     </div>
   );
 }

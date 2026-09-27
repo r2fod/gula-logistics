@@ -3,7 +3,6 @@ import {
   saveClockEntryToAPI, 
   updateClockEntryInAPI, 
   deleteClockEntryInAPI, 
-  clearAllClockEntriesInAPI,
   restoreClockEntryInAPI
 } from '../data/apiService';
 import { getActiveShiftForWorker } from '../data/shiftCalculations';
@@ -92,12 +91,6 @@ export function useClockings(markTaskCompleted) {
     }
   };
 
-  const handleClearClockEntries = () => {
-    setClockEntries([]);
-    localStorage.removeItem('gula_clock_entries_v1');
-    clearAllClockEntriesInAPI();
-  };
-
   const activeClockEntries = clockEntries.filter(e => !e.deleted);
   const deletedClockEntries = clockEntries.filter(e => e.deleted);
 
@@ -109,7 +102,6 @@ export function useClockings(markTaskCompleted) {
     handleClockEntryCreated,
     handleUpdateClockEntry,
     handleDeleteClockEntry,
-    handleRestoreClockEntry,
-    handleClearClockEntries
+    handleRestoreClockEntry
   };
 }
