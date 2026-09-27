@@ -1,24 +1,17 @@
 import { useState, useEffect } from 'react';
 import { fetchRosterFromAPI, saveRosterToAPI } from '../data/apiService';
 
-export const DEFAULT_WORKERS_LIST = [
-  { name: "Gonzalo", role: "Conductor Flota (Veterano)", truck: "Camión Covey (Alquiler)", avatar: "🚛", isPayroll: false, rate: 10 },
-  { name: "Ricardo", role: "Conductor Flota (Veterano)", truck: "Camión Gula (Propio)", avatar: "🚚", isPayroll: false, rate: 10 },
-  { name: "Johan", role: "Conductor & Backup", truck: "Camión Covey / Apoyo", avatar: "🚚", isPayroll: false, rate: 10 },
-  { name: "Irene", role: "Ayudante Logística / Prepara Eventos / Verifica Checklist", truck: "Almacén Base", avatar: "📦", isPayroll: true, rate: 14 },
-  { name: "Jeferson", role: "Apoyo Logística & Prep", truck: "Base / Camión Gula", avatar: "📦", isPayroll: false, rate: 10 },
-  { name: "Kerly", role: "Gula Limpieza Eventos", truck: "Limpieza Almacén", avatar: "🧹", isPayroll: false, rate: 10 },
-  { name: "Jose", role: "Gula Limpieza & Apoyo", truck: "Limpieza Almacén", avatar: "🧹", isPayroll: false, rate: 10 },
-  { name: "Raúl", role: "Jefe de Logística", truck: "Supervisión Flota", avatar: "📋", isPayroll: true, rate: 14 }
-];
+// Sin lista de equipo en el código (el repo es público y llevaba nombres y tarifas
+// reales): se usa la última guardada en este dispositivo y, en cuanto llega, la del
+// servidor. Un enlace ?worker= se reconoce al llegar el equipo (ver App.jsx).
 
 export function useWorkers() {
   const [workersList, setWorkersList] = useState(() => {
     try {
       const saved = localStorage.getItem('gula_workers_v1');
-      return saved ? JSON.parse(saved) : DEFAULT_WORKERS_LIST;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return DEFAULT_WORKERS_LIST;
+      return [];
     }
   });
 

@@ -85,7 +85,7 @@ describe('anticiparSemanas', () => {
     { id: '1', fecha: '2026-09-22', tipo: 'corporativo', titulo: 'EVENTO X', pax: 40, hora: '11:00' },
     // la semana del 29 no tiene nada
   ];
-  const roster = [{ name: 'Gonzalo', role: 'Conductor Flota' }, { name: 'Ricardo', role: 'Conductor Flota' }, { name: 'Raúl', role: 'Jefe de Logística' }, { name: 'Kerly', role: 'Limpieza' }, { name: 'Jose', role: 'Limpieza' }];
+  const roster = [{ name: 'Bruno', role: 'Conductor Flota' }, { name: 'Carlos', role: 'Conductor Flota' }, { name: 'Óscar', role: 'Jefe de Logística' }, { name: 'Lara', role: 'Limpieza' }, { name: 'Nico', role: 'Limpieza' }];
 
   it('crea SOLO los borradores de semanas con eventos, con id determinista y nombre siguiente', async () => {
     const leerApuntes = vi.fn().mockResolvedValue({ configurado: true, apuntes });

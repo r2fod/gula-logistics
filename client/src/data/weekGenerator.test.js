@@ -6,17 +6,17 @@ import { validateGeneratedSchedule } from './geminiScheduleService';
 
 // Equipo y calendario FICTICIOS con la misma forma que los reales.
 const ROSTER = [
-  { name: 'Gonzalo', role: 'Conductor Flota (Veterano)' },
-  { name: 'Ricardo', role: 'Conductor Flota (Veterano)' },
-  { name: 'Johan', role: 'Conductor & Backup' },
-  { name: 'Irene', role: 'Ayudante Logística / Prepara Eventos / Verifica Checklist' },
-  { name: 'Jeferson', role: 'Apoyo Logística & Prep' },
-  { name: 'Kerly', role: 'Gula Limpieza Eventos' },
-  { name: 'Jose', role: 'Gula Limpieza & Apoyo' },
-  { name: 'Raúl', role: 'Jefe de Logística' },
+  { name: 'Bruno', role: 'Conductor Flota (Veterano)' },
+  { name: 'Carlos', role: 'Conductor Flota (Veterano)' },
+  { name: 'Diego', role: 'Conductor & Backup' },
+  { name: 'Elena', role: 'Ayudante Logística / Prepara Eventos / Verifica Checklist' },
+  { name: 'Rafael', role: 'Apoyo Logística & Prep' },
+  { name: 'Lara', role: 'Gula Limpieza Eventos' },
+  { name: 'Nico', role: 'Gula Limpieza & Apoyo' },
+  { name: 'Óscar', role: 'Jefe de Logística' },
 ];
 const PLANTILLA = {
-  team: [{ role: 'Flota', members: 'Gonzalo, Ricardo y Johan' }],
+  team: [{ role: 'Flota', members: 'Bruno, Carlos y Diego' }],
   trucks: [{ name: 'Camión Gula', tag: 'PROPIO' }, { name: 'Camión Covey', tag: 'ALQUILER' }, { name: 'Camión Albacar', tag: 'ALQUILER' }],
 };
 const APUNTES = [
@@ -94,7 +94,7 @@ describe('generarBorrador — semana del 22 al 27', () => {
   it('el evento de las 11:00 sí lleva carga, montaje, supervisión, recogida y limpieza el mismo día', () => {
     const delta = week.schedule.martes.tasks.filter(t => t.text.startsWith('Evento Delta - '));
     expect(delta.map(t => t.text.split(' - ')[1])).toEqual(expect.arrayContaining(['Carga de material', 'Descarga + Montaje Estructura', 'Supervisión', 'Recogida y vuelta a base']));
-    expect(week.schedule.martes.tasks.some(t => t.text.startsWith('Limpieza Eventos - ') && t.assigned.every(n => ['Kerly', 'Jose'].includes(n)))).toBe(true);
+    expect(week.schedule.martes.tasks.some(t => t.text.startsWith('Limpieza Eventos - ') && t.assigned.every(n => ['Lara', 'Nico'].includes(n)))).toBe(true);
   });
 
   it('la "descarga" apuntada como boda va como descarga adelantada de la boda del sábado', () => {
@@ -150,31 +150,31 @@ describe('generarBorrador — semana del 22 al 27', () => {
     Object.values(porPersona).forEach(arr => { arr.sort((x, y) => x[0] - y[0]); for (let i = 1; i < arr.length; i++) expect(arr[i][0]).toBeGreaterThanOrEqual(arr[i - 1][1]); });
   });
 
-  it('las reglas de equipo: Kerly y Jose solo limpian; Irene y Raúl no cargan ni descargan', () => {
+  it('las reglas de equipo: Lara y Nico solo limpian; Elena y Óscar no cargan ni descargan', () => {
     tareas.forEach(t => {
       const accion = (t.text || t.details || '').toLowerCase();
-      if (t.assigned.some(n => ['Kerly', 'Jose'].includes(n))) expect(t.event).toBe('Limpieza Eventos');
+      if (t.assigned.some(n => ['Lara', 'Nico'].includes(n))) expect(t.event).toBe('Limpieza Eventos');
       if (/carga de material|descarga|recogida|recoger/.test(accion) && !/supervisi|preparaci/.test(accion)) {
-        expect(t.assigned.filter(n => ['Irene', 'Raúl'].includes(n))).toEqual([]);
+        expect(t.assigned.filter(n => ['Elena', 'Óscar'].includes(n))).toEqual([]);
       }
     });
   });
 
-  it('el backup (Johan) no se carga más que los demás mientras haya otros libres', () => {
+  it('el backup (Diego) no se carga más que los demás mientras haya otros libres', () => {
     const h = resumen.horasPorPersona;
-    expect(h.Johan).toBeLessThanOrEqual(Math.max(h.Gonzalo, h.Ricardo) + 6);
+    expect(h.Diego).toBeLessThanOrEqual(Math.max(h.Bruno, h.Carlos) + 6);
   });
 });
 
 describe('generarBorrador — casos límite', () => {
   it('las vacaciones del equipo se respetan (nadie se asigna en su rango)', () => {
-    const conVacas = [...APUNTES, { id: 'v', fecha: '2026-09-22', hasta: '2026-09-27', tipo: 'vacaciones', titulo: 'Gonzalo' }];
+    const conVacas = [...APUNTES, { id: 'v', fecha: '2026-09-22', hasta: '2026-09-27', tipo: 'vacaciones', titulo: 'Bruno' }];
     const { week } = generar(conVacas);
-    expect(JSON.stringify(week)).not.toContain('"Gonzalo"');
+    expect(JSON.stringify(week)).not.toContain('"Bruno"');
   });
 
   it('si no alcanza la gente, asigna menos y AVISA en vez de romper', () => {
-    const solo = ROSTER.filter(p => ['Gonzalo', 'Raúl', 'Kerly'].includes(p.name));
+    const solo = ROSTER.filter(p => ['Bruno', 'Óscar', 'Lara'].includes(p.name));
     const { week, resumen } = generar(APUNTES, solo);
     expect(resumen.avisos.some(a => /personas libres/.test(a))).toBe(true);
     expect(validateGeneratedSchedule(week)).toBe('');
@@ -204,10 +204,10 @@ describe('generarBorrador — casos límite', () => {
 });
 
 describe('generarBorrador — correcciones vistas con el calendario real', () => {
-  it('la preparación (checklist) lleva 3 personas: Irene, Raúl y apoyo', () => {
+  it('la preparación (checklist) lleva 3 personas: Elena, Óscar y apoyo', () => {
     const { week } = generar();
     const prep = week.schedule.miercoles.tasks.find(x => /Preparación y organización/.test(x.text));
-    expect(prep.assigned.sort()).toEqual(['Irene', 'Jeferson', 'Raúl']);
+    expect(prep.assigned.sort()).toEqual(['Elena', 'Rafael', 'Óscar']);
   });
 
   it('BUG evitado: la limpieza tras una boda de viernes NO cae de madrugada: es el domingo (el sábado hay boda)', () => {

@@ -34,10 +34,10 @@ export default function AdminLoginModal({ isOpen, onClose, onSuccess }) {
 
   return (
     <Modal onCerrar={onClose} ancho="md" className="space-y-6">
-      <CabeceraModal icono={ShieldCheck} titulo="Acceso Administrador" subtitulo="Panel de Gestión Exclusivo para Raúl" />
+      <CabeceraModal icono={ShieldCheck} titulo="Acceso Administrador" subtitulo="Panel de gestión del administrador" />
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Campo etiqueta="Contraseña de Raúl (Admin)" icono={KeyRound}>
+        <Campo etiqueta="Contraseña de administrador" icono={KeyRound}>
           <Input
             type="password"
             value={password}

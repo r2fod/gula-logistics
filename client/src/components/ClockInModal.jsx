@@ -17,7 +17,7 @@ export default function ClockInModal({
   clockEntries = [],
   onClockEntryCreated
 }) {
-  const [selectedWorker, setSelectedWorker] = useState(initialWorkerName || workersList[0]?.name || 'Gonzalo');
+  const [selectedWorker, setSelectedWorker] = useState(initialWorkerName || workersList[0]?.name || '');
   const [note, setNote] = useState(initialTaskName || '');
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -107,7 +107,7 @@ export default function ClockInModal({
           <span className="text-slate-400">Tipo de Contrato:</span>
           {currentWorkerObj.isPayroll ? (
             <span className="font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-              <Briefcase className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Nómina Fija (Irene / Raúl)
+              <Briefcase className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Nómina fija
             </span>
           ) : (
             <span className="font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">

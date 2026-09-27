@@ -16,7 +16,7 @@ import {
 // Fichaje mínimo de prueba: entra si el worker/type/timestamp bastan para
 // el propósito del test, sin todos los campos reales de ClockEntry.
 function entry(overrides) {
-  return { id: 'e1', workerName: 'Ricardo', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z', ...overrides };
+  return { id: 'e1', workerName: 'Carlos', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z', ...overrides };
 }
 
 // El entorno jsdom de este proyecto no expone un localStorage real (queda
@@ -105,13 +105,13 @@ describe('fetchClockEntriesFromAPI (fusión con pendientes)', () => {
   it('no pierde un fichaje pendiente aunque el servidor todavía no lo tenga', async () => {
     // Un fichaje quedó pendiente (sin cobertura al crearlo).
     global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
-    await saveClockEntryToAPI(entry({ id: 'e7', workerName: 'Gonzalo' }));
+    await saveClockEntryToAPI(entry({ id: 'e7', workerName: 'Bruno' }));
 
     // Vuelve la cobertura: el GET normal del polling trae la lista de Mongo,
     // que todavía NO incluye e7 (el POST de sincronización no ha llegado).
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => [entry({ id: 'otroFichaje', workerName: 'Johan' })],
+      json: async () => [entry({ id: 'otroFichaje', workerName: 'Diego' })],
     });
     const result = await fetchClockEntriesFromAPI();
 

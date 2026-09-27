@@ -43,7 +43,7 @@ export default function AdminClockEditModal({
         setDateTimeLocal(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`);
       }
     } else {
-      setWorkerName(workersList[0]?.name || 'Gonzalo');
+      setWorkerName(workersList[0]?.name || '');
       setType('entrada');
       setNote('');
       setRate(10);

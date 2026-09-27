@@ -271,7 +271,9 @@ export default function App() {
         if (lastWorker) {
           const stillValid = workersList.find(w => w.name.toLowerCase() === lastWorker.toLowerCase());
           if (stillValid) setActiveWorker(stillValid.name);
-          else localStorage.removeItem('gula_last_worker_v1');
+          // Solo se olvida si el equipo ya se conoce: con la lista aún vacía (móvil
+          // sin equipo guardado) no se sabe si esa persona sigue.
+          else if (workersList.length) localStorage.removeItem('gula_last_worker_v1');
         }
       } catch (e) {}
     }

@@ -10,8 +10,8 @@
 // Reglas de negocio aplicadas (ver CONTEXTO.md):
 //   · texto de cada tarea "EVENTO - Tarea" (eventNaming.js);
 //   · una sola persona en las recogidas; las de alquiler, por la mañana salvo hora;
-//   · cargas/descargas las hacen conductores y apoyo; Irene prepara, Raúl
-//     supervisa, Kerly y Jose solo limpian;
+//   · cargas/descargas las hacen conductores y apoyo; base/checklist prepara,
+//     el jefe de logística supervisa y limpieza solo limpia (por el ROL del equipo);
 //   · descargar implica montaje de estructura;
 //   · nadie se asigna dos tareas a la vez ni en sus vacaciones.
 // Los horarios se calculan desde la hora de inicio del evento cuando el

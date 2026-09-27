@@ -46,7 +46,7 @@ export function getActiveShiftForWorker(entries = [], workerName) {
 // Empareja fichajes de entrada/salida en turnos con duración y coste —
 // misma lógica que antes vivía duplicada en PartnerDashboardView.jsx
 // (agregación por trabajador) y PayrollReportModal.jsx (lista de turnos).
-// Los workers a 14€/h fijo son Irene y Raúl (Nómina), el resto 10€/h Extra,
+// Quien está en nómina fija se valora a 14 €/h por defecto; el resto, 10 €/h de extra,
 // salvo que el propio fichaje traiga su propia `rate`. Devuelve también
 // `activeShifts` (entradas sin salida emparejada aún) para saber quién
 // sigue fichado en este momento.
@@ -102,7 +102,7 @@ export function pairShiftsFromEntries(entries = []) {
       const hours = Math.floor(durationHours);
       const minutes = Math.floor((durationHours - hours) * 60);
 
-      // Antes había un fallback hardcodeado a los nombres "Irene"/"Raúl" —
+      // Antes había un fallback con dos nombres concretos escritos en el código —
       // con el || eso forzaba isSalaried=true para ellos SIEMPRE, aunque
       // su isPayroll real dijera lo contrario (si mañana alguno deja de
       // estar en nómina fija, el dato ya no manda). Confirmado que todos

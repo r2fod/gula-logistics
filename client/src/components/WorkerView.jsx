@@ -12,12 +12,12 @@ import { subscribeToPush } from '../data/pushService';
 import { crearFichaje, horaDeFichaje, fechaDeFichaje } from '../data/fichajes';
 import { getWeddingTaskName } from '../data/eventNaming';
 import { formatTimeShort, formatWeekdayDay } from '../utils/dateUtils';
-import { formatearHoras } from '../data/formatoFinanciero';
+import { formatearHoras, formatearEuros } from '../data/formatoFinanciero';
 import EstadoVacio from './ui/EstadoVacio';
 import { useDialog } from '../contexts/DialogContext';
 import EnVivo from './ui/EnVivo';
 import { useAhora } from '../hooks/useAhora';
-import { duracionEnCurso } from '../data/costeEnVivo';
+import { duracionEnCurso, costeEnCurso } from '../data/costeEnVivo';
 
 
 // Texto del botón de empezar la jornada: se elige uno al azar al abrir la
@@ -501,6 +501,20 @@ export default function WorkerView({
                   <Pin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{activeShift.taskName === 'JORNADA' ? 'Jornada Laboral Iniciada' : (activeShift.taskName || 'Turno Operativo General')}
                 </p>
               </div>
+
+              {/* Lo que lleva ganado en este turno, subiendo en directo (no en nómina
+                  fija: no cobra por horas). Es aproximado — la tarifa del fichaje, sin
+                  la bolsa de horas ni el redondeo a la media hora al fichar la salida:
+                  lo que cuenta es lo de Saldos & Acuerdos. */}
+              {!currentWorkerObj.isPayroll && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-300/90">Llevas ganado en este turno</span>
+                  <span className="whitespace-nowrap font-mono text-base font-extrabold tabular-nums text-emerald-300">
+                    ≈ <EnVivo>{(ahora) => formatearEuros(costeEnCurso({ entrada: activeShift, ahora, tarifa: activeShift.rate || currentWorkerObj.rate || 10 }).coste)}</EnVivo>
+                  </span>
+                  <span className="w-full text-[10px] text-slate-400">A {formatearEuros(activeShift.rate || currentWorkerObj.rate || 10)}/h. Aproximado: el importe final se ajusta al fichar la salida.</span>
+                </div>
+              )}
 
               {/* Sub-tareas V2 */}
               {activeShift.taskName === 'JORNADA' && (

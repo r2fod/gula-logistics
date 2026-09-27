@@ -11,7 +11,7 @@ import {
 function entry(overrides) {
   return {
     id: 'e1',
-    workerName: 'Kerly',
+    workerName: 'Lara',
     type: 'entrada',
     timestamp: '2026-09-10T08:00:00.000Z',
     timeFormatted: '10:00',
@@ -50,7 +50,7 @@ describe('getActiveShiftForWorker', () => {
       entry({ id: '3', type: 'salida', timestamp: '2026-09-10T09:00:00.000Z' }),
     ];
 
-    const active = getActiveShiftForWorker(entries, 'Kerly');
+    const active = getActiveShiftForWorker(entries, 'Lara');
     expect(active?.id).toBe('4');
   });
 
@@ -59,16 +59,16 @@ describe('getActiveShiftForWorker', () => {
       entry({ id: '1', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
       entry({ id: '2', type: 'salida', timestamp: '2026-09-10T16:00:00.000Z' }),
     ];
-    expect(getActiveShiftForWorker(entries, 'Kerly')).toBeNull();
+    expect(getActiveShiftForWorker(entries, 'Lara')).toBeNull();
   });
 
   it('ignora mayúsculas/minúsculas al buscar por nombre', () => {
-    const entries = [entry({ workerName: 'Kerly', type: 'entrada' })];
-    expect(getActiveShiftForWorker(entries, 'kerly')?.id).toBe('e1');
+    const entries = [entry({ workerName: 'Lara', type: 'entrada' })];
+    expect(getActiveShiftForWorker(entries, 'lara')?.id).toBe('e1');
   });
 
   it('devuelve null sin trabajador o sin fichajes', () => {
-    expect(getActiveShiftForWorker([], 'Kerly')).toBeNull();
+    expect(getActiveShiftForWorker([], 'Lara')).toBeNull();
     expect(getActiveShiftForWorker([entry()], '')).toBeNull();
   });
 });
@@ -79,14 +79,14 @@ describe('pairShiftsFromEntries', () => {
     // billetes de 5€/10€, no en céntimos), no a la hora completa. 2h30m cae
     // justo en un múltiplo de media hora, así que no hay redondeo que hacer.
     const entries = [
-      entry({ id: '1', workerName: 'Ricardo', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
-      entry({ id: '2', workerName: 'Ricardo', type: 'salida', timestamp: '2026-09-10T10:30:00.000Z' }),
+      entry({ id: '1', workerName: 'Carlos', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
+      entry({ id: '2', workerName: 'Carlos', type: 'salida', timestamp: '2026-09-10T10:30:00.000Z' }),
     ];
     const { shifts, activeShifts } = pairShiftsFromEntries(entries);
 
     expect(shifts).toHaveLength(1);
     expect(shifts[0]).toMatchObject({
-      workerName: 'Ricardo',
+      workerName: 'Carlos',
       isSalaried: false,
       rate: 10,
       durationFormatted: '2h 30m',
@@ -102,8 +102,8 @@ describe('pairShiftsFromEntries', () => {
     // media hora" (correcto): con Math.round(rawDuration) a secas, 2h31m
     // habría subido a 3h.
     const entries = [
-      entry({ id: '1', workerName: 'Ricardo', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
-      entry({ id: '2', workerName: 'Ricardo', type: 'salida', timestamp: '2026-09-10T10:31:00.000Z' }), // 2h31m
+      entry({ id: '1', workerName: 'Carlos', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
+      entry({ id: '2', workerName: 'Carlos', type: 'salida', timestamp: '2026-09-10T10:31:00.000Z' }), // 2h31m
     ];
     const { shifts } = pairShiftsFromEntries(entries);
     expect(shifts[0].durationHours).toBe(2.5);
@@ -116,8 +116,8 @@ describe('pairShiftsFromEntries', () => {
     // abajo, desde ahí sube al de arriba.
     const build = (mins) => {
       const entries = [
-        entry({ id: '1', workerName: 'Ricardo', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
-        entry({ id: '2', workerName: 'Ricardo', type: 'salida', timestamp: new Date(new Date('2026-09-10T08:00:00.000Z').getTime() + mins * 60000).toISOString() }),
+        entry({ id: '1', workerName: 'Carlos', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
+        entry({ id: '2', workerName: 'Carlos', type: 'salida', timestamp: new Date(new Date('2026-09-10T08:00:00.000Z').getTime() + mins * 60000).toISOString() }),
       ];
       return pairShiftsFromEntries(entries).shifts[0].durationHours;
     };
@@ -127,22 +127,22 @@ describe('pairShiftsFromEntries', () => {
 
   it('usa la tarifa Nómina (14€/h) cuando el propio fichaje trae isPayroll:true', () => {
     const entries = [
-      entry({ id: '1', workerName: 'Irene', isPayroll: true, type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
-      entry({ id: '2', workerName: 'Irene', isPayroll: true, type: 'salida', timestamp: '2026-09-10T09:00:00.000Z' }),
+      entry({ id: '1', workerName: 'Elena', isPayroll: true, type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
+      entry({ id: '2', workerName: 'Elena', isPayroll: true, type: 'salida', timestamp: '2026-09-10T09:00:00.000Z' }),
     ];
     const { shifts } = pairShiftsFromEntries(entries);
     expect(shifts[0]).toMatchObject({ isSalaried: true, rate: 14, cost: 14 });
   });
 
-  it('BUG real: ya no fuerza Nómina por el nombre "Irene"/"Raúl" — si isPayroll no viene en el fichaje, se trata como Extra', () => {
-    // Antes había un fallback hardcodeado (workerName === 'Irene' ||
-    // workerName === 'Raúl') que con el || forzaba isSalaried=true SIEMPRE
+  it('BUG real: ya no fuerza Nómina por el nombre "Elena"/"Óscar" — si isPayroll no viene en el fichaje, se trata como Extra', () => {
+    // Antes había un fallback hardcodeado (workerName === 'Elena' ||
+    // workerName === 'Óscar') que con el || forzaba isSalaried=true SIEMPRE
     // para esos dos nombres, aunque isPayroll dijera lo contrario — si
     // alguno deja de estar en nómina fija, el código ya no debe decidirlo
     // por encima del dato real.
     const entries = [
-      entry({ id: '1', workerName: 'Irene', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
-      entry({ id: '2', workerName: 'Irene', type: 'salida', timestamp: '2026-09-10T09:00:00.000Z' }),
+      entry({ id: '1', workerName: 'Elena', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
+      entry({ id: '2', workerName: 'Elena', type: 'salida', timestamp: '2026-09-10T09:00:00.000Z' }),
     ];
     const { shifts } = pairShiftsFromEntries(entries);
     expect(shifts[0]).toMatchObject({ isSalaried: false, rate: 10, cost: 10 });
@@ -150,8 +150,8 @@ describe('pairShiftsFromEntries', () => {
 
   it('respeta una tarifa custom (`rate`) del propio fichaje por encima de los defaults', () => {
     const entries = [
-      entry({ id: '1', workerName: 'Johan', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
-      entry({ id: '2', workerName: 'Johan', type: 'salida', timestamp: '2026-09-10T09:00:00.000Z', rate: 20 }),
+      entry({ id: '1', workerName: 'Diego', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
+      entry({ id: '2', workerName: 'Diego', type: 'salida', timestamp: '2026-09-10T09:00:00.000Z', rate: 20 }),
     ];
     const { shifts } = pairShiftsFromEntries(entries);
     expect(shifts[0].rate).toBe(20);
@@ -159,14 +159,14 @@ describe('pairShiftsFromEntries', () => {
   });
 
   it('deja en activeShifts una entrada sin salida emparejada', () => {
-    const entries = [entry({ id: '1', workerName: 'Gonzalo', type: 'entrada' })];
+    const entries = [entry({ id: '1', workerName: 'Bruno', type: 'entrada' })];
     const { shifts, activeShifts } = pairShiftsFromEntries(entries);
     expect(shifts).toHaveLength(0);
-    expect(activeShifts.Gonzalo?.id).toBe('1');
+    expect(activeShifts.Bruno?.id).toBe('1');
   });
 
   it('ignora una salida suelta sin entrada previa (no rompe ni genera turno negativo)', () => {
-    const entries = [entry({ id: '1', workerName: 'Gonzalo', type: 'salida' })];
+    const entries = [entry({ id: '1', workerName: 'Bruno', type: 'salida' })];
     const { shifts } = pairShiftsFromEntries(entries);
     expect(shifts).toHaveLength(0);
   });
@@ -178,38 +178,38 @@ describe('pairShiftsFromEntries', () => {
     // ningún turno abierto que cerrar, así que se descarta en silencio en
     // vez de emparejarse con la entrada posterior y dar una duración negativa.
     const entries = [
-      entry({ id: '1', workerName: 'Johan', type: 'entrada', timestamp: '2026-09-10T10:00:00.000Z' }),
-      entry({ id: '2', workerName: 'Johan', type: 'salida', timestamp: '2026-09-10T08:00:00.000Z' }),
+      entry({ id: '1', workerName: 'Diego', type: 'entrada', timestamp: '2026-09-10T10:00:00.000Z' }),
+      entry({ id: '2', workerName: 'Diego', type: 'salida', timestamp: '2026-09-10T08:00:00.000Z' }),
     ];
     const { shifts, activeShifts } = pairShiftsFromEntries(entries);
     expect(shifts).toHaveLength(0);
-    expect(activeShifts.Johan?.id).toBe('1'); // la entrada queda "abierta", esperando una salida real
+    expect(activeShifts.Diego?.id).toBe('1'); // la entrada queda "abierta", esperando una salida real
   });
 
   it('procesa turnos de varios trabajadores en paralelo sin cruzarlos', () => {
     const entries = [
-      entry({ id: '1', workerName: 'Ricardo', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
-      entry({ id: '2', workerName: 'Johan', type: 'entrada', timestamp: '2026-09-10T08:30:00.000Z' }),
-      entry({ id: '3', workerName: 'Ricardo', type: 'salida', timestamp: '2026-09-10T09:00:00.000Z' }),
-      entry({ id: '4', workerName: 'Johan', type: 'salida', timestamp: '2026-09-10T09:30:00.000Z' }),
+      entry({ id: '1', workerName: 'Carlos', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z' }),
+      entry({ id: '2', workerName: 'Diego', type: 'entrada', timestamp: '2026-09-10T08:30:00.000Z' }),
+      entry({ id: '3', workerName: 'Carlos', type: 'salida', timestamp: '2026-09-10T09:00:00.000Z' }),
+      entry({ id: '4', workerName: 'Diego', type: 'salida', timestamp: '2026-09-10T09:30:00.000Z' }),
     ];
     const { shifts } = pairShiftsFromEntries(entries);
     expect(shifts).toHaveLength(2);
-    expect(shifts.find(s => s.workerName === 'Ricardo').durationFormatted).toBe('1h 0m');
-    expect(shifts.find(s => s.workerName === 'Johan').durationFormatted).toBe('1h 0m');
+    expect(shifts.find(s => s.workerName === 'Carlos').durationFormatted).toBe('1h 0m');
+    expect(shifts.find(s => s.workerName === 'Diego').durationFormatted).toBe('1h 0m');
   });
 });
 
 describe('aggregateShiftsByWorker', () => {
   const workersList = [
-    { name: 'Ricardo', role: 'Veterano', avatar: '👷', isPayroll: false },
-    { name: 'Irene', role: 'Nómina', avatar: '👩', isPayroll: true },
+    { name: 'Carlos', role: 'Veterano', avatar: '👷', isPayroll: false },
+    { name: 'Elena', role: 'Nómina', avatar: '👩', isPayroll: true },
   ];
 
   it('inicializa a todos los trabajadores de la lista en cero, aunque no tengan turnos', () => {
     const result = aggregateShiftsByWorker([], workersList);
-    expect(result.Ricardo).toMatchObject({ totalHours: 0, totalCost: 0, completedShifts: 0, rate: 10 });
-    expect(result.Irene).toMatchObject({ totalHours: 0, totalCost: 0, completedShifts: 0, rate: 14 });
+    expect(result.Carlos).toMatchObject({ totalHours: 0, totalCost: 0, completedShifts: 0, rate: 10 });
+    expect(result.Elena).toMatchObject({ totalHours: 0, totalCost: 0, completedShifts: 0, rate: 14 });
   });
 
   it('suma horas, coste y nº de turnos por trabajador (turnos en días distintos)', () => {
@@ -217,11 +217,11 @@ describe('aggregateShiftsByWorker', () => {
     // los agruparía como "Jornada Partida" (ver test de abajo) y
     // completedShifts contaría 1, no 2.
     const shifts = [
-      { workerName: 'Ricardo', durationHours: 2, cost: 20, startDate: '10/09/2026', startTime: '08:00', endTime: '10:00' },
-      { workerName: 'Ricardo', durationHours: 3, cost: 30, startDate: '11/09/2026', startTime: '08:00', endTime: '11:00' },
+      { workerName: 'Carlos', durationHours: 2, cost: 20, startDate: '10/09/2026', startTime: '08:00', endTime: '10:00' },
+      { workerName: 'Carlos', durationHours: 3, cost: 30, startDate: '11/09/2026', startTime: '08:00', endTime: '11:00' },
     ];
     const result = aggregateShiftsByWorker(shifts, workersList);
-    expect(result.Ricardo).toMatchObject({ totalHours: 5, totalCost: 50, completedShifts: 2 });
+    expect(result.Carlos).toMatchObject({ totalHours: 5, totalCost: 50, completedShifts: 2 });
   });
 
   it('agrupa turnos del mismo día como "Jornada Partida" en una sola fila, sumando horas y coste', () => {
@@ -230,15 +230,15 @@ describe('aggregateShiftsByWorker', () => {
     // Saldos & Acuerdos (aunque las horas totales del trabajador sí suman
     // ambos), con el rango de cada tramo guardado en `ranges`.
     const shifts = [
-      { workerName: 'Ricardo', durationHours: 2, cost: 20, startDate: '10/09/2026', startTime: '08:00:00', endTime: '10:00:00' },
-      { workerName: 'Ricardo', durationHours: 1, cost: 10, startDate: '10/09/2026', startTime: '15:00:00', endTime: '16:00:00' },
+      { workerName: 'Carlos', durationHours: 2, cost: 20, startDate: '10/09/2026', startTime: '08:00:00', endTime: '10:00:00' },
+      { workerName: 'Carlos', durationHours: 1, cost: 10, startDate: '10/09/2026', startTime: '15:00:00', endTime: '16:00:00' },
     ];
     const result = aggregateShiftsByWorker(shifts, workersList);
-    expect(result.Ricardo.completedShifts).toBe(1);
-    expect(result.Ricardo.totalHours).toBe(3);
-    expect(result.Ricardo.totalCost).toBe(30);
-    expect(result.Ricardo.shifts).toHaveLength(1);
-    expect(result.Ricardo.shifts[0]).toMatchObject({
+    expect(result.Carlos.completedShifts).toBe(1);
+    expect(result.Carlos.totalHours).toBe(3);
+    expect(result.Carlos.totalCost).toBe(30);
+    expect(result.Carlos.shifts).toHaveLength(1);
+    expect(result.Carlos.shifts[0]).toMatchObject({
       durationHours: 3,
       cost: 30,
       endTime: '16:00:00', // se queda con el último tramo de salida
@@ -255,7 +255,7 @@ describe('aggregateShiftsByWorker', () => {
     const shifts = [{ workerName: 'Ex-trabajador', durationHours: 5, cost: 50, startDate: '10/09/2026', startTime: '08:00', endTime: '13:00', isSalaried: false, rate: 10 }];
     expect(() => aggregateShiftsByWorker(shifts, workersList)).not.toThrow();
     const result = aggregateShiftsByWorker(shifts, workersList);
-    expect(Object.keys(result)).toEqual(expect.arrayContaining(['Ricardo', 'Irene', 'Ex-trabajador']));
+    expect(Object.keys(result)).toEqual(expect.arrayContaining(['Carlos', 'Elena', 'Ex-trabajador']));
     expect(result['Ex-trabajador']).toMatchObject({ totalHours: 5, totalCost: 50, completedShifts: 1, isOrphaned: true });
   });
 });

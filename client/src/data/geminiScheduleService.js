@@ -115,18 +115,18 @@ Genera una respuesta EXCLUSIVAMENTE en formato JSON válido sin texto previo ni 
 {
   "meta": { "week": "Semana X", "dateRange": "Fechas", "status": "Operativa Activa" },
   "schedule": {
-    "martes": { "title": "Martes", "badge": "Arranque", "tasks": [{ "id": "m1", "text": "Texto", "location": "Alquileres Norte", "timeFrame": "09:00 - 11:00", "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Alquileres Norte", "assigned": ["Gonzalo"], "completed": false }] },
+    "martes": { "title": "Martes", "badge": "Arranque", "tasks": [{ "id": "m1", "text": "Texto", "location": "Alquileres Norte", "timeFrame": "09:00 - 11:00", "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Alquileres Norte", "assigned": ["Nombre exacto del equipo"], "completed": false }] },
     "miercoles": { "title": "Miércoles", "badge": "Pre-carga", "tasks": [...] },
     "jueves": { "title": "Jueves", "badge": "Eventos", "tasks": [...] },
     "viernes": { "title": "Viernes", "badge": "Cierre", "tasks": [...] }
   },
   "saturdaySpecial": {
     "title": "Sábado — Eventos Simultáneos",
-    "weddings": [{ "location": "Lugar", "truck": "Camión X", "details": "Detalles", "timeFrame": "10:00 - 02:00", "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Lugar", "assigned": ["Gonzalo"] }]
+    "weddings": [{ "location": "Lugar", "truck": "Camión X", "details": "Detalles", "timeFrame": "10:00 - 02:00", "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Lugar", "assigned": ["Nombre exacto del equipo"] }]
   },
   "sundayMonday": {
     "title": "Domingo & Lunes — Logística Inversa",
-    "tasks": [{ "id": "sl1", "text": "Texto", "location": "Almacén", "timeFrame": "09:00 - 14:00", "mapsUrl": "", "assigned": ["Jeferson"], "targetDay": "Domingo", "completed": false }]
+    "tasks": [{ "id": "sl1", "text": "Texto", "location": "Almacén", "timeFrame": "09:00 - 14:00", "mapsUrl": "", "assigned": ["Nombre exacto del equipo"], "targetDay": "Domingo", "completed": false }]
   }
 }`;
 }
