@@ -29,6 +29,12 @@ _Resumen de lo que ya está hecho y por qué es así. El detalle de cada cambio 
 - La ventana de fichajes de una semana es martes 00:00 → martes siguiente (incluye domingo y lunes de cola) y conserva los turnos abiertos (`fichajesDeLaSemana`).
 - Nómina fija se decide por `isPayroll` del dato, nunca por nombre.
 
+## Rendimiento (28/09)
+- **Carga por partes:** el panel de admin y sus editores van con `React.lazy` (App.jsx); lo que descarga un trabajador pasó de 985 KB a 356 KB. Si tras un despliegue falta un trozo, `main.jsx` recarga una vez.
+- **Nada se redibuja entero cada segundo:** lo que cambia cada segundo (cronómetros, dinero en directo) va en `<EnVivo>`; las pantallas se recalculan cada 15–30 s.
+- **Dinero en tiempo real** (`costeEnVivo.js`): solo en vistas con sesión (monitor en vivo de admin/socias y Saldos), nunca en la vista pública; con bolsa, como en Saldos.
+- **Gemini, revisar antes de aplicar** (`diffSemana.js`): qué cambia por día y avisos de gente o camiones inventados y de solapes de horario.
+
 ## Forma de trabajar
 - **Build verde ≠ funciona.** Tras un refactor grande, barrido de ESLint (`no-undef`) — hubo pantallas en negro por referencias colgando — y mirar la app desplegada.
 - Los efectos con `[]` congelan las funciones de la primera render: quien las llame desde un `setInterval` lo hace por `ref`.

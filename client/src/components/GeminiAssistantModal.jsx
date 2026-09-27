@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Sparkles, Check, AlertCircle, RefreshCw, Key, Wand2, BrainCircuit, X } from 'lucide-react';
 import { generateScheduleWithGemini, extraerMemoriaDelPrompt, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
 import { useMemoriaIa } from '../hooks/useMemoriaIa';
+import { diffSemana, avisosDeSemana } from '../data/diffSemana';
+import CambiosPropuestos from './asistente/CambiosPropuestos';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input, AreaTexto } from './ui/Campo';
@@ -207,16 +209,11 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
             <span className="text-[11px] text-slate-400">{generatedJson.meta?.week}</span>
           </div>
 
-          <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs space-y-3 max-h-60 overflow-y-auto">
-            <div className="font-bold text-white">{generatedJson.saturdaySpecial?.title}</div>
-            <ul className="space-y-1.5 text-slate-300">
-              {(generatedJson.saturdaySpecial?.weddings || []).map((w, idx) => (
-                <li key={idx} className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
-                  <span className="font-bold text-amber-300">{w.location}</span> ({w.truck}) - {w.details}
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* Qué cambia y qué revisar antes de aplicar (antes solo se veían las bodas del sábado) */}
+          <CambiosPropuestos
+            diff={diffSemana(activeWeekData, generatedJson)}
+            avisos={avisosDeSemana(generatedJson, { equipo: workersList, camiones: (activeWeekData?.trucks || []).map(t => t?.name) })}
+          />
 
           <button
             onClick={handleApply}
