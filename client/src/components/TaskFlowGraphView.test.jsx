@@ -20,10 +20,16 @@ describe('TaskFlowGraphView — tareas hechas', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it('BUG evitado: una semana ya terminada NO enseña como pendientes las bodas del sábado ni las tareas de domingo/lunes', () => {
+  it('solo tacha lo que alguien marcó, también en una semana ya terminada (nada se da por hecho por la hora)', () => {
     vi.setSystemTime(new Date(2026, 8, 22, 12, 0)); // martes siguiente: la semana 15-20 ya pasó entera
-    const { container } = render(<TaskFlowGraphView activeWeekData={semana()} workersList={[{ name: 'Ana', avatar: '🚚' }]} />);
-    expect(cuentaHechas(container)).toBeGreaterThanOrEqual(3); // martes + boda + domingo tachadas
+    const { container, unmount } = render(<TaskFlowGraphView activeWeekData={semana()} workersList={[{ name: 'Ana', avatar: '🚚' }]} />);
+    expect(cuentaHechas(container)).toBe(0);
+    unmount();
+
+    const w = semana();
+    w.sundayMonday.tasks[0].completed = true;
+    const { container: conUna } = render(<TaskFlowGraphView activeWeekData={w} workersList={[{ name: 'Ana', avatar: '🚚' }]} />);
+    expect(cuentaHechas(conUna)).toBeGreaterThanOrEqual(1);
   });
 
   it('una semana futura no tacha nada', () => {

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId } from 'react';
 import { AlertTriangle, CheckCircle, Info, X, Trash2 } from 'lucide-react';
 
 export default function PremiumDialog({
@@ -10,6 +10,7 @@ export default function PremiumDialog({
   onConfirm,
   onCancel,
 }) {
+  const idTitulo = useId();
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -85,8 +86,11 @@ export default function PremiumDialog({
         className={`relative w-full max-w-sm transform overflow-hidden rounded-3xl bg-slate-900 border border-slate-800 p-6 text-left align-middle shadow-2xl transition-all shadow-${colorClasses.shadow} animate-in fade-in zoom-in-95 duration-200`}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={idTitulo}
       >
         <button
+          type="button"
+          aria-label="Cerrar"
           onClick={onCancel}
           className="absolute right-4 top-4 rounded-full p-1 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
         >
@@ -98,7 +102,7 @@ export default function PremiumDialog({
             <Icon className={`h-7 w-7 ${colorClasses.text}`} aria-hidden="true" />
           </div>
           
-          <h3 className="text-lg font-bold text-white font-['Outfit'] mb-2">
+          <h3 id={idTitulo} className="text-lg font-bold text-white font-['Outfit'] mb-2">
             {title}
           </h3>
           

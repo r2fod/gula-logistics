@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Check, AlertCircle, RefreshCw, Key, Wand2 } from 'lucide-react';
-import { generateScheduleWithGemini, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
+import { generateScheduleWithGemini, extraerMemoriaDelPrompt, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
 import { getAiMemories, addAiMemory } from '../data/apiService';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
@@ -44,15 +44,20 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
     setErrorMsg('');
     setGeneratedJson(null);
 
-    const { generatedJson: result, errorMsg: err, extractedMemory } = await generateScheduleWithGemini({ prompt, apiKey, activeWeekData, roster: workersList, allWeeks, aiMemories });
+    // La planificación y el posible recuerdo a largo plazo van a la vez (el
+    // recuerdo no retrasa la respuesta). El servidor no guarda duplicados.
+    const [{ generatedJson: result, errorMsg: err }, recuerdo] = await Promise.all([
+      generateScheduleWithGemini({ prompt, apiKey, activeWeekData, roster: workersList, allWeeks, aiMemories }),
+      extraerMemoriaDelPrompt({ prompt, apiKey })
+    ]);
     setGeneratedJson(result);
     if (err) setErrorMsg(err);
-    
-    if (extractedMemory) {
-      const newMem = await addAiMemory(extractedMemory);
-      if (newMem) setAiMemories(prev => [newMem, ...prev]);
+
+    if (recuerdo) {
+      const newMem = await addAiMemory(recuerdo);
+      if (newMem && !aiMemories.some(m => m._id === newMem._id)) setAiMemories(prev => [newMem, ...prev]);
     }
-    
+
     setLoading(false);
   };
 

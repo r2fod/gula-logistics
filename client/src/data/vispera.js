@@ -13,22 +13,32 @@ const inicioHora = (task) => {
   return m ? Number(m[1]) * 60 + Number(m[2]) : Infinity; // sin horario, al final
 };
 
-// { fecha, semana, tareas: [{ task, idx }] } o null. Son TODAS las tareas del lunes de la
-// semana anterior (semana NO borrador): las que tienen "Día Específico" Lunes y las que
-// no lo tienen (sin él cuentan como lunes, ver resolveTaskEvalDay), ordenadas por hora.
-export function tareasDeLaVispera(semanas = {}, semana, hoy = new Date()) {
+// Clave (en `semanas`) de la semana NO borrador cuyo lunes de cola es la víspera
+// de `semana` — el lunes justo anterior a su martes —, con la fecha de ese lunes.
+// null si no hay fechas legibles o esa semana no está en el planning. Es la única
+// forma de encontrar "la semana de la víspera": la usan la tarjeta del Cuadrante y
+// el salto del editor (ordenar las semanas y coger la anterior fallaba si faltaba
+// alguna semana entre medias).
+export function semanaDeLaVispera(semanas = {}, semana, hoy = new Date()) {
   const rango = getWeekRange(semana, hoy);
   if (!rango) return null;
-
   const fecha = new Date(rango.start.getFullYear(), rango.start.getMonth(), rango.start.getDate() - 1);
-  const previa = Object.values(semanas || {}).find(w => {
+  const entrada = Object.entries(semanas || {}).find(([, w]) => {
     if (!w || w === semana || esBorradorSemana(w)) return false;
     const r = getWeekRange(w, hoy);
     const lunes = r && resolveTaskDate(r, 'lunes');
     return lunes && mismoDia(lunes, fecha);
   });
-  if (!previa) return null;
+  return entrada ? { clave: entrada[0], semana: entrada[1], fecha } : null;
+}
 
+// { fecha, semana, tareas: [{ task, idx }] } o null. Son TODAS las tareas del lunes de la
+// semana anterior (semana NO borrador): las que tienen "Día Específico" Lunes y las que
+// no lo tienen (sin él cuentan como lunes, ver resolveTaskEvalDay), ordenadas por hora.
+export function tareasDeLaVispera(semanas = {}, semana, hoy = new Date()) {
+  const encontrada = semanaDeLaVispera(semanas, semana, hoy);
+  if (!encontrada) return null;
+  const { semana: previa, fecha } = encontrada;
   const tareas = (previa.sundayMonday?.tasks || [])
     .map((task, idx) => ({ task, idx }))
     .filter(({ task }) => task && typeof task === 'object' && task.active !== false && resolveTaskEvalDay('domingo', task) === 'lunes')

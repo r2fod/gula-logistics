@@ -358,26 +358,13 @@ export function isTaskPast(weekData, dayKey, task, now = new Date(), graceMinute
 }
 
 // ¿Se da la tarea por hecha? ÚNICA fuente de verdad para lo que se ve (tachado
-// y check), lo que hace un clic y lo que se guarda solo:
-//   · `completed: true` -> hecha (alguien la marcó, o se fichó su salida).
-//   · `reopened: true`  -> alguien la DESMARCÓ a propósito: el reloj ya no la
-//     vuelve a dar por hecha (antes se volvía a marcar sola a los 45 min y
-//     "no dejaba desmarcar").
-//   · si no, hecha cuando pasó su hora + margen (TASK_COMPLETION_GRACE_MINUTES).
-// El mismo margen para verla y para guardarla: antes se TACHABA al acabar su
-// hora exacta pero no se guardaba hasta 45 min después, y como el clic
-// actuaba sobre el dato (no sobre lo que se veía), pulsar una tarea tachada
-// la MARCABA de verdad en vez de desmarcarla.
-export function isTaskEffectivelyDone(weekData, dayKey, task, now = new Date(), graceMinutes = TASK_COMPLETION_GRACE_MINUTES) {
-  if (task && typeof task === 'object') {
-    if (task.completed) return true;
-    if (task.reopened) return false;
-  }
-  // A petición del usuario, las tareas YA NO se marcan solas cuando pasa su hora.
-  // Solo se marcan cuando los chicos hacen clic en ellas.
-  // if (isWeekFinished(weekData, now, graceMinutes)) return true;
-  // return isTaskPast(weekData, dayKey, task, now, graceMinutes);
-  return false;
+// y check) y lo que hace un clic. Solo lo que alguien marcó: `completed: true`
+// (clic, o salida de un fichaje de esa tarea). Nada se da por hecho solo al pasar
+// su hora ni al terminar la semana — decisión del usuario (25/09): antes se
+// tachaban tareas que nadie había hecho. `reopened` (desmarcada a mano) sigue
+// guardándose, pero ya no cambia nada. Firma sin tocar: la llaman muchas vistas.
+export function isTaskEffectivelyDone(weekData, dayKey, task) {
+  return !!(task && typeof task === 'object' && task.completed);
 }
 
 // ¿Ha terminado la semana? Sí cuando ya pasó su último día (el domingo del

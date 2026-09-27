@@ -4,7 +4,7 @@ import request from 'supertest';
 import mongoose from 'mongoose';
 
 vi.mock('../models/LogisticsWeek.model.js', () => ({
-  LogisticsWeek: { find: vi.fn(), findOne: vi.fn(), findOneAndUpdate: vi.fn(), create: vi.fn() },
+  LogisticsWeek: { find: vi.fn(), findOne: vi.fn(), findOneAndUpdate: vi.fn(), create: vi.fn(), deleteOne: vi.fn() },
 }));
 vi.mock('../models/Logistics.model.js', () => ({
   Logistics: { findOne: vi.fn(), create: vi.fn() },
@@ -329,6 +329,61 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
       .patch('/api/logistics/weeks/week_3/tasks')
       .send({ dayKey: 'martes', taskIndex: 0, completed: true });
     expect(res.status).toBe(404);
+  });
+});
+
+describe('PATCH — completedAt (endpoint público)', () => {
+  const tarea = () => LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_3', schedule: { martes: { tasks: [{ text: 'Cargar', completed: false }] } } });
+  const enviar = (body) => request(buildApp()).patch('/api/logistics/weeks/week_3/tasks').send({ dayKey: 'martes', taskIndex: 0, completed: true, ...body });
+
+  it('guarda la hora real si es una fecha ISO', async () => {
+    tarea();
+    LogisticsWeek.findOneAndUpdate.mockResolvedValue({ weekId: 'week_3' });
+    const hora = '2026-09-27T10:05:00.000Z';
+    expect((await enviar({ completedAt: hora })).status).toBe(200);
+    expect(LogisticsWeek.findOneAndUpdate.mock.calls[0][1].$set['schedule.martes.tasks.0']).toEqual({ text: 'Cargar', completed: true, completedAt: hora });
+  });
+
+  it('BUG evitado: rechaza objetos, números o textos que no son fechas (antes se guardaban tal cual)', async () => {
+    tarea();
+    for (const completedAt of [{ $gt: '' }, 123, 'no es fecha', 'x'.repeat(500)]) {
+      expect((await enviar({ completedAt })).status).toBe(400);
+    }
+    expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('marcar una tarea ya hecha no la reescribe (conserva la hora de la primera vez)', async () => {
+    LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_3', schedule: { martes: { tasks: [{ text: 'Cargar', completed: true, completedAt: '2026-09-27T08:00:00.000Z' }] } } });
+    const r = await enviar({ completedAt: '2026-09-27T10:00:00.000Z' });
+    expect(r.body.unchanged).toBe(true);
+    expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe('DELETE /api/logistics/weeks/:weekId (solo borradores)', () => {
+  const borrar = (token = adminAuthHeader()) => request(buildApp()).delete('/api/logistics/weeks/week_x').set('Authorization', token);
+
+  it('exige admin', async () => {
+    expect((await request(buildApp()).delete('/api/logistics/weeks/week_x')).status).toBe(401);
+  });
+
+  it('borra un borrador', async () => {
+    LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_x', meta: { status: 'Borrador' } });
+    LogisticsWeek.deleteOne.mockResolvedValue({ deletedCount: 1 });
+    expect((await borrar()).status).toBe(200);
+    expect(LogisticsWeek.deleteOne).toHaveBeenCalledWith({ weekId: 'week_x', 'meta.status': 'Borrador' });
+  });
+
+  it('BUG evitado: una semana aceptada NO se puede borrar (409), ni con sesión de admin', async () => {
+    LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_x', meta: { status: 'Operativa Activa' } });
+    const r = await borrar();
+    expect(r.status).toBe(409);
+    expect(LogisticsWeek.deleteOne).not.toHaveBeenCalled();
+  });
+
+  it('404 si no existe', async () => {
+    LogisticsWeek.findOne.mockResolvedValue(null);
+    expect((await borrar()).status).toBe(404);
   });
 });
 

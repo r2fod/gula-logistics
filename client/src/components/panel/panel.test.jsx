@@ -166,7 +166,7 @@ describe('AvisarCambiosModal', () => {
   it('sin elegir a nadie se avisa a todos (lista vacía)', () => {
     const onEnviar = vi.fn();
     render(<AvisarCambiosModal abierto onCerrar={() => {}} workersList={equipo} onEnviar={onEnviar} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar Aviso' }));
+    fireEvent.click(screen.getByRole('button', { name: /Enviar Aviso/ }));
     expect(onEnviar).toHaveBeenCalledWith([]);
   });
 
@@ -176,7 +176,7 @@ describe('AvisarCambiosModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /Ana/ }));
     fireEvent.click(screen.getByRole('button', { name: /Luis/ }));
     fireEvent.click(screen.getByRole('button', { name: /Ana/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar Aviso' }));
+    fireEvent.click(screen.getByRole('button', { name: /Enviar Aviso/ }));
     expect(onEnviar).toHaveBeenCalledWith(['Luis']);
   });
 
@@ -185,7 +185,7 @@ describe('AvisarCambiosModal', () => {
     render(<AvisarCambiosModal abierto onCerrar={() => {}} workersList={equipo} onEnviar={onEnviar} />);
     fireEvent.click(screen.getByRole('button', { name: /Ana/ }));
     fireEvent.click(screen.getByRole('button', { name: /Avisar a Todos/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar Aviso' }));
+    fireEvent.click(screen.getByRole('button', { name: /Enviar Aviso/ }));
     expect(onEnviar).toHaveBeenCalledWith([]);
   });
 
@@ -196,12 +196,12 @@ describe('AvisarCambiosModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /Ana/ }));
     rerender(<AvisarCambiosModal abierto={false} {...props} />);
     rerender(<AvisarCambiosModal abierto {...props} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Enviar Aviso' }));
+    fireEvent.click(screen.getByRole('button', { name: /Enviar Aviso/ }));
     expect(onEnviar).toHaveBeenCalledWith([]);
   });
 
   it('mientras envía, el botón está desactivado', () => {
     render(<AvisarCambiosModal abierto onCerrar={() => {}} workersList={equipo} enviando onEnviar={() => {}} />);
-    expect(screen.getByRole('button', { name: 'Enviando...' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Enviando Aviso/ })).toBeDisabled();
   });
 });

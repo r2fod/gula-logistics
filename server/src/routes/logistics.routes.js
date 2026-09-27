@@ -240,18 +240,17 @@ router.post('/weeks/draft', requireAdmin, async (req, res) => {
 router.delete('/weeks/:weekId', requireAdmin, async (req, res) => {
   try {
     const { weekId } = req.params;
-    if (mongoose.connection.readyState === 1) {
-      const result = await LogisticsWeek.deleteOne({ weekId });
-      if (result.deletedCount === 0) {
-        return res.status(404).json({ success: false, message: 'Semana no encontrada' });
-      }
-      delete currentMemoryWeeks[weekId];
-    } else {
-      if (!currentMemoryWeeks[weekId]) {
-        return res.status(404).json({ success: false, message: 'Semana no encontrada' });
-      }
-      delete currentMemoryWeeks[weekId];
+    const conMongo = mongoose.connection.readyState === 1;
+    const semana = conMongo ? await LogisticsWeek.findOne({ weekId }) : currentMemoryWeeks[weekId];
+    if (!semana) return res.status(404).json({ success: false, message: 'Semana no encontrada' });
+    // Solo BORRADORES (el único botón que borra está en su aviso). Una semana
+    // aceptada tiene tareas hechas, costes y el enlace de los trabajadores: un
+    // fallo de la interfaz o un token robado no debe poder borrarla de un golpe.
+    if (semana.meta?.status !== 'Borrador') {
+      return res.status(409).json({ success: false, message: 'Solo se pueden eliminar semanas en borrador' });
     }
+    if (conMongo) await LogisticsWeek.deleteOne({ weekId, 'meta.status': 'Borrador' });
+    delete currentMemoryWeeks[weekId];
     return res.json({ success: true, message: 'Semana eliminada' });
   } catch (error) {
     console.error('Error al eliminar semana:', error);
@@ -276,6 +275,13 @@ router.patch('/weeks/:weekId/tasks', async (req, res) => {
     }
     if (reopened !== undefined && typeof reopened !== 'boolean') {
       return res.status(400).json({ error: 'reopened, si se envía, debe ser un booleano' });
+    }
+    // Endpoint público: `completedAt` solo puede ser una fecha (o null al
+    // desmarcar). Antes se guardaba tal cual — cualquiera podía meter objetos o
+    // textos enormes dentro de una tarea.
+    if (completedAt !== undefined && completedAt !== null
+      && !(typeof completedAt === 'string' && completedAt.length <= 40 && !Number.isNaN(Date.parse(completedAt)))) {
+      return res.status(400).json({ error: 'completedAt, si se envía, debe ser una fecha ISO o null' });
     }
 
     if (mongoose.connection.readyState !== 1) {
@@ -303,20 +309,20 @@ router.patch('/weeks/:weekId/tasks', async (req, res) => {
     // autoCompletePastTasks) hacía que TODOS los guardados de admin
     // chocaran con "Alguien más ha guardado cambios" sin que nadie hubiera
     // cambiado nada. PATCH es idempotente: repetirlo no debe tocar el doc.
-    // `reopened` (opcional) = alguien DESMARCÓ la tarea a propósito: el reloj del
-    // cliente ya no debe volver a darla por hecha. Solo se puede tocar junto
-    // a `completed`; el endpoint sigue sin poder escribir nada más.
+    // `reopened` (opcional) = alguien DESMARCÓ la tarea a propósito, y
+    // `completedAt` (opcional) la hora real en que se marcó. Solo se tocan junto
+    // a `completed`; el endpoint sigue sin poder escribir nada más. Marcar una
+    // tarea que ya estaba hecha no cambia nada: conserva la hora de la primera vez.
     const currentCompleted = !!(current && typeof current === 'object' && current.completed);
     const currentReopened = !!(current && typeof current === 'object' && current.reopened);
-    if (currentCompleted === completed && (reopened === undefined || currentReopened === reopened) && (!completedAt)) {
+    if (currentCompleted === completed && (reopened === undefined || currentReopened === reopened)) {
       return res.json({ success: true, unchanged: true, data: week });
     }
 
-    const changes = { completed, reopened: reopened !== undefined ? reopened : currentReopened };
-    if (completedAt !== undefined) {
-      changes.completedAt = completedAt;
-    }
-    
+    const changes = { completed };
+    if (reopened !== undefined) changes.reopened = reopened;
+    if (completedAt !== undefined) changes.completedAt = completedAt;
+
     const updatedTask = (current && typeof current === 'object') ? { ...current, ...changes } : { text: current, ...changes };
     const fieldPath = isSabado
       ? `saturdaySpecial.weddings.${taskIndex}`

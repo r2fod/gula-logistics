@@ -34,21 +34,14 @@ describe('ScheduleTab — bloque domingo/lunes', () => {
     expect(screen.getByText('Sin día fijado (domingo o lunes)')).toBeInTheDocument();
   });
 
-  it('BUG evitado: el domingo por la noche solo se tacha la de domingo cuya hora ya pasó', () => {
-    vi.setSystemTime(new Date(2026, 8, 20, 20, 39));
-    renderTab(semana(tareas));
+  it('BUG evitado (25/09): aunque haya pasado su hora, solo se tacha lo que alguien marcó', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 20, 0)); // lunes por la noche: ya pasaron todas
+    const conUnaHecha = tareas.map(t => (t.text === 'Recogida en finca' ? { ...t, completed: true } : t));
+    renderTab(semana(conUnaHecha));
 
     expect(cardOf('Recogida en finca').className).toContain('line-through');
-    expect(cardOf('Devolución camión').className).not.toContain('line-through'); // es del lunes
-    expect(cardOf('Tarea sin día').className).not.toContain('line-through'); // ambigua -> no se da por hecha
-  });
-
-  it('el lunes a las 13:10 la devolución de 13:00-13:30 sigue viva y la sin día de 09:00-10:00 ya pasó', () => {
-    vi.setSystemTime(new Date(2026, 8, 21, 13, 10));
-    renderTab(semana(tareas));
-
     expect(cardOf('Devolución camión').className).not.toContain('line-through');
-    expect(cardOf('Tarea sin día').className).toContain('line-through');
+    expect(cardOf('Tarea sin día').className).not.toContain('line-through');
   });
 
   it('una semana futura no tacha nada aunque hoy sea domingo por la noche', () => {
