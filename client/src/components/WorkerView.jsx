@@ -86,11 +86,6 @@ export default function WorkerView({
     }
   };
 
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   const currentWorkerObj = workersList.find(w => w.name.toLowerCase() === workerName.toLowerCase()) || {
     name: workerName,
     role: "Operativa Logística",
@@ -99,6 +94,19 @@ export default function WorkerView({
     isPayroll: false,
     rate: 10
   };
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (pushStatus === 'granted') {
+      // Si ya hay permiso, nos aseguramos de que haya suscripción en el backend
+      // por si es un dispositivo nuevo o limpió datos.
+      subscribeToPush(currentWorkerObj.name).catch(console.error);
+    }
+  }, [pushStatus, currentWorkerObj.name]);
 
   // Worker's own active shift. El servidor devuelve los fichajes más
   // recientes primero (para el historial), así que "el último del array"
@@ -897,6 +905,7 @@ export default function WorkerView({
                               dayKey={dayGroup.key}
                               isCompleted={isTaskDone(dayGroup.key, task)}
                               isDayInFuture={isDayInFuture(dayGroup.key)}
+                              jornadaStarted={jornadaStarted}
                               jornadaGateClosed={jornadaGateClosed}
                               gateText={gateText()}
                               onToggleTask={onToggleTask}
@@ -925,6 +934,7 @@ export default function WorkerView({
                               wedding={w}
                               isCompleted={isTaskDone('sabado', w)}
                               isDayInFuture={isDayInFuture('sabado')}
+                              jornadaStarted={jornadaStarted}
                               jornadaGateClosed={jornadaGateClosed}
                               gateText={gateText()}
                               onToggleTask={onToggleTask}

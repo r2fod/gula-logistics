@@ -97,6 +97,8 @@ export default function App() {
   const rangoSemanaActiva = useMemo(() => getWeekRange(activeWeek), [activeWeek]);
   const currentWeekClockEntries = useMemo(() => {
     const abiertos = Object.values(pairShiftsFromEntries(activeClockEntries).activeShifts);
+    // fichajesDeLaSemana de data/fichajes.js se encarga de todo: 
+    // ventana correcta [martes 00:00, martes siguiente 00:00) y turnos abiertos.
     return fichajesDeLaSemana(activeClockEntries, rangoSemanaActiva, abiertos);
   }, [activeClockEntries, rangoSemanaActiva]);
 
