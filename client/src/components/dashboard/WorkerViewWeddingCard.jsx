@@ -17,9 +17,9 @@ export default function WorkerViewWeddingCard({
   jornadaGateClosed, 
   gateText,
   onToggleTask,
-  resolveRealTaskIndex,
   getWeddingTaskName,
-  onClockIn
+  onClockIn,
+  jornadaStarted
 }) {
   const taskName = getWeddingTaskName(wedding);
 
@@ -80,7 +80,7 @@ export default function WorkerViewWeddingCard({
         </div>
       )}
 
-      {!isCompleted && (
+      {!isCompleted && !jornadaStarted && (
         <div className="ml-6 pt-1">
           {isDayInFuture ? (
             <AvisoBloqueado>Aún no ha llegado este día</AvisoBloqueado>

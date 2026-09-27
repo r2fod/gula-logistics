@@ -21,7 +21,8 @@ export default function WorkerViewTaskItem({
   onToggleTask,
   toStorageDayKey,
   resolveRealTaskIndex,
-  onClockIn
+  onClockIn,
+  jornadaStarted
 }) {
   const taskText = typeof task === 'object' ? task.text : task;
   const timeFrame = typeof task === 'object' ? task.timeFrame : null;
@@ -91,7 +92,7 @@ export default function WorkerViewTaskItem({
         </div>
       )}
 
-      {!isCompleted && (
+      {!isCompleted && !jornadaStarted && (
         isDayInFuture ? (
           <AvisoBloqueado className="mt-1 ml-6 self-start flex">Aún no ha llegado este día</AvisoBloqueado>
         ) : jornadaGateClosed ? (
