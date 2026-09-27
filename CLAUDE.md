@@ -1,51 +1,47 @@
 # Gula Logística — CLAUDE.md
-> Live production app. Read `CONTEXTO.md` first.
+> App en producción. Leer primero `CONTEXTO.md` (negocio), luego `PENDIENTES.md` (lo abierto) y `MEJORAS.md` (decisiones y lecciones).
 
 ## CORE
-- Lang: Spanish ONLY (código, comentarios, UI, commits). El código de hoy tiene comentarios en inglés en `server/src/routes/auth.routes.js`, `requireAdmin.js`, `authToken.js` — no reescribir solo por esto, pero todo lo nuevo va en español.
-- Output: Código directo. Sin texto de relleno antes/después.
-- Privacy: Repo tratado como público. Nunca nombres reales, teléfonos, saldos en € ni contraseñas en código, fixtures o commits — pasó exactamente esto con `balancesData.js` y con las claves de admin, ver `MEJORAS.md`.
-- Sync: Actualizar `CONTEXTO.md`/`PENDIENTES.md` en el mismo commit si el cambio afecta al negocio o deja algo a medias.
+- Idioma: SOLO español (código, comentarios, UI, commits). Hay comentarios viejos en inglés (auth): no reescribirlos solo por eso.
+- Salida: código directo, sin relleno.
+- Privacidad: el repo es PÚBLICO. Nunca nombres reales, teléfonos, tarifas, saldos en €, contraseñas ni tokens en código, tests, docs ni commits (en tests: Ana, Luis, Eva…). Ya pasó con `balancesData.js` y con claves de admin (ver `MEJORAS.md`).
+- Docs: actualizar `CONTEXTO.md`/`PENDIENTES.md` en el mismo commit si el cambio afecta al negocio o deja algo a medias. Cortos: lo resuelto sale de `PENDIENTES.md` (queda en git), sin narrativas largas.
 
 ## DATA SCHEMA
-- `meta.dateRange` de la semana: texto legible tipo `Del 15 al 20 de Septiembre de 2026` — de él salen las fechas reales de cada tarea (`taskPlanning.js`); si no se puede leer, no se auto-marca ni se tacha nada. `sundayMonday.tasks` es una sola lista domingo+lunes: usar `targetDay` ('Domingo'/'Lunes'); sin él cuenta como lunes.
-- Texto de tarea: `"EVENTO - Tarea"` (guion normal entre espacios; ver `client/src/data/eventNaming.js`) — de ahí sale el coste por evento. Las rayas largas (—) son descripción, no separador.
-- Task ID: string corta manual por día (`m1`, `mi2`, `v1c`...), sin sistema de migración — al insertar una tarea nueva, elegir un id que no choque con los del mismo día.
-- Week ID: `week_<Date.now()>` al crear semana nueva a mano; los borradores automáticos usan `week_auto_AAAA-MM-DD` (martes que la abre) para que dos sesiones no dupliquen; `meta.status` es `"Borrador"` hasta que un admin la acepta (`"Operativa Activa"`); `week_3` es la semilla base (no renombrar sin actualizar `server/src/data/logisticsData.js` y el bootstrap de Mongo).
-- WorkerBalance ID: `nombre.toLowerCase().replace(/\s+/g, '-')` — cambiar el nombre de un trabajador sin actualizar este id rompe el vínculo con sus fichajes/saldos.
-- ClockEntry ID: `Date.now().toString()`.
-- Toda tarea (día normal, boda, domingo/lunes) lleva `assigned: [...]` con nombres exactos de `WORKERS_LIST` — es la fuente de verdad para el grafo, `WorkerView` y `LiveMonitorPanel`. Renombrar a alguien en `WORKERS_LIST` sin tocar los `assigned` existentes los deja huérfanos.
+- `meta.dateRange` (`Del 15 al 20 de Septiembre de 2026`): de él salen las fechas reales (`taskPlanning.js`); ilegible = nada se resuelve por fecha. Semana: martes→domingo + lunes de COLA. `sundayMonday.tasks` es una sola lista domingo+lunes: `targetDay` ('Domingo'/'Lunes'); sin él cuenta como lunes.
+- Tarea: `{ id, text, timeFrame "HH:MM - HH:MM", assigned[], completed, completedAt, reopened, active, event, targetDay }`. `active: false` = desactivada (no se borra). Se marca SOLO a mano o al fichar su salida — nada se marca solo por la hora.
+- Texto de tarea `"EVENTO - Tarea"` (guion normal entre espacios, `data/eventNaming.js`; `+` para varios eventos) — de ahí sale el coste por evento. No reescribir textos de tareas ya fichadas (el fichaje guarda el texto): usar el campo `event`.
+- Task ID: corta y manual por día (`m1`, `mi2`, `v1c`…), sin chocar con las del mismo día. `taskRef` de los fichajes apunta por índice (ver `PENDIENTES.md`).
+- Week ID: `week_<Date.now()>` a mano; borradores automáticos `week_auto_AAAA-MM-DD` (martes que la abre). `meta.status` `"Borrador"` hasta que un admin la acepta (`"Operativa Activa"`). `week_3` es la semilla base (no renombrar sin tocar `server/src/data/logisticsData.js` y el bootstrap).
+- Equipo: en Mongo (`/api/roster`, `hooks/useWorkers.js`); `DEFAULT_WORKERS_LIST` solo es el arranque. `assigned` usa sus nombres exactos: renombrar a alguien sin migrar los `assigned` los deja huérfanos.
+- WorkerBalance ID: `nombre.toLowerCase().replace(/\s+/g, '-')` — cambiar el nombre sin el id rompe su vínculo con fichajes/saldos.
+- ClockEntry ID: `crypto.randomUUID()` (`data/fichajes.js`, `crearFichaje`). `POST /api/clock` es idempotente por id (cola offline).
 
 ## CODE & UX
-- Diffs mínimos. Responsive 320–1920px de verdad — hoy había overflow horizontal real en móvil en dos selectores, ver `MEJORAS.md`.
-- UI: Solo Tailwind + transiciones/animaciones nativas (`animate-fadeIn`, `animate-aparecer`, `animate-pop`, `animate-pulse`...; los keyframes viven en `client/src/index.css`). Iconos: la regla global de `index.css` ya los anima al pasar el ratón; para una animación propia, clase `icono-campana|camion|reloj|latido|destello` en el botón. Todo respeta "reducir movimiento". Nada de librerías de animación.
-- UI visual: verificar abriendo la app desplegada (https://r2fod.github.io/gula-logistics) y mirando de verdad, no solo que compile. `npm run build` en verde no significa que se vea bien.
-- Componentes base (`client/src/components/ui/`) — **usarlos antes de copiar clases**: `Modal` + `CabeceraModal` (todo modal nuevo; ya trae Escape, scroll y botón de cerrar), `Input`/`Selector`/`AreaTexto`/`Campo` (formularios), `Tarjeta`, `EstadoVacio`, `BarraProgreso`, `KpiCard`, `Seccion`. Una acción nueva del panel va en `components/panel/acciones.js` (una sola lista para escritorio, móvil y menú lateral). Importes/horas: `data/formatoFinanciero.js`; fechas y horas: `utils/dateUtils.js` (nada de `toFixed`/`toLocale*` sueltos); un fichaje nuevo: `data/fichajes.js` (`crearFichaje`). Iconos: solo lucide en botones y pestañas (los emojis de avatar son datos).
-- Tests: **no hay suite de tests automatizados en este proyecto.** Verificación = build limpio + comprobación manual en el navegador (desktop y móvil) + `curl` contra la API de Render para cambios de backend.
-- Seguridad: nunca contraseñas/secretos hardcodeados en el cliente — todo pasa por `/api/auth/*` contra Mongo. Antes de mergear cualquier código que toque auth o datos financieros, releer `CLAUDE.md` (sección seguridad) y `MEJORAS.md`.
-- Cambios de IA (Gemini u otros): revisar el JSON que devuelven antes de aplicarlo a una semana — puede alucinar asignaciones o camiones que no existen.
+- Diffs mínimos, sin duplicar: buscar primero el helper que ya existe. Responsive 320–1920 px de verdad (sin scroll horizontal).
+- UI: solo Tailwind + animaciones propias (`animate-fadeIn|aparecer|pop|pulse…`, keyframes en `client/src/index.css`; iconos animados por regla global o clase `icono-campana|camion|reloj|latido|destello`). Respetar "reducir movimiento". Sin librerías de animación.
+- Componentes base (`components/ui/`) antes de copiar clases: `Modal`+`CabeceraModal`, `Input`/`Selector`/`AreaTexto`/`Campo`, `Tarjeta`, `EstadoVacio`, `BarraProgreso`, `KpiCard`, `Seccion`, `SelectorPosicion`. Acciones del panel: `components/panel/acciones.js`. Importes/horas: `data/formatoFinanciero.js`; fechas: `utils/dateUtils.js`; fichajes: `data/fichajes.js`. Avisos y confirmaciones: `useDialog()` (`contexts/DialogContext.jsx`), nunca `window.alert/confirm`. Iconos: lucide.
+- Tests (Vitest): `npx vitest run` en `client/` (~490) y en `server/` (~90), `npx eslint <archivos>` en `client/`. Componentes con `client/src/test/render.jsx` (monta los proveedores). Un bug arreglado lleva su test "BUG evitado: …".
+- Verificación = tests + `npm run build` + mirar la app en el navegador (escritorio y móvil) + `curl` a Render si toca servidor. Build verde ≠ funciona.
+- ⚠️ `npm run dev` usa la API de PRODUCCIÓN (`client/.env`): en local solo mirar; nada de fichar, marcar ni guardar.
+- Seguridad: secretos solo en Render/Atlas; todo acceso de admin por `/api/auth/*` y `requireAdmin`. Antes de mergear algo de auth o dinero, releer esta sección y `MEJORAS.md`.
+- IA (Gemini): revisar el JSON antes de aplicarlo a una semana (puede inventar asignaciones o camiones).
 
 ## WORKFLOW
-- No editar `logisticsData.js` (cliente o servidor) esperando que afecte a lo ya desplegado — **el planning vive en Mongo desde hoy**, esos archivos solo son la semilla para un bootstrap desde cero. Para cambiar la semana activa hay que hacer `POST /api/logistics/weeks` con el objeto de semana completo (no parcial, `findOneAndUpdate` sin `$set` reemplaza el documento entero).
-- Dos checkouts en este entorno: este worktree (rama de trabajo) y `/Users/raul/Desktop/projects/gula-logistics` (checkout principal, rama `main`, desde donde se hace merge + push + `npm run deploy`). Ver flujo completo abajo.
-- Deploy cliente: **automático** — cada push a `main` lo despliega la GitHub Action (`.github/workflows/deploy.yml`, Pages en modo workflow; tarda ~1 min, comprobar el hash del bundle en la URL pública). `npm run deploy` (rama `gh-pages`) ya no es lo que se sirve. Deploy servidor: push a `main` dispara auto-deploy en Render (o "Manual Deploy" en su dashboard si no).
-- Git: commit en el worktree → merge a `main` en el checkout principal → push → deploy. No hacer commit directo en el checkout principal salvo para el merge.
+- El planning vive en Mongo: `logisticsData.js` (cliente/servidor) es solo semilla. Cambiar una semana = `POST /api/logistics/weeks` con el objeto COMPLETO (reemplaza el documento; control por `updatedAt`, 409 si alguien guardó antes).
+- Dos checkouts: el worktree (rama de trabajo) y `/Users/raul/Desktop/projects/gula-logistics` (`main`, solo para merge + push). Antes de fusionar, traer `origin/main` a la rama (otras sesiones trabajan en paralelo).
+- Deploy cliente: automático en cada push a `main` (GitHub Action, ~1 min; comprobar `gh run list` y el hash del bundle en la URL pública). Servidor: Render auto-despliega (5–10 min y no avisa: comprobar con `curl` algo observable del cambio).
 
 ```bash
-# Desde el worktree
-git add -A && git commit -m "..."
-
-# Merge + push en el checkout principal
+git add -A && git commit -m "..."                                        # en el worktree
 git -C /Users/raul/Desktop/projects/gula-logistics merge <rama-worktree>
 git -C /Users/raul/Desktop/projects/gula-logistics push origin main
-
-# El cliente se despliega solo al hacer push (GitHub Action); comprobar con:
 gh run list --limit 1
 ```
 
 ## PROHIBITED
-- Contraseñas, tokens o datos financieros reales en código, commits o fixtures.
+- Contraseñas, tokens o datos financieros/personales reales en código, commits, tests o docs.
 - Renombrar `name` de un trabajador, `id` de semana o `weekId` sin migrar las referencias.
-- Dar por buena una vista o flujo solo porque `npm run build` no falla — verificar en el navegador.
-- Volver a poner un secreto de sesión/contraseña en el chat si se puede evitar (usar el flujo del token o pedir al usuario que lo pegue directo en Render/Atlas).
-- Tocar la base de datos `BeraCode_Gula` o cualquier colección `event_*`/`beverages`/`clientes`/`corners`/`departments` — pertenecen a CaterFlow, otro proyecto, mismo cluster.
+- Dar por buena una vista solo porque compila.
+- Poner secretos o contraseñas en el chat (flujo del token o que el usuario lo pegue en Render/Atlas). Borrar datos reales sin permiso explícito.
+- Tocar la base `BeraCode_Gula` o colecciones `event_*`/`beverages`/`clientes`/`corners`/`departments` (CaterFlow, otro proyecto, mismo cluster).
