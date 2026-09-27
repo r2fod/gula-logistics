@@ -1,207 +1,39 @@
-# Mejoras — hechas hoy y candidatas futuras
-
-## App instalable (Chrome/Safari, móvil y Mac) — base para avisos push
-
-Pedido por el usuario: poder "instalar" la app en el móvil y en el Mac como una app de verdad, con vistas a poder mandar avisos push del navegador más adelante (confirmó que ese es el canal que quiere, no WhatsApp ni email).
-
-Añadido lo necesario para que Chrome/Safari ofrezcan "Instalar app" / "Añadir al Dock":
-- `client/public/manifest.json` — nombre "Logística Gula" (mismo patrón que sus otras apps: "Checklist Gula", etc.), `display: standalone`, iconos.
-- `client/public/icons/` — set de iconos (192, 512, 512 maskable, apple-touch-icon) generados a partir del mismo 🚚 que ya usa la app como favicon, sobre fondo `#020617` (slate-950, el mismo de la app) en cuadrado redondeado — confirmado con el usuario que le gustaba este estilo antes de dejarlo así.
-- `client/public/sw.js` — service worker mínimo. A propósito **no cachea nada del bundle** (network passthrough puro) — esta sesión ya sufrió varias veces problemas de caché de Vite sirviendo código viejo, así que mejor no arriesgar eso por la instalabilidad. Ya trae los listeners `push`/`notificationclick` preparados para cuando el backend pueda mandar avisos reales.
-- `client/index.html` — `<link rel="manifest">`, `apple-touch-icon`, `theme-color` y meta tags de `apple-mobile-web-app-*` para que también funcione como PWA en iOS/Mac.
-- `client/src/main.jsx` — registra el service worker.
-
-**Lo que falta y necesita el backend (bloqueado ahora mismo, ver más abajo):** para que lleguen avisos push de verdad cuando cambie algo en el planning, hace falta un endpoint que guarde las suscripciones push de cada trabajador y otro que dispare el aviso (librería `web-push` + claves VAPID) cuando se guarde una semana. No se ha empezado porque el servidor lleva un rato sin desplegar los últimos cambios (ver el punto del bug de `taskRef` más abajo) — no tiene sentido añadir más código de servidor mientras el que ya hay no está en producción.
-
-Verificado en el navegador: manifest y service worker se registran correctamente, sin cachear el bundle.
-
-## "Contigo en esta tarea" en la vista del trabajador (corregido)
-
-Pedido por el usuario: en el link de cada trabajador, saber quién más va a la misma tarea/sede — para poder preguntar por compartir coche a cargar o descargar, etc.
-
-**Primer intento (incorrecto):** mostraba quién estaba fichado en ese momento en general, calculado con `pairShiftsFromEntries(clockEntries).activeShifts`. El usuario lo probó con Jaime (camino a la boda de Cliente15 y Cliente2 en La Vila Joiosa) y salían Persona4 y Persona3 — Persona4 no tiene nada que ver, estaba fichada haciendo preparación de material en el almacén, una tarea sin relación. Fichado ahora ≠ va al mismo sitio.
-
-**Corregido:** ahora se saca de `assigned` de la tarea actual/próxima del propio trabajador (`immediateTask.rawTask.assigned`, o si ya está fichado con `taskRef`, de la tarea real a la que apunta ese `taskRef`) — es decir, compañeros de la MISMA tarea, no cualquiera fichado en paralelo. Cada uno muestra además si ya ha fichado o no (🟢 Ya ha fichado / Aún no ha fichado), cruzando esa lista con `pairShiftsFromEntries` solo para ese estado, no para elegir a quién mostrar.
-
-Verificado con el caso real que reportó el usuario: la vista de Jaime (tarea: Boda Cliente15 y Cliente2) ahora muestra Persona2, Persona3 y Persona8 — los 3 compañeros reales de esa tarea — con Persona3 marcado como ya fichado.
-
-## Selector de hora en el Editor de Planning (antes texto libre)
-
-Pedido por el usuario tras ver que el horario de las tareas se escribía a mano como texto libre ("9:30 - 10:30", "10:00-14:00", "13:00-16:00"...) — de ahí salían la mayoría de las horas mal formateadas y los solapes de camión que costó tanto detectar en esta sesión (un simple espacio o cero de menos ya rompía el parseo en otros sitios de la app).
-
-`AdminTaskEditorModal.jsx` tiene ahora un componente `TimeRangeEditor` (dos `<input type="time">`, entrada y salida) que sustituye el campo de texto libre en los tres sitios donde existía: tareas normales de cada día, bodas del sábado y tareas de domingo/lunes. Lee y escribe el mismo campo `timeFrame` de siempre (string `"HH:MM - HH:MM"`), así que nada más en la app tiene que cambiar. Para tareas sin hora todavía (ej. "Recoger Fulanita", horario "pendiente") hay una casilla aparte "Sin horario fijo (pendiente)" que desactiva los selectores y guarda ese texto — no se pierde esa posibilidad.
-
-Verificado en el navegador contra el planning real: la tarea de Martes "Recoger Sillas Carvillo" (guardada como "9:30 - 10:30") se parsea correctamente a los selectores 09:30/10:30, y "Recoger Fulanita" (guardada como "pendiente") marca la casilla en vez de forzar una hora.
-
-## Fichar salida de una tarea la marca como hecha sola
-
-Pedido por el usuario: al fichar la salida de una tarea concreta (botones "Fichar Esta Tarea" / "Fichar Entrada Ahora (1 Toque)" en `WorkerView.jsx`), la tarea del planning se marca como completada automáticamente — antes había que ir aparte a tildarla a mano en el Cuadrante.
-
-Mecanismo: cuando se pulsa "Fichar Esta Tarea"/"Fichar Entrada Ahora", `WorkerView.jsx` resuelve el índice real de esa tarea dentro de `schedule[día].tasks` (mismo criterio de coincidencia por `text` que ya usaba el checkbox manual — `dayGroup.tasks` viene filtrado por trabajador, así que el índice mostrado en pantalla no es el real) y lo guarda como `taskRef: { dayKey, taskIndex }`. `ClockInModal.jsx` adjunta ese `taskRef` al fichaje de **entrada**. Al fichar la **salida** correspondiente (desde cualquier sitio: el modal, el botón directo de Actividad en Tiempo Real, etc.), `App.jsx` busca cuál era el turno activo que se está cerrando (`getActiveShiftForWorker`) y, si su entrada traía `taskRef`, marca esa tarea como `completed: true` (nunca la desmarca si ya lo estaba).
-
-Las bodas del sábado ("Fichar Boda Sábado") quedan fuera de este mecanismo a propósito — no tienen campo `completed` en ningún sitio de la UI todavía, así que no había nada que marcar.
-
-Cambio de esquema necesario: `taskRef` no existía en `ClockEntry.model.js` — sin añadirlo, Mongoose lo habría descartado en silencio al guardar la entrada, y la marca de completado habría dejado de funcionar en cuanto el poll de 20s trajera de vuelta el fichaje sin ese campo (aunque en el momento sí pareciera funcionar, por el estado optimista local).
-
-## Cifras reales de la bolsa de Persona5 sacadas del código (auditoría)
-
-La auditoría completa pedida por el usuario encontró que las cifras reales del acuerdo de bolsa mensual de Persona5 (700€ base, 200€ alojamiento, 500€ neto, 8,75€/h, 10€/h extra tras 80h) estaban escritas dos veces en el código, no solo en Mongo: como `default` de cada campo en `PurseInfoSchema` (`server/src/models/WorkerBalance.model.js`) y hardcodeadas en la tarjeta "Bolsa Mensual" de `PartnerDashboardView.jsx` (`80h (700€ - 200€ Aloj.) = 500€ Neto`, en vez de leer `worker.purseInfo.*` como ya hacía correctamente `handleSendWhatsApp`). El repo se trata como público — es la misma clase de fuga que ya se corrigió una vez en `balancesData.js`.
-
-Arreglado: los `default` de `PurseInfoSchema` pasan a `0` (nunca se usan en la práctica — el documento real de Persona5 en Mongo ya tiene sus propios valores explícitos; los defaults solo aplicarían a un trabajador nuevo con `isSpecialPurse` que hoy en día solo se puede crear a mano por API, nunca desde la UI, así que quien lo cree ya debe rellenar sus cifras reales). La tarjeta de `PartnerDashboardView.jsx` ahora lee `worker.purseInfo.totalHours/grossBase/housingDeduction/netFixedAt80h` en vez de las cifras fijas. Verificado en el navegador contra los datos reales de Persona5 en producción — la tarjeta se ve exactamente igual (mismos números), solo que ahora vienen de Mongo, no del código.
-
-## Bug crítico de fichajes — "no desficha" (corregido)
-
-Reportado por el usuario: algunos trabajadores no podían fichar salida ("no desficha"). Causa raíz encontrada: `GET /api/clock` (`server/src/routes/clock.routes.js`) devuelve los fichajes con `.sort({ createdAt: -1 })` — el más reciente primero, pensado para que el historial se vea así en la UI — pero **todo el código cliente que decide "¿está este trabajador fichado ahora?" asumía justo lo contrario** (`array[array.length - 1]` = el más reciente). Con esa combinación, en cuanto un trabajador acumulaba 2+ fichajes históricos, `[length-1]` pasaba a devolver su **primerísima entrada de siempre** (casi siempre `tipo: 'entrada'`, porque nadie puede fichar salida antes que entrada) — así que la app lo daba por "en turno" permanentemente, sin importar su estado real. El botón "Fichar Salida" seguía créandose fichajes de salida reales al pulsarlo, pero la UI (y `LiveMonitorPanel`) volvían a mostrar "en turno" en el siguiente refresco, dando la sensación de que nunca desfichaba. Reproducido y confirmado en producción con los fichajes reales de Persona1 (entrada 08:58 → salida 10:03 → entrada 10:07: el cálculo viejo cogía la entrada de las 08:58 en vez de la de las 10:07).
-
-Arreglado añadiendo dos helpers compartidos en `client/src/data/shiftCalculations.js` (`sortEntriesByTimestamp`, `getActiveShiftForWorker`) que ordenan cronológicamente antes de decidir "quién está fichado ahora", y usándolos en los 3 sitios que hacían este cálculo cada uno por su cuenta: `WorkerView.jsx` (turno propio del trabajador), `ClockInModal.jsx` (que además leía su propia copia obsoleta de `localStorage` en vez del prop `clockEntries` real — corregido también, podía desincronizarse si el fichaje de entrada se hizo desde otro móvil/dispositivo) y `LiveMonitorPanel.jsx` (mapa de "quién está en turno" del panel en vivo). `pairShiftsFromEntries` también ordena ahora internamente antes de emparejar entrada/salida — sin esto, con fichajes en orden más-reciente-primero, algunos turnos podían quedar mal emparejados o perdidos silenciosamente en el Informe de Fichajes y en Saldos & Acuerdos.
-
-Verificado end-to-end contra producción: con el fichaje real y abierto de Persona1 (entrada 10:07), el modal ahora muestra correctamente "En Turno" desde las 10:07 (antes habría usado las 08:58) y permite fichar salida; se probó el ciclo completo (fichar salida → pasa a "Descanso" → reabrir modal muestra "Actualmente fuera de turno" con Entrada habilitada) y se revirtió el fichaje de prueba creado durante la verificación para no alterar sus datos reales de nómina.
-
-## Editar/añadir horas manualmente en Control de Saldos & Acuerdos
-
-Pedido por el usuario — antes esa pestaña era de solo visualización. Cada trabajador tiene ahora, en modo Admin, un botón "Añadir concepto / horas manual" con **dos modos**:
-- **🕒 Turno (calcula solo)**: fecha + hora entrada + hora salida → calcula horas y precio solo (tarifa del trabajador, `hourlyRate` o 10€/h Extra · 14€/h Nómina), con vista previa en vivo, y construye el texto del concepto en el mismo formato que ya usan las entradas reales (`🕒 15/09 (17:00 a 20:30 - 3.5h a 10€/h)`). Soporta turnos que cruzan medianoche.
-- **✏️ Ajuste manual**: concepto libre + importe directo (admite negativo), para cosas que no son horas trabajadas — roturas, saldos iniciales, etc.
-
-Además, icono de papelera en cada línea del desglose para eliminarla. Al guardar/borrar se recalcula `currentBalance` como la suma del `breakdown` y se persiste vía `PUT /api/balances/:id` (endpoint ya existía, protegido con `requireAdmin`, pero no estaba conectado a ninguna UI). El estado local se actualiza al instante (optimista) sin esperar a un refetch. Verificado end-to-end contra el backend real de producción — probados ambos modos (turno de 3.5h calculado correctamente a 35,00€, y el borrado), confirmado el recálculo correcto y la restauración limpia. Para una "socia" sin desbloquear Admin, la pestaña sigue siendo de solo lectura.
-
-## Limpieza — Datos Sensibles & Código (plan de 4 fases, Fases 1-2 hechas)
-
-**Fase 1 — Datos sensibles:** `client/src/data/balancesData.js`, `server/src/data/balancesData.js`, `client/src/data/logisticsData.js` y `server/src/data/logisticsData.js` tenían datos reales de personal (nombres, saldos, desgloses de horas con importes) y del planning real (bodas, clientes, ubicaciones) horneados como seed/fallback. Confirmado que son solo fallback — `PartnerDashboardView` y `App.jsx` siempre sobrescriben con `fetchBalancesFromAPI()`/`fetchWeeksFromAPI()` al montar, y el bootstrap de Mongo (`POST /seed`, `GET /weeks`) solo se dispara si la base de datos está vacía (ya no lo está). Sustituidos por plantillas esqueleto genéricas (`workers: []`, tareas de ejemplo sin nombres de clientes reales). **A partir de ahora estos 4 ficheros ya no se sincronizan con el planning real real** — los datos reales viven solo en Mongo.
-
-**No hecho todavía, a propósito:** `DEFAULT_WORKERS_LIST` en `App.jsx` (roster con nombres reales: Persona1, Persona2...) se dejó sin tocar. A diferencia de saldos/planning, el roster de trabajadores **no tiene ningún fetch que lo sobrescriba** — solo vive en `localStorage` de cada navegador (ver el pendiente de "migrar roster a Mongo"). Genericizarlo ahora mismo rompería la app en cualquier dispositivo/navegador nuevo (sin ese localStorage ya guardado), mostrando nombres falsos "Trabajador 1/2/3" de forma permanente, sin autocorregirse. Hacerlo requiere primero esa migración a Mongo.
-
-**Fase 2 — Limpieza de código:**
-- Quitados ~20 imports de iconos de `lucide-react` sin usar en `App.jsx` (quedó reducido a ~700 líneas tras la unificación de paneles, pero los imports viejos no se habían limpiado).
-- Eliminado el state `showFullTeamView` en `App.jsx` — declarado pero nunca leído ni usado en ningún sitio.
-- Eliminado un bloque muerto `const params = new URLSearchParams(...)` + `workerParam` en `App.jsx` que se calculaba pero nunca se usaba después.
-- Eliminado el hack `window.handleUpdateClockEntryInternal`/`window.handleDeleteClockEntryInternal` en `WorkerView.jsx` — las funciones `onUpdateClockEntry`/`onDeleteClockEntry` ya estaban disponibles como props por closure directo, no hacía falta pasarlas por `window`.
-- Corregidas 3 clases Tailwind inválidas (`w-4.5 h-4.5`, `w-5.5 h-5.5`) en `PartnerDashboardView.jsx` — esos valores no existen en la escala por defecto de Tailwind, así que no generaban ningún CSS y los iconos quedaban sin el tamaño esperado. Redondeados a los tamaños válidos más cercanos (`w-4 h-4`, `w-5 h-5`) que ya se usan en iconos de cabecera equivalentes en el mismo archivo.
-
-Verificado con build limpio + prueba real en el navegador (no solo build — en la extracción de `shiftCalculations.js` de más abajo el build no detectó una regresión real que sí apareció al probarlo).
-
-**Fase 3 (Animaciones — fondo animado, micro-animaciones) queda fuera de esta pasada a petición del usuario**, por ser una función nueva decorativa y no limpieza. Ver `PENDIENTES.md`.
-
-## Hechas en esta sesión (revisión de "Informe de Fichajes, Horas & Nóminas")
-
-Revisión visual + funcional pedida por el usuario sobre `PayrollReportModal.jsx`. Verificado end-to-end (fichaje público, login admin, fichaje/edición/borrado admin, cálculo de horas y coste, WhatsApp) contra un backend local en memoria (sin tocar Mongo Atlas de producción). Se confirmó primero contra la API real de Render que el estado "0 activos / sin fichajes" que vio el usuario es real (no hay ningún fichaje en la base de datos ahora mismo) — no es un bug de sincronización.
-
-Bugs encontrados y corregidos:
-
-- **`App.jsx`**: el segundo `<PayrollReportModal>` (el que se abre desde el botón "Nóminas" del panel principal, fuera de "Panel Socias") pasaba `isAdmin={isPartnerMode}` en vez de `isAdmin={isAdmin}`. Como en esa rama `isPartnerMode` siempre es `false`, un Admin ya autenticado que entrara por esa ruta (p. ej. tras usar "Vista Pública" y volver) veía el informe en modo solo-lectura, sin "+ Fichaje Admin" ni botones de edición, sin ningún aviso de por qué. Cambiado a `isAdmin={isAdmin}` (igual que las otras dos instancias del modal en el archivo).
-- **`PayrollReportModal.jsx`**: la tarjeta "Horas Extras Totales" sumaba las horas de **todos** los turnos, incluidos los de trabajadores con Nómina Fija (Persona4, Persona8 a 14€/h) — igual que ya hacía correctamente "Gasto Total Extras", que sí excluye esas horas. Resultado: si Persona4 o Persona8 fichaban, sus horas de supervisión se contaban como si fueran "extras a 10€/h", inflando esa cifra. Corregido para excluir los turnos de Nómina Fija, igual que el cálculo del coste.
-- **`AdminClockEditModal.jsx`**: al pulsar "Eliminar Fichaje" y entrar en el estado de confirmación, se renderizaban a la vez el grupo de botones de confirmación ("Sí, Eliminar" / "Cancelar") **y** el grupo normal ("Cancelar" / "Guardar Cambios Admin") en la misma fila sin que cupieran, provocando que los dos botones "Cancelar" se solaparan visualmente (reproducible en escritorio, no solo en móvil). Corregido ocultando el grupo de guardar/cancelar mientras se está confirmando el borrado.
-- **`PayrollReportModal.jsx`**: la cabecera título+insignia "Fichajes Bloqueados" usaba `space-x-2` sin `flex-wrap`. En anchos de escritorio intermedios (~700-950px de ventana) el título se partía en dos líneas y la insignia quedaba flotando a media altura entre ambas. Cambiado a `flex-wrap + gap-2` con la insignia `shrink-0`, así si no cabe baja limpiamente a su propia línea.
-- **`PartnerDashboardView.jsx`**: las pestañas "📜 Control de Saldos & Acuerdos" y "💶 Resumen Financiero & Extras" estaban ocultas tras la condición `{adminUnlocked && ...}`. Ahora están visibles permanentemente en el Panel de Socias (modo solo lectura para socias, con edición habilitada para Admin). Además, se añadió el botón directo "🏢 Panel de Control" en la cabecera para poder navegar de vuelta al dashboard general con un solo clic.
-- **`server/src/routes/balances.routes.js`**: `GET /api/balances` ya no exige token de administrador, permitiendo a Socias consultar saldos en tiempo real desde la API/MongoDB Atlas; las operaciones de mutación (`PUT /:id` y `POST /seed`) se mantienen estrictamente protegidas con `requireAdmin`.
-
-Nueva funcionalidad pedida por el usuario tras la revisión — pestaña "📅 Estimado (Planning)":
-
-- El usuario preguntó por qué el informe se veía vacío y esperaba ver "lo que se lleva hasta ahora" aunque nadie hubiera fichado. Se le explicó que el informe solo cuenta fichajes reales (botón Fichar Entrada/Salida), no la planificación semanal — son dos sistemas separados. Preguntado explícitamente, confirmó que sí quiere una estimación basada en el planning, como pestaña **separada** de lo real (nunca mezclada en "Gasto Total Extras" / "Horas Extras Totales", que siguen siendo solo de fichajes reales) y **sin inventar duración** para tareas sin horario completo (esas se listan aparte como "sin estimar").
-- Implementado en `PayrollReportModal.jsx`: nueva pestaña que recorre `activeWeekData.schedule` + `saturdaySpecial.weddings` + `sundayMonday.tasks`, parsea `timeFrame` con formato `"HH:MM - HH:MM"` (soporta turnos que cruzan medianoche, p. ej. las bodas del sábado `09:00 - 02:00`), fusiona intervalos solapados del mismo trabajador **dentro del mismo día real** para no contar dos veces horas que ya se sabe que se pisan (ver el punto de solapes en `PENDIENTES.md`), y separa por tarifa (Extra 10€/h vs Nómina Fija 14€/h) igual que el resto del informe. Las tareas con horario incompleto (una sola hora suelta, o vacío) quedan fuera del cálculo y se listan aparte, nunca se les asigna una duración inventada.
-- Detalle importante: `sundayMonday` agrupa **dos días de calendario distintos** (domingo y lunes) bajo una sola clave de `schedule` — sin esto, el código de fusión de solapes habría mezclado por error horas de un trabajador el domingo con sus horas el lunes solo porque coincidían en minuto-del-día. Se usa una sub-clave por tarea (índice dentro del array) para que nunca se fusionen entre sí.
-- Cálculos verificados a mano contra los datos reales de Semana 3 (Persona3 54h, Persona5 51h, Persona1 39h, Jaime 37h, Persona2 34h, Persona4 19h Nómina, Persona8 8h Nómina, Persona6/Persona7 6h cada uno — total extras 227h/2270€) — cuadran exactamente.
-- El filtro "Trabajador" también se aplica a esta pestaña, incluyendo el total del pie de tabla y la lista de tareas sin estimar (antes de un ajuste, el total del pie seguía mostrando el global aunque se filtrara — corregido en el mismo desarrollo).
-- Deliberadamente **no** se incluyó esta estimación en el texto de "Copiar WhatsApp" — ese texto sigue reflejando solo fichajes reales, para no arriesgar que alguien lo lea como una cifra ya confirmada de horas trabajadas.
-
-Observaciones sin cambiar (revisar con el usuario, ver `PENDIENTES.md`):
-
-- La "Valoración Interna Nóminas" (turnos a 14€/h) se calcula (`totalPayrollValuation`) pero solo aparece en el texto copiado de WhatsApp — no hay ninguna tarjeta en el modal que la muestre. Un admin que solo mire el modal (sin copiar el WhatsApp) no ve ese dato agregado, aunque sí puede verlo fila a fila en la tabla "Jornadas Completadas".
-- El filtro "Trabajador" del modal solo filtra las filas de las tablas de fichajes reales; las 3 tarjetas resumen de arriba (Gasto Total Extras / Horas Extras Totales / Trabajadores en Turno) siempre muestran el total global, no el del trabajador filtrado — sí se corrigió esto para la nueva pestaña "Estimado (Planning)", pero no para las tarjetas de fichajes reales, para no tocar más de lo pedido. Puede ser intencional, pero podría confundir si se espera que el resumen cambie al filtrar.
-
-## Hechas en sesiones anteriores
-
-- Eliminado `PartnerDashboardModal.jsx` — duplicaba `PartnerDashboardView.jsx` casi por completo (mismas pestañas: financiero, saldos, logística) y se abría encima de él sin necesidad; además rompía en móvil (overflow horizontal, contenido cortado).
-- `TaskFlowGraphView.jsx` refactorizado: las 4 secciones casi-idénticas por día (martes/miércoles/jueves/viernes) que repetían la misma lógica de enlaces con nombres de trabajador hardcodeados dentro de cada bloque se unificaron en un único bucle genérico (`dayConfigs.forEach`) + helpers reutilizables (`linkAssignedWorkers`, `linkTrucksFromText`). Antes: ~120 líneas repetidas y frágiles (dependían de que el nombre apareciera literal en el texto). Ahora: ~40 líneas, y usa el campo `assigned` real.
-- Corregido overflow horizontal en móvil en los dos selectores de semana (`App.jsx` y `PartnerDashboardView.jsx`).
-- Eliminados 3 componentes muertos con contraseñas hardcodeadas de una versión antigua (`AdminPanel.jsx`, `LoginModal.jsx`, `SecureAccessModal.jsx`) — no los importaba nadie.
-- `server/src/data/logisticsData.js` estaba totalmente desincronizado del contenido real (un stub de 13 líneas) — quedaba invisible porque el planning nunca llegó a depender de Mongo hasta hoy. Sincronizado.
-
-## Pasada de limpieza — hecha
-
-- **Lógica de cálculo de saldos por turnos duplicada**: extraída a `client/src/data/shiftCalculations.js` (`pairShiftsFromEntries` empareja entrada/salida en turnos con duración y coste; `aggregateShiftsByWorker` agrega esa lista por trabajador). `PartnerDashboardView.jsx` y `PayrollReportModal.jsx` ahora llaman a las mismas funciones en vez de tener cada uno su propia copia casi idéntica. Verificado con Gemini (revisión de equivalencia de comportamiento) y a mano en el navegador — se detectó y corrigió una regresión real en el primer intento (`activeWorkerShifts`/recuento de "Trabajadores en Turno" en `PayrollReportModal.jsx` se perdía al extraer, porque la función compartida solo devolvía los turnos ya cerrados; ahora devuelve también los fichajes de entrada aún sin cerrar).
-- **Mensaje de WhatsApp de saldos duplicado**: quedó resuelto solo al eliminar `BalancesAgreementsModal.jsx` (modal de saldos duplicado, con datos obsoletos de localStorage — `PartnerDashboardView.jsx` ya interpreta el mismo `?view=saldos` directamente y con datos reales de la API). Ya no queda ninguna segunda copia de `handleSendWhatsApp`.
-- **Polling combinado en un único `setInterval`**: ya estaba hecho (probablemente en la unificación de paneles) — `client/src/App.jsx` solo tiene un intervalo de 20s que llama a `fetchClockEntriesFromAPI` y `fetchWeeksFromAPI` juntos.
-
-## Candidatas para una futura pasada de limpieza (no hecha, para no arriesgar el estado actual)
-
-- El patrón `typeof task === 'object' ? task.text : task` (task puede ser string u objeto) se repite en muchos componentes (`WorkerView`, `App.jsx`, `TaskFlowGraphView`, `AdminTaskEditorModal`). Ahora que todas las tareas nuevas se crean como objetos, se podría plantear (con cuidado, hay datos antiguos) normalizar todo a objeto una sola vez al cargar la semana, y quitar esa comprobación de todos los sitios. Se deja fuera de esta pasada porque toca muchos archivos a la vez y varias sesiones han estado trabajando en paralelo sobre este mismo código.
-
-## Rendimiento / escalabilidad — notas honestas
-
-- No hay paginación en fichajes (`GET /api/clock` trae todo). Con el volumen actual (una empresa pequeña, unos pocos fichajes al día) no es un problema real; si la plantilla crece mucho o pasan meses sin limpiar el histórico, revisarlo.
-- El *bootstrap* automático de Mongo (crear el documento inicial en el primer `GET`) es correcto para esta escala, pero si algún día hay más de una "semana base" tipo `week_3`, habría que revisar esa lógica (solo bootstrapea `week_3`).
-- Backend en el plan gratuito de Render: se duerme tras 15 min de inactividad, la primera petición tras eso tarda 30-50s. No es un bug, pero vale la pena que el usuario lo sepa si nota lentitud "al primer fichaje del día".
-
-## Auditoría completa + tests + seguridad + revisión con Gemini (15/09/2026)
-
-Pedido por el usuario tras cerrar la instalación de la PWA: auditoría a fondo de que todo funciona, tests unitarios (no había ninguno), revisión de adaptación a pantallas, y usar Gemini para las tareas que se le dan bien. Sesión larga, resumen de lo hecho:
-
-**Tests unitarios (61 nuevos, cero antes):** Vitest en cliente y servidor. Cubren `shiftCalculations.js`, `authToken.js`, `requireAdmin.js` y las rutas de `logistics.routes.js` — exactamente la lógica que ya había causado bugs reales en sesiones anteriores (emparejar fichajes, caso especial domingo/lunes, revocación de sesión admin). Al extraer el caso especial de domingo/lunes a un módulo compartido (`taskPlanning.js`) para poder testearlo, se eliminó además la triplicación de ese código entre `WorkerView.jsx` y `App.jsx` que ya había causado un bug real antes.
-
-**Seguridad — 2 fallos reales encontrados y corregidos:**
-1. `POST /api/logistics/weeks` (reemplaza el planning COMPLETO de una semana) no tenía ninguna autenticación — cualquiera con la URL del servidor podía sobrescribir o borrar el planning de cualquier semana. Ahora exige admin. Como el trabajador seguía necesitando poder tocar el planning sin sesión (autocompletar su tarea al fichar salida), se creó `PATCH /api/logistics/weeks/:weekId/tasks`, un endpoint nuevo que solo puede escribir el campo `completed` de una tarea concreta — nada más.
-2. El botón de "editar/borrar mi propio fichaje" en la vista del trabajador nunca funcionaba de verdad (el servidor exige admin para PUT/DELETE de fichajes, y el trabajador nunca tiene esa sesión) — se quedaba "guardado" en local y desaparecía solo en el siguiente refresco de 20s, sin explicación. Se quitó ese botón; el aviso al fichar ("bloqueado, solo Admin puede modificarlo") ahora es coherente con el comportamiento real.
-
-**Bugs de datos reales encontrados y corregidos:**
-- El Grafo (🕸️ Grafo & Flujo) tenía el roster y la flota de camiones escritos a mano en el componente, sin ninguna conexión con los datos reales — nunca iba a reflejar un cambio real de personal o flota. Ahora se derivan siempre de `workersList`/`activeWeekData.trucks`.
-- El filtro "Trabajador" del Cuadrante Semanal resaltaba tareas por si el nombre aparecía **mencionado en el texto**, no por si estaba de verdad en `assigned[]` — podía resaltar tareas donde esa persona ya no trabaja, o no resaltar donde sí. Ahora compara contra `assigned[]` real.
-- Bug de medianoche en Actividad en Tiempo Real: las tareas con horario que cruza medianoche (ej. "22:00 - 00:00", frecuente en bodas) nunca se detectaban como "en curso" durante la propia noche — justo el pico del evento. Encontrado al verificar en vivo un hallazgo de Gemini antes de darlo por bueno.
-- Formato de hora inconsistente (24h y 12h AM/PM mezclados en la misma tabla) por no fijar el `locale`/`hour12` al formatear — dependía del idioma/región del dispositivo de quien fichaba.
-- Informe de Fichajes: los botones de editar entrada/salida eran dos iconos sin etiqueta, mismo color, ~26px de área táctil, y la tabla obligaba a scroll lateral en móvil para llegar a ellos. Rehecho con el mismo patrón tarjeta-en-móvil/tabla-en-desktop ya usado en `WorkerView.jsx`, botones con texto y color verde/rojo (entrada/salida).
-- Varios textos de tareas mencionaban a gente que ya no estaba en el `assigned[]` real de esa tarea (residuo de reasignaciones de sesiones anteriores) — corregidos 5 casos en Mongo tras confirmar con el usuario.
-
-**Gestión de trabajadores:** se añadió la capacidad de quitar (además de añadir) gente del roster desde la propia app, con confirmación antes de quitar. Sigue siendo solo `localStorage` por navegador — no sincroniza entre dispositivos (ver `PENDIENTES.md`).
-
-**Jaime salió del equipo:** a petición del usuario, analizado el impacto real primero (aparecía en 4 tareas entre semana + 1 boda de sábado; en la única donde era el conductor asignado, Persona2 ya estaba libre esa mañana y pasó a conducir él). Quitado del roster, del planning de Semana 3 en Mongo, y de todas las referencias sueltas que quedaban en el código (ejemplos, datos de fallback, comprobaciones por nombre).
-
-**Revisión con Gemini:** tras varios intentos con error 503 durante gran parte de la sesión, Gemini volvió a responder y se le pidió una revisión de código completa (cliente + servidor) centrada en cosas nuevas no ya encontradas a mano. De sus ~14 hallazgos, se verificaron directamente contra el código los de mayor severidad antes de anotarlos como reales (confirmados: pérdida silenciosa de fichajes offline por el polling de 20s, `POST /api/clock` aceptando `rate`/`earnings` sin validar del cliente, filtración de token por `Referer` en enlaces de WhatsApp, ausencia de tope en turnos abiertos, bug de medianoche ya corregido arriba); el resto queda anotado en `PENDIENTES.md` con su nivel de verificación indicado, para no dar por buena una alucinación de la IA sin comprobarla (regla de `CLAUDE.md`).
-
-**Pendiente real de esta sesión:** la revisión sistemática de adaptación a pantallas solo se hizo a fondo en un modal (Informe de Fichajes, a raíz de un reporte concreto del usuario) — el resto de vistas de la app no se ha repasado una por una. Ver `PENDIENTES.md` para la lista priorizada completa de lo que queda.
-
-**Dos fugas de datos reales encontradas tras instalar la app, ambas corregidas y desplegadas:**
-1. El manifest de la PWA fija `start_url` sin parámetros de URL, así que el icono instalado siempre abre la URL base — y esa URL base no tenía ninguna protección real: cualquiera sin sesión veía el panel completo de socias (Cuadrante, Saldos, Nóminas). Ahora, sin sesión de admin ni identidad de trabajador reconocida, se muestra la vista pública segura (sin datos económicos) con un botón para iniciar sesión. Un trabajador que instale su propio enlace tampoco pierde ya su identidad en cada relanzamiento — se recuerda en `localStorage` y se revalida contra el roster actual en cada carga (si lo has quitado del equipo, no se restaura).
-2. La pestaña "🕸️ Grafo" dentro de la vista de un trabajador reutilizaba el mismo componente del panel de admin sin ningún filtro — cualquier trabajador podía ver la asignación completa de todos sus compañeros, toda la semana, todos los camiones. Ahora se restringe solo a lo conectado de verdad a ese trabajador (sus tareas, los días y camiones de esas tareas). El Grafo del panel de admin no cambia.
-
-## Trabajo en paralelo con Gemini/Antigravity + auditoría y fixes de Claude (19/09/2026)
-
-Sesión con dos IAs tocando el proyecto a la vez (el usuario avisó expresamente de tener cuidado de no pisarse). Gemini avanzó en varios frentes nuevos mientras Claude auditaba lo ya hecho, verificaba en vivo, y arreglaba lo que encontraba roto — con deploy después de cada arreglo, no todo junto al final.
-
-**Lo que trajo Gemini, verificado y en producción:**
-- Petición pendiente del usuario cumplida correctamente: Saldos & Acuerdos ya sumaba las horas fichadas al saldo (`displayBalance = currentBalance + dynamicCost`) y las mostraba en el formato pedido (`🕒 fecha [entrada a salida] - Nh a X€/h`).
-- "Jornada Partida": turnos del mismo día (ficha, sale a comer, vuelve a fichar) se agrupan en una sola fila de Saldos con todos los tramos, en vez de aparecer como turnos sueltos.
-- Fix de formato de fecha/hora sin locale fijo (arreglaba el mismo síntoma que ya se había corregido una vez con Persona2/Persona5: cada móvil guardaba el fichaje en el idioma/formato de su propio sistema).
-- Gestión de flota por semana (`FleetManagerModal.jsx`) con subida de PDF de contrato de alquiler — ver `CONTEXTO.md`.
-- Modularización de `PartnerDashboardView.jsx` (2000+ líneas) en pestañas separadas (`dashboard/*.jsx`) — reduce el tamaño de cada archivo, pero dejó dos referencias colgando al mover código sin actualizar el padre (ver más abajo).
-- Fix del toggle de tareas que no persistía (polling de 20s pisando el cambio local) y limpieza de un `.env.local` peligroso.
-
-**Bugs reales encontrados por Claude y corregidos (todos verificados en vivo en producción, no solo en local):**
-1. **Redondeo de horas al entero en vez de a la media hora** (bug de dinero, `shiftCalculations.js`) — pagaba de más o de menos en cualquier turno que no cayera justo en una hora exacta. Confirmado con el usuario el criterio correcto (media hora, no hora completa) tras un primer intento equivocado.
-2. **Saldos & Acuerdos crasheaba al abrir y al guardar** — dos referencias (`handleSendWhatsApp`, `setSavingBalanceId`) que la modularización de Gemini dejó apuntando a funciones que ya solo existían en el componente hijo. Encontrados con un barrido `eslint --rule no-undef` sobre todo `client/src` (técnica nueva, reutilizable — el build normal no detecta esta clase de error porque es de JS en tiempo de ejecución, no de sintaxis).
-3. **`/api/logistics/optimize` no borraba nunca nada** — comparaba contra el nombre de campo equivocado (`isDeleted` en vez de `deleted`).
-4. **Subida de PDF de alquiler sin límite de tamaño/tipo** — endurecido a solo-PDF + 10MB.
-5. **Rendimiento**: cálculo de turnos sin memoizar, recalculado hasta 60 veces/minuto en el Monitor de Actividad en Tiempo Real por el cronómetro. Memoizado en los 3 sitios donde pasaba.
-6. **Duplicación de `AdminTaskEditorModal.jsx`**: reimplementaba a mano el caso domingo/lunes en 6 funciones en vez de usar `taskPlanning.js` — justo el patrón que ya causó un bug real antes. Unificado.
-7. **Código muerto de `@dnd-kit`**: importado, configurado, nunca conectado al JSX real (el reordenado real siempre fue por botones ⬆⬇). Eliminado junto con la dependencia — bundle 869KB → 853KB.
-
-**Metodología que vale la pena repetir:** verificar cada hallazgo contra la URL real desplegada, no solo contra el código o un servidor local — la previsualización local falló repetidamente por procesos zombis de la sesión anterior de Gemini en los mismos puertos, así que la verificación se hizo abriendo pestañas nuevas contra `https://r2fod.github.io/gula-logistics` tras cada deploy, incluyendo comprobar la consola sin errores y ejercitar de verdad la funcionalidad tocada (ej. abrir el editor de domingo/lunes y hacer un toggle de asignación real, sin guardar, para probar el refactor sin tocar datos de producción).
-
-**Pendiente real de esta sesión:** la Bolsa Mensual (`purseInfo`) no cuenta las horas ya consumidas a mano al calcular la tarifa de los turnos fichados por la app (ver `PENDIENTES.md`) — necesitaba confirmar la regla de negocio con el usuario antes de tocar dinero. Sigue sin empezar: animaciones de iconos por página, revisión responsive sistemática 320–1920px.
-
-## Tareas marcadas como hechas sin estarlo — causa raíz y cómo se evita en la semana siguiente (20/09/2026)
-
-Tres fallos distintos daban el mismo síntoma ("la app marca tareas hechas que no lo están"): la lista compartida domingo/lunes evaluada siempre como domingo, la comparación por día de la semana sin saber de qué semana del calendario es el planning, y las tareas sin horario dadas por hechas al acabar el día. Lo peor no era el tachado en pantalla, sino que `autoCompletePastTasks` lo **guardaba en Mongo**, y desde ahí ya nadie distingue "hecha de verdad" de "hecha por error".
-
-**Lecciones que valen para cualquier estado derivado del reloj:**
-- Comparar contra la **fecha real**, nunca contra el día de la semana suelto: un "martes" existe en todas las semanas, incluidas las futuras.
-- Ante la duda (fechas ilegibles, día ambiguo, sin horario) **no escribir**: una tarea pendiente de más se corrige con un clic, una tarea hecha por error esconde trabajo sin hacer.
-- Toda lógica de "¿ya pasó?" vive en UN sitio (`taskPlanning.js`) y todas las vistas la llaman: hasta hoy había cuatro copias que se arreglaban por separado.
-- Lo que crea una semana nueva (clonar, IA) debe resetear el estado de ejecución (`completed`), no solo copiar la planificación.
-- Los rótulos de fecha ("Lunes 14"…) no se escriben a mano en la UI: salen de `meta.dateRange`.
-
-**Comprobación de la semana siguiente (checklist):** escribir el rango como "Del 22 al 27 de Septiembre de 2026" (el asistente avisa si no lo entiende); tras crearla, comprobar que ninguna tarea sale tachada antes de su día; poner "Día Específico" a las tareas de domingo/lunes; y no dar por buena la vista solo porque compile.
-
-**Añadido el 21/09:** (1) un `PATCH` que no cambia nada NO debe escribir: cada escritura sube `updatedAt` y eso alimenta el control de concurrencia de los guardados de admin — un bucle de "marcar lo ya marcado" desde una pestaña vieja bloqueaba todas las ediciones con un aviso falso de conflicto. (2) Los efectos con `[]` de dependencias congelan las funciones de la primera render: quien las llame desde un `setInterval` debe hacerlo por `ref`. (3) La deploy del cliente la hace la GitHub Action (`.github/workflows/deploy.yml`, Pages en modo "workflow") en cada push a `main`; `npm run deploy` (rama `gh-pages`) publica un build que Pages ya no sirve, así que sobra.
-
-**Añadido el 21/09 (generar semana con IA):** un fallback que devuelve datos de ejemplo cuando algo falla es una trampa: la pantalla los presenta como el resultado real y el usuario los aplica. Ante un fallo, devolver un error explícito y NO ofrecer la acción siguiente. Las claves que viven por navegador (Gemini) hay que pedirlas en la propia pantalla donde hacen falta, porque cada móvil empieza sin ellas. Los nombres de modelo de IA caducan: dejar un alias/segundo candidato y no depender de un ID fijo antiguo.
-
+# Mejoras — decisiones y lecciones
+
+_Resumen de lo que ya está hecho y por qué es así. El detalle de cada cambio está en `git log` (antes de 27/09/2026 este archivo era un diario largo: `git show 19e5547:MEJORAS.md`)._
+
+## Seguridad y datos
+- **Sin secretos en el cliente ni en el repo.** Semillas (`balancesData.js`, `logisticsData.js`) son plantillas vacías; los datos reales solo en Mongo (`POST /balances/seed` acepta el cuerpo para migrar sin commitear). Hubo saldos reales, una clave VAPID privada y contraseñas en commits antiguos: siguen en el historial (ver `PENDIENTES.md`).
+- **Un solo `requireAdmin`** (JWT firmado + revocación por versión al cambiar la clave). Hubo un middleware casero con secreto de reserva escrito en el código: eliminado.
+- **Login:** 10 intentos fallidos por IP cada 15 min, comprobado antes de `bcrypt`. `trust proxy` = `1` (con `true`, `X-Forwarded-For` falsificado esquivaba el límite).
+- **Token de admin fuera de la URL visible** (se quita con `replaceState`) y `<meta name="referrer" content="no-referrer">`.
+- **Endpoints públicos acotados:** `PATCH /weeks/:id/tasks` solo escribe `completed`/`reopened`/`completedAt` (validados) de una tarea; `POST /api/clock` descarta importes calculados y limita la tarifa a 0–100 €/h; `DELETE /weeks/:id` solo borradores; recuerdos de IA de 1–300 caracteres.
+- **Vista pública por defecto:** sin sesión de admin ni trabajador reconocido se ve `PublicView` (el icono de la PWA pierde los parámetros de la URL). El Grafo de un trabajador solo enseña lo suyo.
+- **Clave de Gemini** solo en el `localStorage` de cada navegador (nunca en variables `VITE_`, que acaban en el bundle).
+
+## Planning y fechas
+- **Toda la lógica de "¿qué día es / ya pasó?" vive en `taskPlanning.js`** y sale de la fecha real (`meta.dateRange`), nunca del día de la semana suelto (un "martes" existe en todas las semanas). Hubo cuatro copias que se arreglaban por separado.
+- **Ante la duda, no escribir.** El auto-marcado por hora guardaba en Mongo tareas "hechas" que nadie hizo; tras varios arreglos se quitó del todo (25–27/09): solo marca un clic o la salida de un fichaje.
+- **Una semana nueva no debe cambiar los números de las anteriores:** los borradores no cuentan para pax, costes ni enlaces; clonar o generar con IA resetea `completed`.
+- **No reescribir el texto de tareas ya fichadas** (el fichaje guarda ese texto y se desliga): el evento va en el campo `event`.
+- **Guardado de semanas:** `POST /weeks` reemplaza el documento completo con control optimista por `updatedAt` (409). Un `PATCH` que no cambia nada no escribe (cada escritura sube `updatedAt` y provocaba conflictos falsos).
+- **IA:** ante un fallo, error claro y ninguna acción siguiente (hubo una "demo" que se aplicaba como si fuera real). Los modelos caducan: lista de candidatos (`GEMINI_MODELS`). Los recuerdos se extraen aparte y se filtran.
+
+## Fichajes y dinero
+- `GET /api/clock` devuelve lo más reciente primero: para saber quién está en turno, ordenar antes (`sortEntriesByTimestamp`, `getActiveShiftForWorker`, `pairShiftsFromEntries`).
+- Horas redondeadas a la **media hora** (`Math.round(h*2)/2`), tope 14 h facturables por turno; turno abierto > 16 h = "REVISAR" (no se cierra solo).
+- Fichajes sin cobertura: cola persistente + reintento cada 20 s y al volver la red; el servidor es idempotente por `id`.
+- La ventana de fichajes de una semana es martes 00:00 → martes siguiente (incluye domingo y lunes de cola) y conserva los turnos abiertos (`fichajesDeLaSemana`).
+- Nómina fija se decide por `isPayroll` del dato, nunca por nombre.
+
+## Forma de trabajar
+- **Build verde ≠ funciona.** Tras un refactor grande, barrido de ESLint (`no-undef`) — hubo pantallas en negro por referencias colgando — y mirar la app desplegada.
+- Los efectos con `[]` congelan las funciones de la primera render: quien las llame desde un `setInterval` lo hace por `ref`.
+- El service worker no cachea el bundle a propósito (evita servir versiones viejas).
+- Render (plan gratuito) se duerme a los 15 min: la primera petición tarda 30–50 s. Sus despliegues tardan y no avisan.
+- `npm run dev` apunta a la API de producción: en local solo mirar.
+- Varias sesiones (Claude, Gemini) trabajan a la vez: traer `origin/main` antes de fusionar y revisar lo que entró (el 27/09 un commit ajeno rompió el marcado de bodas en la vista de trabajador).
+
+## Escala (notas)
+- `GET /api/clock` trae todo el histórico sin paginar: bien para el volumen actual; revisar si crece mucho.
+- El bootstrap de Mongo solo crea `week_3` si la base está vacía.

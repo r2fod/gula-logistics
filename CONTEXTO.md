@@ -1,59 +1,32 @@
 # Contexto de negocio — Gula Logística
 
 ## Qué es
+Logística de eventos y catering (bodas, banquetes, corporativos) en la zona de Valencia. La app coordina el planning semanal (tareas, recogidas, bodas), la flota, el fichaje de horas del equipo, los saldos/acuerdos con cada persona y el resumen de costes por evento.
 
-Empresa de logística para eventos/catering (bodas, banquetes) en la zona de Valencia. La app coordina: planificación semanal de tareas y recogidas, flota de camiones (uno propio, dos de alquiler), fichaje de horas del equipo, y saldos/acuerdos económicos con cada trabajador.
+**Quién la usa:** el admin (panel completo, con sesión), las socias (panel de saldos y costes), cada trabajador con su enlace fijo `?worker=Nombre` (su semana y sus fichajes) y una vista pública sin datos económicos.
 
-## Equipo (roster actual — `WORKERS_LIST` en `App.jsx`)
+## Equipo y flota
+- El equipo vive en Mongo (`/api/roster`, editable desde la app). Roles: conductores de flota, apoyo de logística y preparación, limpieza de vajilla, base/checklist y jefe de logística. La mayoría cobra por hora como extra; dos personas están en nómina fija; algunas tienen ayuda de transporte por día y una tiene una bolsa mensual de horas. **Las cifras y los nombres están en Mongo, no en el repo.**
+- Personal de sala de otras empresas puede salir nombrado en el texto de una tarea: no está en el roster ni ficha.
+- Flota: un camión propio y alquileres que cambian por semana (gestor de flota del panel; se puede adjuntar el PDF del contrato).
 
-| Nombre | Rol | Tipo |
-|---|---|---|
-| Persona1 | Conductor Flota (Veterano) | Extra 10€/h |
-| Persona2 | Conductor Flota (Veterano) | Extra 10€/h |
-| Persona3 | Conductor & Backup | Extra 10€/h |
-| Persona4 | Base & Checklist — **NO hace carga ni descarga** | Nómina fija 14€/h |
-| Persona5 | Apoyo Logística & Prep — sí ayuda en cargas/descargas/montaje | Extra 10€/h (bolsa especial de 80h/mes) |
-| Persona6 | Limpieza — solo vajilla/utensilios | Extra 10€/h + 10€ transporte/día |
-| Persona7 | Limpieza & Apoyo — solo vajilla/utensilios | Extra 10€/h + 10€ transporte/día |
-| Persona8 | Jefe de Logística — supervisión, **NO hace carga ni descarga** | Nómina fija 14€/h |
+## La semana
+- Va de **martes a domingo** y el **lunes siguiente es su cola** (devoluciones, limpieza, cargas). Domingo y lunes comparten una lista; cada tarea lleva "Día Específico" (sin él cuenta como lunes).
+- La carga de un evento del martes se hace el lunes anterior y va en la cola de la semana anterior; el Cuadrante de la semana que empieza la enseña como "Lunes N · Víspera" (solo lectura; se edita en su semana).
+- `meta.dateRange` ("Del 22 al 27 de Septiembre de 2026") manda: de él salen los números de día y las fechas de cada tarea.
+- Las semanas se anticipan solas como **BORRADOR** (las 2 siguientes, desde el Calendario Gula) y no cuentan para nada hasta que un admin las acepta. Para el generador cuentan eventos (con pax y hora) y recogidas/devoluciones de alquiler; no visitas, reuniones ni días cerrados.
 
-Personal de eventos/sala mencionado en tareas puntuales (Anto, Marc, Miriam, Luis, Jessi) **no son parte de la flota de Gula** — son personal de sala/catering de otra empresa/proveedor, se mencionan solo como texto de contexto en las tareas, no están en el roster ni fichan en la app.
+## Reglas de negocio (también en el generador y el prompt de Gemini)
+1. Las recogidas las hace **una sola persona**, salvo que se pidan dos; las de camión, **por la mañana temprano**.
+2. Descargar en un evento incluye **montaje de estructura** (cuenta en el tiempo).
+3. Por rol: limpieza solo vajilla y utensilios; conductores y apoyo cargan, descargan y montan; jefe de logística y base/checklist supervisan (ver en `PENDIENTES.md` si esta última regla sigue vigente).
+4. **Texto de cada tarea: `"EVENTO - Tarea"`** (varios eventos: `"Boda A + Boda B - Tarea"`). EVENTO es el nombre de la boda/evento o una categoría: "Logística Preparación", "Logística Carga", "Limpieza Eventos". Una tarea de varios eventos reparte horas y coste **por pax** (`week.events`; sin pax, a partes iguales).
+5. **Una tarea está hecha SOLO si alguien la marca** (clic) **o se ficha su salida** — decisión del usuario del 25/09: nada se marca solo por la hora ni al terminar la semana. Se guarda la hora real (`completedAt`); pulsar otra vez la desmarca.
+6. Una tarea se puede **desactivar** sin borrarla (`active: false`): no cuenta ni se ve en las vistas de trabajo.
+7. **Fichajes:** la jornada (y cada tramo de una jornada partida) se puede empezar desde 5 min antes de su primera tarea. Horas redondeadas a la media hora; un turno cuenta como máximo 14 h y uno abierto más de 16 h sale "REVISAR".
+8. **Resumen Financiero** por semana (martes a lunes), mes, año o todo; un turno cuenta en el periodo en que empieza. Las horas fichadas sin tarea concreta se reparten entre las tareas del planning asignadas a esa persona (≈, estimación) y solo si no hay ninguna quedan en "Tareas Internas".
+9. **Enlaces:** el de cada trabajador es fijo (`?worker=Nombre`) y abre la semana de hoy (o la siguiente aceptada si la de hoy ya terminó). Quitar a alguien del roster deja su enlace sin efecto. Un borrador nunca se abre a un trabajador.
 
-**Jaime salió del equipo** (quitado del roster y de todas las asignaciones de Semana 3 el 15/09/2026, sin fichajes históricos que migrar). La regla de "novato va siempre acompañado" que existía para él ya no aplica — no hay conductor novato en el roster actual.
-
-## Flota
-
-- **Camión Gula** — propio.
-- **Camión Covey** — alquiler.
-- **Camión Albacar** — alquiler.
-
-Desde el 19/09/2026 la flota ya no es fija en el código: se gestiona por semana desde el panel de admin (Flota & Bodas → gestor de flota), permitiendo añadir/quitar camiones, marcarlos propio/alquiler y adjuntar el PDF del contrato de alquiler. La lista de arriba es la de partida (Semana 3), no una lista cerrada.
-
-## Semana 3 (15–20 sept. 2026) — la semana operativa actual
-
-La semana **empieza el martes** (no hay lunes operativo — los lunes son reuniones internas, no logística de campo).
-
-Sábado 19 es el día clave: **3 bodas simultáneas**:
-1. Lugar1 de Chera (250 pax) — Camión Gula — Persona2, Persona8 + Persona5 (ayuda con la comida)
-2. Cliente3, Mas dels Refranys — Camión Covey — Persona1, Persona8 + Persona5 (ayuda con la comida)
-3. Cliente15 y Cliente2 — Camión Albacar — Persona8, Persona3 + Persona5 (ayuda con la comida) — tras quitar a Jaime, Persona3 pasó a cubrir esta boda
-
-## Reglas de negocio importantes (usadas también en el prompt de Gemini AI)
-
-1. Las recogidas van normalmente **una sola persona**, salvo que se pida explícitamente dos.
-2. **Persona4 y Persona8 nunca cargan ni descargan** — solo supervisión/checklist.
-3. **Persona7 y Persona6 solo hacen limpieza de vajilla** — nunca carga, descarga ni montaje de estructura.
-4. **Persona5 sí ayuda** en carga, descarga y montaje cuando hace falta.
-5. Las recogidas de camión se programan **por la mañana temprano** salvo que se diga lo contrario.
-6. Descargar en un evento implica también **montaje de estructura** — debe reflejarse en el tiempo estimado.
-7. **Domingo y lunes comparten una sola lista de tareas.** Cada tarea puede llevar "Día Específico" (Solo Domingo / Solo Lunes). Sin él es ambigua y el sistema la trata como lunes (nunca se da por hecha antes de tiempo). Las tareas de la última semana operativa se pueden separar así en el planning.
-8. **El rango de fechas de la semana (`meta.dateRange`) manda**: de él salen los números de día y cuándo se considera pasada una tarea. Formato que se entiende: "Del 15 al 20 de Septiembre de 2026" (con el año). Si no se entiende, no se marca ni se tacha nada por horario.
-9. **Cada tarea lleva su evento en el texto: `"EVENTO - Tarea"`** (si es de varios eventos: `"Boda A + Boda B - Tarea"`, y su coste se reparte entre ellos en proporción a los pax de cada evento, `week.events`; sin pax, a partes iguales) (guion normal entre espacios). El evento es el nombre de la boda o evento ("Boda Ana y Luis", "Evento Catering Norte") o una categoría general: "Logística Preparación", "Logística Carga", "Limpieza Eventos". De ahí sale el desglose de costes por evento y por persona (Resumen Financiero). En el asistente de nueva semana se añaden las bodas y eventos con su día y la IA usa esos nombres.
-11. **Las semanas se anticipan solas como BORRADOR** (las 2 siguientes, desde el Calendario Gula) y no se activan hasta que un admin las revisa y las acepta. Para el generador cuentan los eventos (boda, comunión, corporativo, con pax y hora) y las recogidas/devoluciones de alquiler; no las visitas, reuniones ni días cerrados. Las semanas van de martes a domingo (+ lunes de cola).
-10. **Cuándo se da una tarea por hecha:** SOLO cuando alguien la marca (clic) o se ficha la salida de esa tarea — decisión del usuario del 25/09: nada se marca solo al pasar su hora ni al terminar la semana (ni en pantalla ni en Mongo). Al marcarla se guarda la hora real (`completedAt`); pulsarla otra vez la desmarca.
-12. **Resumen Financiero por periodo y jornadas sin tarea:** se puede ver por semana (martes a lunes, como el planning), mes, año o todo el histórico; un turno cuenta en el periodo en que empieza; se compara con el periodo anterior y cada evento o persona se despliega para ver el detalle. Las horas fichadas sin tarea concreta ("Inicio de Jornada" y similares) se reparten entre los eventos de las tareas del planning en las que esa persona estaba asignada (por solape con su turno; si no, ese día; si no, esa semana) y solo quedan en "Tareas Internas" si no tiene ninguna; es una estimación que la pantalla marca con ≈ y no cambia el total de horas ni de dinero.
-13. **Enlaces de trabajadores y semana que se abre:** el enlace de cada trabajador es siempre el mismo (`?worker=Nombre`, sin semana) y abre la semana de hoy; cuando esa semana termina del todo (lunes de cola hecho) y la siguiente está aceptada, se abre la siguiente. Un enlace viejo con `?week=` también abre la semana de hoy para un trabajador. El lunes es la COLA de la semana anterior: la carga de un evento del martes se hace el lunes anterior y va en esa cola, no en el martes. El Cuadrante de la semana que empieza lo enseña como "Lunes N · Víspera" (solo lectura).
-
-## Otros proyectos del mismo usuario (NO tocar)
-
-- **CaterFlow** — otro proyecto del usuario, con su propio backend en Render ("CaterFlow-backend", desplegado hace tiempo) y su propia base de datos (`BeraCode_Gula`, mismo cluster de Atlas que Gula Logística pero base separada: `beverages`, `clientes`, `corners`, `departments`, `event_*`...). Completamente independiente — nunca leer, escribir ni mezclar datos con Gula Logística.
+## Otros proyectos del usuario (NO tocar)
+- **CaterFlow**: backend propio en Render y base `BeraCode_Gula` en el mismo cluster de Atlas (`beverages`, `clientes`, `corners`, `departments`, `event_*`…). Nunca leer, escribir ni mezclar.
+- **Calendario Gula** (`r2fod.github.io/Generate_Checklist_Gula/calendario/`): fuente de los borradores automáticos; se lee solo desde el servidor con las variables `CALENDARIO_*` de Render.
