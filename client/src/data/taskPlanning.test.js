@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   getTaskListForDay, resolveTaskIndexByText, buildTaskListPatch, isTaskChronologicallyPast, isTaskTooEarlyToClockIn,
   parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, getNextTaskStart, isTaskTooEarlyToStart, isTaskEffectivelyDone, isWeekFinished, getTaskText, isTaskAssignedTo,
+  esTareaActiva,
 } from './taskPlanning';
 
 const weekData = {
@@ -552,5 +553,14 @@ describe('isTaskAssignedTo', () => {
   it('sin nombre no coincide con nadie', () => {
     expect(isTaskAssignedTo({ text: 'Cargar', assigned: ['Ana'] }, '')).toBe(false);
     expect(isTaskAssignedTo({ text: 'Cargar' }, undefined)).toBe(false);
+  });
+});
+
+describe('esTareaActiva', () => {
+  it('solo `active: false` desactiva; las antiguas en texto y las sin campo cuentan', () => {
+    expect(esTareaActiva({ text: 'x', active: false })).toBe(false);
+    expect(esTareaActiva({ text: 'x', active: true })).toBe(true);
+    expect(esTareaActiva({ text: 'x' })).toBe(true);
+    expect(esTareaActiva('texto plano')).toBe(true);
   });
 });

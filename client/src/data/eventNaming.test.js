@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseEventAndTask, getEventName, inferCategory, buildEventName, normalizeGeneratedEvents, collectEventNames, splitEventNames, buildPaxRegistry, getEventShares, buildTaskEventResolver, buildTaskContextResolver, getWeddingTaskName } from './eventNaming';
+import { parseEventAndTask, getEventName, inferCategory, buildEventName, normalizeGeneratedEvents, collectEventNames, splitEventNames, buildPaxRegistry, getEventShares, buildTaskEventResolver, buildTaskContextResolver, getWeddingTaskName, GENERAL_EVENT } from './eventNaming';
 
 describe('parseEventAndTask', () => {
   it('"Evento - Tarea" explícito: separa por el guion normal', () => {
@@ -228,5 +228,14 @@ describe('los BORRADORES no alteran los números de las semanas reales', () => {
 describe('getWeddingTaskName', () => {
   it('nombra la boda como se ficha: "Boda: lugar (camión)"', () => {
     expect(getWeddingTaskName({ location: 'Finca Norte', truck: 'Camión Gula' })).toBe('Boda: Finca Norte (Camión Gula)');
+  });
+});
+
+describe('parseEventAndTask — jornada sin tarea', () => {
+  it('BUG evitado: los textos por defecto al fichar jornada ("Inicio de Jornada Operativa", "Cierre de Jornada") no son un evento', () => {
+    for (const texto of ['Inicio de Jornada', 'Inicio de Jornada Operativa', 'Cierre de Jornada', 'JORNADA', 'Jornada laboral']) {
+      expect(parseEventAndTask(texto).eventName).toBe(GENERAL_EVENT);
+    }
+    expect(parseEventAndTask('Jornada Eventos: Catering Norte').eventName).not.toBe(GENERAL_EVENT);
   });
 });

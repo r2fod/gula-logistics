@@ -13,7 +13,7 @@ import { formatearEuros, formatearEurosConSigno } from '../../../data/formatoFin
 const Linea = ({ texto, valor, fuerte = false }) => (
   <div className="flex items-center justify-between gap-3 text-xs">
     <span className="font-bold uppercase tracking-wider text-slate-400">{texto}</span>
-    <span className={`tabular-nums ${fuerte ? 'text-sm font-extrabold text-amber-400' : 'font-bold text-slate-300'}`}>{valor}</span>
+    <span className={`shrink-0 whitespace-nowrap tabular-nums ${fuerte ? 'text-sm font-extrabold text-amber-400' : 'font-bold text-slate-300'}`}>{valor}</span>
   </div>
 );
 
@@ -47,7 +47,7 @@ export default function ConceptosAMano({ conceptos, extrasFichados, todo, retras
             <span className="text-[11px] text-slate-500">{n} {n === 1 ? 'concepto' : 'conceptos'}{pago ? ' · resta del saldo, no es coste' : ''}</span>
           </span>
           <span className="flex shrink-0 items-center gap-2">
-            <span className={`text-sm font-bold tabular-nums ${pago ? 'text-sky-300' : importe < 0 ? 'text-rose-400' : 'text-amber-400'}`}>
+            <span className={`whitespace-nowrap text-sm font-bold tabular-nums ${pago ? 'text-sky-300' : importe < 0 ? 'text-rose-400' : 'text-amber-400'}`}>
               {pago ? formatearEuros(-importe) : formatearEurosConSigno(importe)}
             </span>
             <ChevronDown aria-hidden="true" className={`h-4 w-4 text-slate-500 transition-transform duration-300 motion-reduce:transition-none ${esAbierto ? 'rotate-180 text-amber-400' : ''}`} />
@@ -58,7 +58,7 @@ export default function ConceptosAMano({ conceptos, extrasFichados, todo, retras
             {items.map((it, i) => (
               <li key={i} className="flex items-start justify-between gap-3 text-xs">
                 <span className="min-w-0 text-slate-300"><b className="text-slate-200">{it.persona}</b> · <span className="break-words">{it.concepto}</span></span>
-                <span className={`shrink-0 tabular-nums ${it.importe < 0 && !pago ? 'text-rose-400' : 'text-slate-300'}`}>{pago ? formatearEuros(-it.importe) : formatearEurosConSigno(it.importe)}</span>
+                <span className={`shrink-0 whitespace-nowrap tabular-nums ${it.importe < 0 && !pago ? 'text-rose-400' : 'text-slate-300'}`}>{pago ? formatearEuros(-it.importe) : formatearEurosConSigno(it.importe)}</span>
               </li>
             ))}
           </ul>

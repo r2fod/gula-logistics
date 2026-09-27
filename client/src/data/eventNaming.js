@@ -50,7 +50,9 @@ export function parseEventAndTask(taskName) {
     return { eventName: explicit[1].trim(), specificTaskName: explicit[2].trim(), explicit: true };
   }
 
-  if (/^(inicio de jornada|jornada( laboral)?|sin asignar.*)$/i.test(text)) {
+  // "Inicio de Jornada Operativa" y "Cierre de Jornada" son los textos por defecto de
+  // ClockInModal y AdminClockEditModal: antes salían como un evento más.
+  if (/^(inicio de jornada( operativa)?|cierre de jornada|jornada( laboral)?|sin asignar.*)$/i.test(text)) {
     return { eventName: GENERAL_EVENT, specificTaskName: text, explicit: false };
   }
 

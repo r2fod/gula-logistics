@@ -1,4 +1,4 @@
-import { getWeekRange, resolveTaskDate, resolveTaskEvalDay } from './taskPlanning';
+import { getWeekRange, resolveTaskDate, resolveTaskEvalDay, esTareaActiva } from './taskPlanning';
 import { esBorradorSemana } from './eventNaming';
 
 // La VÍSPERA de una semana: el lunes anterior a su martes. En Gula el lunes es la
@@ -41,7 +41,7 @@ export function tareasDeLaVispera(semanas = {}, semana, hoy = new Date()) {
   const { semana: previa, fecha } = encontrada;
   const tareas = (previa.sundayMonday?.tasks || [])
     .map((task, idx) => ({ task, idx }))
-    .filter(({ task }) => task && typeof task === 'object' && task.active !== false && resolveTaskEvalDay('domingo', task) === 'lunes')
+    .filter(({ task }) => task && typeof task === 'object' && esTareaActiva(task) && resolveTaskEvalDay('domingo', task) === 'lunes')
     .sort((a, b) => inicioHora(a.task) - inicioHora(b.task));
   return tareas.length ? { fecha, semana: previa, tareas } : null;
 }

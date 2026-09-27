@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Users, Calendar, Clock, Check, Sparkles } from 'lucide-react';
-import { isTaskEffectivelyDone, getDayLabel } from '../../data/taskPlanning';
+import { isTaskEffectivelyDone, getDayLabel, esTareaActiva } from '../../data/taskPlanning';
 import TaskTextWithEvent from '../TaskTextWithEvent';
 import TarjetaDia from './TarjetaDia';
 import TareaDiaItem from './TareaDiaItem';
@@ -59,7 +59,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
 
   const sharedTasks = (activeWeekData?.sundayMonday?.tasks || [])
     .map((task, idx) => ({ task, idx }))
-    .filter(({ task }) => typeof task === 'object' ? task.active !== false : true);
+    .filter(({ task }) => esTareaActiva(task));
   const targetDayOf = (task) => (typeof task === 'object' && task.targetDay ? task.targetDay.toLowerCase() : null);
   const sharedGroups = [
     {
@@ -146,7 +146,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
           <TarjetaDia titulo={`Lunes ${vispera.fecha.getDate()}`} insignia="Víspera" colorInsignia="text-indigo-300">
             <ul className="space-y-2.5 text-xs text-slate-300">
               {vispera.tareas.map(({ task, idx }) => {
-                if (typeof task === 'object' && task.active === false) return null;
+                if (!esTareaActiva(task)) return null;
                 return (
                   <TareaDiaItem
                     key={`vispera-${idx}`}
@@ -178,7 +178,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
           <TarjetaDia key={key} titulo={day.title} insignia={day.badge} className={posicion === diasSemana.length - 1 ? rejilla.ultima : ''}>
             <ul className="space-y-2.5 text-xs text-slate-300">
               {(day.tasks || []).map((task, idx) => {
-                if (typeof task === 'object' && task.active === false) return null;
+                if (!esTareaActiva(task)) return null;
                 return (
                   <TareaDiaItem
                     key={idx}
@@ -208,7 +208,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
             {(activeWeekData.saturdaySpecial.weddings || []).map((w, idx) => {
-              if (w.active === false) return null;
+              if (!esTareaActiva(w)) return null;
               
               const isCompleted = isTaskEffectivelyDone(activeWeekData, 'sabado', w, currentTime);
               const wAssigned = w.assigned || [];

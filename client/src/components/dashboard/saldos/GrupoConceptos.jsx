@@ -13,7 +13,7 @@ export default function GrupoConceptos({ titulo, ayuda = null, items = [], total
         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
           {titulo} <span className="font-normal normal-case text-slate-500">· {items.length}</span>
         </span>
-        <span className={`font-mono text-xs font-bold ${total > 0 ? 'text-emerald-400' : total < 0 ? 'text-rose-400' : 'text-slate-500'}`}>
+        <span className={`whitespace-nowrap font-mono text-xs font-bold ${total > 0 ? 'text-emerald-400' : total < 0 ? 'text-rose-400' : 'text-slate-500'}`}>
           {formatearEurosConSigno(total)}
         </span>
       </div>
@@ -33,7 +33,7 @@ export default function GrupoConceptos({ titulo, ayuda = null, items = [], total
             >
               <span className="min-w-0 flex-1 break-words pr-2 font-medium">{item.concept}</span>
               <span className="flex shrink-0 items-center gap-2">
-                <span className={`font-mono font-bold ${item.amount > 0 ? 'text-emerald-400' : item.amount < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
+                <span className={`whitespace-nowrap font-mono font-bold ${item.amount > 0 ? 'text-emerald-400' : item.amount < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
                   {item.amount > 0 ? formatearEurosConSigno(item.amount) : formatearEuros(item.amount)}
                 </span>
                 {onBorrar && (

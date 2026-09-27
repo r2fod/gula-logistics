@@ -70,4 +70,14 @@ describe('TeamBalancesTab — desglose separado', () => {
     expect(cambios.breakdown.at(-1).date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(cambios.currentBalance).toBe(35 - 10 - 50); // lo que se le debe baja 50 €
   });
+
+  it('si está fichado ahora, enseña lo que lleva de este turno subiendo en directo (sin tocar el saldo)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 28, 10, 0, 0));
+    pintar({ turnosAbiertos: { Ana: { workerName: 'Ana', type: 'entrada', rate: 10, timestamp: new Date(2026, 8, 28, 9, 30).toISOString() } } });
+    expect(screen.getByText('En turno ahora')).toBeInTheDocument();
+    expect(screen.getByText('+5,00 € y subiendo')).toBeInTheDocument();
+    expect(screen.getByText('+45,00 €')).toBeInTheDocument(); // el saldo no cambia hasta fichar la salida
+    vi.useRealTimers();
+  });
 });

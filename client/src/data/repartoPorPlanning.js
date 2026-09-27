@@ -1,4 +1,4 @@
-import { getTaskInterval, getWeekRange } from './taskPlanning';
+import { getTaskInterval, getWeekRange, esTareaActiva } from './taskPlanning';
 import { parseEventAndTask, EVENT_CATEGORIES, GENERAL_EVENT, paxDeSemana, esBorradorSemana, getWeddingTaskName } from './eventNaming';
 
 // Reparto del tiempo de jornada SIN TAREA entre los eventos del planning.
@@ -51,7 +51,7 @@ export function listarTareasPlanificadas(weeksMap = {}, now = new Date(), { incl
     const semanaDesde = rango.start;
     const semanaHasta = new Date(rango.end.getFullYear(), rango.end.getMonth(), rango.end.getDate() + 2); // hasta el lunes de cola inclusive
     const anadir = (dayKey, task, texto, evento) => {
-      if (!task || typeof task !== 'object' || task.active === false || !Array.isArray(task.assigned) || (!evento && !incluirSinEvento)) return;
+      if (!task || typeof task !== 'object' || !esTareaActiva(task) || !Array.isArray(task.assigned) || (!evento && !incluirSinEvento)) return;
       const tramo = getTaskInterval(week, dayKey, task, now);
       if (!tramo) return;
       tareas.push({ evento: evento || null, pax, asignados: task.assigned.map(plain), nombresAsignados: task.assigned, inicio: tramo.start, fin: tramo.end, texto, semanaDesde, semanaHasta });
@@ -61,7 +61,7 @@ export function listarTareasPlanificadas(weeksMap = {}, now = new Date(), { incl
     });
     (week.sundayMonday?.tasks || []).forEach(t => t?.text && anadir('domingo', t, t.text, eventoDeTarea(t.text, t.event)));
     (week.saturdaySpecial?.weddings || []).forEach(w => {
-      if (w.active === false) return;
+      if (!esTareaActiva(w)) return;
       const texto = getWeddingTaskName(w);
       anadir('sabado', w, texto, w?.event || eventoDeTarea(texto, null));
     });

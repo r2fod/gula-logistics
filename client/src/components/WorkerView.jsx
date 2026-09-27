@@ -7,7 +7,7 @@ import WorkerViewTaskItem from './dashboard/WorkerViewTaskItem';
 import WorkerViewWeddingCard from './dashboard/WorkerViewWeddingCard';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
 import TaskTextWithEvent from './TaskTextWithEvent';
-import { getTaskListForDay, resolveTaskIndexByText, isTaskEffectivelyDone, isTaskAssignedTo, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart } from '../data/taskPlanning';
+import { getTaskListForDay, resolveTaskIndexByText, isTaskEffectivelyDone, isTaskAssignedTo, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart, esTareaActiva } from '../data/taskPlanning';
 import { subscribeToPush } from '../data/pushService';
 import { crearFichaje, horaDeFichaje, fechaDeFichaje } from '../data/fichajes';
 import { getWeddingTaskName } from '../data/eventNaming';
@@ -15,6 +15,9 @@ import { formatTimeShort, formatWeekdayDay } from '../utils/dateUtils';
 import { formatearHoras } from '../data/formatoFinanciero';
 import EstadoVacio from './ui/EstadoVacio';
 import { useDialog } from '../contexts/DialogContext';
+import EnVivo from './ui/EnVivo';
+import { useAhora } from '../hooks/useAhora';
+import { duracionEnCurso } from '../data/costeEnVivo';
 
 
 // Texto del botón de empezar la jornada: se elige uno al azar al abrir la
@@ -59,7 +62,10 @@ export default function WorkerView({
   const [isClockModalOpen, setIsClockModalOpen] = useState(false);
   const [prefilledTask, setPrefilledTask] = useState(null); // for task-level clock-in
   const [taskRef, setTaskRef] = useState(null); // { dayKey, taskIndex } — para marcar la tarea como hecha al fichar salida
-  const [currentTime, setCurrentTime] = useState(new Date());
+  // La pantalla se recalcula cada 15 s (tarea siguiente, "espera X min para fichar"…);
+  // el cronómetro del turno va aparte en <EnVivo>. Antes se redibujaba entera cada
+  // segundo, que en un móvil modesto se nota.
+  const currentTime = useAhora(15000);
   const [startLabel] = useState(() => START_JORNADA_LABELS[Math.floor(Math.random() * START_JORNADA_LABELS.length)]);
   const [selectedDayKey, setSelectedDayKey] = useState('all');
   const [viewModeType, setViewModeType] = useState('calendar'); // 'calendar' | 'graph'
@@ -96,11 +102,6 @@ export default function WorkerView({
   };
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
     if (pushStatus === 'granted') {
       // Si ya hay permiso, nos aseguramos de que haya suscripción en el backend
       // por si es un dispositivo nuevo o limpió datos.
@@ -116,19 +117,6 @@ export default function WorkerView({
   // para siempre y nunca puede desfichar.
   const myEntries = clockEntries.filter(e => e.workerName.toLowerCase() === currentWorkerObj.name.toLowerCase());
   const activeShift = getActiveShiftForWorker(clockEntries, currentWorkerObj.name);
-
-  // Calculate elapsed time if in shift
-  let elapsedTimeFormatted = '0h 00m 00s';
-  let elapsedHours = 0;
-  if (activeShift) {
-    const startTime = new Date(activeShift.timestamp);
-    const diffMs = Math.max(0, currentTime - startTime);
-    elapsedHours = diffMs / (1000 * 60 * 60);
-    const hours = Math.floor(diffMs / (1000 * 60 * 60));
-    const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
-    elapsedTimeFormatted = `${hours}h ${minutes}m ${seconds}s`;
-  }
 
   // Total hours worked in registered past shifts
   const totalCompletedHours = myEntries.reduce((acc, entry) => {
@@ -170,18 +158,18 @@ export default function WorkerView({
     if (['martes', 'miercoles', 'jueves', 'viernes'].includes(dayKey)) {
       const dayObj = activeWeekData.schedule?.[dayKey];
       if (dayObj && dayObj.tasks) {
-        tasks = dayObj.tasks.filter(isAssigned).filter(t => typeof t === 'object' ? t.active !== false : true);
+        tasks = dayObj.tasks.filter(isAssigned).filter(esTareaActiva);
       }
     } else if (dayKey === 'sabado') {
       const wList = activeWeekData.saturdaySpecial?.weddings || [];
-      weddings = wList.filter(isAssigned).filter(w => w.active !== false);
+      weddings = wList.filter(isAssigned).filter(esTareaActiva);
     } else if (dayKey === 'domingo' || dayKey === 'lunes') {
       // domingo y lunes comparten sundayMonday.tasks bajo un único bucket
       // real ('domingo' es la clave de storage) — confirmado con el
       // usuario que la pestaña "LUN" debe enseñar las mismas tareas que
       // "DOM", no quedarse vacía como antes (buscaba en schedule.lunes,
       // que no existe).
-      tasks = getTaskListForDay(activeWeekData, 'domingo').filter(isAssigned).filter(t => typeof t === 'object' ? t.active !== false : true);
+      tasks = getTaskListForDay(activeWeekData, 'domingo').filter(isAssigned).filter(esTareaActiva);
       // Una tarea etiquetada "Domingo" (targetDay) no es del lunes: sin este
       // filtro la pestaña LUN enseñaba p.ej. la recogida del domingo bajo
       // "Lunes". Las sin etiquetar siguen en ambas (no se sabe cuál es).
@@ -232,7 +220,7 @@ export default function WorkerView({
         taskName: activeShift.taskName || 'Turno Activo General',
         dayTitle: 'Turno en curso',
         dayBadge: '🔴 En Directo',
-        timeFrame: elapsedTimeFormatted,
+        timeFrame: null, // el tiempo que lleva se pinta en directo (EnVivo)
         isWedding: false
       };
     }
@@ -293,7 +281,7 @@ export default function WorkerView({
       rawTask: t,
       isWedding: false
     };
-  }, [daysWithActivities, activeShift, elapsedTimeFormatted, minuteKey]);
+  }, [daysWithActivities, activeShift, minuteKey]);
 
   // Compañeros de la MISMA tarea (no cualquiera fichado en algo sin
   // relación) — para saber a quién preguntar por compartir coche a la
@@ -504,7 +492,7 @@ export default function WorkerView({
                   </span>
                 </div>
                 <span className="text-sm sm:text-base font-extrabold font-mono text-emerald-400 bg-slate-900 px-2.5 py-0.5 rounded-lg border border-slate-800">
-                  <Clock className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{elapsedTimeFormatted}
+                  <Clock className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" /><EnVivo>{(ahora) => duracionEnCurso(activeShift, ahora)}</EnVivo>
                 </span>
               </div>
 
