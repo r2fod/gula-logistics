@@ -5,32 +5,17 @@ import { requireAdmin } from '../middleware/requireAdmin.js';
 
 const router = express.Router();
 
-// Fallback in-memory roster if database is not available
-const DEFAULT_WORKERS_LIST = [
-  { name: "Persona1", role: "Conductor Flota (Veterano)", truck: "Camión Covey (Alquiler)", avatar: "🚛", isPayroll: false, rate: 10 },
-  { name: "Persona2", role: "Conductor Flota (Veterano)", truck: "Camión Gula (Propio)", avatar: "🚚", isPayroll: false, rate: 10 },
-  { name: "Persona3", role: "Conductor & Backup", truck: "Camión Covey / Apoyo", avatar: "🚚", isPayroll: false, rate: 10 },
-  { name: "Persona4", role: "Ayudante Logística / Prepara Eventos / Verifica Checklist", truck: "Almacén Base", avatar: "📦", isPayroll: true, rate: 14 },
-  { name: "Persona5", role: "Apoyo Logística & Prep", truck: "Base / Camión Gula", avatar: "📦", isPayroll: false, rate: 10 },
-  { name: "Persona6", role: "Gula Limpieza Eventos", truck: "Limpieza Almacén", avatar: "🧹", isPayroll: false, rate: 10 },
-  { name: "Persona7", role: "Gula Limpieza & Apoyo", truck: "Limpieza Almacén", avatar: "🧹", isPayroll: false, rate: 10 },
-  { name: "Persona8", role: "Jefe de Logística", truck: "Supervisión Flota", avatar: "📋", isPayroll: true, rate: 14 }
-];
-
-let memoryRoster = [...DEFAULT_WORKERS_LIST];
+// El equipo vive en Mongo (se edita desde la app). Sin conexión, en memoria. No hay
+// lista por defecto en el código: el repo es público y llevaba nombres y tarifas reales.
+let memoryRoster = [];
 
 // GET /api/roster - Obtener lista de trabajadores activos
 router.get('/', async (req, res) => {
   try {
     if (mongoose.connection.readyState === 1) {
       const rosterDoc = await TeamRoster.findOne({ key: 'roster' });
-      if (rosterDoc && rosterDoc.workers) {
-        return res.json({ workers: rosterDoc.workers });
-      } else {
-        // If no document exists in DB yet, seed it with the default list
-        const newDoc = await TeamRoster.create({ key: 'roster', workers: DEFAULT_WORKERS_LIST });
-        return res.json({ workers: newDoc.workers });
-      }
+      // Base nueva sin equipo: lista vacía (el admin lo añade). Un GET público no escribe.
+      return res.json({ workers: rosterDoc?.workers || [] });
     }
     // Fallback if DB is disconnected
     return res.json({ workers: memoryRoster });

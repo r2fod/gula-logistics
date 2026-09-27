@@ -115,13 +115,13 @@ export default function LiveMonitorPanel({
     };
   };
 
-  const getWorkerLocation = (workerName) => {
-    if (workerName === 'Persona1' || workerName === 'Persona2' || workerName === 'Persona3') {
-      return '📍 En Ruta / Fincas Eventos';
-    }
-    if (workerName === 'Persona6' || workerName === 'Persona7') {
-      return '📍 Almacén Base / Limpieza';
-    }
+  // Dónde suele estar cada uno, por su ROL (como el generador de semanas), no por su
+  // nombre: antes iba escrito a mano para unas personas concretas y no servía para
+  // nadie nuevo.
+  const getWorkerLocation = (worker) => {
+    const rol = String(worker?.role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    if (/conductor/.test(rol)) return '📍 En Ruta / Fincas Eventos';
+    if (/limpieza/.test(rol)) return '📍 Almacén Base / Limpieza';
     return '📍 Almacén Base (Gula Ops)';
   };
 
@@ -157,7 +157,7 @@ export default function LiveMonitorPanel({
       clockEntry,
       currentTask: currentTaskToDisplay,
       extraTasksCount: !isClockedIn ? 0 : (rawTaskName && !isGenericTaskName) ? 0 : taskInfo.extraCount,
-      location: getWorkerLocation(w.name)
+      location: getWorkerLocation(w)
     };
   });
 

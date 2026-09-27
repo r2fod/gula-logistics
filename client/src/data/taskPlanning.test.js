@@ -77,7 +77,7 @@ describe('isTaskChronologicallyPast', () => {
     expect(isTaskChronologicallyPast('sabado', '20:00-23:30', horaFin)).toBe(true);
   });
 
-  it('con margen: NO se da por pasada todavía a los 9min de retraso (caso real de Persona3)', () => {
+  it('con margen: NO se da por pasada todavía a los 9min de retraso (caso real de Diego)', () => {
     const horaFin = new Date(2026, 8, 19, 23, 39);
     expect(isTaskChronologicallyPast('sabado', '20:00-23:30', horaFin, 45)).toBe(false);
   });
@@ -87,7 +87,7 @@ describe('isTaskChronologicallyPast', () => {
     expect(isTaskChronologicallyPast('sabado', '20:00-23:30', masTarde, 45)).toBe(true);
   });
 
-  it('turno que cruza medianoche: sigue "en curso" pasada la medianoche si no se ha superado su hora real de fin + margen (caso real de Persona1)', () => {
+  it('turno que cruza medianoche: sigue "en curso" pasada la medianoche si no se ha superado su hora real de fin + margen (caso real de Bruno)', () => {
     // Boda 20:30-00:30 del sábado, comprobada el domingo a las 00:35 —
     // solo 5min después de las 00:30 reales, muy por debajo del margen de 45.
     const domingo0035 = new Date(2026, 8, 20, 0, 35);

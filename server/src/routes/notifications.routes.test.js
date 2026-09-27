@@ -50,7 +50,7 @@ describe('POST /api/notifications/subscribe', () => {
     const app = buildApp();
     const res = await request(app)
       .post('/api/notifications/subscribe')
-      .send({ workerName: 'Persona4' }); // missing subscription
+      .send({ workerName: 'Elena' }); // missing subscription
 
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Faltan datos de suscripción');
@@ -63,7 +63,7 @@ describe('POST /api/notifications/subscribe', () => {
     const res = await request(app)
       .post('/api/notifications/subscribe')
       .send({
-        workerName: 'Persona4',
+        workerName: 'Elena',
         subscription: { endpoint: 'https://push.example.com/xyz', keys: { p256dh: 'a', auth: 'b' } }
       });
 
@@ -71,7 +71,7 @@ describe('POST /api/notifications/subscribe', () => {
     expect(res.body.message).toBe('Suscripción guardada correctamente');
     expect(PushSubscription.findOneAndUpdate).toHaveBeenCalledWith(
       { 'subscription.endpoint': 'https://push.example.com/xyz' },
-      expect.objectContaining({ workerName: 'Persona4' }),
+      expect.objectContaining({ workerName: 'Elena' }),
       { upsert: true, new: true }
     );
   });
@@ -90,7 +90,7 @@ describe('POST /api/notifications/notify', () => {
 
   it('sends notifications to all subscribers', async () => {
     PushSubscription.find.mockResolvedValue([
-      { _id: '1', workerName: 'Persona4', subscription: { endpoint: 'ep1' } },
+      { _id: '1', workerName: 'Elena', subscription: { endpoint: 'ep1' } },
       { _id: '2', workerName: 'Juan', subscription: { endpoint: 'ep2' } }
     ]);
     const app = buildApp();

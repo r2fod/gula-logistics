@@ -31,14 +31,14 @@ beforeEach(() => {
 
 describe('POST /api/clock', () => {
   it('crea un fichaje nuevo normal', async () => {
-    ClockEntry.create.mockResolvedValue({ id: '123', workerName: 'Persona2', type: 'entrada' });
+    ClockEntry.create.mockResolvedValue({ id: '123', workerName: 'Carlos', type: 'entrada' });
     const app = buildApp();
     const res = await request(app)
       .post('/api/clock')
-      .send({ id: '123', workerName: 'Persona2', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z' });
+      .send({ id: '123', workerName: 'Carlos', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z' });
 
     expect(res.status).toBe(201);
-    expect(ClockEntry.create).toHaveBeenCalledWith(expect.objectContaining({ id: '123', workerName: 'Persona2' }));
+    expect(ClockEntry.create).toHaveBeenCalledWith(expect.objectContaining({ id: '123', workerName: 'Carlos' }));
   });
 
   it('id duplicado (reintento tras un fichaje offline que en realidad sí se guardó): devuelve 200 con el existente, no 500', async () => {
@@ -46,15 +46,15 @@ describe('POST /api/clock', () => {
     const dupError = new Error('E11000 duplicate key error collection: gula.clockentries index: id_1 dup key: { id: "123" }');
     dupError.code = 11000;
     ClockEntry.create.mockRejectedValue(dupError);
-    ClockEntry.findOne.mockResolvedValue({ id: '123', workerName: 'Persona2', type: 'entrada' });
+    ClockEntry.findOne.mockResolvedValue({ id: '123', workerName: 'Carlos', type: 'entrada' });
 
     const app = buildApp();
     const res = await request(app)
       .post('/api/clock')
-      .send({ id: '123', workerName: 'Persona2', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z' });
+      .send({ id: '123', workerName: 'Carlos', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z' });
 
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ id: '123', workerName: 'Persona2' });
+    expect(res.body).toMatchObject({ id: '123', workerName: 'Carlos' });
     // No se intenta crear un segundo documento con el mismo id.
     expect(ClockEntry.create).toHaveBeenCalledTimes(1);
   });
@@ -64,7 +64,7 @@ describe('POST /api/clock', () => {
     const app = buildApp();
     const res = await request(app)
       .post('/api/clock')
-      .send({ id: '456', workerName: 'Persona2', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z' });
+      .send({ id: '456', workerName: 'Carlos', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z' });
 
     expect(res.status).toBe(500);
   });
@@ -74,7 +74,7 @@ describe('POST /api/clock', () => {
     const app = buildApp();
     const res = await request(app)
       .post('/api/clock')
-      .send({ workerName: 'Persona2', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z' });
+      .send({ workerName: 'Carlos', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z' });
 
     expect(res.status).toBe(201);
     expect(res.body.id).toBeTruthy();
@@ -85,7 +85,7 @@ describe('POST /api/clock', () => {
     const app = buildApp();
     const res = await request(app)
       .post('/api/clock')
-      .send({ id: '789', workerName: 'Persona2', type: 'salida', timestamp: '2026-09-19T08:00:00.000Z', earnings: 99999, durationHours: 500 });
+      .send({ id: '789', workerName: 'Carlos', type: 'salida', timestamp: '2026-09-19T08:00:00.000Z', earnings: 99999, durationHours: 500 });
 
     expect(res.status).toBe(201);
     expect(ClockEntry.create).toHaveBeenCalledWith(
@@ -97,7 +97,7 @@ describe('POST /api/clock', () => {
     const app = buildApp();
     const res = await request(app)
       .post('/api/clock')
-      .send({ id: '790', workerName: 'Persona2', type: 'salida', timestamp: '2026-09-19T08:00:00.000Z', rate: 1000 });
+      .send({ id: '790', workerName: 'Carlos', type: 'salida', timestamp: '2026-09-19T08:00:00.000Z', rate: 1000 });
 
     expect(res.status).toBe(400);
     expect(ClockEntry.create).not.toHaveBeenCalled();
@@ -105,8 +105,8 @@ describe('POST /api/clock', () => {
 
   it('rechaza un rate negativo o cero', async () => {
     const app = buildApp();
-    const res1 = await request(app).post('/api/clock').send({ id: '791', workerName: 'Persona2', type: 'salida', timestamp: 't', rate: -5 });
-    const res2 = await request(app).post('/api/clock').send({ id: '792', workerName: 'Persona2', type: 'salida', timestamp: 't', rate: 0 });
+    const res1 = await request(app).post('/api/clock').send({ id: '791', workerName: 'Carlos', type: 'salida', timestamp: 't', rate: -5 });
+    const res2 = await request(app).post('/api/clock').send({ id: '792', workerName: 'Carlos', type: 'salida', timestamp: 't', rate: 0 });
     expect(res1.status).toBe(400);
     expect(res2.status).toBe(400);
   });
@@ -116,7 +116,7 @@ describe('POST /api/clock', () => {
     const app = buildApp();
     const res = await request(app)
       .post('/api/clock')
-      .send({ id: '793', workerName: 'Persona4', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z', rate: 14 });
+      .send({ id: '793', workerName: 'Elena', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z', rate: 14 });
 
     expect(res.status).toBe(201);
     expect(res.body.rate).toBe(14);
