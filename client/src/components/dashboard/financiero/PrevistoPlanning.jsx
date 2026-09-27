@@ -10,7 +10,7 @@ export default function PrevistoPlanning({ estimado, fichadas = {}, retraso = 0 
   const pie = (
     <div className="flex items-center justify-between gap-3 text-xs">
       <span className="font-bold uppercase tracking-wider text-slate-400">Previsto en extras</span>
-      <span className="tabular-nums text-slate-400">
+      <span className="whitespace-nowrap tabular-nums text-slate-400">
         {formatearHoras(estimado.horasExtra)} <span className="text-slate-600">·</span> <span className="text-sm font-extrabold text-amber-400">{formatearEuros(estimado.costeExtra)}</span>
       </span>
     </div>
@@ -39,7 +39,7 @@ export default function PrevistoPlanning({ estimado, fichadas = {}, retraso = 0 
                   </th>
                   <td className="px-2 py-2 text-right">{formatearHoras(p.horas)}</td>
                   <td className="px-2 py-2 text-right text-slate-400">{formatearHoras(fichadas[p.nombre] || 0)}</td>
-                  <td className="px-3.5 sm:px-5 py-2 text-right font-bold text-amber-400">{p.nomina ? '—' : formatearEuros(p.coste)}</td>
+                  <td className="whitespace-nowrap px-3.5 sm:px-5 py-2 text-right font-bold text-amber-400">{p.nomina ? '—' : formatearEuros(p.coste)}</td>
                 </tr>
               ))}
             </tbody>

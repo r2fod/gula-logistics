@@ -38,3 +38,13 @@ describe('TaskFlowGraphView — tareas hechas', () => {
     expect(cuentaHechas(container)).toBe(0);
   });
 });
+
+describe('TaskFlowGraphView — tareas desactivadas', () => {
+  it('BUG evitado: una tarea desactivada no se dibuja en el grafo', () => {
+    const w = semana();
+    w.schedule.martes.tasks.push({ id: 'm2', text: 'Tarea apagada', timeFrame: '11:00-12:00', assigned: ['Ana'], active: false });
+    const { container } = render(<TaskFlowGraphView activeWeekData={w} workersList={[{ name: 'Ana', avatar: '🚚' }]} />);
+    expect(container.textContent).toContain('Tarea de martes');
+    expect(container.textContent).not.toContain('Tarea apagada');
+  });
+});

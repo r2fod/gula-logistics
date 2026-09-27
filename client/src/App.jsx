@@ -1,21 +1,30 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import {
   ShieldCheck,
   ShieldAlert
 } from 'lucide-react';
 
-import WeekManagerModal from './components/WeekManagerModal';
-import GeminiAssistantModal from './components/GeminiAssistantModal';
 import ClockInModal from './components/ClockInModal';
-import PartnerDashboardView from './components/PartnerDashboardView';
-import AdminWorkerEditorModal from './components/AdminWorkerEditorModal';
-import AdminTaskEditorModal from './components/AdminTaskEditorModal';
 
 import WorkerView from './components/WorkerView';
 import PublicView from './components/PublicView';
 import BackgroundAnimation from './components/BackgroundAnimation';
 import AdminLoginModal from './components/AdminLoginModal';
-import EnlacesWhatsAppModal from './components/EnlacesWhatsAppModal';
+// El panel de admin/socias y sus editores se descargan solo cuando hacen falta: un
+// trabajador en su móvil no los usa (antes todo iba en un único archivo de ~1 MB).
+const PartnerDashboardView = lazy(() => import('./components/PartnerDashboardView'));
+const WeekManagerModal = lazy(() => import('./components/WeekManagerModal'));
+const GeminiAssistantModal = lazy(() => import('./components/GeminiAssistantModal'));
+const AdminWorkerEditorModal = lazy(() => import('./components/AdminWorkerEditorModal'));
+const AdminTaskEditorModal = lazy(() => import('./components/AdminTaskEditorModal'));
+const EnlacesWhatsAppModal = lazy(() => import('./components/EnlacesWhatsAppModal'));
+
+const CargandoPanel = () => (
+  <div role="status" className="flex min-h-[60vh] items-center justify-center gap-3 text-sm text-slate-400">
+    <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-700 border-t-amber-400 motion-reduce:animate-none" aria-hidden="true" />
+    Cargando el panel…
+  </div>
+);
 import { logisticsData as BASE_DATA } from './data/logisticsData';
 import {
   fetchClockEntriesFromAPI,
@@ -39,17 +48,6 @@ import { getWeekRange } from './data/taskPlanning';
 import { anticiparSemanas } from './data/anticipacion';
 import { semanaInicialDeEnlace } from './data/enlaces';
 import { parseWeekRange } from './data/taskPlanning';
-
-const DEFAULT_WORKERS_LIST = [
-  { name: "Persona1", role: "Conductor Flota (Veterano)", truck: "Camión Covey (Alquiler)", avatar: "🚛", isPayroll: false, rate: 10 },
-  { name: "Persona2", role: "Conductor Flota (Veterano)", truck: "Camión Gula (Propio)", avatar: "🚚", isPayroll: false, rate: 10 },
-  { name: "Persona3", role: "Conductor & Backup", truck: "Camión Covey / Apoyo", avatar: "🚚", isPayroll: false, rate: 10 },
-  { name: "Persona4", role: "Ayudante Logística / Prepara Eventos / Verifica Checklist", truck: "Almacén Base", avatar: "📦", isPayroll: true, rate: 14 },
-  { name: "Persona5", role: "Apoyo Logística & Prep", truck: "Base / Camión Gula", avatar: "📦", isPayroll: false, rate: 10 },
-  { name: "Persona6", role: "Gula Limpieza Eventos", truck: "Limpieza Almacén", avatar: "🧹", isPayroll: false, rate: 10 },
-  { name: "Persona7", role: "Gula Limpieza & Apoyo", truck: "Limpieza Almacén", avatar: "🧹", isPayroll: false, rate: 10 },
-  { name: "Persona8", role: "Jefe de Logística", truck: "Supervisión Flota", avatar: "📋", isPayroll: true, rate: 14 }
-];
 
 const BASE_WEEK_3 = {
   id: "week_3",
@@ -421,12 +419,22 @@ export default function App() {
     setTimeout(() => setIsTaskEditorModalOpen(true), 0);
   };
 
-  if (activeWorker) {
+  // El enlace ?worker= se resuelve al abrir con la lista de equipo que haya en el
+  // dispositivo; en un móvil nuevo esa lista es la de arranque y no trae a quien
+  // entró hace poco, así que su enlace abría la vista pública hasta recargar. Ahora
+  // se reconoce en cuanto llega el equipo real del servidor. (Salir de la vista del
+  // trabajador limpia la URL, así que esto no le deja atrapado en ella.)
+  const nombreEnlace = new URLSearchParams(window.location.search).get('worker');
+  const trabajadorActivo = activeWorker
+    || (nombreEnlace && workersList.find(w => w.name.toLowerCase() === nombreEnlace.toLowerCase())?.name)
+    || null;
+
+  if (trabajadorActivo) {
     return (
       <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans selection:bg-amber-500 selection:text-slate-950 relative">
         <BackgroundAnimation viewMode="worker" />
         <WorkerView
-          workerName={activeWorker}
+          workerName={trabajadorActivo}
           workersList={workersList}
           activeWeekData={activeWeek}
           clockEntries={currentWeekClockEntries}
@@ -476,7 +484,7 @@ export default function App() {
 
   // Genuinely public, no-sensitive-data view: no saldos, no nóminas, no admin
   // controls, regardless of whether this browser also has an admin session.
-  if (isPublicPreviewMode && !activeWorker) {
+  if (isPublicPreviewMode && !trabajadorActivo) {
     return (
       <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans relative">
         <BackgroundAnimation viewMode="public" />
@@ -504,7 +512,7 @@ export default function App() {
           isOpen={isClockInModalOpen}
           onClose={() => setIsClockInModalOpen(false)}
           workersList={workersList}
-          initialWorkerName={activeWorker}
+          initialWorkerName={trabajadorActivo}
           clockEntries={currentWeekClockEntries}
           onClockEntryCreated={handleClockEntryCreated}
         />
@@ -547,7 +555,7 @@ export default function App() {
           isOpen={isClockInModalOpen}
           onClose={() => setIsClockInModalOpen(false)}
           workersList={workersList}
-          initialWorkerName={activeWorker}
+          initialWorkerName={trabajadorActivo}
           clockEntries={currentWeekClockEntries}
           onClockEntryCreated={handleClockEntryCreated}
         />
@@ -567,6 +575,7 @@ export default function App() {
   return (
     <div className="bg-slate-950 min-h-screen text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950 relative">
       <BackgroundAnimation viewMode="partner_planning" />
+      <Suspense fallback={<CargandoPanel />}>
       <PartnerDashboardView
         activeWeekData={activeWeek}
         allWeeks={allWeeks}
@@ -608,7 +617,7 @@ export default function App() {
         isOpen={isClockInModalOpen}
         onClose={() => setIsClockInModalOpen(false)}
         workersList={workersList}
-        initialWorkerName={activeWorker}
+        initialWorkerName={trabajadorActivo}
         clockEntries={currentWeekClockEntries}
         onClockEntryCreated={handleClockEntryCreated}
       />
@@ -656,6 +665,7 @@ export default function App() {
         onSaveWeekData={handleUpdateActiveWeek}
         onJumpToVispera={handleJumpToVispera}
       />
+      </Suspense>
 
       <AdminLoginModal
         isOpen={isAdminLoginOpen}

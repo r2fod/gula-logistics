@@ -1,3 +1,5 @@
+import { esTareaActiva } from './taskPlanning';
+
 // Horas y coste PREVISTOS según el planning de una semana (el horario de cada
 // tarea con gente asignada), no según fichajes: sirve para ver lo que se lleva
 // planificado aunque nadie haya fichado. Vivía dentro del informe de Nóminas.
@@ -32,7 +34,7 @@ export function estimarHorasPlanning(semana, equipo = []) {
   const sinHorario = [];
 
   const registrar = (dia, etiquetaDia, texto, tarea) => {
-    if (!tarea || tarea.active === false || !Array.isArray(tarea.assigned) || !tarea.assigned.length) return;
+    if (!tarea || !esTareaActiva(tarea) || !Array.isArray(tarea.assigned) || !tarea.assigned.length) return;
     const t = tramo(tarea.timeFrame);
     if (!t) { sinHorario.push({ dia: etiquetaDia, texto: texto || '(sin descripción)', asignados: tarea.assigned }); return; }
     tarea.assigned.forEach(nombre => {

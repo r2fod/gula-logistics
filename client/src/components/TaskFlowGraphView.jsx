@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { BarChart3, Calendar, Check, CheckCircle2, Circle, ClipboardList, Clock, Filter, Globe, Layers, ListTodo, PackageCheck, PackageMinus, PackagePlus, PartyPopper, Share2, Sparkles, Truck, Undo2, Users, Zap } from 'lucide-react';
-import { getDayLabel, getWeddingsBadge, isTaskEffectivelyDone } from '../data/taskPlanning';
+import { getDayLabel, getWeddingsBadge, isTaskEffectivelyDone, esTareaActiva } from '../data/taskPlanning';
 import { Selector } from './ui/Campo';
 import Tarjeta from './ui/Tarjeta';
 import BarraProgreso from './ui/BarraProgreso';
@@ -166,6 +166,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
 
     dayConfigs.forEach(({ dayId, dayKey }) => {
       (rawSchedule[dayKey]?.tasks || []).forEach((tItem, idx) => {
+        if (!esTareaActiva(tItem)) return; // desactivada: no se dibuja (el índice real se conserva)
         anadirTarea(tItem, idx, { id: `task_${dayKey}_${idx}`, dayId, claveDia: dayKey, claveNodo: dayKey });
       });
     });
@@ -174,6 +175,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
     const weddings = activeWeekData?.saturdaySpecial?.weddings || [];
 
     weddings.forEach((w, idx) => {
+      if (!esTareaActiva(w)) return;
       const id = `task_sabado_${idx}`;
       nodes.push({ id, type: 'task', label: `💒 ${w.location}`, sub: w.details, timeFrame: w.timeFrame, completed: isTaskEffectivelyDone(activeWeekData, 'sabado', w, ahora), dayId: 'day_sabado', dayKey: 'saturdaySpecial', idx });
       links.push({ source: 'day_sabado', target: id });
@@ -190,6 +192,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
     const domTasks = activeWeekData?.sundayMonday?.tasks || [];
 
     domTasks.forEach((tItem, idx) => {
+      if (!esTareaActiva(tItem)) return;
       anadirTarea(tItem, idx, { id: `task_domingo_${idx}`, dayId: 'day_domingo', claveDia: 'domingo', claveNodo: 'sundayMonday' });
     });
 

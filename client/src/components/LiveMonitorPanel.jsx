@@ -1,33 +1,42 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Activity, AlertTriangle, Clock, MapPin, Package, Play, Radio, Square, Truck } from 'lucide-react';
 import { pairShiftsFromEntries, isZombieShift } from '../data/shiftCalculations';
-import { getTaskListForDay, isTaskEffectivelyDone, isTaskAssignedTo, getTaskText } from '../data/taskPlanning';
+import { getTaskListForDay, isTaskEffectivelyDone, isTaskAssignedTo, getTaskText, esTareaActiva } from '../data/taskPlanning';
 import { crearFichaje } from '../data/fichajes';
 import { formatTime } from '../utils/dateUtils';
 import BarraProgreso from './ui/BarraProgreso';
+import EnVivo from './ui/EnVivo';
+import { useAhora } from '../hooks/useAhora';
+import { costeEnCurso, duracionEnCurso } from '../data/costeEnVivo';
+import { coincideNombre } from '../data/nombresTrabajadores';
+import { formatearEuros } from '../data/formatoFinanciero';
 
 
+// `mostrarDinero` (panel de admin/socias, nunca la vista pública): lo que lleva
+// ganado cada persona en turno, subiendo en tiempo real. `saldos` (fichas de Saldos)
+// sirve para cobrar la bolsa de horas igual que en Saldos.
 export default function LiveMonitorPanel({
   workersList = [],
   clockEntries = [],
   activeWeekData = {},
   onClockEntryCreated,
-  onOpenClockModal
+  onOpenClockModal,
+  mostrarDinero = false,
+  saldos = []
 }) {
-  const [currentTime, setCurrentTime] = useState(new Date());
+  // La pantalla se recalcula cada 30 s; lo que cambia cada segundo (cronómetros,
+  // dinero, reloj) va dentro de <EnVivo>. Antes se redibujaba entera cada segundo.
+  const currentTime = useAhora(30000);
   const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'active' | 'trucks' | 'base'
 
-  // Live timer for elapsed shift duration
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Map active clock entries per worker. Memoizado por `clockEntries`: el
-  // timer de arriba fuerza un re-render cada segundo (currentTime), y sin
-  // esto se reordenaban y emparejaban TODOS los fichajes 60 veces por
-  // minuto aunque no hubiera ni un fichaje nuevo.
-  const { activeShifts } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
+  // Turnos cerrados y abiertos por trabajador, solo cuando cambian los fichajes.
+  const { activeShifts, shifts } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
+  const horasCerradas = useMemo(() => {
+    const porPersona = {};
+    shifts.forEach(t => { porPersona[t.workerName] = (porPersona[t.workerName] || 0) + (t.durationHours || 0); });
+    return porPersona;
+  }, [shifts]);
+  const tarifaDe = (worker) => worker.clockEntry?.rate || worker.rate || (worker.isPayroll ? 14 : 10);
 
   const parseTimeToMinutes = (str) => {
     const m = /(\d{1,2}):(\d{2})/.exec(str || '');
@@ -48,7 +57,7 @@ export default function LiveMonitorPanel({
     const listDayKey = dayKey === 'lunes' ? 'domingo' : dayKey;
     const tasks = getTaskListForDay(activeWeekData, listDayKey);
 
-    return tasks.filter(t => isTaskAssignedTo(t, workerName));
+    return tasks.filter(t => esTareaActiva(t) && isTaskAssignedTo(t, workerName));
   };
 
   const getWorkerTaskInfo = (workerName) => {
@@ -120,18 +129,6 @@ export default function LiveMonitorPanel({
     const clockEntry = activeShifts[w.name];
     const isClockedIn = !!clockEntry;
 
-    let elapsedTimeFormatted = '0h 00m';
-    let elapsedMs = 0;
-
-    if (isClockedIn) {
-      const startTime = new Date(clockEntry.timestamp);
-      elapsedMs = Math.max(0, currentTime - startTime);
-      const hours = Math.floor(elapsedMs / (1000 * 60 * 60));
-      const minutes = Math.floor((elapsedMs % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((elapsedMs % (1000 * 60)) / 1000);
-      elapsedTimeFormatted = `${hours}h ${minutes}m ${seconds}s`;
-    }
-
     // Prefer the task the worker actually clocked into (fichar por tarea)
     // over the day-of-week guess, so this reflects real, live control.
     const rawTaskName = clockEntry?.taskName || clockEntry?.note;
@@ -158,7 +155,6 @@ export default function LiveMonitorPanel({
       isClockedIn,
       isZombie: isClockedIn && isZombieShift(clockEntry, currentTime),
       clockEntry,
-      elapsedTimeFormatted,
       currentTask: currentTaskToDisplay,
       extraTasksCount: !isClockedIn ? 0 : (rawTaskName && !isGenericTaskName) ? 0 : taskInfo.extraCount,
       location: getWorkerLocation(w.name)
@@ -218,7 +214,7 @@ export default function LiveMonitorPanel({
             <div className="bg-slate-950/80 px-3 sm:px-4 py-2 rounded-xl sm:rounded-2xl border border-slate-800 text-center font-mono">
               <span className="text-[9px] sm:text-[10px] text-slate-400 font-semibold block uppercase tracking-wider">Hora Oficial</span>
               <span className="text-xs sm:text-sm font-bold text-amber-400">
-                {formatTime(currentTime)}
+                <EnVivo>{(ahora) => formatTime(ahora)}</EnVivo>
               </span>
             </div>
           </div>
@@ -371,9 +367,26 @@ export default function LiveMonitorPanel({
                   />
 
                   <div className="flex justify-between items-center text-[10px] text-slate-400 font-medium">
-                    <span>{worker.isClockedIn ? worker.elapsedTimeFormatted : '0h 00m'}</span>
+                    <span className="tabular-nums">{worker.isClockedIn ? <EnVivo>{(ahora) => duracionEnCurso(worker.clockEntry, ahora)}</EnVivo> : '0h 00m'}</span>
                     <span>Objetivo ~8h</span>
                   </div>
+
+                  {mostrarDinero && worker.isClockedIn && (
+                    <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300/80">
+                        {worker.isPayroll ? 'Valoración en curso' : 'Lleva ganado'}
+                      </span>
+                      <span className="whitespace-nowrap font-mono text-sm font-extrabold tabular-nums text-emerald-300" aria-live="off">
+                        <EnVivo>{(ahora) => formatearEuros(costeEnCurso({
+                          entrada: worker.clockEntry,
+                          ahora,
+                          tarifa: tarifaDe(worker),
+                          ficha: saldos.find(f => coincideNombre(worker.name, f.name)),
+                          horasPrevias: horasCerradas[worker.name] || 0,
+                        }).coste)}</EnVivo>
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Current Task Box */}
@@ -407,11 +420,11 @@ export default function LiveMonitorPanel({
 
                 {worker.isPayroll ? (
                   <span className="text-[9px] font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 shrink-0">
-                    Nómina (14€/h)
+                    Nómina{mostrarDinero && ` (${formatearEuros(tarifaDe(worker))}/h)`}
                   </span>
                 ) : (
                   <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
-                    Extra (10€/h)
+                    Extra{mostrarDinero && ` (${formatearEuros(tarifaDe(worker))}/h)`}
                   </span>
                 )}
               </div>

@@ -22,3 +22,18 @@ if ('serviceWorker' in navigator) {
     });
   });
 }
+
+// El panel de admin se carga por partes (React.lazy en App.jsx). Si se despliega
+// una versión nueva con la app ya abierta, los trozos viejos ya no existen: se
+// recarga UNA vez para traer la versión nueva (si vuelve a fallar enseguida, no se
+// insiste, para no entrar en un bucle de recargas).
+window.addEventListener('vite:preloadError', (evento) => {
+  const CLAVE = 'gula_recarga_por_version';
+  try {
+    const ultima = Number(sessionStorage.getItem(CLAVE) || 0);
+    if (Date.now() - ultima < 60000) return;
+    sessionStorage.setItem(CLAVE, String(Date.now()));
+  } catch { /* sin sessionStorage: se recarga igual */ }
+  evento.preventDefault();
+  window.location.reload();
+});

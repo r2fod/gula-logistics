@@ -36,4 +36,9 @@ export default [
       'no-unused-vars': 'warn',
     },
   },
+  // Los tests se ejecutan con Vitest sobre Node: `global`, `process`… existen.
+  {
+    files: ['**/*.test.{js,jsx}', 'src/test/**'],
+    languageOptions: { globals: { ...globals.browser, ...globals.node } },
+  },
 ];

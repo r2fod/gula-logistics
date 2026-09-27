@@ -6,6 +6,9 @@ import BarraProgreso from '../ui/BarraProgreso';
 import { useDialog } from '../../contexts/DialogContext';
 import { repartirBolsa, tieneBolsa } from '../../data/bolsaHoras';
 import GrupoConceptos from './saldos/GrupoConceptos';
+import EnVivo from '../ui/EnVivo';
+import { costeEnCurso } from '../../data/costeEnVivo';
+import { coincideNombre } from '../../data/nombresTrabajadores';
 
 // Horas tal como se escriben DENTRO del texto de un concepto ("4,5" → "4.5", sin ceros de
 // sobra). Ese texto se guarda en Mongo: no cambiar el formato, o los conceptos nuevos
@@ -19,7 +22,8 @@ export default function TeamBalancesTab({
   onDeleteClockEntry,
   persistWorkerBalance,
   findWorkerHours,
-  onVerEnResumen = null
+  onVerEnResumen = null,
+  turnosAbiertos = {}
 }) {
   const { confirm } = useDialog();
   const [expandedWorkerId, setExpandedWorkerId] = useState(null);
@@ -450,6 +454,26 @@ export default function TeamBalancesTab({
                         )}
                       </div>
                     </div>
+
+                    {/* Turno abierto ahora mismo: lo que lleva, subiendo en directo. Aún no
+                        está en el saldo: entra al fichar la salida (redondeado a la media hora). */}
+                    {(() => {
+                      const abierto = Object.values(turnosAbiertos).find(e => coincideNombre(e.workerName, worker.name));
+                      if (!abierto) return null;
+                      return (
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs">
+                          <span className="flex items-center gap-1.5 font-semibold text-emerald-200">
+                            <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse motion-reduce:animate-none" aria-hidden="true" />
+                            En turno ahora
+                          </span>
+                          <span className="whitespace-nowrap font-mono font-extrabold tabular-nums text-emerald-300">
+                            +<EnVivo>{(ahora) => formatearEuros(costeEnCurso({
+                              entrada: abierto, ahora, tarifa: abierto.rate || worker.hourlyRate || 10, ficha: worker, horasPrevias: hours?.totalHours || 0,
+                            }).coste)}</EnVivo> y subiendo
+                          </span>
+                        </div>
+                      );
+                    })()}
 
                     {/* Horas reales fichadas sumadas al balance */}
                     {hours && hours.completedShifts > 0 && (

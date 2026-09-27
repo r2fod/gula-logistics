@@ -1,6 +1,7 @@
 import { esBorradorSemana } from './eventNaming';
 import { tipoDeTarea } from './aprendizajeFichajes';
 import { esMemoriaPropuesta } from './memoriaIa';
+import { esTareaActiva } from './taskPlanning';
 
 // Grafo de lo que sabe el asistente, hecho con datos que ya existen:
 //   · tipos de tarea  ← aprendizaje de los fichajes (con su duración real)
@@ -77,9 +78,9 @@ export function construirGrafoMemoria({ equipo = [], semanas = {}, aprendizaje =
         enlazar(p, `camion:${c.clave}`, 1, 'veces juntos');
       }));
     };
-    (semana.saturdaySpecial?.weddings || []).forEach(b => b?.active !== false && juntos('', b.assigned, datosCamiones(b.truck)));
+    (semana.saturdaySpecial?.weddings || []).forEach(b => b && esTareaActiva(b) && juntos('', b.assigned, datosCamiones(b.truck)));
     [...Object.values(semana.schedule || {}).map(d => d?.tasks), semana.sundayMonday?.tasks].forEach(lista =>
-      (lista || []).forEach(t => t && typeof t === 'object' && t.active !== false && juntos(t.text, t.assigned)));
+      (lista || []).forEach(t => t && typeof t === 'object' && esTareaActiva(t) && juntos(t.text, t.assigned)));
   });
 
   // Reglas y lo que nombran.

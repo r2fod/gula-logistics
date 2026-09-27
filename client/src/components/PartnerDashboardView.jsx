@@ -160,7 +160,7 @@ export default function PartnerDashboardView({
   // para no repetirlo al cambiar de pestaña o abrir un modal sin fichajes nuevos.
   // Los totales y el desglose por evento del Resumen Financiero los calcula su
   // pestaña, porque dependen del periodo elegido (semana, mes, año o todo).
-  const { shifts: paidShifts } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
+  const { shifts: paidShifts, activeShifts: turnosAbiertos } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
   const workerBalances = useMemo(() => aggregateShiftsByWorker(paidShifts, workersList), [paidShifts, workersList]);
 
   // Horas y turnos de quien tiene la ficha `nombreSaldo` ("Marta Gula"); los
@@ -247,6 +247,7 @@ export default function PartnerDashboardView({
           persistWorkerBalance={persistWorkerBalance}
           findWorkerHours={findWorkerHours}
           onVerEnResumen={verEnResumen}
+          turnosAbiertos={turnosAbiertos}
         />
       )}
 
@@ -271,6 +272,8 @@ export default function PartnerDashboardView({
             activeWeekData={activeWeekData}
             onClockEntryCreated={onClockEntryCreated}
             onOpenClockModal={onOpenClockIn}
+            mostrarDinero
+            saldos={mergedBalancesData.workers}
           />
         </div>
       )}

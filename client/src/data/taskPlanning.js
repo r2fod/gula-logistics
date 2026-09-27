@@ -462,6 +462,11 @@ export function isTaskTooEarlyToClockIn(dayKey, timeFrame, overrideTime = new Da
 }
 
 // Texto de una tarea normal o de una boda del sábado (para mostrarlo o buscar en él).
+// ¿Cuenta la tarea? Una tarea (o boda) se puede DESACTIVAR (`active: false`) sin
+// borrarla: no sale en las vistas de trabajo ni cuenta para costes ni previsiones.
+// Las tareas antiguas en texto plano siempre cuentan. Única regla para toda la app.
+export const esTareaActiva = (tarea) => !(tarea && typeof tarea === 'object' && tarea.active === false);
+
 export function getTaskText(task) {
   if (typeof task === 'string') return task;
   if (!task) return '';
