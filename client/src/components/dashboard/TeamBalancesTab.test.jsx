@@ -56,4 +56,18 @@ describe('TeamBalancesTab — desglose separado', () => {
     expect(p.onVerEnResumen).toHaveBeenCalledWith('Ana');
     expect(screen.queryByRole('button', { name: /Eliminar concepto manual/ })).toBeNull();
   });
+
+  it('un pago en efectivo ("Adelanto") se sigue descontando del saldo igual que antes (ahora además guarda tipo y fecha)', async () => {
+    const p = pintar();
+    fireEvent.click(screen.getByRole('button', { name: /Añadir concepto \/ horas manual/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Adelanto/ }));
+    fireEvent.change(screen.getByPlaceholderText(/Concepto \(ej: Adelanto nómina, Pago Bizum\)/), { target: { value: 'Pago en efectivo' } });
+    fireEvent.change(screen.getByPlaceholderText(/Importe a RESTAR/), { target: { value: '50' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar Adelanto' }));
+    await waitFor(() => expect(p.persistWorkerBalance).toHaveBeenCalled());
+    const [, cambios] = p.persistWorkerBalance.mock.calls[0];
+    expect(cambios.breakdown.at(-1)).toMatchObject({ concept: 'Pago en efectivo', amount: -50, isPositive: false, tipo: 'pago' });
+    expect(cambios.breakdown.at(-1).date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(cambios.currentBalance).toBe(35 - 10 - 50); // lo que se le debe baja 50 €
+  });
 });

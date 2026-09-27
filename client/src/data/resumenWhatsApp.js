@@ -21,8 +21,11 @@ export function textoResumenWhatsApp({ etiqueta, personas = [], totalExtras = 0,
 
   if (conceptos?.items?.length) {
     lineas.push('', '✍️ *Apuntado a mano en Saldos & Acuerdos:*');
-    Object.entries(conceptos.porTipo).forEach(([tipo, { importe }]) => lineas.push(`• ${TIPOS_CONCEPTO[tipo]}: ${formatearEurosConSigno(importe)}`));
-    lineas.push(`💰 *Extras + apuntado a mano:* ${formatearEuros(totalExtras + conceptos.total)}`);
+    Object.entries(conceptos.porTipo).filter(([tipo]) => tipo !== 'pago')
+      .forEach(([tipo, { importe }]) => lineas.push(`• ${TIPOS_CONCEPTO[tipo]}: ${formatearEurosConSigno(importe)}`));
+    lineas.push(`💰 *Coste (extras + a mano):* ${formatearEuros(totalExtras + conceptos.total)}`);
+    // Lo ya entregado resta del saldo de cada persona, pero no es coste.
+    if (conceptos.pagado) lineas.push(`💵 *Ya pagado (efectivo, Bizum, adelantos):* ${formatearEuros(conceptos.pagado)}`);
   }
 
   if (estimado?.porPersona?.length) {

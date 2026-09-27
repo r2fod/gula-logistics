@@ -1,11 +1,15 @@
 import mongoose from 'mongoose';
 
+// `date` (AAAA-MM-DD) y `tipo` ('turno' | 'transporte' | 'bolsa' | 'ajuste' | 'pago')
+// los pone la app al crear cada concepto (los antiguos no los tienen: se deducen del
+// texto). `pago` = dinero ya entregado al trabajador (efectivo, Bizum, adelanto).
 const BreakdownItemSchema = new mongoose.Schema({
   concept: { type: String, required: true },
   amount: { type: Number, required: true },
   isPositive: { type: Boolean, default: true },
   date: { type: String, default: '' },
-  timestamp: { type: String, default: '' }
+  timestamp: { type: String, default: '' },
+  tipo: { type: String, default: '' }
 }, { _id: false });
 
 const ShiftPurseSchema = new mongoose.Schema({

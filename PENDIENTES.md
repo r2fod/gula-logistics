@@ -26,7 +26,7 @@ _Solo lo que sigue abierto (actualizado el 27/09/2026). Lo resuelto se borra de 
 - [ ] Memoria del asistente hecha (grafo visual, reglas propuestas → aprobar, aprendizaje de fichajes). Pendiente: probarlo con sesión de admin en producción (pestaña Memoria IA) y ver que Gemini genera horarios razonables con el aprendizaje. Solo mide tramos "limpios": se aprende más si la gente ficha cada tarea al cambiar.
 
 ## Saldos y Resumen Financiero (28/09)
-- [ ] Los conceptos a mano de Saldos no llevan campo de fecha (solo los turnos y el transporte la llevan escrita, sin año): las horas de bolsa, roturas y adelantos solo se pueden sumar en «Todo». Si se quiere verlos por semana o mes, guardar una `fecha` en cada concepto nuevo al crearlo.
+- [ ] Los conceptos a mano ANTERIORES al 28/09 no llevan fecha ni tipo (los nuevos sí): los pagos antiguos se reconocen por el texto ("pago", "efectivo", "Bizum", "adelanto"…) y los que no tienen fecha (bolsa, roturas, pagos) solo se suman en «Todo».
 - [ ] Revisar en producción con sesión de admin: Saldos (dos grupos), "Ver sus horas por evento", el Resumen con lo apuntado a mano y lo previsto, copiar para WhatsApp y la papelera del Historial.
 
 ## 🟢 Código
