@@ -42,3 +42,27 @@ const tieneFechaValida = (fichaje) => !!fichaje?.timestamp && !Number.isNaN(new 
 export const horaDeFichaje = (fichaje) => (tieneFechaValida(fichaje) ? formatTime(fichaje.timestamp) : fichaje?.timeFormatted);
 
 export const fechaDeFichaje = (fichaje) => (tieneFechaValida(fichaje) ? formatDate(fichaje.timestamp) : fichaje?.dateFormatted);
+
+// Fichajes de una semana del planning. La semana de Gula va de martes a
+// domingo MÁS el lunes de cola, así que la ventana es [martes 00:00, martes
+// siguiente 00:00) — antes se cortaba el domingo a las 06:00 (fin del rango +
+// 6 h) y todo lo del domingo por la mañana en adelante y el lunes quedaba fuera:
+// quien fichaba entrada el domingo no aparecía fichado en su propia pantalla.
+// Además, la entrada de un turno que SIGUE ABIERTO se incluye siempre, aunque
+// empezara antes de la ventana: si no, alguien que entró la noche del lunes y
+// sigue trabajando pasado el martes 00:00 dejaría de verse fichado.
+// `rango` es el de getWeekRange ({ start, end } a las 00:00); sin rango
+// legible se devuelven todos. `abiertos` son las entradas de turnos sin salida
+// (activeShifts de pairShiftsFromEntries).
+const DIA_MS = 24 * 60 * 60 * 1000;
+export function fichajesDeLaSemana(fichajes = [], rango, abiertos = []) {
+  if (!rango?.start) return fichajes;
+  const desde = rango.start.getTime();
+  const hasta = desde + 7 * DIA_MS;
+  const idsAbiertos = new Set(abiertos.map(e => e?.id).filter(Boolean));
+  return fichajes.filter(e => {
+    if (idsAbiertos.has(e.id)) return true;
+    const t = new Date(e.timestamp).getTime();
+    return !Number.isNaN(t) && t >= desde && t < hasta;
+  });
+}
