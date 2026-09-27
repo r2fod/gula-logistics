@@ -28,7 +28,8 @@ import {
   retryPendingClockEntries,
   deleteWeekFromAPI
 } from './data/apiService';
-import { getInProgressTaskKeys } from './data/shiftCalculations';
+import { getInProgressTaskKeys, pairShiftsFromEntries } from './data/shiftCalculations';
+import { fichajesDeLaSemana } from './data/fichajes';
 import { getWeekRange } from './data/taskPlanning';
 import { anticiparSemanas } from './data/anticipacion';
 import { semanaInicialDeEnlace } from './data/enlaces';
@@ -100,37 +101,21 @@ export default function App() {
     handleClearClockEntries
   } = useClockings(markTaskCompleted);
 
-  // Filtrar fichajes SOLO para las vistas de los trabajadores y nóminas (así ven solo su semana).
-  // Para el PartnerDashboard (saldos y financiero) usamos los originales (activeClockEntries)
-  // para no romper el historial global.
+  // Fichajes SOLO de la semana activa para las vistas de los trabajadores y
+  // nóminas (así ven solo su semana). Para el PartnerDashboard (saldos y
+  // financiero) se usan todos (activeClockEntries) para no romper el histórico.
+  // La ventana y los turnos abiertos los decide fichajesDeLaSemana (data/fichajes.js).
+  const rangoSemanaActiva = useMemo(() => getWeekRange(activeWeek), [activeWeek]);
   const currentWeekClockEntries = useMemo(() => {
-    if (!activeWeek || !activeWeek.meta || !activeWeek.meta.dateRange) return activeClockEntries;
-    const range = parseWeekRange(activeWeek.meta.dateRange);
-    if (!range) return activeClockEntries;
-    
-    const start = range.start.getTime();
-    const end = range.end.getTime() + (6 * 60 * 60 * 1000); 
-    
-    return activeClockEntries.filter(e => {
-      const entryTime = new Date(e.timestamp).getTime();
-      return entryTime >= start && entryTime <= end;
-    });
-  }, [activeClockEntries, activeWeek]);
+    const abiertos = Object.values(pairShiftsFromEntries(activeClockEntries).activeShifts);
+    return fichajesDeLaSemana(activeClockEntries, rangoSemanaActiva, abiertos);
+  }, [activeClockEntries, rangoSemanaActiva]);
 
-  // Misma lógica para la papelera de borrados si hace falta
-  const currentWeekDeletedClockEntries = useMemo(() => {
-    if (!activeWeek || !activeWeek.meta || !activeWeek.meta.dateRange) return deletedClockEntries;
-    const range = parseWeekRange(activeWeek.meta.dateRange);
-    if (!range) return deletedClockEntries;
-    
-    const start = range.start.getTime();
-    const end = range.end.getTime() + (6 * 60 * 60 * 1000);
-    
-    return deletedClockEntries.filter(e => {
-      const entryTime = new Date(e.timestamp).getTime();
-      return entryTime >= start && entryTime <= end;
-    });
-  }, [deletedClockEntries, activeWeek]);
+  // Misma ventana para la papelera de borrados (ahí no hay turnos abiertos que conservar).
+  const currentWeekDeletedClockEntries = useMemo(
+    () => fichajesDeLaSemana(deletedClockEntries, rangoSemanaActiva),
+    [deletedClockEntries, rangoSemanaActiva]
+  );
 
   // Tareas en las que alguien está fichado ahora mismo: el reloj no las da por
   // hechas mientras tanto ("en proceso"). Por ref, igual que arriba, porque el
