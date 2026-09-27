@@ -6,7 +6,7 @@ vi.mock('../models/AdminConfig.model.js', () => ({
 }));
 
 const { AdminConfig } = await import('../models/AdminConfig.model.js');
-const { requireAdmin } = await import('./requireAdmin.js');
+const { requireAdmin, requireLectura } = await import('./requireAdmin.js');
 const { signToken } = await import('../utils/authToken.js');
 
 function mockRes() {
@@ -111,5 +111,43 @@ describe('requireAdmin', () => {
 
     expect(res.status).toHaveBeenCalledWith(503);
     expect(next).not.toHaveBeenCalled();
+  });
+});
+
+describe('enlace de socias (solo lectura)', () => {
+  const pasar = async (guardia, payload) => {
+    const req = { headers: { authorization: `Bearer ${signToken(payload)}` } };
+    const res = mockRes();
+    const next = vi.fn();
+    await guardia(req, res, next);
+    return { res, next, req };
+  };
+
+  it('BUG evitado: un token de socias NO abre nada de administrador', async () => {
+    const { res, next } = await pasar(requireAdmin, { role: 'socias', v: 1, sv: 1 });
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('requireLectura acepta socias y admin, y deja el rol en la petición', async () => {
+    const socias = await pasar(requireLectura, { role: 'socias', v: 1, sv: 1 });
+    expect(socias.next).toHaveBeenCalled();
+    expect(socias.req.rol).toBe('socias');
+    expect((await pasar(requireLectura, { role: 'admin', v: 1 })).next).toHaveBeenCalled();
+    expect((await pasar(requireLectura, { role: 'trabajador' })).next).not.toHaveBeenCalled();
+  });
+
+  it('anular los enlaces de socias (sociasVersion) los invalida sin tocar la sesión de admin', async () => {
+    mongoose.connection.readyState = 1;
+    AdminConfig.findOne.mockResolvedValue({ tokenVersion: 1, sociasVersion: 2 });
+    expect((await pasar(requireLectura, { role: 'socias', v: 1, sv: 1 })).res.status).toHaveBeenCalledWith(401);
+    expect((await pasar(requireLectura, { role: 'socias', v: 1, sv: 2 })).next).toHaveBeenCalled();
+    expect((await pasar(requireAdmin, { role: 'admin', v: 1 })).next).toHaveBeenCalled();
+  });
+
+  it('cambiar la contraseña de admin también anula los enlaces de socias', async () => {
+    mongoose.connection.readyState = 1;
+    AdminConfig.findOne.mockResolvedValue({ tokenVersion: 2, sociasVersion: 1 });
+    expect((await pasar(requireLectura, { role: 'socias', v: 1, sv: 1 })).res.status).toHaveBeenCalledWith(401);
   });
 });

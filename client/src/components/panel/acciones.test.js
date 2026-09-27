@@ -9,9 +9,9 @@ const todasLasFunciones = () => ({
 const ids = (acciones) => acciones.map((a) => a.id);
 
 describe('crearAcciones', () => {
-  it('sin ser admin solo quedan las acciones de todos (y las que tienen su función)', () => {
+  it('sin ser admin solo quedan las acciones de todos (y las que tienen su función); el enlace de socias es solo del admin', () => {
     const acciones = crearAcciones({ admin: false }, todasLasFunciones());
-    expect(ids(acciones)).toEqual(['fichar', 'whatsapp', 'enlaceSocias', 'vistaPublica']);
+    expect(ids(acciones)).toEqual(['fichar', 'whatsapp', 'vistaPublica']);
   });
 
   it('un admin ve todas', () => {
@@ -52,9 +52,10 @@ describe('crearAcciones', () => {
   });
 
   it('tras copiar el enlace de socias enseña "¡Copiado!" con su icono verde', () => {
-    const enlace = (estado) => crearAcciones({ admin: false, ...estado }, todasLasFunciones()).find((a) => a.id === 'enlaceSocias');
+    const enlace = (estado) => crearAcciones({ admin: true, ...estado }, todasLasFunciones()).find((a) => a.id === 'enlaceSocias');
     expect(enlace({ enlaceSociasCopiado: false })).toMatchObject({ etiqueta: 'Link Socias', etiquetaMenu: 'Copiar link de socias' });
     expect(enlace({ enlaceSociasCopiado: true })).toMatchObject({ etiqueta: '¡Copiado!', etiquetaMenu: '¡Enlace copiado!', colorIcono: 'text-emerald-400' });
+    expect(enlace({ enlaceSociasCargando: true })).toMatchObject({ cargando: true });
   });
 
   it('la función de cada acción es la que se le dio', () => {
@@ -65,6 +66,6 @@ describe('crearAcciones', () => {
   });
 
   it('tolera que no se le pase nada', () => {
-    expect(ids(crearAcciones())).toEqual(['fichar', 'enlaceSocias']);
+    expect(ids(crearAcciones())).toEqual(['fichar']);
   });
 });

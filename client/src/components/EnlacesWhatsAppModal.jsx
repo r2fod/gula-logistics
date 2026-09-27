@@ -1,29 +1,23 @@
 import React from 'react';
-import { ShieldCheck, Share2, Copy, Check, MessageCircle, ExternalLink } from 'lucide-react';
-import { getStoredAdminToken } from '../data/apiService';
-import { enlaceTrabajador, enlaceSocias, enlaceWhatsApp } from '../data/enlaces';
+import { ShieldCheck, Share2, Copy, Check, MessageCircle, ExternalLink, RefreshCw } from 'lucide-react';
+import { enlaceTrabajador, enlaceWhatsApp } from '../data/enlaces';
 import { useCopiado } from '../hooks/useCopiado';
+import { useEnlaceSocias } from '../hooks/useEnlaceSocias';
+import { useDialog } from '../contexts/DialogContext';
+import { formatDateLong } from '../utils/dateUtils';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 
-// Enlaces para compartir: el de las socias (con la sesión de admin dentro si la
-// hay, para que entren sin clave) y uno por trabajador, para copiar, mandar
-// por WhatsApp o abrir. El de cada trabajador es fijo (siempre el mismo, abre la
-// semana en curso), ver data/enlaces.js.
+// Enlaces para compartir: el de las socias (solo lo ve el admin: es un enlace
+// de SOLO LECTURA que genera el servidor, caduca y se puede anular) y uno por
+// trabajador, para copiar, mandar por WhatsApp o abrir. El de cada trabajador es
+// fijo (siempre el mismo, abre la semana en curso), ver data/enlaces.js.
 //
-// Props: abierto, onCerrar y workersList.
-export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = [] }) {
-  const [copiadoSocias, copiarSocias] = useCopiado();
+// Props: abierto, onCerrar, workersList y admin.
+export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = [], admin = false }) {
   const [copiadoTrabajador, copiarTrabajador] = useCopiado();
 
   if (!abierto) return null;
-
-  const enlaceSociasActual = enlaceSocias(getStoredAdminToken());
-
-  const compartirSocias = () => {
-    const texto = `🔒 Hola Socias, aquí tenéis el Enlace Seguro de Dirección para Gula Logística (Planificación + Saldos de Horas): ${enlaceSociasActual}`;
-    window.open(enlaceWhatsApp(texto), '_blank');
-  };
 
   const compartirTrabajador = (nombre) => {
     const texto = `🚚 Hola ${nombre}, aquí tienes tu planificación y fichaje de Gula Logística: ${enlaceTrabajador(nombre)}\n\nGuarda este enlace: es siempre el mismo y se actualiza solo cada semana.`;
@@ -40,52 +34,7 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
         className="mb-6"
       />
 
-      {/* Partner Link Box */}
-      <div className="mb-5 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2.5">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-amber-400 flex items-center space-x-1.5">
-            <ShieldCheck className="w-4 h-4" />
-            <span>Enlace para Socias (1 Clic - Sin clave)</span>
-          </span>
-          <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full">SOCIAS</span>
-        </div>
-
-        <div className="flex items-center bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 min-w-0">
-          <input
-            type="text"
-            readOnly
-            value={enlaceSociasActual}
-            className="bg-transparent text-xs text-amber-300/90 font-mono w-full min-w-0 focus:outline-none select-all truncate"
-          />
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-2 pt-1 w-full">
-          <button
-            onClick={() => copiarSocias(enlaceSociasActual)}
-            className="w-full sm:flex-1 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-colors border border-slate-700 whitespace-nowrap"
-          >
-            {copiadoSocias ? (
-              <>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-emerald-400">¡Copiado!</span>
-              </>
-            ) : (
-              <>
-                <Copy className="w-3.5 h-3.5" />
-                <span>Copiar Link Socias</span>
-              </>
-            )}
-          </button>
-
-          <button
-            onClick={compartirSocias}
-            className="w-full sm:flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-emerald-600/20 whitespace-nowrap"
-          >
-            <MessageCircle className="w-3.5 h-3.5" />
-            <span>WhatsApp Socias</span>
-          </button>
-        </div>
-      </div>
+      {admin && <EnlaceSocias />}
 
       {/* Workers List */}
       <div className="space-y-3 max-h-[50vh] overflow-y-auto overflow-x-hidden pr-1 no-scrollbar">
@@ -146,5 +95,77 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
       </div>
 
     </Modal>
+  );
+}
+
+// Caja del enlace de socias. Se monta solo con el modal abierto y sesión de admin,
+// así el enlace se pide al servidor justo cuando hace falta.
+function EnlaceSocias() {
+  const { alert, confirm } = useDialog();
+  const [copiado, copiar] = useCopiado();
+  const { enlace, caduca, cargando, error, generar } = useEnlaceSocias(true);
+
+  const compartir = () => {
+    const texto = `🔒 Hola Socias, aquí tenéis el enlace de Gula Logística (planificación y saldos, solo lectura): ${enlace}`;
+    window.open(enlaceWhatsApp(texto), '_blank');
+  };
+
+  const anularAnteriores = async () => {
+    const seguir = await confirm('Los enlaces de socias que ya enviaste dejarán de funcionar y tendrás que mandarles este nuevo. ¿Seguir?', { type: 'warning', confirmText: 'Anular y generar' });
+    if (!seguir) return;
+    if (await generar({ anularAnteriores: true })) await alert('Enlaces anteriores anulados. Envía el nuevo a las socias.', { type: 'success' });
+  };
+
+  const boton = 'w-full sm:flex-1 py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap disabled:opacity-50';
+
+  return (
+    <div className="mb-5 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-bold text-amber-400 flex items-center space-x-1.5 min-w-0">
+          <ShieldCheck className="w-4 h-4 shrink-0" />
+          <span className="truncate">Enlace para Socias (solo lectura)</span>
+        </span>
+        <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full shrink-0">SOCIAS</span>
+      </div>
+
+      <div className="flex items-center bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 min-w-0">
+        <input
+          id="enlace-socias"
+          type="text"
+          readOnly
+          aria-label="Enlace para socias"
+          value={enlace || (cargando ? 'Generando enlace…' : '')}
+          className="bg-transparent text-xs text-amber-300/90 font-mono w-full min-w-0 focus:outline-none select-all truncate"
+        />
+      </div>
+      {error && <p role="alert" className="text-[11px] text-red-400">No se pudo generar el enlace: {error}</p>}
+      {caduca && !error && (
+        <p className="text-[11px] text-slate-400">Ven la planificación y los saldos, sin poder cambiar nada. Caduca el {formatDateLong(caduca)}.</p>
+      )}
+
+      <div className="flex flex-col sm:flex-row gap-2 pt-1 w-full">
+        <button type="button" disabled={!enlace} onClick={() => copiar(enlace)} className={`${boton} bg-slate-800 hover:bg-slate-700 text-white border border-slate-700`}>
+          {copiado ? (
+            <>
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-emerald-400">¡Copiado!</span>
+            </>
+          ) : (
+            <>
+              <Copy className="w-3.5 h-3.5" />
+              <span>Copiar Link Socias</span>
+            </>
+          )}
+        </button>
+        <button type="button" disabled={!enlace} onClick={compartir} className={`${boton} bg-emerald-600 hover:bg-emerald-500 font-bold text-white shadow-md shadow-emerald-600/20`}>
+          <MessageCircle className="w-3.5 h-3.5" />
+          <span>WhatsApp Socias</span>
+        </button>
+        <button type="button" disabled={cargando} onClick={anularAnteriores} className={`${boton} bg-slate-900 hover:bg-red-950/60 text-red-300 border border-red-900/50`}>
+          <RefreshCw className={`w-3.5 h-3.5 ${cargando ? 'animate-spin' : ''}`} />
+          <span>Anular anteriores</span>
+        </button>
+      </div>
+    </div>
   );
 }

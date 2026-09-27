@@ -8,6 +8,8 @@ vi.mock('../models/AdminConfig.model.js', () => ({
 }));
 
 const authRoutes = (await import('./auth.routes.js')).default;
+const { AdminConfig } = await import('../models/AdminConfig.model.js');
+const { signToken, verifyToken } = await import('../utils/authToken.js');
 
 // trust proxy = 1, igual que en server.js: sin esto req.ip ignoraría
 // X-Forwarded-For y todos los tests compartirían la misma IP.
@@ -105,5 +107,47 @@ describe('POST /api/auth/login (límite de intentos fallidos por IP)', () => {
     }
     const blocked = await login(app, `otra-falsa, ${ipReal}`, PASSWORD);
     expect(blocked.status).toBe(429);
+  });
+});
+
+describe('POST /api/auth/socias-token (enlace de socias de solo lectura)', () => {
+  const admin = (v = 1) => `Bearer ${signToken({ role: 'admin', v })}`;
+
+  it('exige sesión de admin (un enlace de socias no puede generar otros)', async () => {
+    const app = buildApp();
+    expect((await request(app).post('/api/auth/socias-token')).status).toBe(401);
+    const socias = `Bearer ${signToken({ role: 'socias', v: 1, sv: 1 })}`;
+    expect((await request(app).post('/api/auth/socias-token').set('Authorization', socias)).status).toBe(401);
+  });
+
+  it('devuelve un token de rol socias (nunca la sesión de admin) que caduca en ~90 días', async () => {
+    const r = await request(buildApp()).post('/api/auth/socias-token').set('Authorization', admin());
+    expect(r.status).toBe(200);
+    const cuerpo = verifyToken(r.body.token);
+    expect(cuerpo).toMatchObject({ role: 'socias', v: 1, sv: 1 });
+    const dias = (cuerpo.exp - Date.now()) / 86400000;
+    expect(dias).toBeGreaterThan(89);
+    expect(dias).toBeLessThanOrEqual(90);
+  });
+
+  it('con anularAnteriores sube sociasVersion y el nuevo lleva la versión nueva', async () => {
+    mongoose.connection.readyState = 1;
+    const config = { tokenVersion: 3, sociasVersion: 1, save: vi.fn().mockResolvedValue() };
+    AdminConfig.findOne.mockResolvedValue(config);
+    const r = await request(buildApp()).post('/api/auth/socias-token').set('Authorization', admin(3)).send({ anularAnteriores: true });
+    expect(r.status).toBe(200);
+    expect(config.sociasVersion).toBe(2);
+    expect(config.save).toHaveBeenCalled();
+    expect(verifyToken(r.body.token)).toMatchObject({ role: 'socias', v: 3, sv: 2 });
+    AdminConfig.findOne.mockResolvedValue(null);
+  });
+});
+
+describe('GET /api/auth/sesion', () => {
+  it('dice el rol de un enlace válido y 401 sin él', async () => {
+    const app = buildApp();
+    expect((await request(app).get('/api/auth/sesion')).status).toBe(401);
+    const r = await request(app).get('/api/auth/sesion').set('Authorization', `Bearer ${signToken({ role: 'socias', v: 1, sv: 1 })}`);
+    expect(r.body).toEqual({ rol: 'socias' });
   });
 });

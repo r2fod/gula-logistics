@@ -3,11 +3,13 @@ import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { AdminConfig } from '../models/AdminConfig.model.js';
 import { signToken, timingSafeStringEqual } from '../utils/authToken.js';
-import { requireAdmin } from '../middleware/requireAdmin.js';
+import { requireAdmin, requireLectura } from '../middleware/requireAdmin.js';
 
 const router = express.Router();
 
-const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days — long enough for shared "socias" links
+const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 días de sesión de admin
+// Enlace de socias: solo lectura (saldos y panel), 90 días; el admin puede anularlos antes.
+const SOCIAS_TTL_SECONDS = 60 * 60 * 24 * 90;
 
 // Límite de intentos fallidos de login por IP. En memoria a propósito: el
 // servidor es un único proceso (plan gratuito de Render) y con este tráfico
@@ -151,5 +153,34 @@ router.post('/change-password', requireAdmin, async (req, res) => {
     return res.status(500).json({ error: 'Error interno al actualizar la contraseña' });
   }
 });
+
+// POST /api/auth/socias-token — el admin genera el enlace de socias: un token
+// firmado de SOLO LECTURA (rol `socias`), nunca su propia sesión. Con
+// `anularAnteriores: true` sube `sociasVersion` y los enlaces ya enviados dejan
+// de valer (la sesión de admin no se toca).
+router.post('/socias-token', requireAdmin, async (req, res) => {
+  try {
+    let config = null;
+    if (mongoose.connection.readyState === 1) {
+      config = await AdminConfig.findOne({ configKey: 'admin' });
+      if (config && req.body?.anularAnteriores === true) {
+        config.sociasVersion = (config.sociasVersion || 1) + 1;
+        await config.save();
+      }
+    }
+    const token = signToken(
+      { role: 'socias', v: config?.tokenVersion ?? req.admin.v, sv: config?.sociasVersion || 1 },
+      SOCIAS_TTL_SECONDS
+    );
+    return res.json({ token, expiresAt: Date.now() + SOCIAS_TTL_SECONDS * 1000 });
+  } catch (error) {
+    console.error('Error al generar el enlace de socias:', error);
+    return res.status(500).json({ error: 'No se pudo generar el enlace de socias' });
+  }
+});
+
+// GET /api/auth/sesion — ¿sigue valiendo la sesión o el enlace de este navegador?
+// La app lo consulta al abrir con un enlace de socias para no enseñar un panel vacío.
+router.get('/sesion', requireLectura, (req, res) => res.json({ rol: req.rol }));
 
 export default router;

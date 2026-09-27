@@ -1,7 +1,10 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import EnlacesWhatsAppModal from './EnlacesWhatsAppModal';
+import { render, screen, fireEvent, cleanup, within, waitFor } from '../test/render';
+
+const crearToken = vi.fn();
+vi.mock('../data/apiService', () => ({ crearTokenSociasEnAPI: (...a) => crearToken(...a) }));
+const { default: EnlacesWhatsAppModal } = await import('./EnlacesWhatsAppModal');
 
 const equipo = [
   { name: 'Ana', role: 'Conductora', avatar: '🚚', isPayroll: false },
@@ -15,6 +18,7 @@ const guardarSesion = (valor) =>
 beforeEach(() => {
   window.history.replaceState({}, '', '/gula-logistics/');
   guardarSesion(null);
+  crearToken.mockReset();
 });
 
 afterEach(() => {
@@ -32,18 +36,39 @@ describe('EnlacesWhatsAppModal', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('lista un enlace por trabajador y el de socias sin token si no hay sesión', () => {
+  it('sin sesión de admin lista los trabajadores y NO ofrece enlace de socias', () => {
     pintar();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText('Ana')).toBeInTheDocument();
     expect(screen.getByText('Luis')).toBeInTheDocument();
-    expect(screen.getByDisplayValue(/\?socias$/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Enlace para socias')).toBeNull();
+    expect(crearToken).not.toHaveBeenCalled();
   });
 
-  it('con sesión de admin el enlace de socias lleva el token', () => {
-    guardarSesion(JSON.stringify({ token: 'abc', expiresAt: Date.now() + 60000 }));
-    pintar();
-    expect(screen.getByDisplayValue(/\?socias&token=abc$/)).toBeInTheDocument();
+  it('BUG evitado: con admin el enlace de socias es el de SOLO LECTURA que da el servidor, nunca la sesión de admin', async () => {
+    guardarSesion(JSON.stringify({ token: 'SESION-ADMIN', expiresAt: Date.now() + 60000 }));
+    crearToken.mockResolvedValue({ ok: true, token: 'solo.lectura', expiresAt: new Date(2026, 11, 26).getTime() });
+    pintar({ admin: true });
+    const campo = await screen.findByDisplayValue(/\?socias&acceso=solo\.lectura$/);
+    expect(campo.value).not.toContain('SESION-ADMIN');
+    expect(crearToken).toHaveBeenCalledWith({ anularAnteriores: false });
+    expect(screen.getByText(/Caduca el/)).toBeInTheDocument();
+  });
+
+  it('"Anular anteriores" pide confirmación y genera uno nuevo anulando los enviados', async () => {
+    crearToken.mockResolvedValue({ ok: true, token: 'a.b', expiresAt: Date.now() + 1000 });
+    pintar({ admin: true });
+    await screen.findByDisplayValue(/acceso=a\.b$/);
+    fireEvent.click(screen.getByRole('button', { name: /Anular anteriores/ }));
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Confirmación' })).getByRole('button', { name: 'Anular y generar' }));
+    await waitFor(() => expect(crearToken).toHaveBeenLastCalledWith({ anularAnteriores: true }));
+  });
+
+  it('si el servidor no lo genera, lo dice y no deja copiar un enlace vacío', async () => {
+    crearToken.mockResolvedValue({ ok: false, error: 'sin conexión' });
+    pintar({ admin: true });
+    expect(await screen.findByRole('alert')).toHaveTextContent('sin conexión');
+    expect(screen.getByRole('button', { name: /Copiar Link Socias/ })).toBeDisabled();
   });
 
   it('"Abrir" abre su enlace fijo, sin semana', () => {

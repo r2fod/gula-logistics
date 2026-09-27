@@ -2,14 +2,15 @@ import express from 'express';
 import mongoose from 'mongoose';
 import { WorkerBalance } from '../models/WorkerBalance.model.js';
 import { initialBalancesData } from '../data/balancesData.js';
-import { requireAdmin } from '../middleware/requireAdmin.js';
+import { requireAdmin, requireLectura } from '../middleware/requireAdmin.js';
 
 const router = express.Router();
 
 let memoryBalancesData = { ...initialBalancesData };
 
-// GET /api/balances - Get all worker balances & financial data (Admin/Socias)
-router.get('/', async (req, res) => {
+// GET /api/balances - Saldos y acuerdos de cada persona (dinero): solo admin o
+// enlace de socias. Antes era público: cualquiera con la URL de la API los leía.
+router.get('/', requireLectura, async (req, res) => {
   try {
     if (mongoose.connection.readyState === 1) {
       const dbWorkers = await WorkerBalance.find().sort({ createdAt: 1 });

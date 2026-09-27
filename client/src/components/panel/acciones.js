@@ -22,10 +22,10 @@ export const SECCIONES_MENU = [
 // Solo devuelve las acciones que este usuario puede usar ahora: las de administración
 // necesitan `admin`, y las que abren un modal, que el llamador le haya dado su función.
 //
-// `estado`: { admin, avisando, enlaceSociasCopiado }
+// `estado`: { admin, avisando, enlaceSociasCopiado, enlaceSociasCargando }
 // `alHacer`: { fichar, avisar, editarPlanning, editarEquipo, nominas, gemini, compartir,
 //              copiarEnlaceSocias, vistaPublica, claves, nuevaSemana }
-export function crearAcciones({ admin = false, avisando = false, enlaceSociasCopiado = false } = {}, alHacer = {}) {
+export function crearAcciones({ admin = false, avisando = false, enlaceSociasCopiado = false, enlaceSociasCargando = false } = {}, alHacer = {}) {
   const todas = [
     {
       id: 'fichar', etiqueta: 'Fichar', etiquetaMenu: 'Registrar fichaje', icono: Clock, claseIcono: 'icono-reloj', tono: 'fichar',
@@ -61,8 +61,9 @@ export function crearAcciones({ admin = false, avisando = false, enlaceSociasCop
       id: 'enlaceSocias', etiqueta: enlaceSociasCopiado ? '¡Copiado!' : 'Link Socias',
       etiquetaMenu: enlaceSociasCopiado ? '¡Enlace copiado!' : 'Copiar link de socias',
       icono: enlaceSociasCopiado ? Check : Copy, colorIcono: enlaceSociasCopiado ? 'text-emerald-400' : 'text-amber-400', tono: 'enlace',
-      titulo: 'Copiar enlace directo al Panel de Socias',
-      lugares: ['barra', 'menu'], seccion: 'compartir', onClick: alHacer.copiarEnlaceSocias,
+      titulo: 'Copiar el enlace de solo lectura del Panel de Socias', cargando: enlaceSociasCargando,
+      // Solo el admin: el enlace lo genera el servidor con su sesión.
+      lugares: ['barra', 'menu'], seccion: 'compartir', visible: admin, onClick: alHacer.copiarEnlaceSocias,
     },
     {
       id: 'vistaPublica', etiqueta: 'Vista Pública', etiquetaMenu: 'Vista pública de operativa', icono: Eye, colorIcono: 'text-amber-400', tono: 'publica',
