@@ -8,6 +8,7 @@ vi.mock('../models/AiMemory.js', () => {
   AiMemory.find = vi.fn();
   AiMemory.findOne = vi.fn();
   AiMemory.findByIdAndDelete = vi.fn();
+  AiMemory.findByIdAndUpdate = vi.fn();
   return { AiMemory };
 });
 vi.mock('../models/AdminConfig.model.js', () => ({
@@ -52,6 +53,36 @@ describe('POST /api/aimemory', () => {
     expect(r.status).toBe(200);
     expect(r.body._id).toBe('viejo');
     expect(guardar).not.toHaveBeenCalled();
+  });
+});
+
+describe('reglas propuestas por el asistente', () => {
+  const enviar = (body) => request(app()).post('/api/aimemory').set('Authorization', admin()).send(body);
+
+  it('se guardan como propuesta (no entran en el prompt hasta aprobarlas); por defecto, activa', async () => {
+    AiMemory.findOne.mockResolvedValue(null);
+    expect((await enviar({ content: 'Regla nueva', estado: 'propuesta', origen: 'asistente' })).body).toMatchObject({ estado: 'propuesta', origen: 'asistente' });
+    expect((await enviar({ content: 'Otra', estado: 'lo-que-sea' })).body).toMatchObject({ estado: 'activa', origen: 'manual' });
+  });
+
+  it('escribir a mano una regla que estaba propuesta la activa', async () => {
+    const existente = { _id: 'x', content: 'Regla', estado: 'propuesta', save: vi.fn() };
+    AiMemory.findOne.mockResolvedValue(existente);
+    const r = await enviar({ content: 'Regla' });
+    expect(r.status).toBe(200);
+    expect(existente.estado).toBe('activa');
+    expect(existente.save).toHaveBeenCalled();
+  });
+
+  it('PATCH aprueba (solo admin, solo a "activa", id válido)', async () => {
+    const id = '0123456789abcdef01234567';
+    AiMemory.findByIdAndUpdate.mockResolvedValue({ _id: id, estado: 'activa' });
+    expect((await request(app()).patch(`/api/aimemory/${id}`).send({ estado: 'activa' })).status).toBe(401);
+    expect((await request(app()).patch(`/api/aimemory/${id}`).set('Authorization', admin()).send({ estado: 'propuesta' })).status).toBe(400);
+    expect((await request(app()).patch('/api/aimemory/malo').set('Authorization', admin()).send({ estado: 'activa' })).status).toBe(400);
+    const r = await request(app()).patch(`/api/aimemory/${id}`).set('Authorization', admin()).send({ estado: 'activa' });
+    expect(r.status).toBe(200);
+    expect(AiMemory.findByIdAndUpdate).toHaveBeenCalledWith(id, { $set: { estado: 'activa' } }, { new: true });
   });
 });
 

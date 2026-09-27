@@ -1,104 +1,56 @@
-import React, { useState, useEffect } from 'react';
-import { BrainCircuit, Trash2, Plus, RefreshCw } from 'lucide-react';
-import { getAiMemories, addAiMemory, deleteAiMemory } from '../data/apiService';
+import React, { useMemo, useState } from 'react';
+import { BrainCircuit, GraduationCap, ListChecks, Network } from 'lucide-react';
+import { useMemoriaIa } from '../hooks/useMemoriaIa';
+import { construirGrafoMemoria } from '../data/grafoMemoria';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
+import Chip from './ui/Chip';
+import GrafoMemoria from './memoria/GrafoMemoria';
+import ReglasPanel from './memoria/ReglasPanel';
+import AprendizajePanel from './memoria/AprendizajePanel';
 
-export default function AdminAiMemoryModal({ isOpen, onClose }) {
-  const [memories, setMemories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [newMemory, setNewMemory] = useState('');
-  const [isAdding, setIsAdding] = useState(false);
-
-  const fetchMemories = async () => {
-    setLoading(true);
-    try {
-      const data = await getAiMemories();
-      setMemories(data);
-    } catch (e) {
-      console.error(e);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchMemories();
-    }
-  }, [isOpen]);
-
-  const handleDelete = async (id) => {
-    await deleteAiMemory(id);
-    setMemories(prev => prev.filter(m => m._id !== id));
-  };
-
-  const handleAdd = async (e) => {
-    e.preventDefault();
-    if (!newMemory.trim()) return;
-    setIsAdding(true);
-    const added = await addAiMemory(newMemory.trim());
-    if (added) {
-      setMemories([added, ...memories]);
-      setNewMemory('');
-    }
-    setIsAdding(false);
-  };
+// Memoria del asistente (solo admin): el grafo de lo que sabe, las reglas que
+// usa (y las que propone, para aprobarlas) y lo que aprende de los fichajes.
+// `aprendizaje` viene de App (aprenderDeFichajes), el mismo que recibe Gemini.
+export default function AdminAiMemoryModal({ isOpen, onClose, workersList = [], allWeeks = {}, aprendizaje = null }) {
+  const memoria = useMemoriaIa(isOpen);
+  const [vista, setVista] = useState('grafo');
+  const grafo = useMemo(
+    () => construirGrafoMemoria({ equipo: workersList, semanas: allWeeks, aprendizaje, memorias: memoria.memorias }),
+    [workersList, allWeeks, aprendizaje, memoria.memorias]
+  );
 
   if (!isOpen) return null;
 
+  const vistas = [
+    { id: 'grafo', nombre: 'Grafo', icono: Network },
+    { id: 'reglas', nombre: `Reglas (${memoria.activas.length})`, icono: ListChecks, aviso: memoria.propuestas.length },
+    { id: 'aprendizaje', nombre: 'Aprendizaje', icono: GraduationCap },
+  ];
+
   return (
-    <Modal onCerrar={onClose} ancho="2xl">
+    <Modal onCerrar={onClose} ancho="4xl">
       <CabeceraModal
         icono={BrainCircuit}
         degradado="amber-indigo"
-        titulo="Grafo de Conocimiento IA"
-        subtitulo="Gestiona la memoria a largo plazo (Graphify) de Gemini"
+        titulo="Memoria del asistente"
+        subtitulo="Lo que Gemini sabe del equipo, las reglas que tú apruebas y lo que aprende de los fichajes"
       />
 
-      <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-4 mb-4">
-        <h3 className="text-sm font-semibold text-white">Añadir Nueva Regla</h3>
-        <form onSubmit={handleAdd} className="flex gap-2">
-          <input
-            type="text"
-            className="flex-1 rounded-xl bg-slate-950 border border-slate-800 p-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
-            placeholder="Ej: A Gonzalo no le gusta trabajar en fin de semana..."
-            value={newMemory}
-            onChange={(e) => setNewMemory(e.target.value)}
-          />
-          <button
-            type="submit"
-            disabled={isAdding || !newMemory.trim()}
-            className="px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold flex flex-col justify-center disabled:opacity-50 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-        </form>
+      <div role="group" aria-label="Sección" className="mb-4 flex flex-wrap gap-2">
+        {vistas.map(({ id, nombre, icono: Icono, aviso }) => (
+          <Chip key={id} variante="indigo" seleccionado={vista === id} onClick={() => setVista(id)}>
+            <Icono className="h-3.5 w-3.5" aria-hidden="true" />
+            {nombre}
+            {aviso > 0 && <span className="rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-slate-950" aria-label={`${aviso} por aprobar`}>{aviso}</span>}
+          </Chip>
+        ))}
       </div>
 
-      <div className="space-y-2 max-h-80 overflow-y-auto">
-        {loading ? (
-          <div className="p-8 text-center text-slate-500 flex flex-col items-center">
-            <RefreshCw className="w-6 h-6 animate-spin mb-2 opacity-50" />
-            <p>Cargando nodos del grafo...</p>
-          </div>
-        ) : memories.length === 0 ? (
-          <div className="p-8 text-center text-slate-500 bg-slate-900/50 rounded-xl border border-slate-800">
-            No hay preferencias guardadas. La IA irá aprendiendo a medida que le des instrucciones desde el Asistente.
-          </div>
-        ) : (
-          memories.map(mem => (
-            <div key={mem._id} className="flex justify-between items-center gap-4 bg-slate-900/80 p-3 rounded-xl border border-slate-800 group">
-              <span className="text-sm text-slate-300 flex-1">{mem.content}</span>
-              <button 
-                onClick={() => handleDelete(mem._id)} 
-                className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors opacity-50 group-hover:opacity-100" 
-                title="Borrar nodo"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))
-        )}
+      <div key={vista} className="animate-fadeIn motion-reduce:animate-none">
+        {vista === 'grafo' && <GrafoMemoria grafo={grafo} />}
+        {vista === 'reglas' && <ReglasPanel memoria={memoria} />}
+        {vista === 'aprendizaje' && <AprendizajePanel aprendizaje={aprendizaje} />}
       </div>
     </Modal>
   );

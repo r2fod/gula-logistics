@@ -39,8 +39,10 @@ function eventoDeTarea(texto, eventoAnotado) {
 
 // Todas las tareas de las semanas NO borrador con su tramo real, su evento y
 // las personas asignadas y los límites de su semana (la cola del lunes incluida):
-// [{ evento, pax, asignados, inicio, fin, texto, semanaDesde, semanaHasta }].
-export function listarTareasPlanificadas(weeksMap = {}, now = new Date()) {
+// [{ evento, pax, asignados, nombresAsignados, inicio, fin, texto, semanaDesde, semanaHasta }].
+// `incluirSinEvento` (aprendizaje de fichajes) también trae las que no tienen
+// evento reconocible, con `evento: null`; el reparto de costes no las usa.
+export function listarTareasPlanificadas(weeksMap = {}, now = new Date(), { incluirSinEvento = false } = {}) {
   const tareas = [];
   Object.values(weeksMap || {}).filter(w => w && !esBorradorSemana(w)).forEach(week => {
     const pax = paxDeSemana(week);
@@ -49,10 +51,10 @@ export function listarTareasPlanificadas(weeksMap = {}, now = new Date()) {
     const semanaDesde = rango.start;
     const semanaHasta = new Date(rango.end.getFullYear(), rango.end.getMonth(), rango.end.getDate() + 2); // hasta el lunes de cola inclusive
     const anadir = (dayKey, task, texto, evento) => {
-      if (!task || typeof task !== 'object' || task.active === false || !Array.isArray(task.assigned) || !evento) return;
+      if (!task || typeof task !== 'object' || task.active === false || !Array.isArray(task.assigned) || (!evento && !incluirSinEvento)) return;
       const tramo = getTaskInterval(week, dayKey, task, now);
       if (!tramo) return;
-      tareas.push({ evento, pax, asignados: task.assigned.map(plain), inicio: tramo.start, fin: tramo.end, texto, semanaDesde, semanaHasta });
+      tareas.push({ evento: evento || null, pax, asignados: task.assigned.map(plain), nombresAsignados: task.assigned, inicio: tramo.start, fin: tramo.end, texto, semanaDesde, semanaHasta });
     };
     Object.entries(week.schedule || {}).forEach(([dayKey, day]) => {
       (day?.tasks || []).forEach(t => t?.text && anadir(dayKey, t, t.text, eventoDeTarea(t.text, t.event)));

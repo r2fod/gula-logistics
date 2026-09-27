@@ -18,6 +18,7 @@ _Resumen de lo que ya está hecho y por qué es así. El detalle de cada cambio 
 - **Una semana nueva no debe cambiar los números de las anteriores:** los borradores no cuentan para pax, costes ni enlaces; clonar o generar con IA resetea `completed`.
 - **No reescribir el texto de tareas ya fichadas** (el fichaje guarda ese texto y se desliga): el evento va en el campo `event`.
 - **Guardado de semanas:** `POST /weeks` reemplaza el documento completo con control optimista por `updatedAt` (409). Un `PATCH` que no cambia nada no escribe (cada escritura sube `updatedAt` y provocaba conflictos falsos).
+- **Memoria del asistente (27/09):** las reglas que saca Gemini de lo que se le pide quedan *propuesta* hasta que el admin las aprueba; solo las activas entran en el prompt (también al crear semana). Aprende duraciones reales y "quién hace qué" de los fichajes (`aprendizajeFichajes.js`), contando solo tramos limpios: un turno que abarca otras tareas de esa persona no mide la primera (en datos reales, cargas de 1 h 40 salían de 6 h). Grafo visual en Memoria IA (`grafoMemoria.js`, SVG propio).
 - **IA:** ante un fallo, error claro y ninguna acción siguiente (hubo una "demo" que se aplicaba como si fuera real). Los modelos caducan: lista de candidatos (`GEMINI_MODELS`). Los recuerdos se extraen aparte y se filtran.
 
 ## Fichajes y dinero

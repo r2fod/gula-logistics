@@ -27,14 +27,38 @@ router.post('/', requireAdmin, async (req, res) => {
     if (!content || content.length > MAX_MEMORIA_IA) {
       return res.status(400).json({ error: `El recuerdo debe ser un texto de 1 a ${MAX_MEMORIA_IA} caracteres` });
     }
-    // Pedir lo mismo dos veces (p. ej. reintentar una generación) no lo duplica.
+    const estado = req.body?.estado === 'propuesta' ? 'propuesta' : 'activa';
+    const origen = req.body?.origen === 'asistente' ? 'asistente' : 'manual';
+    // Pedir lo mismo dos veces (p. ej. reintentar una generación) no lo duplica;
+    // escribir a mano una regla que estaba propuesta la activa.
     const existente = await AiMemory.findOne({ content });
-    if (existente) return res.status(200).json(existente);
-    const newMemory = new AiMemory({ content });
+    if (existente) {
+      if (estado === 'activa' && existente.estado === 'propuesta') {
+        existente.estado = 'activa';
+        await existente.save();
+      }
+      return res.status(200).json(existente);
+    }
+    const newMemory = new AiMemory({ content, estado, origen });
     await newMemory.save();
     res.status(201).json(newMemory);
   } catch (error) {
     console.error('Error al crear memoria:', error);
+    res.status(500).json({ error: 'Error al guardar en la base de datos' });
+  }
+});
+
+// PATCH /api/aimemory/:id - Aprobar una regla propuesta (pasa a `activa`)
+router.patch('/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ error: 'Id de recuerdo no válido' });
+    if (req.body?.estado !== 'activa') return res.status(400).json({ error: 'Solo se puede pasar una regla a "activa"' });
+    const actualizada = await AiMemory.findByIdAndUpdate(id, { $set: { estado: 'activa' } }, { new: true });
+    if (!actualizada) return res.status(404).json({ error: 'Memoria no encontrada' });
+    res.json(actualizada);
+  } catch (error) {
+    console.error('Error al aprobar memoria:', error);
     res.status(500).json({ error: 'Error al guardar en la base de datos' });
   }
 });

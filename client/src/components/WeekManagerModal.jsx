@@ -7,6 +7,7 @@ import CabeceraModal from './ui/CabeceraModal';
 import BotonCerrar from './ui/BotonCerrar';
 import { parseWeekRange, getDayLabel } from '../data/taskPlanning';
 import { buildEventName } from '../data/eventNaming';
+import { useMemoriaIa } from '../hooks/useMemoriaIa';
 import { AreaTexto, Input, Selector } from './ui/Campo';
 
 // Asistente guiado para crear una semana nueva: en vez de dejarla en blanco
@@ -15,7 +16,10 @@ import { AreaTexto, Input, Selector } from './ui/Campo';
 // qué bodas y eventos hay cada día) y con eso se arma un prompt para el mismo
 // motor de Gemini que ya usaba el Asistente AI suelto — sustituye al
 // formulario simple de antes (solo nombre + fechas + clonar).
-export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForceAutoDraft, currentWeekName, currentWeekTrucks = [], workersList = [], allWeeks = {} }) {
+// `aprendizaje` (App, aprenderDeFichajes) y las reglas activas de la memoria van
+// también a Gemini al generar una semana nueva (antes solo las usaba el asistente suelto).
+export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForceAutoDraft, currentWeekName, currentWeekTrucks = [], workersList = [], aprendizaje = null }) {
+  const memoria = useMemoriaIa(isOpen);
   const [weekName, setWeekName] = useState('');
   const [dateRange, setDateRange] = useState('');
   const [cloneCurrent, setCloneCurrent] = useState(true);
@@ -141,7 +145,8 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
       apiKey,
       eventNames: events.map(e => buildEventName(e, dayLabel)),
       roster: workersList,
-      allWeeks
+      aiMemories: memoria.activas,
+      aprendizaje
     });
 
     setGeneratedJson(result);
