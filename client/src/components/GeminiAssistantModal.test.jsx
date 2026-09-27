@@ -66,3 +66,22 @@ describe('GeminiAssistantModal — memoria', () => {
     await waitFor(() => expect(api.deleteAiMemory).toHaveBeenCalledWith('n'));
   });
 });
+
+describe('GeminiAssistantModal — revisar antes de aplicar', () => {
+  it('enseña qué cambia respecto a la semana actual y avisa de gente que no está en el equipo', async () => {
+    const actual = { schedule: { martes: { tasks: [{ id: 'm1', text: 'Carga', timeFrame: '09:00 - 10:00', assigned: ['Ana'] }] } } };
+    const propuesta = { schedule: { martes: { tasks: [
+      { id: 'm1', text: 'Carga', timeFrame: '09:00 - 11:00', assigned: ['Ana'] },
+      { id: 'm2', text: 'Recogida', timeFrame: '12:00 - 13:00', assigned: ['Inventado'] },
+    ] } } };
+    generar.mockResolvedValue({ generatedJson: propuesta, errorMsg: '' });
+    extraer.mockResolvedValue(null);
+    render(<GeminiAssistantModal isOpen onClose={() => {}} onApplyGeneratedSchedule={() => {}} activeWeekData={actual} workersList={[{ name: 'Ana' }]} aprendizaje={aprendizaje} />);
+    await waitFor(() => expect(api.getAiMemories).toHaveBeenCalled());
+    fireEvent.change(screen.getByPlaceholderText(/Escribe tu solicitud/), { target: { value: 'x' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar Planificación/ }));
+    expect(await screen.findByText('+1 nuevas')).toBeInTheDocument();
+    expect(screen.getByText('1 cambiadas')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Asigna a quien no está en el equipo: Inventado.');
+  });
+});

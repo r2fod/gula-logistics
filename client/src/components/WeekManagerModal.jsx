@@ -8,6 +8,8 @@ import BotonCerrar from './ui/BotonCerrar';
 import { parseWeekRange, getDayLabel } from '../data/taskPlanning';
 import { buildEventName } from '../data/eventNaming';
 import { useMemoriaIa } from '../hooks/useMemoriaIa';
+import { avisosDeSemana } from '../data/diffSemana';
+import CambiosPropuestos from './asistente/CambiosPropuestos';
 import { AreaTexto, Input, Selector } from './ui/Campo';
 
 // Asistente guiado para crear una semana nueva: en vez de dejarla en blanco
@@ -547,6 +549,8 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
                 <span>Planificación Generada — revísala antes de crear la semana</span>
               </h4>
             </div>
+
+            <CambiosPropuestos avisos={avisosDeSemana(generatedJson, { equipo: workersList, camiones: [...selectedTrucks] })} />
 
             <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs space-y-3 max-h-60 overflow-y-auto">
               {generatedJson.saturdaySpecial?.weddings?.length > 0 && (

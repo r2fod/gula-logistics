@@ -11,7 +11,6 @@ _Solo lo que sigue abierto (actualizado el 27/09/2026). Lo resuelto se borra de 
 
 ## 🟡 Funcional
 - [ ] **`taskRef` apunta a la tarea por índice**: si el admin reordena un día con alguien fichado en él, la salida marcaría otra tarea. Pasar a `id` exige antes dar id a las tareas que no lo tienen (manual, ver `CLAUDE.md`).
-- [ ] **Tareas desactivadas (`active === false`):** la comprobación está copiada en varios archivos y falta en `TaskFlowGraphView` y `LiveMonitorPanel`. Un solo helper en `taskPlanning.js`.
 - [ ] **`LiveMonitorPanel` mira las tareas de HOY de la semana activa**: con otra semana elegida enseñaría las suyas como si fueran de hoy. Filtrar por fecha real.
 - [ ] **Regla "base/checklist y jefe de logística no cargan":** el usuario quitó ese texto de las tarjetas de equipo (21/09) pero sigue en el generador y en el prompt de Gemini. ¿Sigue vigente?
 - [ ] **Ficha de Saldos con el nombre mal escrito** (una letra de más): corregir `name` en Atlas → `workerbalances` (no el `id`). La app lo puentea mientras tanto.
@@ -19,7 +18,6 @@ _Solo lo que sigue abierto (actualizado el 27/09/2026). Lo resuelto se borra de 
 - [ ] **27/09: dos entradas duplicadas de un trabajador a las 11:07** (se creó una tercera al no verse en turno por el fallo del domingo, ya arreglado). Borrar solo con permiso del usuario.
 - [ ] **Bloque `team` de la Vista Pública sin pantalla de edición** (solo `POST /weeks` o Atlas).
 - [ ] **Enlaces de trabajador firmados y revocables** (hoy `?worker=Nombre` sin token; quitar del roster ya revoca). Rompe los enlaces actuales al desplegar: coordinar con el usuario.
-- [ ] Detección de solapes de horario por persona.
 - [ ] Revisión responsive sistemática 320–1920 px del resto de vistas.
 
 ## Asistente IA (27/09)
@@ -29,9 +27,17 @@ _Solo lo que sigue abierto (actualizado el 27/09/2026). Lo resuelto se borra de 
 - [ ] Los conceptos a mano ANTERIORES al 28/09 no llevan fecha ni tipo (los nuevos sí): los pagos antiguos se reconocen por el texto ("pago", "efectivo", "Bizum", "adelanto"…) y los que no tienen fecha (bolsa, roturas, pagos) solo se suman en «Todo».
 - [ ] Revisar en producción con sesión de admin: Saldos (dos grupos), "Ver sus horas por evento", el Resumen con lo apuntado a mano y lo previsto, copiar para WhatsApp y la papelera del Historial.
 
+## Auditoría 28/09 — siguiente paso recomendado
+- [ ] **Clave de Gemini en el servidor** (en Render, llamada a través de `/api`, solo admin): hoy hay que pegarla en cada navegador y vive en su `localStorage`.
+- [ ] **Deshacer lo último que aplicó Gemini** (guardar la semana anterior al aplicar y un botón para volver).
+- [ ] **Sincronización por cambios** (`GET /api/clock?desde=`): hoy cada dispositivo pide todos los fichajes cada 20 s. Aguanta porque Render comprime y responde 304 si no cambia, pero crece con el histórico.
+- [ ] **Lista de equipo de arranque sin nombres reales** (`hooks/useWorkers.js` y `server/src/routes/roster.routes.js`): con el enlace de trabajador ya resuelto al llegar el equipo real, se puede dejar vacía.
+- [ ] **Tests** de `ClockInModal`, `useClockings` y `AdminClockEditModal` (fichar y editar fichajes aún sin cubrir).
+- [ ] ¿Enseñar al trabajador, en su propia pantalla, lo que lleva ganado en el turno? (hoy solo admin y socias). **Decisión del usuario.**
+
 ## 🟢 Código
-- [ ] ESLint del cliente: 49 errores y 126 avisos ya existentes (bloques `catch {}` vacíos, dependencias de efectos…). No añadir nuevos.
-- [ ] Archivos grandes: `AdminTaskEditorModal` (~1050 líneas), `WorkerView` (~1100), `TeamBalancesTab` (~760). Siguientes piezas: fila de tarea/tarjeta de boda de `WorkerView`, `Boton`, `Chip` seleccionable, `PuntoEstado`.
+- [ ] ESLint del cliente: 21 errores (reglas nuevas de React: `setState` dentro de efectos en varios modales) y ~130 avisos, todos anteriores. No añadir nuevos.
+- [ ] Archivos grandes: `AdminTaskEditorModal` (~1050 líneas), `WorkerView` (~1090), `TeamBalancesTab` (~780). Siguientes piezas: fila de tarea/tarjeta de boda de `WorkerView`, `Boton`, `Chip` seleccionable, `PuntoEstado`.
 - [ ] Normalizar las tareas a objeto al cargar la semana y quitar los `typeof task === 'object' ? task.text : task` repartidos.
 - [ ] `npm audit` del cliente: `vite`/`esbuild` (solo afectan a `npm run dev`); arreglarlo es subir `vite` de versión mayor, en rama aparte.
 
