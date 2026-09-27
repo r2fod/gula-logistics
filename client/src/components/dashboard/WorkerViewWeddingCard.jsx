@@ -17,6 +17,7 @@ export default function WorkerViewWeddingCard({
   jornadaGateClosed, 
   gateText,
   onToggleTask,
+  resolveRealTaskIndex,
   getWeddingTaskName,
   onClockIn,
   jornadaStarted
