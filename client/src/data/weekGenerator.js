@@ -13,46 +13,30 @@
 //   · cargas/descargas las hacen conductores y apoyo; base/checklist prepara,
 //     el jefe de logística supervisa y limpieza solo limpia (por el ROL del equipo);
 //   · descargar implica montaje de estructura;
-//   · nadie se asigna dos tareas a la vez ni en sus vacaciones.
+//   · nadie se asigna dos tareas a la vez ni en sus vacaciones, ni cuando el admin
+//     dijo que no puede; se evita pasar de las horas al día y no descansar entre
+//     jornadas (optimizadorPlanning.js, límites en disponibilidad.js).
 // Los horarios se calculan desde la hora de inicio del evento cuando el
 // calendario la trae; si no, son una PROPUESTA (con aviso).
 
 import { EVENT_CATEGORIES } from './eventNaming';
 import { enlaceMaps, LUGAR_BASE } from './mapas';
+import { asignarEquipo, candidatosDePerfil, clasificarEquipo } from './optimizadorPlanning';
+import { LIMITES_POR_DEFECTO } from './disponibilidad';
+import { plano } from '../utils/texto';
+import { PREFIJO_ID, aIso, fechaLocal, formatearRango, sumarDias } from './fechasSemana';
+
+// Se siguen exportando desde aquí (tests y quien ya los importaba).
+export { PREFIJO_ID, martesDeSemana, formatearRango, weekIdParaInicio } from './fechasSemana';
 
 const DIAS = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'];
 const JS_DIA = { 0: 'domingo', 1: 'lunes', 2: 'martes', 3: 'miercoles', 4: 'jueves', 5: 'viernes', 6: 'sabado' };
-export const PREFIJO_ID = { martes: 'm', miercoles: 'mi', jueves: 'j', viernes: 'v', domingo: 'sl', lunes: 'sl' };
 const NOMBRE_DIA = { martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes', sabado: 'Sábado', domingo: 'Domingo', lunes: 'Lunes' };
-const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const [CAT_PREP, CAT_CARGA, CAT_LIMPIEZA] = ['Logística Preparación', 'Logística Carga', 'Limpieza Eventos'];
 
 const MIN_INICIO = 6 * 60 + 30; // nadie empieza antes de las 06:30
-const PENALIZACION_BACKUP = 6; // horas: el "backup" solo entra cuando los demás van cargados
 
-// ─── Fechas ────────────────────────────────────────────────────────────────
-const fechaLocal = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };
-const aIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const sumarDias = (d, n) => { const r = new Date(d.getFullYear(), d.getMonth(), d.getDate()); r.setDate(r.getDate() + n); return r; };
 
-// Las semanas de Gula van de martes a domingo (+ el lunes de cola). Devuelve el
-// martes que abre la semana en la que cae `fecha` (el lunes cuenta como cola de la anterior).
-export function martesDeSemana(fecha) {
-  const d = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
-  const atras = (d.getDay() - 2 + 7) % 7; // martes = 2
-  return sumarDias(d, -atras);
-}
-
-// "Del 22 al 27 de Septiembre de 2026" / "Del 29 de Septiembre al 4 de Octubre de 2026"
-export function formatearRango(inicioMartes) {
-  const fin = sumarDias(inicioMartes, 5);
-  if (inicioMartes.getMonth() === fin.getMonth()) {
-    return `Del ${inicioMartes.getDate()} al ${fin.getDate()} de ${MESES[fin.getMonth()]} de ${fin.getFullYear()}`;
-  }
-  return `Del ${inicioMartes.getDate()} de ${MESES[inicioMartes.getMonth()]} al ${fin.getDate()} de ${MESES[fin.getMonth()]} de ${fin.getFullYear()}`;
-}
-
-export const weekIdParaInicio = (inicioMartes) => `week_auto_${aIso(inicioMartes)}`;
 
 // ─── Horas ─────────────────────────────────────────────────────────────────
 const aMin = (hhmm) => Number(hhmm.slice(0, hhmm.indexOf(':'))) * 60 + Number(hhmm.slice(hhmm.indexOf(':') + 1));
@@ -61,7 +45,6 @@ const redondear = (min) => Math.round(min / 30) * 30; // a medias horas
 const rango = (ini, fin) => `${hhmm(ini)} - ${hhmm(fin)}`;
 
 // ─── Nombres ───────────────────────────────────────────────────────────────
-const plano = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 const capitalizar = (s) => s.toLowerCase().replace(/(^|[\s(])([a-záéíóúñü])/g, (m, a, b) => a + b.toUpperCase());
 
 // "COFFE + COMIDA AITANA" -> "Evento Coffe + Comida Aitana"; "Boda Ana Y Luis" -> "Boda Ana y Luis"
@@ -150,24 +133,10 @@ function extraerVacaciones(apuntes, roster) {
   return mapa;
 }
 
-// ─── Equipo ────────────────────────────────────────────────────────────────
-function clasificarEquipo(roster) {
-  const pools = { conductores: [], apoyo: [], prep: [], supervisor: [], limpieza: [] };
-  roster.forEach((p, i) => {
-    const rol = plano(p.role);
-    const entrada = { name: p.name, orden: i, backup: /backup/.test(rol) };
-    if (/limpieza/.test(rol)) pools.limpieza.push(entrada);
-    else if (/conductor/.test(rol)) pools.conductores.push(entrada);
-    else if (/jefe/.test(rol)) pools.supervisor.push(entrada);
-    else if (/prepara|checklist|ayudante/.test(rol)) pools.prep.push(entrada);
-    else if (/apoyo/.test(rol)) pools.apoyo.push(entrada);
-  });
-  return pools;
-}
-
 // ─── Generador ─────────────────────────────────────────────────────────────
-// { inicio: Date (martes), apuntes, roster: [{name, role}], plantilla: {team, trucks}, nombre }
-export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla = {}, nombre = 'Semana', ahora = new Date() }) {
+// { inicio: Date (martes), apuntes, roster: [{name, role}], plantilla: {team, trucks}, nombre,
+//   restricciones (disponibilidad.js), limites }
+export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla = {}, nombre = 'Semana', ahora = new Date(), restricciones = [], limites = LIMITES_POR_DEFECTO }) {
   const inicioMartes = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate());
   const fechas = {};
   DIAS.forEach((d, i) => { fechas[d] = sumarDias(inicioMartes, i); });
@@ -313,37 +282,19 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
     avisos.push('Hay recogidas de alquiler esta semana pero ninguna devolución apuntada en el calendario: revisa cuándo hay que devolverlo.');
   }
 
-  // ── 2. Asignación de personas ──
-  const ocupacion = {}; // 'dia|nombre' -> [[ini, fin]]
-  const horas = {};
-  roster.forEach(p => { horas[p.name] = 0; });
-  const libre = (persona, dia, ini, fin) => {
-    const iso = aIso(fechas[dia]);
-    if (vacaciones.some(v => v.nombre === persona && iso >= v.desde && iso <= v.hasta)) return false;
-    return !(ocupacion[`${dia}|${persona}`] || []).some(([a, b]) => ini < b && a < fin);
-  };
-  const candidatos = (pool) => {
-    if (pool === 'prepEquipo') return [...pools.prep, ...pools.supervisor, ...pools.apoyo];
-    if (pool === 'carga') return [...pools.conductores, ...pools.apoyo];
-    if (pool === 'equipo') return [...pools.conductores, ...pools.apoyo, ...pools.supervisor];
-    return pools[pool] || [];
-  };
-
+  // ── 2. Asignación de personas (optimizadorPlanning.js) ──
   tareas.sort((a, b) => DIAS.indexOf(a.dia) - DIAS.indexOf(b.dia) || a.ini - b.ini);
-  const colocadas = tareas.map(t => {
-    const finReal = t.fin <= t.ini ? t.fin + 1440 : t.fin;
-    const durH = (finReal - t.ini) / 60;
-    const elegibles = candidatos(t.pool)
-      .filter(p => libre(p.name, t.dia, t.ini, finReal))
-      .sort((x, y) => (horas[x.name] + (x.backup ? PENALIZACION_BACKUP : 0)) - (horas[y.name] + (y.backup ? PENALIZACION_BACKUP : 0)) || x.orden - y.orden);
-    const elegidos = elegibles.slice(0, t.n);
-    if (elegidos.length < t.n) avisos.push(`${NOMBRE_DIA[t.dia]}: ${t.evento} - ${t.accion}: solo ${elegidos.length} de ${t.n} personas libres (vacaciones o solapes).`);
-    elegidos.forEach(p => {
-      (ocupacion[`${t.dia}|${p.name}`] = ocupacion[`${t.dia}|${p.name}`] || []).push([t.ini, finReal]);
-      horas[p.name] += durH;
-    });
-    return { ...t, assigned: elegidos.map(p => p.name) };
+  const fechasIso = Object.fromEntries(DIAS.map(d => [d, aIso(fechas[d])]));
+  const { asignados, horas, avisos: avisosReparto } = asignarEquipo({
+    equipo: roster, restricciones, limites, vacaciones, fechas: fechasIso,
+    tareas: tareas.map((t, i) => ({
+      clave: i, dia: t.dia, ini: t.ini, fin: t.fin <= t.ini ? t.fin + 1440 : t.fin, n: t.n,
+      candidatos: candidatosDePerfil(pools, t.pool).map(p => p.name),
+      etiqueta: `${NOMBRE_DIA[t.dia]}: ${t.evento} - ${t.accion}`,
+    })),
   });
+  avisos.push(...avisosReparto);
+  const colocadas = tareas.map((t, i) => ({ ...t, assigned: asignados[i] || [] }));
 
   // ── 3. Montaje del objeto semana ──
   const escribirTexto = (t) => `${t.evento} - ${t.accion}`;
@@ -357,11 +308,12 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
     if (t.extra?.sabado || t.dia === 'sabado') {
       weddings.push({
         location: t.lugar, truck: trucksTexto, details: `${t.evento} — ${t.accion}${t.extra?.pax ? ` (${t.extra.pax} pax)` : ''}`,
-        timeFrame: rango(t.ini, t.fin), mapsUrl: mapa(t.lugar), assigned: t.assigned, completed: false, event: t.evento, _ini: t.ini,
+        timeFrame: rango(t.ini, t.fin), mapsUrl: mapa(t.lugar), assigned: t.assigned, completed: false, event: t.evento, perfil: t.pool, personas: t.n, _ini: t.ini,
       });
       return;
     }
-    const base = { text: escribirTexto(t), location: t.lugar, timeFrame: rango(t.ini, t.fin), mapsUrl: mapa(t.lugar), assigned: t.assigned, completed: false, event: t.evento };
+    // perfil y personas: para poder reajustarla luego sin adivinar quién puede hacerla.
+    const base = { text: escribirTexto(t), location: t.lugar, timeFrame: rango(t.ini, t.fin), mapsUrl: mapa(t.lugar), assigned: t.assigned, completed: false, event: t.evento, perfil: t.pool, personas: t.n };
     if (t.dia === 'domingo' || t.dia === 'lunes') compartidas.push({ ...base, targetDay: t.extra?.targetDay || (t.dia === 'lunes' ? 'Lunes' : 'Domingo'), _dia: t.dia, _ini: t.ini });
     else if (schedule[t.dia]) schedule[t.dia].tasks.push({ ...base, _ini: t.ini });
   });
@@ -388,6 +340,8 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
       generadoDesde: 'calendario',
       generadoEl: ahora.toISOString(),
       avisos: [...new Set(avisos)],
+      ...(restricciones.length ? { disponibilidad: restricciones } : {}),
+      ...(limites !== LIMITES_POR_DEFECTO ? { limites } : {}),
     },
     team: (plantilla.team || []).map(t => ({ ...t })),
     trucks: (() => {

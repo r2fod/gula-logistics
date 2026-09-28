@@ -12,7 +12,7 @@ describe('formatoFinanciero', () => {
   it('un valor no numérico se muestra como cero, no como NaN', () => {
     expect(formatearEuros(NaN)).toBe('0,00 €');
     expect(formatearEuros(undefined)).toBe('0,00 €');
-    expect(formatearHoras(Infinity)).toBe('0 h');
+    expect(formatearHoras(Infinity)).toBe('0\u00a0h');
   });
 
   it('un negativo lleva signo, salvo si se redondea a cero', () => {
@@ -21,12 +21,12 @@ describe('formatoFinanciero', () => {
   });
 
   it('horas sin ceros de sobra', () => {
-    expect(formatearHoras(3.5)).toBe('3,5 h');
-    expect(formatearHoras(242.5)).toBe('242,5 h');
-    expect(formatearHoras(12)).toBe('12 h');
-    expect(formatearHoras(0.75)).toBe('0,75 h');
-    expect(formatearHoras(57.5833333)).toBe('57,58 h');
-    expect(formatearHoras(1234.5)).toBe('1.234,5 h');
+    expect(formatearHoras(3.5)).toBe('3,5\u00a0h');
+    expect(formatearHoras(242.5)).toBe('242,5\u00a0h');
+    expect(formatearHoras(12)).toBe('12\u00a0h');
+    expect(formatearHoras(0.75)).toBe('0,75\u00a0h');
+    expect(formatearHoras(57.5833333)).toBe('57,58\u00a0h');
+    expect(formatearHoras(1234.5)).toBe('1.234,5\u00a0h');
   });
 
   it('porcentajes con un decimal', () => {

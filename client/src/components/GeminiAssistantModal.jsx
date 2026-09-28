@@ -1,10 +1,14 @@
 import React, { useState } from 'react';
 import { Sparkles, Check, AlertCircle, RefreshCw, Key, Wand2, BrainCircuit, X } from 'lucide-react';
-import { generateScheduleWithGemini, extraerMemoriaDelPrompt, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
+import { extraerMemoriaDelPrompt, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
 import { promptCorreccion } from '../data/planificadorIa';
+import { resolverPeticion, editarConGemini, pareceRegla } from '../data/editorIa';
+import { limitesDe, restriccionesDe } from '../data/disponibilidad';
+
 import { useMemoriaIa } from '../hooks/useMemoriaIa';
-import { diffSemana, avisosDeSemana } from '../data/diffSemana';
+import { diffSemana, avisosDePropuesta } from '../data/diffSemana';
 import CambiosPropuestos from './asistente/CambiosPropuestos';
+import GastoGemini from './asistente/GastoGemini';
 import EstadoClaveIa from './asistente/EstadoClaveIa';
 import { useClaveIaServidor } from '../hooks/useClaveIaServidor';
 import Modal from './ui/Modal';
@@ -20,6 +24,8 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
   const [loading, setLoading] = useState(false);
   const [generatedJson, setGeneratedJson] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
+  // Por dónde fue la última petición (sin Gemini, solo cambios o semana entera) y qué gastó.
+  const [resultado, setResultado] = useState(null);
   
   const memoria = useMemoriaIa(isOpen);
   const claveEnServidor = useClaveIaServidor(isOpen);
@@ -35,7 +41,9 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
     setShowApiKeyInput(false);
   };
 
+  const alguien = workersList[0]?.name || 'Ana';
   const samplePrompts = [
+    `${alguien} no puede el jueves`,
     'Reorganiza las cargas de mañana para que cada conductor lleve el camión con el que ya ha ido esta semana.',
     'A partir de ahora, recuerda que las bodas de más de 200 pax llevan un apoyo más en la carga.',
     'Ajusta los horarios de la semana a lo que duran de verdad las tareas según los fichajes.'
@@ -49,15 +57,18 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
     setErrorMsg('');
     setGeneratedJson(null);
     setPropuesta(null);
+    setResultado(null);
 
-    // La planificación y la posible regla nueva van a la vez (la regla no retrasa
-    // la respuesta). El servidor no guarda duplicados.
-    const [{ generatedJson: result, errorMsg: err }, recuerdo] = await Promise.all([
-      generateScheduleWithGemini({ prompt, apiKey, activeWeekData, roster: workersList, aiMemories: memoria.activas, aprendizaje }),
-      extraerMemoriaDelPrompt({ prompt, apiKey })
+    // Cada petición por el camino que menos gasta (editorIa.js): disponibilidad sin
+    // Gemini, cambios concretos en modo compacto, la semana entera solo si hace falta.
+    // La regla para la memoria solo se busca si la frase suena a regla, y a la vez.
+    const [r, recuerdo] = await Promise.all([
+      resolverPeticion({ peticion: prompt, apiKey, semana: activeWeekData, equipo: workersList, memorias: memoria.activas, aprendizaje }),
+      pareceRegla(prompt) ? extraerMemoriaDelPrompt({ prompt, apiKey }) : Promise.resolve(null),
     ]);
-    setGeneratedJson(result);
-    if (err) setErrorMsg(err);
+    setGeneratedJson(r.generatedJson);
+    setResultado(r);
+    if (r.errorMsg) setErrorMsg(r.errorMsg);
 
     if (recuerdo) {
       const regla = await memoria.proponer(recuerdo);
@@ -72,15 +83,23 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
   const corregirAvisos = async (avisos) => {
     setLoading(true);
     setErrorMsg('');
-    const { generatedJson: result, errorMsg: err } = await generateScheduleWithGemini({
-      prompt: promptCorreccion(avisos), apiKey, activeWeekData: { ...activeWeekData, ...generatedJson }, roster: workersList, aiMemories: memoria.activas, aprendizaje,
+    const disponibilidad = generatedJson.disponibilidad;
+    const r = await editarConGemini({
+      peticion: promptCorreccion(avisos), apiKey, semana: { ...activeWeekData, ...generatedJson }, equipo: workersList,
+      restricciones: disponibilidad || restriccionesDe(activeWeekData), limites: limitesDe(activeWeekData), memorias: memoria.activas,
     });
-    if (result) setGeneratedJson(result);
-    if (err) setErrorMsg(err);
+    if (r.generatedJson) {
+      setGeneratedJson(disponibilidad ? { ...r.generatedJson, disponibilidad } : r.generatedJson);
+      setResultado({ ...r, via: 'cambios' });
+    }
+    if (r.errorMsg) setErrorMsg(r.errorMsg);
     setLoading(false);
   };
 
-  const avisos = generatedJson ? avisosDeSemana(generatedJson, { equipo: workersList, camiones: (activeWeekData?.trucks || []).map(t => t?.name) }) : [];
+  const avisos = generatedJson ? avisosDePropuesta({
+    actual: activeWeekData, propuesta: generatedJson, equipo: workersList, camiones: (activeWeekData?.trucks || []).map(t => t?.name),
+    restricciones: generatedJson.disponibilidad || null, extra: resultado?.avisosExtra || [],
+  }) : [];
 
   const handleApply = () => {
     if (generatedJson) {
@@ -231,6 +250,8 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
           </div>
 
           {/* Qué cambia y qué revisar antes de aplicar (antes solo se veían las bodas del sábado) */}
+          <GastoGemini resultado={resultado} />
+
           <CambiosPropuestos diff={diffSemana(activeWeekData, generatedJson)} avisos={avisos} />
 
           {avisos.length > 0 && (

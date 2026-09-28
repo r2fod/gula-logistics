@@ -29,14 +29,14 @@ describe('GrafoMemoria', () => {
     expect(screen.getByRole('button', { name: 'Regla: Regla nueva' })).toBeInTheDocument();
     fireEvent.click(ana);
     expect(ana).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: /Carga · 6 h fichadas/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Carga · 6\sh fichadas/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Regla R1 · la nombra/ })).toBeInTheDocument();
   });
 
   it('elegir un vecino salta a él; Escape y tocar el fondo lo quitan', () => {
     const { container } = render(<GrafoMemoria grafo={grafo} />);
     fireEvent.click(screen.getByRole('button', { name: 'Persona: Ana' }));
-    fireEvent.click(screen.getByRole('button', { name: /Carga · 6 h fichadas/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Carga · 6\sh fichadas/ }));
     expect(screen.getByText(/Planificado 1 h de media, fichado 1 h 30/)).toBeInTheDocument();
     fireEvent.keyDown(screen.getByRole('button', { name: 'Tipo de tarea: Carga' }), { key: 'Escape' });
     expect(screen.getByText(/Toca un punto/)).toBeInTheDocument();

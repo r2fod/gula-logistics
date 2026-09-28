@@ -49,7 +49,10 @@ export default function CambiosPropuestos({ diff = null, avisos = [] }) {
                     {d.cambiadas.map((c, i) => (
                       <li key={`c${i}`} className="flex gap-1.5">
                         <PenLine className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-label="Cambiada" />
-                        <span>{c.texto} <span className="text-slate-500">— {c.cambios.join('; ')}</span></span>
+                        <span>{c.texto} <span className="text-slate-500">— {c.cambios.map((x, j) => (
+                          // Los cambios cortos ("entra Luis") van enteros; los textos largos pueden partirse.
+                          <React.Fragment key={j}>{j > 0 && '; '}<span className={x.length <= 30 ? 'whitespace-nowrap' : ''}>{x}</span></React.Fragment>
+                        ))}</span></span>
                       </li>
                     ))}
                   </ul>

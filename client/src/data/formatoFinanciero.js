@@ -23,8 +23,9 @@ export function formatearCantidad(n) {
   return `${valor < 0 ? '-' : ''}${agrupar(entero)}${decimal ? `,${decimal}` : ''}`;
 }
 
-// Horas: 3,5 h · 242,5 h · 12 h · 0,75 h.
-export const formatearHoras = (n) => `${formatearCantidad(n)} h`;
+// Horas: 3,5 h · 242,5 h · 12 h · 0,75 h. Con espacio que no se parte (como el "€"):
+// la "h" nunca se queda sola en otra línea.
+export const formatearHoras = (n) => `${formatearCantidad(n)}\u00a0h`;
 
 // Importe con su signo explícito para los saldos: +125,50 € · -30,00 €. Cero lleva "+".
 export const formatearEurosConSigno = (n) => `${n >= 0 ? '+' : ''}${formatearEuros(n)}`;

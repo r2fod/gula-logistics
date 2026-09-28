@@ -8,9 +8,12 @@ import BotonCerrar from './ui/BotonCerrar';
 import { parseWeekRange, getDayLabel } from '../data/taskPlanning';
 import { buildEventName } from '../data/eventNaming';
 import { useMemoriaIa } from '../hooks/useMemoriaIa';
-import { avisosDeSemana } from '../data/diffSemana';
+import { avisosDePropuesta } from '../data/diffSemana';
 import CambiosPropuestos from './asistente/CambiosPropuestos';
+import GastoGemini from './asistente/GastoGemini';
 import { promptCorreccion } from '../data/planificadorIa';
+import { editarConGemini } from '../data/editorIa';
+
 import EstadoClaveIa from './asistente/EstadoClaveIa';
 import { useClaveIaServidor } from '../hooks/useClaveIaServidor';
 import { AreaTexto, Input, Selector } from './ui/Campo';
@@ -46,6 +49,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [generatedJson, setGeneratedJson] = useState(null);
+  const [resultado, setResultado] = useState(null); // lo que gastó la última llamada a Gemini
   const [calendarLoading, setCalendarLoading] = useState(false);
 
   // El aviso sale debajo de los botones: en móvil quedaba fuera de pantalla.
@@ -146,7 +150,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
     // una semana nueva, no tiene sentido que Gemini reutilice o intente
     // "actualizar" las tareas de la semana vieja — eso es justo lo que
     // haría si se le pasara activeWeekData con contenido real.
-    const { generatedJson: result, errorMsg: err } = await generateScheduleWithGemini({
+    const { generatedJson: result, errorMsg: err, uso } = await generateScheduleWithGemini({
       prompt: buildPrompt(),
       apiKey,
       activeWeekData: { meta: { dateRange } },
@@ -158,6 +162,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
     });
 
     setGeneratedJson(result);
+    setResultado(uso ? { via: 'completo', uso } : null);
     if (err) setErrorMsg(err);
     setLoading(false);
   };
@@ -167,22 +172,20 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
   const corregirAvisos = async (avisos) => {
     setLoading(true);
     setErrorMsg('');
-    const { generatedJson: result, errorMsg: err } = await generateScheduleWithGemini({
-      prompt: promptCorreccion(avisos),
+    // Solo los cambios (modo compacto, editorIa.js): mucho más barato que rehacer la semana.
+    const { generatedJson: result, errorMsg: err, uso } = await editarConGemini({
+      peticion: promptCorreccion(avisos),
       apiKey,
-      activeWeekData: { meta: { dateRange }, ...generatedJson },
-      eventNames: events.map(e => buildEventName(e, dayLabel)),
-      roster: workersList,
-      disponibles: [...selectedWorkers],
-      aiMemories: memoria.activas,
-      aprendizaje
+      semana: { meta: { dateRange }, ...generatedJson },
+      equipo: selectedWorkers.size ? workersList.filter(w => selectedWorkers.has(w.name)) : workersList,
+      memorias: memoria.activas,
     });
-    if (result) setGeneratedJson(result);
+    if (result) { setGeneratedJson(result); setResultado(uso ? { via: 'cambios', uso } : null); }
     if (err) setErrorMsg(err);
     setLoading(false);
   };
 
-  const avisos = generatedJson ? avisosDeSemana(generatedJson, { equipo: workersList, camiones: [...selectedTrucks] }) : [];
+  const avisos = generatedJson ? avisosDePropuesta({ actual: { meta: { dateRange } }, propuesta: generatedJson, equipo: workersList, camiones: [...selectedTrucks] }) : [];
   const quien = (t) => (t.assigned?.length ? ` — ${t.assigned.join(', ')}` : ' — sin asignar');
 
   // Bodas y eventos con sus pax, para repartir el coste de las tareas
@@ -582,6 +585,8 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
                 <span>Planificación Generada — revísala antes de crear la semana</span>
               </h4>
             </div>
+
+            <GastoGemini resultado={resultado} />
 
             <CambiosPropuestos avisos={avisos} />
 

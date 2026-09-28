@@ -137,4 +137,19 @@ describe('anticiparSemanas', () => {
     expect(crearBorrador.mock.calls[0][2]).toBe(true);
     expect(crearBorrador.mock.calls[0][0]).toBe('week_x'); // conserva el id del borrador que regenera
   });
+
+  it('regenerar conserva lo que el admin dijo de esa semana (disponibilidad y límites)', async () => {
+    const regla = { id: 'r1', persona: 'Ana', dia: 'jueves', tipo: 'no' };
+    const borrador = semana('x', 'Semana 4', 'Del 22 al 27 de Septiembre de 2026', 'Borrador');
+    borrador.meta = { ...borrador.meta, disponibilidad: [regla], limites: { maxHorasDia: 10, descansoMinHoras: 11 } };
+    const crearBorrador = vi.fn().mockResolvedValue({ ok: true });
+    await anticiparSemanas({
+      semanas: { ...SEMANAS, x: borrador }, hoy: LUNES_21, roster,
+      leerApuntes: vi.fn().mockResolvedValue({ configurado: true, apuntes }), crearBorrador,
+      inicios: [new Date(2026, 8, 22)], reemplazar: true, idsForzados: { '2026-09-22': 'x' },
+    });
+    const guardada = crearBorrador.mock.calls[0][1];
+    expect(guardada.meta.disponibilidad).toEqual([regla]);
+    expect(guardada.meta.limites).toEqual({ maxHorasDia: 10, descansoMinHoras: 11 });
+  });
 });

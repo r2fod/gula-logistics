@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
-  semanaParaPrompt, semanaVacia, nombresPermitidos, esquemaPlan, normalizarHorario,
+  semanaParaPrompt, semanaVacia, nombresPermitidos, esquemaPlan,
   completarPlanGenerado, contextoParaPrompt, promptCorreccion,
 } from './planificadorIa';
+import { normalizarHorario } from './horarios';
 
 const equipo = [
   { name: 'Ana', role: 'Conductora', rate: 37, isPayroll: false },

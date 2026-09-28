@@ -3,6 +3,8 @@ import { generarBorrador, martesDeSemana, formatearRango, nombreDeEvento, weekId
 import { parseWeekRange, getDayLabel } from './taskPlanning';
 import { parseEventAndTask, splitEventNames, EVENT_CATEGORIES } from './eventNaming';
 import { validateGeneratedSchedule } from './geminiScheduleService';
+import { crearRestriccion } from './disponibilidad';
+import { tareasDelPlanning } from './optimizadorPlanning';
 
 // Equipo y calendario FICTICIOS con la misma forma que los reales.
 const ROSTER = [
@@ -234,5 +236,31 @@ describe('generarBorrador — correcciones vistas con el calendario real', () =>
     const cargas = [...Object.values(week.schedule).flatMap(d => d.tasks)].filter(x => /Carga de material/.test(x.text));
     expect(cargas).toHaveLength(1);
     expect(week.events).toEqual([{ name: 'Boda María y Noa', pax: 29 }]);
+  });
+});
+
+describe('generarBorrador — disponibilidad y límites de horas', () => {
+  it('quien no puede un día no va ese día, y lo dicho se guarda en el borrador', () => {
+    const noPuede = crearRestriccion({ persona: 'Bruno', dia: 'viernes', tipo: 'no' }).restriccion;
+    const { week } = generar(APUNTES, ROSTER, { restricciones: [noPuede] });
+    const viernes = todas(week).filter(t => t.dia === 'viernes');
+    expect(viernes.length).toBeGreaterThan(0);
+    expect(viernes.some(t => t.assigned.includes('Bruno'))).toBe(false);
+    expect(week.meta.disponibilidad).toEqual([noPuede]);
+  });
+
+  it('cada tarea guarda su perfil y cuántas personas lleva (para poder reajustarla luego)', () => {
+    const { week } = generar();
+    const conPerfil = [...Object.values(week.schedule).flatMap(d => d.tasks), ...week.saturdaySpecial.weddings, ...week.sundayMonday.tasks];
+    expect(conPerfil.every(t => t.perfil && t.personas >= 1)).toBe(true);
+  });
+
+  it('nadie pasa de 9 h en un día sin que el borrador lo avise', () => {
+    const { week } = generar();
+    const porDia = {};
+    tareasDelPlanning(week).forEach(t => t.asignados.forEach(p => { const k = `${p}|${t.dia}`; porDia[k] = (porDia[k] || 0) + (t.fin - t.ini) / 60; }));
+    Object.entries(porDia).filter(([, h]) => h > 9).forEach(([k]) => {
+      expect(week.meta.avisos.some(a => a.startsWith(`${k.split('|')[0]} tiene`) && /más de 9\sh/.test(a))).toBe(true);
+    });
   });
 });

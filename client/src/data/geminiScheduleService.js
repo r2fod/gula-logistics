@@ -6,6 +6,7 @@
 // desincronizado en cuanto alguien ajustara una sola copia.
 import { EVENT_CATEGORIES, buildEventName } from './eventNaming';
 import { semanaParaPrompt, semanaVacia, esquemaPlan, nombresPermitidos, completarPlanGenerado, contextoParaPrompt } from './planificadorIa';
+import { limitesDe } from './disponibilidad';
 import { textoAprendizajeParaPrompt } from './aprendizajeFichajes';
 import { esMemoriaActiva } from './memoriaIa';
 import { llamarGeminiEnServidor } from './apiService';
@@ -100,6 +101,7 @@ function buildSystemPrompt({ semana = null, roster = [], aiMemories = [], aprend
 
   const plan = semanaParaPrompt(semana);
   const contexto = contextoParaPrompt({ semana, equipo: roster, disponibles });
+  const limites = limitesDe(semana);
   const actual = semanaVacia(plan)
     ? 'La semana está vacía: créala entera con lo que pide el usuario.'
     : `PLANIFICACIÓN ACTUAL (las tareas con "completed": true ya están hechas: déjalas exactamente igual):\n${JSON.stringify(plan)}`;
@@ -113,7 +115,7 @@ ${workerRules}${memoryRules}
 3. Al planificar recogidas (especialmente recogidas de camión), prográmalas SIEMPRE por la mañana temprano, a menos que se indique lo contrario.
 4. Cuando se descargue en un evento, ten en cuenta que también hay MONTAJE DE ESTRUCTURA. Esto debe reflejarse en el texto y el tiempo estimado de la tarea.
 5. Cada tarea lleva por separado el texto (ej: "Recoger material"), el horario "HH:MM - HH:MM" y el lugar (ej: "Alquileres Norte"; en la base, "Almacén Base").
-6. Nadie puede estar en dos tareas a la vez: revisa los horarios de cada persona en cada día. Reparte la carga de forma equilibrada entre el personal disponible y, tras una boda que acaba de madrugada, evita poner a esas personas a primera hora del día siguiente.
+6. Nadie puede estar en dos tareas a la vez: revisa los horarios de cada persona en cada día. Nadie pasa de ${limites.maxHorasDia} h en un día y entre jornadas hay al menos ${limites.descansoMinHoras} h de descanso (tras una boda que acaba de madrugada, esas personas no empiezan temprano al día siguiente). Reparte la carga de forma equilibrada entre el personal disponible.
 7. En "sundayMonday.tasks" (domingo y lunes comparten lista) pon SIEMPRE "targetDay": "Domingo" o "Lunes" según el día real de cada tarea.
 8. FORMATO DEL TEXTO DE CADA TAREA (de él salen los costes por evento y por persona): "EVENTO - Tarea", con un guion normal entre espacios UNA sola vez. EVENTO es el nombre exacto de la boda o evento (ej. "Boda Ana y Luis", "Evento Catering Norte") cuando la tarea es de ese evento; si es logística general, una de estas categorías: ${EVENT_CATEGORIES.map(c => `"${c}"`).join(', ')} ("Logística Preparación" = recogidas y devoluciones de camión o material, preparación de material, supervisión; "Logística Carga" = cargas de camión; "Limpieza Eventos" = limpieza de vajilla y utensilios). Si una tarea sirve a VARIOS eventos a la vez (ej. una recogida de material para dos bodas), pon los nombres separados por " + " antes del guion: "Boda Ana y Luis + Boda Eva y Pau - Recoger material Alquileres Norte" (su coste se reparte a partes iguales). La parte "Tarea" es corta y concreta, sin guiones con espacios ni horas ni nombres de personas (van en timeFrame y assigned). Ejemplos: "Boda Ana y Luis - Descarga + Montaje Estructura", "Boda Ana y Luis - Recoger generador", "Boda Ana y Luis - Logística Cierre", "Boda Ana y Luis - Supervisión", "Logística Preparación - Recogida Camión Covey", "Logística Preparación - Devolución Alquileres Norte", "Logística Carga - Carga Camión Miércoles", "Limpieza Eventos - Limpieza eventos".
 9. Si el usuario pide un cambio, modifica SOLO lo necesario y conserva el resto de la planificación tal cual, con el mismo "id" en las tareas que ya existen.${historyRule}
@@ -197,45 +199,56 @@ export function validateGeneratedSchedule(json) {
 // interfaz dejaba "Crear la Semana con esta Planificación": el usuario
 // generaba la semana nueva y salía con los eventos de la anterior. Un dato
 // inventado que parece real es peor que un error claro.
-export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData = null, eventNames = null, roster = [], aiMemories = [], aprendizaje = null, disponibles = null }) {
-  const activeApiKey = (apiKey || '').trim();
+// Una llamada a Gemini que tiene que devolver JSON: con `esquema` y `extras` (p. ej. el
+// tope de razonamiento) y, si el modelo no los acepta (400), otra vez sin ellos.
+// → { json, uso: { entrada, respuesta, pensamiento, total } } (tokens). Lanza un Error
+// con la pista de qué hacer si falla.
+export async function pedirJsonAGemini({ apiKey, texto, esquema = null, temperatura = 0.3, extras = {} }) {
+  const clave = (apiKey || '').trim();
+  const conAjustes = !!esquema || Object.keys(extras).length > 0;
+  const cuerpo = (completo) => JSON.stringify({
+    contents: [{ role: 'user', parts: [{ text: texto }] }],
+    generationConfig: { responseMimeType: 'application/json', temperature: temperatura, ...(completo && esquema ? { responseSchema: esquema } : {}), ...(completo ? extras : {}) },
+  });
 
+  let res = await llamarGemini(clave, cuerpo(true));
+  if (res?.status === 400 && conAjustes) res = await llamarGemini(clave, cuerpo(false));
+
+  if (!res?.ok) {
+    const status = res?.status || 0;
+    // 404 sin clave = el servidor aún no tiene /api/ia (Render sin desplegar): mismo remedio.
+    const hint = (status === 503 || status === 404) && !clave ? ' — falta la clave de Gemini: pégala en este navegador (botón de la llave) o ponla en el servidor (GEMINI_API_KEY en Render)'
+      : status === 401 && !clave ? ' — inicia sesión de administrador para usar la clave del servidor'
+      : status === 400 || status === 403 ? ' — comprueba que la clave es correcta'
+      : status === 429 ? ' — demasiadas peticiones, espera un minuto' : '';
+    throw new Error(`Error Gemini API (${status})${hint}`);
+  }
+
+  const data = await res.json();
+  const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('La respuesta de Gemini no contenía un JSON válido.');
+  const u = data.usageMetadata || {};
+  return {
+    json: JSON.parse(jsonMatch[0]),
+    uso: { entrada: u.promptTokenCount || 0, respuesta: u.candidatesTokenCount || 0, pensamiento: u.thoughtsTokenCount || 0, total: u.totalTokenCount || 0 },
+  };
+}
+
+export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData = null, eventNames = null, roster = [], aiMemories = [], aprendizaje = null, disponibles = null }) {
   const systemPrompt = buildSystemPrompt({ semana: activeWeekData, roster, aiMemories, aprendizaje, disponibles });
   const nombres = nombresPermitidos({ equipo: roster, disponibles, semana: activeWeekData });
   const eventos = eventNames || (activeWeekData?.events || []).map(e => e?.name).filter(Boolean);
-  // Con esquema la respuesta es siempre JSON válido y no puede inventarse a nadie;
-  // temperatura baja: una planificación se quiere coherente, no creativa.
-  const cuerpo = (conEsquema) => JSON.stringify({
-    contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\nSolicitud del usuario: ${prompt}` }] }],
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.3, ...(conEsquema ? { responseSchema: esquemaPlan(nombres) } : {}) },
-  });
 
   try {
-    let res = await llamarGemini(activeApiKey, cuerpo(true));
-    // Si el modelo no acepta el esquema (400), se repite sin él antes de rendirse.
-    if (res?.status === 400) res = await llamarGemini(activeApiKey, cuerpo(false));
-
-    if (!res?.ok) {
-      const status = res?.status || 0;
-      // 404 sin clave = el servidor aún no tiene /api/ia (Render sin desplegar): mismo remedio.
-      const hint = (status === 503 || status === 404) && !activeApiKey ? ' — falta la clave de Gemini: pégala en este navegador (botón de la llave) o ponla en el servidor (GEMINI_API_KEY en Render)'
-        : status === 401 && !activeApiKey ? ' — inicia sesión de administrador para usar la clave del servidor'
-        : status === 400 || status === 403 ? ' — comprueba que la clave es correcta'
-        : status === 429 ? ' — demasiadas peticiones, espera un minuto' : '';
-      throw new Error(`Error Gemini API (${status})${hint}`);
-    }
-
-    const data = await res.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('La respuesta de Gemini no contenía un JSON válido.');
-
-    const parsed = JSON.parse(jsonMatch[0]);
+    // Con esquema la respuesta es siempre JSON válido y no puede inventarse a nadie;
+    // temperatura baja: una planificación se quiere coherente, no creativa.
+    const { json: parsed, uso } = await pedirJsonAGemini({ apiKey, texto: `${systemPrompt}\n\nSolicitud del usuario: ${prompt}`, esquema: esquemaPlan(nombres) });
     const invalid = validateGeneratedSchedule(parsed);
     if (invalid) throw new Error(invalid);
 
     // Hechas intactas, desactivadas conservadas, nombres exactos, ids, Maps y "Evento - Tarea".
-    return { generatedJson: completarPlanGenerado(parsed, { original: activeWeekData, equipo: roster, eventNames: eventos }), errorMsg: '' };
+    return { generatedJson: completarPlanGenerado(parsed, { original: activeWeekData, equipo: roster, eventNames: eventos }), errorMsg: '', uso };
   } catch (err) {
     console.error(err);
     return {

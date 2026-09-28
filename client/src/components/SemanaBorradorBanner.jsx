@@ -3,7 +3,8 @@ import { Check, FilePenLine, RefreshCw } from 'lucide-react';
 
 // Aviso de una semana en BORRADOR (propuesta generada desde el calendario,
 // pendiente de que un admin la revise y la acepte).
-export default function SemanaBorradorBanner({ week, adminUnlocked, onAceptar, onRegenerar, onEliminar }) {
+// `extra`: lo que el panel añade para el admin (la revisión de Gemini, RevisionIaBorrador).
+export default function SemanaBorradorBanner({ week, adminUnlocked, onAceptar, onRegenerar, onEliminar, extra = null }) {
   const avisos = week?.meta?.avisos || [];
   return (
     <section className="relative overflow-hidden rounded-3xl border border-amber-500/20 bg-slate-900/40 p-5 sm:p-6 shadow-2xl backdrop-blur-xl group">
@@ -26,6 +27,7 @@ export default function SemanaBorradorBanner({ week, adminUnlocked, onAceptar, o
           {avisos.map((a, i) => <li key={i}>{a}</li>)}
         </ul>
       )}
+      {adminUnlocked && extra}
       {adminUnlocked ? (
         <div className="flex flex-wrap gap-3 pt-3 mt-4 border-t border-slate-800/60">
           <button type="button" onClick={onAceptar} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:opacity-90 text-slate-950 text-xs font-extrabold shadow-lg shadow-emerald-500/20 transition-all hover:scale-105">

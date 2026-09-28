@@ -1,5 +1,6 @@
 import { listarTareasPlanificadas } from './repartoPorPlanning';
 import { normalizarEtiquetaTarea, parseEventAndTask } from './eventNaming';
+import { plano } from '../utils/texto';
 
 // Lo que el asistente APRENDE de los fichajes reales, sin que nadie escriba nada:
 //   · cuánto duran de verdad los tipos de tarea frente a lo planificado (solo
@@ -13,7 +14,6 @@ import { normalizarEtiquetaTarea, parseEventAndTask } from './eventNaming';
 // "Memoria IA". Antes se miraba la hora en que alguien pulsaba "hecha", que
 // casi nunca coincide con cuando se acabó la tarea.
 
-const plano = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 export const TIPOS_TAREA = ['Carga', 'Descarga y montaje', 'Recogida y devolución', 'Servicio de boda', 'Limpieza', 'Preparación', 'Otras'];
 
@@ -124,7 +124,8 @@ export function personasPorTipo(porPersona = {}, minHoras = MIN_HORAS_PERSONA) {
 }
 
 // Bloque del prompt de Gemini ('' si aún no hay nada que merezca la pena).
-export function textoAprendizajeParaPrompt(aprendizaje) {
+// `cabecera`: la del prompt completo por defecto; el compacto (editorIa.js) pone la suya.
+export function textoAprendizajeParaPrompt(aprendizaje, cabecera = '\n10. APRENDIZAJE DE LOS FICHAJES REALES (datos de semanas pasadas, no suposiciones):') {
   if (!aprendizaje) return '';
   const duraciones = (aprendizaje.porTipo || [])
     .filter(t => t.tipo !== 'Otras' && t.tareas >= MIN_TAREAS_PATRON && Math.abs(t.desvioMin) >= MIN_DESVIO_MIN)
@@ -132,7 +133,7 @@ export function textoAprendizajeParaPrompt(aprendizaje) {
   const quien = Object.entries(personasPorTipo(aprendizaje.porPersona))
     .map(([tipo, lista]) => `- ${tipo}: ${lista.slice(0, 3).map(p => `${p.nombre} (${p.horas} h)`).join(', ')}.`);
   if (!duraciones.length && !quien.length) return '';
-  const partes = ['\n10. APRENDIZAJE DE LOS FICHAJES REALES (datos de semanas pasadas, no suposiciones):'];
+  const partes = [cabecera];
   if (duraciones.length) partes.push('Duración real frente a la planificada por tipo de tarea:', ...duraciones, 'Usa estas duraciones reales al poner los horarios (timeFrame) de las tareas de ese tipo.');
   if (quien.length) partes.push('Quién suele hacer cada tipo de tarea (horas fichadas):', ...quien, 'Tenlo en cuenta al asignar, siempre que no contradiga las reglas anteriores.');
   return partes.join('\n');

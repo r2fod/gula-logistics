@@ -7,6 +7,7 @@ vi.mock('../data/apiService', () => ({
   saveWorkerBalanceToAPI: vi.fn().mockResolvedValue({}),
   getStoredAdminToken: () => null,
   crearTokenSociasEnAPI: vi.fn().mockResolvedValue({ ok: true, token: 'solo.lectura', expiresAt: Date.now() + 1000 }),
+  getAiMemories: vi.fn().mockResolvedValue([]),
 }));
 vi.mock('../data/pushService', () => ({ sendPushNotification: vi.fn().mockResolvedValue({}) }));
 
@@ -151,5 +152,7 @@ describe('PartnerDashboardView', () => {
     const borrador = { ...semana, meta: { ...semana.meta, status: 'Borrador' } };
     pintar({ activeWeekData: borrador, allWeeks: { week_3: borrador } });
     expect(screen.getByRole('button', { name: /Aceptar y activar/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Revisar con Gemini/ })).toBeInTheDocument();
+    expect(screen.getByText('Gemini aún no lo ha revisado.')).toBeInTheDocument();
   });
 });

@@ -22,6 +22,10 @@ _Solo lo que sigue abierto (actualizado el 28/09/2026). Lo resuelto se borra de 
 ## Asistente IA (27/09)
 - [ ] Memoria del asistente hecha (grafo visual, reglas propuestas → aprobar, aprendizaje de fichajes). Pendiente: probarlo con sesión de admin en producción (pestaña Memoria IA), que el asistente diga «Usa la clave del servidor» (la clave ya está en Render, 28/09), que Gemini genere horarios razonables con el aprendizaje y el botón «Deshacer» tras aplicar. Solo mide tramos "limpios": se aprende más si la gente ficha cada tarea al cambiar.
 
+## Planificador con disponibilidad (28/09)
+- [ ] Probar con sesión de admin: el recuadro «Disponibilidad» del Cuadrante (escribir "X no puede el jueves" y aplicar el reajuste), la revisión automática de Gemini en el próximo borrador (cambios y tokens en su recuadro) y el asistente (cuánto gasta cada petición).
+- [ ] La disponibilidad es por semana; no hay aún una fija ("X nunca los lunes"): se añadiría al equipo (`/api/roster`).
+
 ## Saldos y Resumen Financiero (28/09)
 - [ ] Los conceptos a mano ANTERIORES al 28/09 no llevan fecha ni tipo (los nuevos sí): los pagos antiguos se reconocen por el texto ("pago", "efectivo", "Bizum", "adelanto"…) y los que no tienen fecha (bolsa, roturas, pagos) solo se suman en «Todo».
 - [ ] Revisar en producción con sesión de admin: Saldos (dos grupos y el saldo subiendo con alguien en turno), "Ver sus horas por evento", el Resumen con lo apuntado a mano y lo previsto, copiar para WhatsApp y la papelera del Historial.

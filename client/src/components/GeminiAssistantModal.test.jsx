@@ -2,12 +2,17 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '../test/render';
 
-const generar = vi.fn();
+const generar = vi.fn(); // el enrutador (resolverPeticion)
+const corregir = vi.fn(); // modo cambios (editarConGemini)
 const extraer = vi.fn();
 vi.mock('../data/geminiScheduleService', () => ({
-  generateScheduleWithGemini: (...a) => generar(...a),
   extraerMemoriaDelPrompt: (...a) => extraer(...a),
   GEMINI_API_KEY_STORAGE_KEY: 'clave-gemini',
+}));
+vi.mock('../data/editorIa', async (original) => ({
+  ...(await original()),
+  resolverPeticion: (...a) => generar(...a),
+  editarConGemini: (...a) => corregir(...a),
 }));
 const api = { getAiMemories: vi.fn(), addAiMemory: vi.fn(), aprobarAiMemory: vi.fn(), deleteAiMemory: vi.fn() };
 vi.mock('../data/apiService', () => ({
@@ -46,7 +51,7 @@ describe('GeminiAssistantModal — memoria', () => {
     await pedir();
     await waitFor(() => expect(generar).toHaveBeenCalled());
     const args = generar.mock.calls[0][0];
-    expect(args.aiMemories.map(m => m.content)).toEqual(['Activa']);
+    expect(args.memorias.map(m => m.content)).toEqual(['Activa']);
     expect(args.aprendizaje).toBe(aprendizaje);
   });
 
@@ -89,22 +94,42 @@ describe('GeminiAssistantModal — revisar antes de aplicar', () => {
   it('"Pedir a Gemini que lo corrija" le manda los avisos sobre SU propuesta y enseña la corregida', async () => {
     generar.mockClear();
     extraer.mockClear();
+    corregir.mockClear();
     const actual = { meta: { week: 'Semana 9' }, schedule: { martes: { tasks: [] } } };
     const conFallo = { schedule: { martes: { tasks: [{ id: 'm1', text: 'Recogida', timeFrame: '12:00 - 13:00', assigned: ['Inventado'] }] } } };
     const corregida = { schedule: { martes: { tasks: [{ id: 'm1', text: 'Recogida', timeFrame: '12:00 - 13:00', assigned: ['Ana'] }] } } };
-    generar.mockResolvedValueOnce({ generatedJson: conFallo, errorMsg: '' }).mockResolvedValueOnce({ generatedJson: corregida, errorMsg: '' });
+    generar.mockResolvedValueOnce({ generatedJson: conFallo, errorMsg: '', via: 'cambios', uso: { total: 812 } });
+    corregir.mockResolvedValueOnce({ generatedJson: corregida, errorMsg: '', uso: { total: 300 } });
     extraer.mockResolvedValue(null);
     render(<GeminiAssistantModal isOpen onClose={() => {}} onApplyGeneratedSchedule={() => {}} activeWeekData={actual} workersList={[{ name: 'Ana' }]} aprendizaje={aprendizaje} />);
     await waitFor(() => expect(api.getAiMemories).toHaveBeenCalled());
     fireEvent.change(screen.getByPlaceholderText(/Escribe tu solicitud/), { target: { value: 'x' } });
     fireEvent.click(screen.getByRole('button', { name: /Generar Planificación/ }));
     fireEvent.click(await screen.findByRole('button', { name: /Pedir a Gemini que lo corrija/ }));
-    await waitFor(() => expect(generar).toHaveBeenCalledTimes(2));
-    const { prompt, activeWeekData } = generar.mock.calls[1][0];
-    expect(prompt).toMatch(/^Corrige SOLO estos problemas[\s\S]*Inventado/);
-    expect(activeWeekData).toMatchObject({ meta: { week: 'Semana 9' }, schedule: conFallo.schedule });
+    await waitFor(() => expect(corregir).toHaveBeenCalledTimes(1));
+    const { peticion, semana } = corregir.mock.calls[0][0];
+    expect(peticion).toMatch(/^Corrige SOLO estos problemas[\s\S]*Inventado/);
+    expect(semana).toMatchObject({ meta: { week: 'Semana 9' }, schedule: conFallo.schedule });
+    expect(await screen.findByText(/Gemini: 300 tokens · solo los cambios/)).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
     expect(screen.queryByRole('button', { name: /Pedir a Gemini que lo corrija/ })).toBeNull();
-    expect(extraer).toHaveBeenCalledTimes(1); // la corrección no se toma por una regla nueva
+    expect(extraer).toHaveBeenCalledTimes(0); // ni "x" suena a regla ni la corrección se toma por una
+  });
+
+  it('lo que se entiende sin Gemini lo dice ("0 tokens") y no busca reglas si no suena a regla', async () => {
+    generar.mockClear();
+    extraer.mockClear();
+    const actual = { meta: { week: 'Semana 9' }, schedule: { jueves: { tasks: [{ id: 'j1', text: 'Carga', timeFrame: '09:00 - 10:00', assigned: ['Ana'] }] } } };
+    generar.mockResolvedValueOnce({
+      via: 'local', uso: null, errorMsg: '', resumen: 'Entendido sin gastar Gemini: Ana no puede el jueves. 1 tarea cambia de persona.',
+      generatedJson: { schedule: { jueves: { tasks: [{ id: 'j1', text: 'Carga', timeFrame: '09:00 - 10:00', assigned: ['Luis'] }] } }, disponibilidad: [{ persona: 'Ana', dia: 'jueves', tipo: 'no' }] },
+    });
+    render(<GeminiAssistantModal isOpen onClose={() => {}} onApplyGeneratedSchedule={() => {}} activeWeekData={actual} workersList={[{ name: 'Ana' }, { name: 'Luis' }]} aprendizaje={aprendizaje} />);
+    await waitFor(() => expect(api.getAiMemories).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole('button', { name: /Ana no puede el jueves/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Generar Planificación/ }));
+    expect(await screen.findByText(/^0 tokens · Entendido sin gastar Gemini/)).toBeInTheDocument();
+    expect(screen.getByText(/entra Luis/)).toBeInTheDocument();
+    expect(extraer).not.toHaveBeenCalled();
   });
 });

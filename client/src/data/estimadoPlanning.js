@@ -1,4 +1,5 @@
 import { esTareaActiva } from './taskPlanning';
+import { tramoDeHorario } from './horarios';
 
 // Horas y coste PREVISTOS según el planning de una semana (el horario de cada
 // tarea con gente asignada), no según fichajes: sirve para ver lo que se lleva
@@ -9,24 +10,15 @@ import { esTareaActiva } from './taskPlanning';
 // Los tramos solapados de una persona el mismo día se cuentan una vez. Las tareas
 // desactivadas no cuentan. El personal en nómina tiene coste 0 (no se paga aparte).
 
-const tramo = (timeFrame) => {
-  const m = String(timeFrame || '').match(/^\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*$/);
-  if (!m) return null;
-  const inicio = Number(m[1]) * 60 + Number(m[2]);
-  let fin = Number(m[3]) * 60 + Number(m[4]);
-  if (fin <= inicio) fin += 24 * 60; // cruza medianoche (bodas 20:30 - 02:00)
-  return { inicio, fin };
-};
-
 const minutosSinSolapes = (tramos) => {
-  const ordenados = [...tramos].sort((a, b) => a.inicio - b.inicio);
+  const ordenados = [...tramos].sort((a, b) => a.ini - b.ini);
   const unidos = [];
   ordenados.forEach(t => {
     const ultimo = unidos[unidos.length - 1];
-    if (ultimo && t.inicio <= ultimo.fin) ultimo.fin = Math.max(ultimo.fin, t.fin);
+    if (ultimo && t.ini <= ultimo.fin) ultimo.fin = Math.max(ultimo.fin, t.fin);
     else unidos.push({ ...t });
   });
-  return unidos.reduce((suma, t) => suma + (t.fin - t.inicio), 0);
+  return unidos.reduce((suma, t) => suma + (t.fin - t.ini), 0);
 };
 
 export function estimarHorasPlanning(semana, equipo = []) {
@@ -35,7 +27,7 @@ export function estimarHorasPlanning(semana, equipo = []) {
 
   const registrar = (dia, etiquetaDia, texto, tarea) => {
     if (!tarea || !esTareaActiva(tarea) || !Array.isArray(tarea.assigned) || !tarea.assigned.length) return;
-    const t = tramo(tarea.timeFrame);
+    const t = tramoDeHorario(tarea.timeFrame);
     if (!t) { sinHorario.push({ dia: etiquetaDia, texto: texto || '(sin descripción)', asignados: tarea.assigned }); return; }
     tarea.assigned.forEach(nombre => {
       const clave = `${nombre}|${dia}`;

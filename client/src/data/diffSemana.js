@@ -1,5 +1,9 @@
 import { getWeddingTaskName, normalizarEtiquetaTarea } from './eventNaming';
 import { esTareaActiva } from './taskPlanning';
+import { plano } from '../utils/texto';
+import { tramoDeHorario } from './horarios';
+import { revisarPlanning } from './optimizadorPlanning';
+import { limitesDe, restriccionesDe } from './disponibilidad';
 
 // Qué cambia entre la semana actual y la que propone Gemini, y qué hay que
 // revisar antes de aplicarla (CLAUDE.md: la IA puede inventar asignaciones o
@@ -61,16 +65,6 @@ export function diffSemana(actual, propuesta) {
   return { porDia, resumen };
 }
 
-const minutos = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
-const tramo = (horario) => {
-  const m = /(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/.exec(horario || '');
-  if (!m) return null;
-  const inicio = minutos(m[1]);
-  let fin = minutos(m[2]);
-  if (fin <= inicio) fin += 24 * 60;
-  return { inicio, fin };
-};
-const plano = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 const sinParentesis = (s) => plano(s).replace(/\(.*?\)/g, '').trim();
 
 // Lo que conviene revisar en la semana propuesta: gente que no está en el equipo,
@@ -97,7 +91,7 @@ export function avisosDeSemana(semana, { equipo = [], camiones = [] } = {}) {
   const solapes = new Set();
   const porPersonaYDia = new Map();
   tareas.forEach(t => {
-    const r = tramo(t.horario);
+    const r = tramoDeHorario(t.horario);
     if (!r) return;
     t.asignados.forEach(n => {
       const k = `${n}|${t.dia}`;
@@ -106,12 +100,27 @@ export function avisosDeSemana(semana, { equipo = [], camiones = [] } = {}) {
   });
   porPersonaYDia.forEach((lista, k) => {
     const [nombre, dia] = k.split('|');
-    const orden = [...lista].sort((a, b) => a.inicio - b.inicio);
+    const orden = [...lista].sort((a, b) => a.ini - b.ini);
     for (let i = 1; i < orden.length; i++) {
-      if (orden[i].inicio < orden[i - 1].fin) solapes.add(`${nombre} (${dia}): «${orden[i - 1].texto}» y «${orden[i].texto}»`);
+      if (orden[i].ini < orden[i - 1].fin) solapes.add(`${nombre} (${dia}): «${orden[i - 1].texto}» y «${orden[i].texto}»`);
     }
   });
   if (solapes.size) avisos.push(`Personas con dos tareas a la vez: ${[...solapes].join('; ')}.`);
 
   return avisos;
+}
+
+// Los avisos NUEVOS de una propuesta (de Gemini, del reajuste…) sobre la semana
+// `actual`: gente o camiones que no existen, solapes y lo que incumple la
+// disponibilidad o los límites de horas. Lo que ya pasaba antes no se repite.
+// `restricciones`: las de la propuesta si trae otras (null = las de la semana).
+export function avisosDePropuesta({ actual = null, propuesta, equipo = [], camiones = [], restricciones = null, extra = [] }) {
+  const limites = limitesDe(actual);
+  const antes = restriccionesDe(actual);
+  const previos = new Set(actual ? revisarPlanning(actual, { restricciones: antes, limites }) : []);
+  const nuevos = [
+    ...revisarPlanning({ ...(actual || {}), ...propuesta }, { restricciones: restricciones || antes, limites }),
+    ...extra,
+  ].filter(a => !previos.has(a));
+  return [...new Set([...avisosDeSemana(propuesta, { equipo, camiones }), ...nuevos])];
 }
