@@ -15,7 +15,7 @@ import { normalizarHorario } from './horarios';
 import { generateScheduleWithGemini, pedirJsonAGemini } from './geminiScheduleService';
 import { esMemoriaActiva } from './memoriaIa';
 import { textoAprendizajeParaPrompt } from './aprendizajeFichajes';
-import { LIMITES_POR_DEFECTO, limitesDe, restriccionesDe, restriccionesDelEquipo, restriccionesEfectivas, textoRestriccion } from './disponibilidad';
+import { LIMITES_POR_DEFECTO, limitesDe, restriccionesDe, restriccionesDelEquipo, restriccionesEfectivas, textosAgrupados } from './disponibilidad';
 import { descripcionParaIa } from './equipoRoles';
 import { interpretarDisponibilidad } from './interpretarPeticion';
 import { reajustarSemana } from './optimizadorPlanning';
@@ -89,7 +89,7 @@ export function promptDeCambios({ semana, equipo = [], restricciones = [], limit
   return [
     `Planificador de Gula Logística (logística de bodas y eventos). Semana ${semana?.meta?.dateRange || ''} (${dias}).`,
     `Equipo: ${equipo.map(descripcionParaIa).join('; ')}.`,
-    restricciones.length ? `No disponible: ${restricciones.map(textoRestriccion).join('; ')}.` : '',
+    restricciones.length ? `No disponible: ${textosAgrupados(restricciones).join('; ')}.` : '',
     reglas.length ? `Preferencias: ${reglas.join('; ')}.` : '',
     textoAprendizajeParaPrompt(aprendizaje, 'Aprendido de los fichajes reales:').trim(),
     `Reglas: recogidas con 1 persona salvo que se pida; nadie en dos tareas a la vez; máx ${limites.maxHorasDia} h/día y ${limites.descansoMinHoras} h de descanso entre jornadas; limpieza solo limpia; el jefe supervisa y no carga; texto "EVENTO - Tarea"; las HECHA no se tocan.`,
@@ -216,7 +216,7 @@ export async function resolverPeticion({ peticion, apiKey, semana, equipo = [], 
     return {
       generatedJson: { schedule: r.semana.schedule, saturdaySpecial: r.semana.saturdaySpecial, sundayMonday: r.semana.sundayMonday, disponibilidad: todas },
       errorMsg: '', via: 'local', uso: null, avisosExtra: r.avisos,
-      resumen: `Entendido sin gastar Gemini: ${nuevas.map(textoRestriccion).join('; ')}. ${cuantos ? `${cuantos} ${cuantos === 1 ? 'tarea cambia' : 'tareas cambian'} de persona.` : 'No hace falta cambiar a nadie.'}`,
+      resumen: `Entendido sin gastar Gemini: ${textosAgrupados(nuevas).join('; ')}. ${cuantos ? `${cuantos} ${cuantos === 1 ? 'tarea cambia' : 'tareas cambian'} de persona.` : 'No hace falta cambiar a nadie.'}`,
     };
   }
 

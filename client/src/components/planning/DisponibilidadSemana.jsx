@@ -5,7 +5,7 @@ import BarraProgreso from '../ui/BarraProgreso';
 import Desplegable from '../ui/Desplegable';
 import { Input, Selector } from '../ui/Campo';
 import PropuestaAplicable from '../asistente/PropuestaAplicable';
-import { crearRestriccion, DIAS_SEMANA, limitesDe, NOMBRE_DIA, restriccionesDe, restriccionesDelEquipo, restriccionesEfectivas, textoRestriccion, TIPOS_DISPONIBILIDAD } from '../../data/disponibilidad';
+import { agruparRestricciones, limitesDe, OPCIONES_DIA, restriccionesDe, restriccionesDeFormulario, restriccionesDelEquipo, restriccionesEfectivas, textoGrupo, textosAgrupados, TIPOS_DISPONIBILIDAD } from '../../data/disponibilidad';
 import { interpretarDisponibilidad } from '../../data/interpretarPeticion';
 import { reajustarSemana, revisarPlanning } from '../../data/optimizadorPlanning';
 import { avisosDePropuesta } from '../../data/diffSemana';
@@ -52,7 +52,7 @@ export default function DisponibilidadSemana({ semana, equipo = [], esBorrador =
   const anadir = (nuevas) => {
     const disponibilidad = [...restricciones, ...nuevas];
     guardarMeta({ disponibilidad });
-    setMensaje({ tipo: 'ok', texto: `Guardado: ${nuevas.map(textoRestriccion).join('; ')}.` });
+    setMensaje({ tipo: 'ok', texto: `Guardado: ${textosAgrupados(nuevas).join('; ')}.` });
     proponer({ ...semana, meta: { ...semana.meta, disponibilidad } });
   };
 
@@ -65,14 +65,15 @@ export default function DisponibilidadSemana({ semana, equipo = [], esBorrador =
   };
 
   const anadirDesdeFormulario = () => {
-    const { restriccion, error } = crearRestriccion(form);
+    const { restricciones: nuevas, error } = restriccionesDeFormulario(form);
     if (error) { setMensaje({ tipo: 'error', texto: error }); return; }
     setForm(FORM_VACIO);
-    anadir([restriccion]);
+    anadir(nuevas);
   };
 
-  const quitar = (id) => {
-    guardarMeta({ disponibilidad: restricciones.filter(r => r.id !== id) });
+  // Quita un grupo entero ("de lunes a viernes" son varias, una por día).
+  const quitar = (ids) => {
+    guardarMeta({ disponibilidad: restricciones.filter(r => !ids.includes(r.id)) });
     setPropuesta(null);
     setMensaje(null);
   };
@@ -120,8 +121,7 @@ export default function DisponibilidadSemana({ semana, equipo = [], esBorrador =
               {equipo.map(w => <option key={w.name} value={w.name}>{w.name}</option>)}
             </Selector>
             <Selector id="disp-dia" tamano="sm" aria-label="Día" {...campo('dia')}>
-              <option value="semana">Toda la semana</option>
-              {DIAS_SEMANA.map(d => <option key={d} value={d}>{NOMBRE_DIA[d]}</option>)}
+              {OPCIONES_DIA.map(o => <option key={o.valor} value={o.valor}>{o.etiqueta}</option>)}
             </Selector>
             <Selector id="disp-tipo" tamano="sm" aria-label="Qué pasa" {...campo('tipo')}>
               {Object.entries(TIPOS_DISPONIBILIDAD).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -143,16 +143,16 @@ export default function DisponibilidadSemana({ semana, equipo = [], esBorrador =
 
           {(fijas.length > 0 || restricciones.length > 0) && (
             <ul className="flex flex-wrap gap-2">
-              {fijas.map(r => (
-                <li key={r.id} title="Todas las semanas: se cambia en la ficha del equipo" className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900 px-2.5 py-1 text-xs text-slate-400">
-                  <span>{textoRestriccion(r)}</span>
+              {agruparRestricciones(fijas).map(g => (
+                <li key={g.ids.join('-')} title="Todas las semanas: se cambia en la ficha del equipo" className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900 px-2.5 py-1 text-xs text-slate-400">
+                  <span>{textoGrupo(g)}</span>
                   <span className="rounded bg-slate-800 px-1.5 text-[10px] font-bold uppercase text-slate-400">fija</span>
                 </li>
               ))}
-              {restricciones.map(r => (
-                <li key={r.id} className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 py-1 pl-2.5 pr-1 text-xs text-slate-200">
-                  <span>{textoRestriccion(r)}</span>
-                  <button type="button" onClick={() => quitar(r.id)} aria-label={`Quitar: ${textoRestriccion(r)}`} className="rounded-lg p-1 text-slate-500 hover:bg-slate-800 hover:text-rose-300">
+              {agruparRestricciones(restricciones).map(g => (
+                <li key={g.ids.join('-')} className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 py-1 pl-2.5 pr-1 text-xs text-slate-200">
+                  <span>{textoGrupo(g)}</span>
+                  <button type="button" onClick={() => quitar(g.ids)} aria-label={`Quitar: ${textoGrupo(g)}`} className="rounded-lg p-1 text-slate-500 hover:bg-slate-800 hover:text-rose-300">
                     <X className="h-3.5 w-3.5" aria-hidden="true" />
                   </button>
                 </li>

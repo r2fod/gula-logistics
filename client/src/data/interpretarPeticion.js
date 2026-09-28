@@ -1,4 +1,4 @@
-import { crearRestriccion, DIAS_SEMANA } from './disponibilidad';
+import { crearRestriccion, DIAS_SEMANA, diasDeOpcion, diasEntre } from './disponibilidad';
 import { plano } from '../utils/texto';
 
 // Entiende SIN Gemini (0 tokens) lo que se pide a menudo sobre el equipo:
@@ -15,6 +15,19 @@ const hora = (h, m) => `${String(Number(h)).padStart(2, '0')}:${m || '00'}`;
 // ¿Es una frase sobre cuándo puede o no alguien? (para no mandarla a Gemini)
 export const PARECE_DISPONIBILIDAD = /\b(no puede[n]?|no esta[n]?|no viene[n]?|no trabaja[n]?|descansa[n]?|libra[n]?|de vacaciones|de baja|solo puede[n]?|solo (?:de|por|hasta|a partir)|unicamente|hasta las|a partir de las|desde las)\b/;
 
+// Los días que nombra: "el jueves", "los sábados", "de lunes a viernes", "entre semana",
+// "el fin de semana", "toda la semana" (['semana']).
+const NOMBRES_DIA = DIAS_SEMANA.map(d => DIA_TEXTO[d]).join('|');
+function diasDelTexto(t) {
+  if (/\b(toda la semana|esta semana|todos los dias)\b/.test(t)) return ['semana'];
+  const dias = new Set(DIAS_SEMANA.filter(d => new RegExp(`\\b${DIA_TEXTO[d]}s?\\b`).test(t)));
+  const rango = new RegExp(`\\bde (${NOMBRES_DIA}) a (${NOMBRES_DIA})\\b`).exec(t);
+  if (rango) diasEntre(rango[1], rango[2]).forEach(d => dias.add(d));
+  if (/\bentre semana\b/.test(t)) diasDeOpcion('entresemana').forEach(d => dias.add(d));
+  if (/\bfin(es)? de semana\b|\bfinde\b/.test(t)) diasDeOpcion('finde').forEach(d => dias.add(d));
+  return DIAS_SEMANA.filter(d => dias.has(d));
+}
+
 export function interpretarDisponibilidad(texto, equipo = []) {
   const t = ` ${plano(texto).replace(/[.,;!¡?¿]/g, ' ')} `;
   if (!PARECE_DISPONIBILIDAD.test(t)) return null;
@@ -24,7 +37,7 @@ export function interpretarDisponibilidad(texto, equipo = []) {
   const personas = equipo.map(w => w.name).filter(n => new RegExp(`\\b${plano(n.split(/\s+/)[0]).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(t));
   if (!personas.length) return null;
 
-  const dias = /\btoda la semana\b|\besta semana\b/.test(t) ? ['semana'] : DIAS_SEMANA.filter(d => t.includes(` ${DIA_TEXTO[d]} `));
+  const dias = diasDelTexto(t);
   if (!dias.length) return null;
 
   const ausente = /\b(no puede[n]?|no esta[n]?|no viene[n]?|no trabaja[n]?|de vacaciones|de baja)\b/.test(t);
