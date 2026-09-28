@@ -138,7 +138,14 @@ function EnlaceSocias() {
           className="bg-transparent text-xs text-amber-300/90 font-mono w-full min-w-0 focus:outline-none select-all truncate"
         />
       </div>
-      {error && <p role="alert" className="text-[11px] text-red-400">No se pudo generar el enlace: {error}</p>}
+      {error && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p role="alert" className="text-[11px] text-red-400">No se pudo generar el enlace: {error}</p>
+          <button type="button" disabled={cargando} onClick={() => generar()} className="text-[11px] font-semibold text-amber-300 hover:text-amber-200 underline underline-offset-2 disabled:opacity-50">
+            Reintentar
+          </button>
+        </div>
+      )}
       {caduca && !error && (
         <p className="text-[11px] text-slate-400">Ven la planificación y los saldos, sin poder cambiar nada. Caduca el {formatDateLong(caduca)}.</p>
       )}
