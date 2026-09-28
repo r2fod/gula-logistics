@@ -8,6 +8,7 @@ import CabeceraModal from './ui/CabeceraModal';
 import BotonCerrar from './ui/BotonCerrar';
 import Boton from './ui/Boton';
 import { Campo, Input, Selector, AreaTexto } from './ui/Campo';
+import { enlaceMaps } from '../data/mapas';
 
 const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 
@@ -168,9 +169,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
 
   // Escribir el nombre/dirección del sitio genera el link de Google Maps
   // solo — ya no hace falta copiar y pegar la URL a mano.
-  const buildMapsUrl = (place) => place
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`
-    : '';
+  const buildMapsUrl = enlaceMaps;
 
   const handleTaskMetadataChange = (dayKey, taskIndex, field, newValue) => {
     setLocalWeek(prev => {

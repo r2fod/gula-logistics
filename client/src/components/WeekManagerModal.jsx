@@ -577,7 +577,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
                   <div className="font-bold text-white">{day.title}</div>
                   <ul className="space-y-1 text-slate-300 mt-1">
                     {(day.tasks || []).map((t, idx) => (
-                      <li key={idx} className="text-slate-400">• {t.text} <span className="text-slate-500">({t.timeFrame})</span></li>
+                      <li key={idx} className="text-slate-400">• {t.text} <span className="whitespace-nowrap text-slate-500">({t.timeFrame})</span></li>
                     ))}
                   </ul>
                 </div>

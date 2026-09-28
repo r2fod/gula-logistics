@@ -429,12 +429,14 @@ export default function WorkerView({
                 )}
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-0.5">
-                <span className="font-semibold text-slate-300">{currentWorkerObj.role}</span>
-                <span>•</span>
-                <span className="text-amber-300 truncate font-medium">{currentWorkerObj.truck}</span>
-                <span>•</span>
-                <span className="font-mono text-emerald-400 font-bold">{formatearHoras(totalCompletedHours)} esta semana</span>
+              {/* Cada dato en una línea y sin cortar; el "•" va delante del dato para no
+                  quedarse colgando al final de una línea. */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-400 mt-0.5">
+                <span className="whitespace-nowrap font-semibold text-slate-300">{currentWorkerObj.role}</span>
+                {currentWorkerObj.truck && (
+                  <span className="whitespace-nowrap text-amber-300 font-medium before:mr-2 before:text-slate-500 before:content-['•']">{currentWorkerObj.truck}</span>
+                )}
+                <span className="whitespace-nowrap font-mono text-emerald-400 font-bold before:mr-2 before:font-sans before:text-slate-500 before:content-['•']">{formatearHoras(totalCompletedHours)} esta semana</span>
               </div>
             </div>
           </div>
@@ -484,21 +486,23 @@ export default function WorkerView({
           {activeShift ? (
             /* ACTIVE SHIFT: Live Clock-Out Button */
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2 border-b border-rose-500/20 pb-2">
-                <div className="flex items-center space-x-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+              {/* Cada pieza en una línea: si no caben juntas (móvil estrecho o letra grande), el
+                  cronómetro baja entero en vez de partirse ("3h 48m" / "02s"). */}
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-rose-500/20 pb-2">
+                <div className="flex items-center gap-2 whitespace-nowrap">
+                  <span className="w-2.5 h-2.5 shrink-0 rounded-full bg-rose-500 animate-ping motion-reduce:animate-none"></span>
                   <span className="text-[11px] font-black uppercase tracking-wider text-rose-400">
-                    TURNO ACTIVO EN CURSO
+                    EN TURNO
                   </span>
                 </div>
-                <span className="text-sm sm:text-base font-extrabold font-mono text-emerald-400 bg-slate-900 px-2.5 py-0.5 rounded-lg border border-slate-800">
+                <span className="whitespace-nowrap tabular-nums text-sm sm:text-base font-extrabold font-mono text-emerald-400 bg-slate-900 px-2.5 py-0.5 rounded-lg border border-slate-800">
                   <Clock className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" /><EnVivo>{(ahora) => duracionEnCurso(activeShift, ahora)}</EnVivo>
                 </span>
               </div>
 
               <div>
                 <p className="text-sm sm:text-base font-extrabold text-white font-['Outfit']">
-                  <Pin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{activeShift.taskName === 'JORNADA' ? 'Jornada Laboral Iniciada' : (activeShift.taskName || 'Turno Operativo General')}
+                  <Pin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{activeShift.taskName === 'JORNADA' ? 'Jornada iniciada' : (activeShift.taskName || 'Turno Operativo General')}
                 </p>
               </div>
 
@@ -508,7 +512,7 @@ export default function WorkerView({
                   lo que cuenta es lo de Saldos & Acuerdos. */}
               {!currentWorkerObj.isPayroll && (
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-300/90">Llevas ganado en este turno</span>
+                  <span className="whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-emerald-300/90">Llevas ganado</span>
                   <span className="whitespace-nowrap font-mono text-base font-extrabold tabular-nums text-emerald-300">
                     ≈ <EnVivo>{(ahora) => formatearEuros(costeEnCurso({ entrada: activeShift, ahora, tarifa: activeShift.rate || currentWorkerObj.rate || 10 }).coste)}</EnVivo>
                   </span>
@@ -557,12 +561,12 @@ export default function WorkerView({
                             {isLocked ? (
                               <>
                                 <Lock className="w-3.5 h-3.5" />
-                                <span>Esperando día...</span>
+                                <span className="whitespace-nowrap">Esperando día...</span>
                               </>
                             ) : (
                               <>
                                 <CheckSquare className="w-3.5 h-3.5" />
-                                <span>Marcar Tarea como COMPLETADA</span>
+                                <span className="whitespace-nowrap">Marcar como completada</span>
                               </>
                             )}
                           </button>
@@ -583,10 +587,10 @@ export default function WorkerView({
                 onClick={() => { 
                   onClockEntryCreated(crearFichaje({ trabajador: currentWorkerObj, tipo: 'salida', note: '' }));
                 }}
-                className="w-full py-3.5 px-4 rounded-xl text-sm font-extrabold bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center space-x-2 transition-all shadow-xl shadow-rose-600/30 active:scale-95"
+                className="w-full py-3.5 px-3 rounded-xl text-xs min-[360px]:text-sm font-extrabold bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center space-x-2 transition-all shadow-xl shadow-rose-600/30 active:scale-95"
               >
-                <Square className="w-4 h-4" />
-                <span>{activeShift.taskName === 'JORNADA' ? 'FINALIZAR JORNADA' : 'Fichar Salida / Finalizar Turno'}</span>
+                <Square className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap">{activeShift.taskName === 'JORNADA' ? 'FINALIZAR JORNADA' : 'Fichar salida'}</span>
               </button>
 
               {/* BOTÓN DESHACER: Disponible solo durante los primeros 15 min */}
@@ -667,18 +671,18 @@ export default function WorkerView({
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-4 mt-2 border-t border-slate-800 text-[11px] text-slate-400">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-4 mt-2 border-t border-slate-800 text-[11px] text-slate-400">
             <button
               onClick={() => {
                 setPrefilledTask(null);
                 setTaskRef(null);
                 setIsClockModalOpen(true);
               }}
-              className="hover:text-amber-400 text-slate-300 underline decoration-slate-700 hover:decoration-amber-400 transition-colors"
+              className="whitespace-nowrap hover:text-amber-400 text-slate-300 underline decoration-slate-700 hover:decoration-amber-400 transition-colors"
             >
               <Plus className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />O fichar otra tarea libre
             </button>
-            <span className="text-[10px] text-slate-500">
+            <span className="whitespace-nowrap text-[10px] text-slate-500">
               <Lock className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Registro seguro
             </span>
           </div>
@@ -726,7 +730,7 @@ export default function WorkerView({
           }`}
         >
           <Calendar className="w-3.5 h-3.5" />
-          <span>Mis Tareas ({totalAssignedTasks})</span>
+          <span className="whitespace-nowrap">Tareas ({totalAssignedTasks})</span>
         </button>
 
         <button
@@ -738,7 +742,7 @@ export default function WorkerView({
           }`}
         >
           <Clock className="w-3.5 h-3.5" />
-          <span>Mis Fichajes ({myEntries.length})</span>
+          <span className="whitespace-nowrap">Fichajes ({myEntries.length})</span>
         </button>
       </div>
 
@@ -748,15 +752,15 @@ export default function WorkerView({
         {/* Header & View Mode Switcher */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-[9px] font-extrabold bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="whitespace-nowrap text-[9px] font-extrabold bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">
                 Planificación
               </span>
-              <span className="text-[11px] text-slate-400">{activeWeekData?.meta?.dateRange}</span>
+              <span className="whitespace-nowrap text-[11px] text-slate-400">{activeWeekData?.meta?.dateRange}</span>
             </div>
             <h2 className="text-base sm:text-xl font-extrabold text-white tracking-tight font-['Outfit'] mt-0.5 flex items-center space-x-2">
               <Calendar className="w-5 h-5 text-amber-400" />
-              <span>Cuadrante de la Semana (7 Días)</span>
+              <span>Cuadrante semanal</span>
             </h2>
           </div>
 
@@ -884,15 +888,15 @@ export default function WorkerView({
                           : 'border-slate-800'
                       }`}
                     >
-                      <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
                         <div>
-                          <h4 className="font-extrabold text-amber-300 text-sm sm:text-base font-['Outfit']">
+                          <h4 className="whitespace-nowrap font-extrabold text-amber-300 text-sm sm:text-base font-['Outfit']">
                             <Calendar className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{dayGroup.title}
                           </h4>
                           <span className="text-[11px] text-slate-400 block mt-0.5">{dayGroup.badge}</span>
                         </div>
 
-                        <span className="text-[10px] bg-slate-900 text-slate-300 font-bold px-2 py-0.5 rounded-lg border border-slate-800 shrink-0">
+                        <span className="whitespace-nowrap text-[10px] bg-slate-900 text-slate-300 font-bold px-2 py-0.5 rounded-lg border border-slate-800 shrink-0">
                           {dayGroup.totalCount} {dayGroup.totalCount === 1 ? 'tarea' : 'tareas'}
                         </span>
                       </div>
