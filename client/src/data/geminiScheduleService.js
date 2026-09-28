@@ -130,11 +130,13 @@ Cada tarea: {"id","text","location","timeFrame","assigned":["nombre exacto"],"tr
 // por Google: la llamada fallaba siempre y el fallback enseñaba una demo.
 // `gemini-2.5-flash` es el estable vigente (sin fecha de retirada anunciada) y
 // `gemini-flash-latest` es un alias al Flash más reciente, por si el primero
-// se retira: solo se pasa al siguiente si el modelo no existe (404).
-export const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest'];
+// se retira; `gemini-2.5-flash-lite`, de reserva. Se pasa al siguiente si el modelo
+// no existe (404) o si Google dice que está saturado (503, pasa a menudo con Flash).
+// El servidor (ia.routes.js) usa la misma lista.
+export const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+const PROBAR_OTRO_MODELO = [404, 503];
 
-// POST a Gemini probando GEMINI_MODELS por orden (solo pasa al siguiente si el
-// modelo no existe, 404). La clave va en la cabecera, no en la URL, para que no
+// POST a Gemini probando GEMINI_MODELS por orden. La clave va en la cabecera, no en la URL, para que no
 // quede en historiales ni registros de red. Devuelve la última Response.
 // Sin clave en este navegador se pasa por el servidor (/api/ia/gemini, solo admin),
 // que usa la suya (GEMINI_API_KEY en Render): así no hay que pegarla en cada móvil.
@@ -147,7 +149,7 @@ async function llamarGemini(apiKey, body) {
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body
     });
-    if (res.status !== 404) break;
+    if (!PROBAR_OTRO_MODELO.includes(res.status)) break;
   }
   return res;
 }
@@ -216,9 +218,19 @@ export async function pedirJsonAGemini({ apiKey, texto, esquema = null, temperat
 
   if (!res?.ok) {
     const status = res?.status || 0;
+    // El motivo real: nuestro servidor lo da como texto ("no tiene clave…") y Google como
+    // objeto ({ status: 'UNAVAILABLE', message: 'The model is overloaded' }). Antes todo
+    // 503 se tomaba por "falta la clave", también cuando Google estaba saturado.
+    let cuerpo = null;
+    try { cuerpo = await res?.json?.(); } catch { /* sin cuerpo */ }
+    const deGoogle = cuerpo?.error && typeof cuerpo.error === 'object' ? cuerpo.error : null;
+    const saturado = status === 503 && (deGoogle?.status === 'UNAVAILABLE' || /overload|unavailable/i.test(deGoogle?.message || ''));
+    const delServidor = typeof cuerpo?.error === 'string' ? cuerpo.error : '';
     // 404 sin clave = el servidor aún no tiene /api/ia (Render sin desplegar): mismo remedio.
-    const hint = (status === 503 || status === 404) && !clave ? ' — falta la clave de Gemini: pégala en este navegador (botón de la llave) o ponla en el servidor (GEMINI_API_KEY en Render)'
+    const hint = saturado ? ' — Gemini (Google) está saturado ahora mismo: vuelve a probar en un minuto'
       : status === 401 && !clave ? ' — inicia sesión de administrador para usar la clave del servidor'
+      : delServidor && !clave ? ` — ${delServidor}`
+      : (status === 503 || status === 404) && !clave ? ' — falta la clave de Gemini: pégala en este navegador (botón de la llave) o ponla en el servidor (GEMINI_API_KEY en Render)'
       : status === 400 || status === 403 ? ' — comprueba que la clave es correcta'
       : status === 429 ? ' — demasiadas peticiones, espera un minuto' : '';
     throw new Error(`Error Gemini API (${status})${hint}`);

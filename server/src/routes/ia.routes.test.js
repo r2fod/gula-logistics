@@ -43,6 +43,18 @@ describe('POST /api/ia/gemini', () => {
     expect((await request(app()).post('/api/ia/gemini').set('Authorization', admin()).send(cuerpo)).status).toBe(503);
   });
 
+  it('si Google dice que el modelo está saturado (503) prueba el siguiente; si todos lo están, devuelve su motivo', async () => {
+    const saturado = { status: 503, json: async () => ({ error: { code: 503, status: 'UNAVAILABLE', message: 'The model is overloaded.' } }) };
+    const google = vi.fn().mockResolvedValueOnce(saturado).mockResolvedValueOnce({ status: 200, json: async () => ({ ok: 2 }) });
+    vi.stubGlobal('fetch', google);
+    expect((await request(app()).post('/api/ia/gemini').set('Authorization', admin()).send(cuerpo)).body).toEqual({ ok: 2 });
+
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(saturado));
+    const r = await request(app()).post('/api/ia/gemini').set('Authorization', admin()).send(cuerpo);
+    expect(r.status).toBe(503);
+    expect(r.body.error.status).toBe('UNAVAILABLE'); // no es "falta la clave": el cliente lo distingue
+  });
+
   it('rechaza una petición sin contenido', async () => {
     expect((await request(app()).post('/api/ia/gemini').set('Authorization', admin()).send({})).status).toBe(400);
   });
