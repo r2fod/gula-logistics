@@ -15,6 +15,7 @@ vi.mock('../data/apiService', () => ({
   addAiMemory: (...a) => api.addAiMemory(...a),
   aprobarAiMemory: (...a) => api.aprobarAiMemory(...a),
   deleteAiMemory: (...a) => api.deleteAiMemory(...a),
+  comprobarClaveIaEnServidor: async () => null,
 }));
 const { default: GeminiAssistantModal } = await import('./GeminiAssistantModal');
 

@@ -295,6 +295,7 @@ export default function PartnerDashboardView({
           activeWeekData={activeWeekData}
           saldos={mergedBalancesData.workers}
           enfoque={enfoqueResumen}
+          turnosAbiertos={turnosAbiertos}
         />
       )}
 

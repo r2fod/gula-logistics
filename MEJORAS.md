@@ -33,7 +33,7 @@ _Resumen de lo que ya está hecho y por qué es así. El detalle de cada cambio 
 ## Rendimiento (28/09)
 - **Carga por partes:** el panel de admin y sus editores van con `React.lazy` (App.jsx); lo que descarga un trabajador pasó de 985 KB a 356 KB. Si tras un despliegue falta un trozo, `main.jsx` recarga una vez.
 - **Nada se redibuja entero cada segundo:** lo que cambia cada segundo (cronómetros, dinero en directo) va en `<EnVivo>`; las pantallas se recalculan cada 15–30 s.
-- **Dinero en tiempo real** (`costeEnVivo.js`): solo en vistas con sesión (monitor en vivo de admin/socias y Saldos), nunca en la vista pública; con bolsa, como en Saldos.
+- **Dinero en tiempo real** (`costeEnVivo.js`): solo en vistas con sesión (monitor en vivo, Saldos y Resumen Financiero) y en la del propio trabajador, nunca en la pública; con bolsa, como en Saldos. En Saldos el saldo grande incluye el turno abierto (con "Cerrado: X" debajo); al fichar la salida se redondea a la media hora. Un turno abierto más de 16 h (salida olvidada) no se suma, y la nómina fija no enseña euros. Las cifras animadas (`useCountUp`) no animan cambios de menos del 1 %: si no, se repintaban sin parar mientras alguien está en turno.
 - **Gemini, revisar antes de aplicar** (`diffSemana.js`): qué cambia por día y avisos de gente o camiones inventados y de solapes de horario. Tras aplicar, **Deshacer** devuelve la semana anterior (avisa si desde entonces tuvo otros cambios).
 
 ## Forma de trabajar

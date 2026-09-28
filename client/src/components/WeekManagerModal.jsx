@@ -10,6 +10,8 @@ import { buildEventName } from '../data/eventNaming';
 import { useMemoriaIa } from '../hooks/useMemoriaIa';
 import { avisosDeSemana } from '../data/diffSemana';
 import CambiosPropuestos from './asistente/CambiosPropuestos';
+import EstadoClaveIa from './asistente/EstadoClaveIa';
+import { useClaveIaServidor } from '../hooks/useClaveIaServidor';
 import { AreaTexto, Input, Selector } from './ui/Campo';
 
 // Asistente guiado para crear una semana nueva: en vez de dejarla en blanco
@@ -22,6 +24,7 @@ import { AreaTexto, Input, Selector } from './ui/Campo';
 // también a Gemini al generar una semana nueva (antes solo las usaba el asistente suelto).
 export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForceAutoDraft, currentWeekName, currentWeekTrucks = [], workersList = [], aprendizaje = null }) {
   const memoria = useMemoriaIa(isOpen);
+  const claveEnServidor = useClaveIaServidor(isOpen);
   const [weekName, setWeekName] = useState('');
   const [dateRange, setDateRange] = useState('');
   const [cloneCurrent, setCloneCurrent] = useState(true);
@@ -492,9 +495,13 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
                 placeholder="AIzaSy..."
                 tamano="sm" acento="amber-suave"
               />
-              <p className="mt-1.5 text-[11px] text-slate-500">
-                Déjala vacía si ya está puesta en el servidor (GEMINI_API_KEY en Render). Si la pegas, se guarda solo en este navegador.
-              </p>
+              {claveEnServidor === null ? (
+                <p className="mt-1.5 text-[11px] text-slate-500">
+                  Déjala vacía si ya está puesta en el servidor (GEMINI_API_KEY en Render). Si la pegas, se guarda solo en este navegador.
+                </p>
+              ) : (
+                <EstadoClaveIa enServidor={claveEnServidor} className="mt-1.5" />
+              )}
             </>
           ) : (
             <p className="text-[11px] text-emerald-400 flex items-center gap-2">

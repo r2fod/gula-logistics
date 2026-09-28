@@ -47,6 +47,18 @@ describe('useAnimaciones', () => {
     expect(result.current).toBe(200);
   });
 
+  it('un cambio mínimo (el dinero de un turno en curso, cada segundo) va directo, sin animación', () => {
+    conMovimiento(false);
+    const { result, rerender } = renderHook(({ v }) => useCountUp(v, 700), { initialProps: { v: 144.48 } });
+    act(() => { vi.advanceTimersByTime(800); });
+    rerender({ v: 144.49 });
+    act(() => { vi.advanceTimersByTime(20); }); // un solo fotograma
+    expect(result.current).toBe(144.49);
+    rerender({ v: 300 }); // un cambio de verdad (otro periodo) sí corre
+    act(() => { vi.advanceTimersByTime(100); });
+    expect(result.current).toBeLessThan(300);
+  });
+
   it('un valor no numérico se trata como 0', () => {
     conMovimiento(true);
     expect(renderHook(() => useCountUp(NaN)).result.current).toBe(0);

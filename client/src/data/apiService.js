@@ -99,6 +99,18 @@ export async function comprobarSesionEnAPI() {
   }
 }
 
+// ¿Tiene el servidor su propia clave de Gemini? true/false, o null si no se puede
+// saber (sin sesión de admin, sin red o un servidor sin /api/ia).
+export async function comprobarClaveIaEnServidor() {
+  try {
+    const res = await fetch(`${API_BASE}/ia/estado`, { headers: authHeaders() });
+    if (!res.ok) return null;
+    return !!(await res.json()).configurada;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Verify the admin password against the backend (never compared client-side)
  * and store the resulting signed session token.

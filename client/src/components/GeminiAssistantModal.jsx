@@ -4,6 +4,8 @@ import { generateScheduleWithGemini, extraerMemoriaDelPrompt, GEMINI_API_KEY_STO
 import { useMemoriaIa } from '../hooks/useMemoriaIa';
 import { diffSemana, avisosDeSemana } from '../data/diffSemana';
 import CambiosPropuestos from './asistente/CambiosPropuestos';
+import EstadoClaveIa from './asistente/EstadoClaveIa';
+import { useClaveIaServidor } from '../hooks/useClaveIaServidor';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input, AreaTexto } from './ui/Campo';
@@ -19,6 +21,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
   const [errorMsg, setErrorMsg] = useState('');
   
   const memoria = useMemoriaIa(isOpen);
+  const claveEnServidor = useClaveIaServidor(isOpen);
   // Regla que el asistente ha sacado de lo que se le pidió: se guarda como
   // propuesta y aquí se pregunta si recordarla (no la usa hasta aprobarla).
   const [propuesta, setPropuesta] = useState(null);
@@ -93,6 +96,8 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
         }
         className="mb-6"
       />
+
+      <EstadoClaveIa enNavegador={!!apiKey.trim()} enServidor={claveEnServidor} className="-mt-3 mb-4" />
 
       {/* API Key Input Form */}
       {showApiKeyInput && (
