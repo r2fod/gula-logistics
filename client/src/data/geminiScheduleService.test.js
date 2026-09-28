@@ -74,6 +74,13 @@ describe('generateScheduleWithGemini — nunca inventa una semana', () => {
     expect(JSON.stringify(r)).not.toContain('Evento Especial 3');
   });
 
+  it('sin clave y con un servidor que aún no tiene /api/ia (404), el mismo consejo', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({}) }));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const r = await generateScheduleWithGemini({ prompt: 'x', apiKey: '' });
+    expect(r.errorMsg).toContain('falta la clave de Gemini');
+  });
+
   it('con clave devuelve el JSON y manda la clave en la cabecera, no en la URL', async () => {
     const fetchMock = vi.fn().mockResolvedValue(okResponse(semanaOk));
     vi.stubGlobal('fetch', fetchMock);
