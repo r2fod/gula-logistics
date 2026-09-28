@@ -71,6 +71,18 @@ describe('EnlacesWhatsAppModal', () => {
     expect(screen.getByRole('button', { name: /Copiar Link Socias/ })).toBeDisabled();
   });
 
+  it('BUG evitado: si la petición se quedó colgada, dice por qué y «Reintentar» lo vuelve a pedir (antes: "Generando enlace…" para siempre)', async () => {
+    crearToken.mockResolvedValueOnce({ ok: false, error: 'el servidor no ha respondido. Prueba otra vez.' })
+      .mockResolvedValueOnce({ ok: true, token: 'otra.vez', expiresAt: Date.now() + 1000 });
+    pintar({ admin: true });
+    expect(await screen.findByRole('alert')).toHaveTextContent('no ha respondido');
+    expect(screen.queryByDisplayValue('Generando enlace…')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    await screen.findByDisplayValue(/acceso=otra\.vez$/);
+    expect(crearToken).toHaveBeenLastCalledWith({ anularAnteriores: false });
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('"Abrir" abre su enlace fijo, sin semana', () => {
     const abrir = vi.spyOn(window, 'open').mockImplementation(() => null);
     pintar();

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   saveClockEntryToAPI,
   retryPendingClockEntries,
@@ -11,6 +11,7 @@ import {
   cerrarAccesosGuardados,
   fetchBalancesFromAPI,
   comprobarSesionEnAPI,
+  crearTokenSociasEnAPI,
 } from './apiService';
 
 // Fichaje mínimo de prueba: entra si el worker/type/timestamp bastan para
@@ -204,5 +205,46 @@ describe('enlace de socias (solo lectura)', () => {
     expect(localStorage.getItem('gula_admin_token_v1')).toBeNull();
     expect(getStoredSociasToken()).toBeNull();
     expect(localStorage.getItem('gula_balances_data_v1')).toBeNull();
+  });
+});
+
+describe('límite de espera: ninguna petición se queda colgada para siempre', () => {
+  // Una petición que nunca contesta: solo termina cuando la app la corta.
+  const colgada = () => (url, { signal }) => new Promise((_, rechazar) => {
+    signal.addEventListener('abort', () => rechazar(new DOMException('cortada', 'AbortError')));
+  });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('BUG evitado: el enlace de socias ya no se queda en "Generando…": a los 15 s se repite una vez y sale', async () => {
+    vi.useFakeTimers();
+    global.fetch = vi.fn(colgada()).mockImplementationOnce(colgada())
+      .mockImplementationOnce(async () => ({ ok: true, json: async () => ({ token: 't.ok', expiresAt: 1 }) }));
+    const pedido = crearTokenSociasEnAPI();
+    await vi.advanceTimersByTimeAsync(15 * 1000);
+    expect(await pedido).toEqual({ ok: true, token: 't.ok', expiresAt: 1 });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('si tampoco contesta la segunda vez, lo dice; "anular" no se repite solo', async () => {
+    vi.useFakeTimers();
+    global.fetch = vi.fn(colgada());
+    const pedido = crearTokenSociasEnAPI();
+    await vi.advanceTimersByTimeAsync(30 * 1000);
+    expect(await pedido).toMatchObject({ ok: false, error: expect.stringContaining('no ha respondido') });
+
+    global.fetch = vi.fn(colgada());
+    const anular = crearTokenSociasEnAPI({ anularAnteriores: true });
+    await vi.advanceTimersByTimeAsync(15 * 1000);
+    expect((await anular).ok).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('un fichaje que se queda colgado acaba en la cola de pendientes (no se pierde ni bloquea)', async () => {
+    vi.useFakeTimers();
+    global.fetch = vi.fn(colgada());
+    const guardado = saveClockEntryToAPI(entry({ id: 'colgado' }));
+    await vi.advanceTimersByTimeAsync(60 * 1000);
+    expect(await guardado).toBeNull();
+    expect(getPendingClockEntriesSnapshot().map(e => e.id)).toEqual(['colgado']);
   });
 });

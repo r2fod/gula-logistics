@@ -3,6 +3,19 @@ import { initialBalancesData } from './balancesData';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+// Toda petición al servidor tiene un tiempo máximo. Sin él, una que se quedaba
+// colgada (p. ej. en una conexión que el servidor ya había cerrado: el navegador no
+// repite un POST por su cuenta) dejaba la pantalla "Generando enlace…" o "Guardando"
+// para siempre. Pasado el tiempo, falla como si no hubiera red (y cada llamada hace
+// lo que ya hacía sin red: un fichaje, por ejemplo, queda en la cola de pendientes).
+// 60 s por defecto: más de lo que tarda en despertar el servidor dormido de Render.
+export const ESPERA_MAXIMA_MS = 60 * 1000;
+export function fetchConLimite(url, opciones = {}, ms = ESPERA_MAXIMA_MS) {
+  const control = new AbortController();
+  const reloj = setTimeout(() => control.abort(), ms);
+  return fetch(url, { ...opciones, signal: control.signal }).finally(() => clearTimeout(reloj));
+}
+
 const TOKEN_STORAGE_KEY = 'gula_admin_token_v1';
 // Enlace de socias: token firmado de SOLO LECTURA (saldos y panel), aparte de
 // la sesión de admin. Lo genera el admin (crearTokenSociasEnAPI) y llega en la URL.
@@ -71,18 +84,24 @@ function authHeaders() {
 
 // Admin: genera un enlace de socias nuevo. `anularAnteriores` deja sin efecto
 // todos los ya enviados. Devuelve { ok, token, expiresAt } o { ok: false, error }.
+// Responde en décimas de segundo: si en 15 s no hay nada, la petición se quedó
+// colgada y se repite una vez (pedir otro sin anular no cambia nada en el servidor;
+// anular no se repite solo).
 export async function crearTokenSociasEnAPI({ anularAnteriores = false } = {}) {
-  try {
-    const res = await fetch(`${API_BASE}/auth/socias-token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ anularAnteriores })
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) return { ok: false, error: data.error || `Error ${res.status}` };
-    return { ok: true, token: data.token, expiresAt: data.expiresAt };
-  } catch {
-    return { ok: false, error: 'No se pudo contactar con el servidor.' };
+  const intentos = anularAnteriores ? 1 : 2;
+  for (let intento = 1; ; intento++) {
+    try {
+      const res = await fetchConLimite(`${API_BASE}/auth/socias-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ anularAnteriores })
+      }, 15 * 1000);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { ok: false, error: data.error || `Error ${res.status}` };
+      return { ok: true, token: data.token, expiresAt: data.expiresAt };
+    } catch {
+      if (intento >= intentos) return { ok: false, error: 'el servidor no ha respondido. Prueba otra vez.' };
+    }
   }
 }
 
@@ -90,7 +109,7 @@ export async function crearTokenSociasEnAPI({ anularAnteriores = false } = {}) {
 // | undefined (no se pudo comprobar: sin red o servidor dormido; no se cierra nada).
 export async function comprobarSesionEnAPI() {
   try {
-    const res = await fetch(`${API_BASE}/auth/sesion`, { headers: authHeaders() });
+    const res = await fetchConLimite(`${API_BASE}/auth/sesion`, { headers: authHeaders() });
     if (res.status === 401) return null;
     if (!res.ok) return undefined;
     return (await res.json()).rol || null;
@@ -103,7 +122,7 @@ export async function comprobarSesionEnAPI() {
 // saber (sin sesión de admin, sin red o un servidor sin /api/ia).
 export async function comprobarClaveIaEnServidor() {
   try {
-    const res = await fetch(`${API_BASE}/ia/estado`, { headers: authHeaders() });
+    const res = await fetchConLimite(`${API_BASE}/ia/estado`, { headers: authHeaders() });
     if (!res.ok) return null;
     return !!(await res.json()).configurada;
   } catch {
@@ -117,7 +136,7 @@ export async function comprobarClaveIaEnServidor() {
  */
 export async function loginAdmin(password) {
   try {
-    const res = await fetch(`${API_BASE}/auth/login`, {
+    const res = await fetchConLimite(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password })
@@ -138,7 +157,7 @@ export async function loginAdmin(password) {
  */
 export async function changeAdminPassword(currentPassword, newPassword) {
   try {
-    const res = await fetch(`${API_BASE}/auth/change-password`, {
+    const res = await fetchConLimite(`${API_BASE}/auth/change-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ currentPassword, newPassword })
@@ -162,7 +181,7 @@ export function logoutAdmin() {
  */
 export async function fetchClockEntriesFromAPI() {
   try {
-    const res = await fetch(`${API_BASE}/clock`);
+    const res = await fetchConLimite(`${API_BASE}/clock`);
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const data = await res.json();
     if (Array.isArray(data)) {
@@ -201,7 +220,7 @@ export async function fetchClockEntriesFromAPI() {
 // lo que tiene y lo reintenta en el siguiente ciclo.
 export async function fetchClockEntryChangesFromAPI(desde) {
   try {
-    const res = await fetch(`${API_BASE}/clock?desde=${encodeURIComponent(desde)}`);
+    const res = await fetchConLimite(`${API_BASE}/clock?desde=${encodeURIComponent(desde)}`);
     if (!res.ok) return null;
     const data = await res.json();
     return Array.isArray(data) ? data : null;
@@ -260,7 +279,7 @@ export function getPendingClockEntriesSnapshot() {
  */
 export async function saveClockEntryToAPI(entry) {
   try {
-    const res = await fetch(`${API_BASE}/clock`, {
+    const res = await fetchConLimite(`${API_BASE}/clock`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(entry)
@@ -296,7 +315,7 @@ export async function retryPendingClockEntries() {
   const synced = [];
   for (const entry of pending) {
     try {
-      const res = await fetch(`${API_BASE}/clock`, {
+      const res = await fetchConLimite(`${API_BASE}/clock`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(entry)
@@ -319,7 +338,7 @@ export async function retryPendingClockEntries() {
  */
 export async function updateClockEntryInAPI(entry) {
   try {
-    const res = await fetch(`${API_BASE}/clock/${entry.id}`, {
+    const res = await fetchConLimite(`${API_BASE}/clock/${entry.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(entry)
@@ -342,7 +361,7 @@ export async function updateClockEntryInAPI(entry) {
  */
 export async function deleteClockEntryInAPI(entryId) {
   try {
-    const res = await fetch(`${API_BASE}/clock/${entryId}`, {
+    const res = await fetchConLimite(`${API_BASE}/clock/${entryId}`, {
       method: 'DELETE',
       headers: { ...authHeaders() }
     });
@@ -358,7 +377,7 @@ export async function deleteClockEntryInAPI(entryId) {
  */
 export async function restoreClockEntryInAPI(entryId) {
   try {
-    const res = await fetch(`${API_BASE}/clock/${entryId}/restore`, {
+    const res = await fetchConLimite(`${API_BASE}/clock/${entryId}/restore`, {
       method: 'PUT',
       headers: { ...authHeaders() }
     });
@@ -389,7 +408,7 @@ export function hasRealBalancesData(data) {
  */
 export async function fetchBalancesFromAPI() {
   try {
-    const res = await fetch(`${API_BASE}/balances`, { headers: { ...authHeaders() } });
+    const res = await fetchConLimite(`${API_BASE}/balances`, { headers: { ...authHeaders() } });
     // Sin acceso (sin sesión, enlace caducado o anulado): ni la copia local.
     if (res.status === 401) {
       localStorage.removeItem(BALANCES_CACHE_KEY);
@@ -432,7 +451,7 @@ export async function fetchBalancesFromAPI() {
  */
 export async function saveWorkerBalanceToAPI(workerId, updatePayload) {
   try {
-    const res = await fetch(`${API_BASE}/balances/${workerId}`, {
+    const res = await fetchConLimite(`${API_BASE}/balances/${workerId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(updatePayload)
@@ -457,7 +476,7 @@ export async function saveWorkerBalanceToAPI(workerId, updatePayload) {
  */
 export async function fetchWeeksFromAPI() {
   try {
-    const res = await fetch(`${API_BASE}/logistics/weeks`);
+    const res = await fetchConLimite(`${API_BASE}/logistics/weeks`);
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const data = await res.json();
     if (data && typeof data === 'object' && Object.keys(data).length > 0) {
@@ -475,7 +494,7 @@ export async function fetchWeeksFromAPI() {
  */
 export async function saveWeeksToAPI(weeksPayload) {
   try {
-    const res = await fetch(`${API_BASE}/logistics/weeks`, {
+    const res = await fetchConLimite(`${API_BASE}/logistics/weeks`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(weeksPayload)
@@ -508,7 +527,7 @@ export async function saveWeeksToAPI(weeksPayload) {
  */
 export async function patchTaskCompletionInAPI(weekId, dayKey, taskIndex, completed, reopened, completedAt) {
   try {
-    const res = await fetch(`${API_BASE}/logistics/weeks/${weekId}/tasks`, {
+    const res = await fetchConLimite(`${API_BASE}/logistics/weeks/${weekId}/tasks`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       // `reopened` (opcional): true si alguien la desmarcó a propósito.
@@ -531,7 +550,7 @@ export async function patchTaskCompletionInAPI(weekId, dayKey, taskIndex, comple
  */
 export async function fetchCalendarioApuntes(desde, hasta) {
   try {
-    const res = await fetch(`${API_BASE}/calendario/eventos?desde=${desde}&hasta=${hasta}`, { headers: { ...authHeaders() } });
+    const res = await fetchConLimite(`${API_BASE}/calendario/eventos?desde=${desde}&hasta=${hasta}`, { headers: { ...authHeaders() } });
     if (res.status === 503) return { configurado: false, apuntes: [] };
     if (!res.ok) {
       try {
@@ -554,7 +573,7 @@ export async function fetchCalendarioApuntes(desde, hasta) {
  */
 export async function createDraftWeekInAPI(weekId, week, reemplazar = false) {
   try {
-    const res = await fetch(`${API_BASE}/logistics/weeks/draft`, {
+    const res = await fetchConLimite(`${API_BASE}/logistics/weeks/draft`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ weekId, week, reemplazar })
@@ -568,7 +587,7 @@ export async function createDraftWeekInAPI(weekId, week, reemplazar = false) {
 
 export async function deleteWeekFromAPI(weekId) {
   try {
-    const res = await fetch(`${API_BASE}/logistics/weeks/${encodeURIComponent(weekId)}`, {
+    const res = await fetchConLimite(`${API_BASE}/logistics/weeks/${encodeURIComponent(weekId)}`, {
       method: 'DELETE',
       headers: { ...authHeaders() },
     });
@@ -588,13 +607,13 @@ export async function uploadRentalPdf(file) {
   const formData = new FormData();
   formData.append('file', file);
   
-  const res = await fetch(`${API_BASE}/logistics/upload-rental`, {
+  const res = await fetchConLimite(`${API_BASE}/logistics/upload-rental`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${getStoredAdminToken()}`
     },
     body: formData
-  });
+  }, 2 * 60 * 1000);
   
   if (!res.ok) {
     throw new Error('Error al subir el archivo');
@@ -603,7 +622,7 @@ export async function uploadRentalPdf(file) {
 }
 
 export async function optimizeDatabase() {
-  const res = await fetch(`${API_BASE}/logistics/optimize`, {
+  const res = await fetchConLimite(`${API_BASE}/logistics/optimize`, {
     method: 'POST',
     headers: {
       ...authHeaders()
@@ -618,7 +637,7 @@ export async function optimizeDatabase() {
 
 export async function fetchRosterFromAPI() {
   try {
-    const res = await fetch(`${API_BASE}/roster`);
+    const res = await fetchConLimite(`${API_BASE}/roster`);
     if (!res.ok) return null;
     const data = await res.json();
     return data.workers || null;
@@ -631,7 +650,7 @@ export async function fetchRosterFromAPI() {
 export async function saveRosterToAPI(workers) {
   try {
     const token = getStoredAdminToken();
-    const res = await fetch(`${API_BASE}/roster`, {
+    const res = await fetchConLimite(`${API_BASE}/roster`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -652,11 +671,11 @@ export async function saveRosterToAPI(workers) {
 // la de Google), o una respuesta 0 si no hay red.
 export async function llamarGeminiEnServidor(body) {
   try {
-    return await fetch(`${API_BASE}/ia/gemini`, {
+    return await fetchConLimite(`${API_BASE}/ia/gemini`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body
-    });
+    }, 3 * 60 * 1000); // el servidor puede probar varios modelos, y cada uno piensa
   } catch {
     return { ok: false, status: 0, json: async () => ({}) };
   }
@@ -666,7 +685,7 @@ export async function llamarGeminiEnServidor(body) {
 // (getAiMemories, lista vacía) — el asistente sigue funcionando sin ellas.
 async function peticionMemoria(ruta = '', { method = 'GET', body } = {}) {
   try {
-    const res = await fetch(`${API_BASE}/aimemory${ruta}`, {
+    const res = await fetchConLimite(`${API_BASE}/aimemory${ruta}`, {
       method,
       headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: body ? JSON.stringify(body) : undefined

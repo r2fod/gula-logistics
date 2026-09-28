@@ -30,6 +30,7 @@ _Resumen de lo que ya está hecho y por qué es así. El detalle de cada cambio 
 - `GET /api/clock` devuelve lo más reciente primero: para saber quién está en turno, ordenar antes (`sortEntriesByTimestamp`, `getActiveShiftForWorker`, `pairShiftsFromEntries`).
 - Horas redondeadas a la **media hora** (`Math.round(h*2)/2`), tope 14 h facturables por turno; turno abierto > 16 h = "REVISAR" (no se cierra solo).
 - Fichajes sin cobertura: cola persistente + reintento cada 20 s y al volver la red; el servidor es idempotente por `id`.
+- **Ninguna petición espera para siempre** (28/09, `fetchConLimite` en `apiService.js`): el enlace de socias se quedaba en "Generando enlace…" con el servidor respondiendo en 0,1 s (una petición colgada en una conexión que el servidor ya había cerrado: el navegador no repite un POST). 60 s por defecto (lo que tarda en despertar Render), 3 min Gemini, 2 min subir PDF; el enlace de socias, 15 s y un reintento. Llamadas nuevas al servidor: siempre por `fetchConLimite`.
 - La ventana de fichajes de una semana es martes 00:00 → martes siguiente (incluye domingo y lunes de cola) y conserva los turnos abiertos (`fichajesDeLaSemana`).
 - Nómina fija se decide por `isPayroll` del dato, nunca por nombre.
 
