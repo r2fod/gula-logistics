@@ -19,6 +19,7 @@ import AdminClockEditModal from './AdminClockEditModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminSettingsModal from './AdminSettingsModal';
 import AdminAiMemoryModal from './AdminAiMemoryModal';
+import AvisoDeshacerIa from './panel/AvisoDeshacerIa';
 import SemanaBorradorBanner from './SemanaBorradorBanner';
 import CabeceraPanel from './panel/CabeceraPanel';
 import MenuLateral from './panel/MenuLateral';
@@ -39,6 +40,10 @@ export default function PartnerDashboardView({
   onRegenerateDraft,
   onEliminarSemana,
   anticipacionAviso,
+  deshacerIa = null,
+  cambiadaTrasIa = false,
+  onDeshacerIa,
+  onOlvidarDeshacerIa,
   onCerrarAnticipacionAviso,
 
   onUpdateWeek,
@@ -219,6 +224,10 @@ export default function PartnerDashboardView({
           <span>{anticipacionAviso}</span>
           <button type="button" onClick={onCerrarAnticipacionAviso} aria-label="Cerrar aviso" className="shrink-0 text-emerald-300 hover:text-white font-bold">✕</button>
         </div>
+      )}
+
+      {adminUnlocked && (
+        <AvisoDeshacerIa aviso={deshacerIa} cambiada={cambiadaTrasIa} onDeshacer={onDeshacerIa} onCerrar={onOlvidarDeshacerIa} />
       )}
 
       {/* Semana en BORRADOR: propuesta generada desde el calendario, pendiente de revisar y aceptar */}

@@ -184,6 +184,29 @@ export async function fetchClockEntriesFromAPI() {
   }
 }
 
+// Solo los fichajes creados o cambiados desde `desde` (fecha ISO del servidor,
+// ver ultimaModificacion). null si no se pudo preguntar: quien llama sigue con
+// lo que tiene y lo reintenta en el siguiente ciclo.
+export async function fetchClockEntryChangesFromAPI(desde) {
+  try {
+    const res = await fetch(`${API_BASE}/clock?desde=${encodeURIComponent(desde)}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data) ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+// Copia local de los fichajes para abrir sin red (la misma que deja fetchClockEntriesFromAPI).
+export function guardarCopiaFichajes(fichajes) {
+  try {
+    localStorage.setItem('gula_clock_entries_v1', JSON.stringify(fichajes));
+  } catch {
+    // Sin espacio o en modo privado: la copia es solo una ayuda.
+  }
+}
+
 /**
  * Create new clock entry in MongoDB / Backend API
  */
@@ -612,6 +635,21 @@ export async function saveRosterToAPI(workers) {
 }
 
 // --- AI MEMORY API ---
+// Gemini a través del servidor, con su clave (GEMINI_API_KEY en Render). `body` es
+// el JSON ya preparado para Gemini. Devuelve la Response tal cual (mismo formato que
+// la de Google), o una respuesta 0 si no hay red.
+export async function llamarGeminiEnServidor(body) {
+  try {
+    return await fetch(`${API_BASE}/ia/gemini`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body
+    });
+  } catch {
+    return { ok: false, status: 0, json: async () => ({}) };
+  }
+}
+
 // Reglas del asistente (/api/aimemory, solo admin). Devuelven null si falla
 // (getAiMemories, lista vacía) — el asistente sigue funcionando sin ellas.
 async function peticionMemoria(ruta = '', { method = 'GET', body } = {}) {

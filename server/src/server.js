@@ -13,6 +13,7 @@ import calendarioRoutes from './routes/calendario.routes.js';
 import rosterRoutes from './routes/roster.routes.js';
 
 import aiMemoryRoutes from './routes/aiMemory.routes.js';
+import iaRoutes from './routes/ia.routes.js';
 
 dotenv.config();
 
@@ -34,7 +35,9 @@ const PORT = process.env.PORT || 5000;
 app.set('trust proxy', 1);
 
 app.use(cors());
-app.use(express.json());
+// 2 MB: el prompt de Gemini lleva la semana entera y, aunque la app ya solo envía
+// las semanas que cambian, el límite por defecto (100 KB) se quedaba corto.
+app.use(express.json({ limit: '2mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Conexión a MongoDB Atlas mediante variable de entorno MONGODB_URI
@@ -55,6 +58,7 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/calendario', calendarioRoutes);
 app.use('/api/roster', rosterRoutes);
 app.use('/api/aimemory', aiMemoryRoutes);
+app.use('/api/ia', iaRoutes);
 
 // Endpoint de verificación de salud
 app.get('/api/health', (req, res) => {

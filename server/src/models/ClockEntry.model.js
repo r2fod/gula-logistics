@@ -29,4 +29,7 @@ const ClockEntrySchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Para la sincronización por cambios (GET /api/clock?desde=).
+ClockEntrySchema.index({ updatedAt: 1 });
+
 export const ClockEntry = mongoose.models.ClockEntry || mongoose.model('ClockEntry', ClockEntrySchema);

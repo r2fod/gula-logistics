@@ -481,7 +481,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
           {showKeyInput ? (
             <>
               <label htmlFor="gemini-key" className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Clave de Gemini (necesaria para generar)
+                Clave de Gemini (opcional si el servidor ya tiene la suya)
               </label>
               <Input
                 id="gemini-key"
@@ -493,7 +493,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
                 tamano="sm" acento="amber-suave"
               />
               <p className="mt-1.5 text-[11px] text-slate-500">
-                Se guarda solo en este navegador. Si no la tienes, se crea gratis en aistudio.google.com/apikey.
+                Déjala vacía si ya está puesta en el servidor (GEMINI_API_KEY en Render). Si la pegas, se guarda solo en este navegador.
               </p>
             </>
           ) : (
