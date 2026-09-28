@@ -1,4 +1,4 @@
-import { esBorrador, semanaPorDefecto } from './anticipacion';
+import { esBorrador } from './anticipacion';
 
 // Enlaces de los trabajadores. El enlace de cada persona es SIEMPRE el mismo
 // (`?worker=Nombre`, sin semana): al abrirlo enseña la semana que contiene hoy
@@ -8,22 +8,17 @@ export function construirEnlaceTrabajador(origen, ruta, nombre) {
   return `${origen}${ruta}?worker=${encodeURIComponent(nombre)}`;
 }
 
-// Semana que hay que abrir al entrar por un enlace:
+// ¿El enlace pide una semana concreta (?week=) y hay que abrirla? Su id; si no, null
+// y la app sigue sola "la de hoy" (semanaPorDefecto, en useWeeks).
 //  · Un TRABAJADOR (enlace con ?worker= y sin sesión de admin) siempre ve la semana
 //    actual, aunque el enlace sea uno viejo con ?week= (los que ya se enviaron con
 //    la semana escrita dejan de quedarse anclados a ella).
 //  · Un admin, o quien entra sin ?worker=, respeta ?week= si existe, salvo que sea
 //    un borrador y no haya admin: un borrador solo lo abre un admin.
-//  · Sin ?week= válido, la semana por defecto (la que contiene hoy, nunca un borrador).
-// Devuelve el id de la semana, o null si no hay ninguna que abrir.
-export function semanaInicialDeEnlace({ weekParam = null, workerParam = null, hayAdmin = false, semanas = {}, hoy = new Date() } = {}) {
+export function semanaPedidaEnEnlace({ weekParam = null, workerParam = null, hayAdmin = false, semanas = {} } = {}) {
   const esEnlaceDeTrabajador = Boolean(workerParam) && !hayAdmin;
-  if (weekParam && !esEnlaceDeTrabajador) {
-    const semana = semanas?.[weekParam];
-    if (semana && !(esBorrador(semana) && !hayAdmin)) return weekParam;
-  }
-  const porDefecto = semanaPorDefecto(semanas, hoy);
-  return porDefecto && semanas?.[porDefecto] ? porDefecto : null;
+  const semana = weekParam && !esEnlaceDeTrabajador ? semanas?.[weekParam] : null;
+  return semana && !(esBorrador(semana) && !hayAdmin) ? weekParam : null;
 }
 
 // --- Otros enlaces de la app (un solo sitio para no repetir cómo se construyen) ---

@@ -382,11 +382,15 @@ function todasLasTareas(weekData) {
   return out;
 }
 
-export function isWeekFinished(weekData, now = new Date(), graceMinutes = TASK_COMPLETION_GRACE_MINUTES) {
+// `persona` (opcional): terminada PARA ESA PERSONA, mirando solo sus tareas. El lunes de
+// cola, a quien ya no le queda nada se le abre la semana siguiente aunque otros sigan
+// (una limpieza hasta las 20:00 no le deja a un conductor sin ver lo de mañana).
+// Una tarea marcada como hecha ya no está pendiente, acabe cuando acabe su horario.
+export function isWeekFinished(weekData, now = new Date(), graceMinutes = TASK_COMPLETION_GRACE_MINUTES, persona = null) {
   if (!weekData || weekData.meta?.status === 'Borrador') return false;
   const minuto = Math.floor(now.getTime() / 60000);
   const cache = cacheFinalizada.get(weekData);
-  if (cache && cache.minuto === minuto && cache.grace === graceMinutes) return cache.valor;
+  if (cache && cache.minuto === minuto && cache.grace === graceMinutes && cache.persona === persona) return cache.valor;
 
   let valor = false;
   const range = getWeekRange(weekData, now);
@@ -394,9 +398,10 @@ export function isWeekFinished(weekData, now = new Date(), graceMinutes = TASK_C
     const lunesDeCola = addDays(range.end, 1);
     const yaPasoElDomingo = now.getTime() >= lunesDeCola.getTime();
     valor = yaPasoElDomingo && !todasLasTareas(weekData).some(([dia, t]) =>
-      t && typeof t === 'object' && TIENE_HORARIO.test(String(t.timeFrame || '')) && getTaskPastStatus(weekData, dia, t, now, graceMinutes) === false);
+      t && typeof t === 'object' && !t.completed && (!persona || isTaskAssignedTo(t, persona))
+      && TIENE_HORARIO.test(String(t.timeFrame || '')) && getTaskPastStatus(weekData, dia, t, now, graceMinutes) === false);
   }
-  cacheFinalizada.set(weekData, { minuto, grace: graceMinutes, valor });
+  cacheFinalizada.set(weekData, { minuto, grace: graceMinutes, persona, valor });
   return valor;
 }
 

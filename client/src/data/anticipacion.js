@@ -35,7 +35,8 @@ export function semanasAAnticipar(semanas, hoy = new Date(), horizonte = 2) {
 // en los próximos días, se abre la siguiente: al refrescar el lunes por la noche no
 // se vuelve a la semana que ya pasó. Un borrador nunca cuenta.
 // null si no se puede decidir (el llamador conserva lo que tuviera).
-export function semanaPorDefecto(semanas, hoy = new Date()) {
+// `persona`: la de un trabajador (su enlace); mira solo sus tareas (ver isWeekFinished).
+export function semanaPorDefecto(semanas, hoy = new Date(), persona = null) {
   const hoyIso = aIso(hoy);
   const candidatas = Object.entries(semanas || {})
     .filter(([, w]) => !esBorrador(w))
@@ -46,7 +47,7 @@ export function semanaPorDefecto(semanas, hoy = new Date()) {
   if (contiene) {
     const siguiente = candidatas.find(c => c.inicio > contiene.inicio);
     const empiezaPronto = siguiente && aIso(siguiente.inicio) <= aIso(sumarDias(hoy, DIAS_PARA_ADELANTAR));
-    return empiezaPronto && isWeekFinished(contiene.semana, hoy) ? siguiente.id : contiene.id;
+    return empiezaPronto && isWeekFinished(contiene.semana, hoy, undefined, persona) ? siguiente.id : contiene.id;
   }
   const empezadas = candidatas.filter(c => aIso(c.inicio) <= hoyIso);
   return empezadas.length ? empezadas[empezadas.length - 1].id : null;

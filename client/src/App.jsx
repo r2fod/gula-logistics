@@ -49,7 +49,7 @@ import { fichajesDeLaSemana, ultimaModificacion, fusionarCambiosFichajes } from 
 import { aprenderDeFichajes } from './data/aprendizajeFichajes';
 import { semanaDeLaVispera } from './data/vispera';
 import { getWeekRange } from './data/taskPlanning';
-import { semanaInicialDeEnlace } from './data/enlaces';
+import { semanaPedidaEnEnlace } from './data/enlaces';
 import { parseWeekRange } from './data/taskPlanning';
 
 const BASE_WEEK_3 = {
@@ -69,6 +69,26 @@ export default function App() {
   const { workersList, setWorkersList, handleRemoveWorker, handleUpdateWorker } = useWorkers();
   const { balancesData, setBalancesData, handleAddWorker } = useBalances(workersList, setWorkersList);
   
+  // Modals
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isWeekModalOpen, setIsWeekModalOpen] = useState(false);
+  const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
+  const [isClockInModalOpen, setIsClockInModalOpen] = useState(false);
+  const [isWorkerEditorModalOpen, setIsWorkerEditorModalOpen] = useState(false);
+  const [isTaskEditorModalOpen, setIsTaskEditorModalOpen] = useState(false);
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
+
+  const [activeWorker, setActiveWorker] = useState(null);
+  // El enlace ?worker= se resuelve al abrir con la lista de equipo que haya en el
+  // dispositivo; en un móvil nuevo esa lista es la de arranque y no trae a quien
+  // entró hace poco, así que su enlace abría la vista pública hasta recargar. Ahora
+  // se reconoce en cuanto llega el equipo real del servidor. (Salir de la vista del
+  // trabajador limpia la URL, así que esto no le deja atrapado en ella.)
+  const nombreEnlace = new URLSearchParams(window.location.search).get('worker');
+  const trabajadorActivo = activeWorker
+    || (nombreEnlace && workersList.find(w => w.name.toLowerCase() === nombreEnlace.toLowerCase())?.name)
+    || null;
+
   const {
     allWeeks,
     setAllWeeks,
@@ -85,7 +105,10 @@ export default function App() {
     deshacerUltimaIa,
     olvidarDeshacerIa,
     lastLocalEditRef
-  } = useWeeks();
+  } = useWeeks({
+    persona: trabajadorActivo,
+    congelar: isTaskEditorModalOpen || isGeminiModalOpen || isWeekModalOpen || isClockInModalOpen,
+  });
 
   const {
     clockEntries,
@@ -224,11 +247,8 @@ export default function App() {
       const nuevas = await fetchWeeksFromAPI();
       if (nuevas) {
         setAllWeeks(nuevas);
-        // Si borramos la semana actual, intentar cambiar a la primera que haya
-        if (activeWeekId === weekId) {
-          const keys = Object.keys(nuevas);
-          setActiveWeekId(keys.length > 0 ? keys[0] : null);
-        }
+        // Si era la que se veía, se vuelve a la de hoy.
+        if (activeWeekId === weekId) setActiveWeekId(null);
       }
     } else {
       await alert(`Error al eliminar la semana: ${res?.message || 'Error desconocido'}`, { type: 'error' });
@@ -236,7 +256,6 @@ export default function App() {
   };
 
 
-  const [activeWorker, setActiveWorker] = useState(null);
   const [isPublicPreviewMode, setIsPublicPreviewMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('view') === 'public';
@@ -251,15 +270,6 @@ export default function App() {
   });
   // Aviso en la vista pública cuando un enlace de socias ya no da acceso.
   const [avisoAcceso, setAvisoAcceso] = useState('');
-
-  // Modals
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [isWeekModalOpen, setIsWeekModalOpen] = useState(false);
-  const [isGeminiModalOpen, setIsGeminiModalOpen] = useState(false);
-  const [isClockInModalOpen, setIsClockInModalOpen] = useState(false);
-  const [isWorkerEditorModalOpen, setIsWorkerEditorModalOpen] = useState(false);
-  const [isTaskEditorModalOpen, setIsTaskEditorModalOpen] = useState(false);
-  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
 
   const clearUrlParams = () => {
     try {
@@ -282,9 +292,10 @@ export default function App() {
 
     // Qué semana se abre (ver data/enlaces.js): un trabajador siempre ve la de hoy,
     // aunque su enlace sea uno viejo con ?week=; un borrador solo lo abre un admin.
+    // Sin ?week= no se fija ninguna: la app sigue sola la de hoy (useWeeks).
     const hasAdminSession = !!getStoredAdminToken();
-    const semanaInicial = semanaInicialDeEnlace({ weekParam, workerParam, hayAdmin: hasAdminSession, semanas: allWeeks });
-    if (semanaInicial) setActiveWeekId(semanaInicial);
+    const semanaPedida = semanaPedidaEnEnlace({ weekParam, workerParam, hayAdmin: hasAdminSession, semanas: allWeeks });
+    if (semanaPedida) setActiveWeekId(semanaPedida);
     // El icono de la app instalada (PWA) siempre abre start_url del
     // manifest, SIN los parámetros de la URL original (?worker=...) — así
     // que un trabajador que instale su propio enlace perdía su identidad
@@ -375,10 +386,9 @@ export default function App() {
         } catch (e) {
           console.error(e);
         }
-        // Con las semanas ya al día se vuelve a decidir cuál abrir: la que contiene
-        // HOY (nunca un borrador) salvo ?week= de un admin.
-        const semanaActual = semanaInicialDeEnlace({ weekParam, workerParam, hayAdmin: hasAdminSession, semanas: remoteWeeks });
-        if (semanaActual) setActiveWeekId(semanaActual);
+        // El ?week= puede ser de una semana que este dispositivo aún no tenía.
+        const pedidaEnServidor = semanaPedidaEnEnlace({ weekParam, workerParam, hayAdmin: hasAdminSession, semanas: remoteWeeks });
+        if (pedidaEnServidor) setActiveWeekId(pedidaEnServidor);
       }
     });
   }, []);
@@ -479,15 +489,6 @@ export default function App() {
     setTimeout(() => setIsTaskEditorModalOpen(true), 0);
   };
 
-  // El enlace ?worker= se resuelve al abrir con la lista de equipo que haya en el
-  // dispositivo; en un móvil nuevo esa lista es la de arranque y no trae a quien
-  // entró hace poco, así que su enlace abría la vista pública hasta recargar. Ahora
-  // se reconoce en cuanto llega el equipo real del servidor. (Salir de la vista del
-  // trabajador limpia la URL, así que esto no le deja atrapado en ella.)
-  const nombreEnlace = new URLSearchParams(window.location.search).get('worker');
-  const trabajadorActivo = activeWorker
-    || (nombreEnlace && workersList.find(w => w.name.toLowerCase() === nombreEnlace.toLowerCase())?.name)
-    || null;
 
   if (trabajadorActivo) {
     return (

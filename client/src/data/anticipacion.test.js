@@ -51,6 +51,15 @@ describe('semanaPorDefecto', () => {
       expect(semanaPorDefecto(dosSemanas(), new Date(2026, 8, 21, 13, 20))).toBe('b');
     });
 
+    it('por persona: a quien ya no le queda nada en la cola se le abre la siguiente aunque otros sigan', () => {
+      const semanas = dosSemanas();
+      semanas.week_3.sundayMonday.tasks.push({ text: 'Limpieza', timeFrame: '13:30-20:00', targetDay: 'Lunes', assigned: ['Luis'] });
+      const lunes = new Date(2026, 8, 21, 14, 0);
+      expect(semanaPorDefecto(semanas, lunes)).toBe('week_3');
+      expect(semanaPorDefecto(semanas, lunes, 'Ana')).toBe('b');
+      expect(semanaPorDefecto(semanas, lunes, 'Luis')).toBe('week_3');
+    });
+
     it('un domingo (semana aún en curso) nunca salta a la siguiente', () => {
       expect(semanaPorDefecto(dosSemanas(), new Date(2026, 8, 20, 23, 0))).toBe('week_3');
     });
