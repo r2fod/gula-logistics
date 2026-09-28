@@ -9,6 +9,7 @@ import { rangoDePeriodo, moverPeriodo, turnosDelPeriodo, semanasDelPeriodo, seri
 import { formatearEuros, formatearHoras, formatearPorcentaje } from '../../data/formatoFinanciero';
 import SelectorPeriodo from './financiero/SelectorPeriodo';
 import KpiCard from '../ui/KpiCard';
+import EnVivo from '../ui/EnVivo';
 import Seccion from '../ui/Seccion';
 import FilaDesglose from './financiero/FilaDesglose';
 import GraficoEvolucion from './financiero/GraficoEvolucion';
@@ -18,6 +19,7 @@ import PrevistoPlanning from './financiero/PrevistoPlanning';
 import { aplicarTarifaDeBolsa } from '../../data/bolsaHoras';
 import { conceptosDelPeriodo } from '../../data/conceptosSaldos';
 import { estimarHorasPlanning } from '../../data/estimadoPlanning';
+import { enCursoDelPeriodo } from '../../data/costeEnVivo';
 import { textoResumenWhatsApp } from '../../data/resumenWhatsApp';
 import { coincideNombre } from '../../data/nombresTrabajadores';
 import { useCopiado } from '../../hooks/useCopiado';
@@ -39,6 +41,14 @@ const tarifaComun = (personal) => {
 
 // Franja de totales al pie de cada lista: las dos tarjetas de al lado miden lo mismo
 // y esta fila queda a la misma altura en las dos.
+// Pie de "Extras a pagar" con alguien fichado ahora: lo que va sumando su turno.
+const EnCurso = ({ importe }) => (
+  <span className="flex items-center gap-1.5 text-emerald-300/90">
+    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400 animate-pulse motion-reduce:animate-none" aria-hidden="true" />
+    <span>Incluye <b className="font-mono tabular-nums">{formatearEuros(importe)}</b> de turnos en curso</span>
+  </span>
+);
+
 const TotalPie = ({ horas, coste }) => (
   <div className="flex items-center justify-between gap-3 text-xs">
     <span className="font-bold uppercase tracking-wider text-slate-400">Total</span>
@@ -51,7 +61,7 @@ const TotalPie = ({ horas, coste }) => (
 // `saldos`: fichas de Saldos & Acuerdos (bolsa de horas y conceptos a mano).
 // `enfoque`: { persona } al llegar desde "Ver en Resumen" de Saldos — todo el
 // histórico, con esa persona abierta en "Coste por trabajador".
-export default function FinancialSummaryTab({ shifts = [], workersList = [], allWeeks = {}, activeWeekData = null, saldos = [], enfoque = null }) {
+export default function FinancialSummaryTab({ shifts = [], workersList = [], allWeeks = {}, activeWeekData = null, saldos = [], enfoque = null, turnosAbiertos = {} }) {
   const [modo, setModo] = useState(() => (enfoque?.persona ? 'todo' : 'semana'));
   const [ancla, setAncla] = useState(() => anclaInicial(activeWeekData));
   const [copiado, copiar] = useCopiado();
@@ -59,6 +69,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
   // Quien tiene bolsa de horas cuesta lo mismo que en Saldos & Acuerdos (bolsaHoras.js).
   // Se aplica al histórico entero: la bolsa se va gastando turno a turno.
   const turnosConTarifa = useMemo(() => aplicarTarifaDeBolsa(shifts, saldos), [shifts, saldos]);
+  const abiertos = useMemo(() => Object.values(turnosAbiertos || {}), [turnosAbiertos]);
 
   // El resumen sigue a la semana que se elige arriba: al cambiarla, el periodo pasa a
   // ser esa semana (o el mes o año que la contiene). Las flechas y los botones de
@@ -142,6 +153,55 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
     </span>
   );
 
+  // Las cuatro cifras de arriba. `vivo` (enCursoDelPeriodo): lo que llevan ahora los
+  // turnos abiertos del periodo, que se suma a lo ya fichado; null si no hay ninguno.
+  const rejillaKpi = (vivo) => {
+    const extrasVivo = vivo?.extras || 0;
+    const nominaVivo = vivo?.nomina || 0;
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <KpiCard
+          className="col-span-2 sm:col-span-1"
+          titulo="Coste de personal"
+          valor={totalCoste + extrasVivo + nominaVivo}
+          formato={formatearEuros}
+          icono={Wallet}
+          color="amber"
+          pie={pieCoste}
+          retraso={60}
+        />
+        <KpiCard
+          titulo="Extras a pagar"
+          valor={totalExtraExpense + extrasVivo}
+          formato={formatearEuros}
+          icono={Banknote}
+          color="sky"
+          pie={extrasVivo > 0 ? <EnCurso importe={extrasVivo} /> : `Personal extra ${tarifaComun(extras) ?? 'con tarifas distintas'}`}
+          retraso={120}
+        />
+        <KpiCard
+          titulo="Valoración nóminas"
+          valor={totalPayrollValuation + nominaVivo}
+          formato={formatearEuros}
+          icono={Users}
+          color="indigo"
+          pie={enNomina.length > 0 ? `${enNomina.map(w => w.name).join(' + ')} · valoración interna ${tarifaComun(enNomina) ?? ''}`.trim() : 'Valoración interna del personal en nómina'}
+          retraso={180}
+        />
+        <KpiCard
+          className="col-span-2 sm:col-span-1"
+          titulo="Horas registradas"
+          valor={totalHoras + (vivo?.horas || 0)}
+          formato={formatearHoras}
+          icono={Clock}
+          color="emerald"
+          pie={`${turnos.length} ${turnos.length === 1 ? 'turno fichado' : 'turnos fichados'}${vivo?.turnos ? ` + ${vivo.turnos} en curso` : ''}${totalHoras > 0 ? ` · ${formatearEuros(costeMedioHora)}/h de media` : ''}`}
+          retraso={240}
+        />
+      </div>
+    );
+  };
+
   return (
     <div className="w-full min-w-0 space-y-4 sm:space-y-6">
       {/* Periodo: semana (martes a lunes, como el planning), mes, año o todo */}
@@ -166,46 +226,8 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <KpiCard
-          className="col-span-2 sm:col-span-1"
-          titulo="Coste de personal"
-          valor={totalCoste}
-          formato={formatearEuros}
-          icono={Wallet}
-          color="amber"
-          pie={pieCoste}
-          retraso={60}
-        />
-        <KpiCard
-          titulo="Extras a pagar"
-          valor={totalExtraExpense}
-          formato={formatearEuros}
-          icono={Banknote}
-          color="sky"
-          pie={`Personal extra ${tarifaComun(extras) ?? 'con tarifas distintas'}`}
-          retraso={120}
-        />
-        <KpiCard
-          titulo="Valoración nóminas"
-          valor={totalPayrollValuation}
-          formato={formatearEuros}
-          icono={Users}
-          color="indigo"
-          pie={enNomina.length > 0 ? `${enNomina.map(w => w.name).join(' + ')} · valoración interna ${tarifaComun(enNomina) ?? ''}`.trim() : 'Valoración interna del personal en nómina'}
-          retraso={180}
-        />
-        <KpiCard
-          className="col-span-2 sm:col-span-1"
-          titulo="Horas registradas"
-          valor={totalHoras}
-          formato={formatearHoras}
-          icono={Clock}
-          color="emerald"
-          pie={`${turnos.length} ${turnos.length === 1 ? 'turno fichado' : 'turnos fichados'}${totalHoras > 0 ? ` · ${formatearEuros(costeMedioHora)}/h de media` : ''}`}
-          retraso={240}
-        />
-      </div>
+      {/* Con alguien fichado ahora, las cifras suben en directo (solo se repinta esta rejilla). */}
+      {abiertos.length > 0 ? <EnVivo>{(ahora) => rejillaKpi(enCursoDelPeriodo(abiertos, rango, { ahora, equipo: workersList, fichas: saldos, turnos: shifts }))}</EnVivo> : rejillaKpi(null)}
 
       {turnos.length === 0 ? (
         <div className="bg-slate-900 border border-dashed border-slate-700 rounded-2xl px-4 py-10 sm:py-14 text-center animate-aparecer motion-reduce:animate-none" style={{ animationDelay: '300ms' }}>

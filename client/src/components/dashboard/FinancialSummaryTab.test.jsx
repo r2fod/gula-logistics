@@ -45,6 +45,17 @@ describe('FinancialSummaryTab — periodo', () => {
     expect(within(tarjeta('Coste de personal')).getByText('35,00 €')).toBeTruthy();
   });
 
+  it('con alguien fichado ahora, las cifras suman lo que lleva su turno (y dicen cuánto es)', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 18, 0));
+    const turnosAbiertos = { Eva: { workerName: 'Eva', type: 'entrada', isPayroll: false, rate: 10, timestamp: new Date(2026, 8, 21, 16, 0).toISOString() } };
+    render(<FinancialSummaryTab shifts={shifts} workersList={[]} allWeeks={{ week_3: semana3 }} activeWeekData={semana3} turnosAbiertos={turnosAbiertos} />);
+    expect(within(tarjeta('Extras a pagar')).getByText('55,00 €')).toBeTruthy(); // 35 fichados + 2 h en curso
+    expect(within(tarjeta('Extras a pagar')).getByText(/de turnos en curso/).textContent).toContain('20,00 €');
+    expect(within(tarjeta('Coste de personal')).getByText('55,00 €')).toBeTruthy();
+    expect(within(tarjeta('Horas registradas')).getByText('5,5 h')).toBeTruthy();
+    expect(within(tarjeta('Horas registradas')).getByText(/\+ 1 en curso/)).toBeTruthy();
+  });
+
   it('Mes y Año suman también las otras semanas; Todo, todo el histórico', () => {
     vi.setSystemTime(new Date(2026, 8, 21, 18, 0));
     renderTab();

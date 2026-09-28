@@ -7,7 +7,8 @@ import { useDialog } from '../../contexts/DialogContext';
 import { repartirBolsa, tieneBolsa } from '../../data/bolsaHoras';
 import GrupoConceptos from './saldos/GrupoConceptos';
 import EnVivo from '../ui/EnVivo';
-import { costeEnCurso } from '../../data/costeEnVivo';
+import { costeEnCurso, duracionEnCurso } from '../../data/costeEnVivo';
+import { isZombieShift } from '../../data/shiftCalculations';
 import { coincideNombre } from '../../data/nombresTrabajadores';
 
 // Horas tal como se escriben DENTRO del texto de un concepto ("4,5" → "4.5", sin ceros de
@@ -383,6 +384,17 @@ export default function TeamBalancesTab({
               });
 
               const displayBalance = worker.currentBalance + dynamicCost;
+              // Turno abierto ahora mismo: su dinero se suma al saldo en directo (sin
+              // redondear; al fichar la salida se paga a la media hora). Con más de 16 h
+              // abierto es una salida olvidada: se avisa y no se suma.
+              const abierto = Object.values(turnosAbiertos).find(e => coincideNombre(e.workerName, worker.name)) || null;
+              const enNomina = worker.statusType === 'payroll';
+              const olvidado = !!abierto && isZombieShift(abierto);
+              const cobraEnDirecto = !!abierto && !olvidado && !enNomina;
+              const enCurso = (ahora) => costeEnCurso({
+                entrada: abierto, ahora, tarifa: abierto.rate || worker.hourlyRate || 10, ficha: worker, horasPrevias: hours?.totalHours || 0,
+              }).coste;
+              const colorSaldo = (valor) => (valor > 0 ? 'text-emerald-400' : valor < 0 ? 'text-rose-400' : 'text-slate-400');
               const derivedStatusType = worker.statusType === 'payroll' 
                 ? 'payroll'
                 : (displayBalance > 0 ? 'success' : (displayBalance < 0 ? 'danger' : 'neutral'));
@@ -443,37 +455,52 @@ export default function TeamBalancesTab({
                         <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider">
                           {worker.statusType === 'payroll' ? 'Coste Extra' : 'Saldo Actual'}
                         </span>
-                        {worker.statusType === 'payroll' ? (
+                        {enNomina ? (
                           <span className="text-xl font-extrabold text-amber-400 font-mono">0,00 €</span>
+                        ) : cobraEnDirecto ? (
+                          <EnVivo>{(ahora) => {
+                            const total = displayBalance + enCurso(ahora);
+                            return (
+                              <span className={`block text-2xl xl:text-3xl font-extrabold font-mono tabular-nums whitespace-nowrap ${colorSaldo(total)}`}>
+                                {formatearEurosConSigno(total)}
+                              </span>
+                            );
+                          }}</EnVivo>
                         ) : (
-                          <span className={`text-2xl xl:text-3xl font-extrabold font-mono whitespace-nowrap ${
-                            displayBalance > 0 ? 'text-emerald-400' : displayBalance < 0 ? 'text-rose-400' : 'text-slate-400'
-                          }`}>
+                          <span className={`text-2xl xl:text-3xl font-extrabold font-mono whitespace-nowrap ${colorSaldo(displayBalance)}`}>
                             {formatearEurosConSigno(displayBalance)}
                           </span>
+                        )}
+                        {cobraEnDirecto && (
+                          <span className="block text-[11px] text-slate-500 font-mono tabular-nums">Cerrado: {formatearEurosConSigno(displayBalance)}</span>
                         )}
                       </div>
                     </div>
 
-                    {/* Turno abierto ahora mismo: lo que lleva, subiendo en directo. Aún no
-                        está en el saldo: entra al fichar la salida (redondeado a la media hora). */}
-                    {(() => {
-                      const abierto = Object.values(turnosAbiertos).find(e => coincideNombre(e.workerName, worker.name));
-                      if (!abierto) return null;
-                      return (
-                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs">
+                    {/* Turno abierto: cronómetro y lo que lleva (ya sumado al saldo de arriba). */}
+                    {abierto && (olvidado ? (
+                      <div role="status" className="mt-3 flex items-start gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden="true" />
+                        <span>Turno abierto hace más de 16 h: seguramente olvidó fichar la salida. Revísalo en Fichajes; no se suma al saldo.</span>
+                      </div>
+                    ) : (
+                      <div className="mt-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                           <span className="flex items-center gap-1.5 font-semibold text-emerald-200">
                             <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse motion-reduce:animate-none" aria-hidden="true" />
-                            En turno ahora
+                            En turno · <span className="font-mono tabular-nums"><EnVivo>{(ahora) => duracionEnCurso(abierto, ahora)}</EnVivo></span>
                           </span>
-                          <span className="whitespace-nowrap font-mono font-extrabold tabular-nums text-emerald-300">
-                            +<EnVivo>{(ahora) => formatearEuros(costeEnCurso({
-                              entrada: abierto, ahora, tarifa: abierto.rate || worker.hourlyRate || 10, ficha: worker, horasPrevias: hours?.totalHours || 0,
-                            }).coste)}</EnVivo> y subiendo
-                          </span>
+                          {cobraEnDirecto && (
+                            <span className="whitespace-nowrap font-mono font-extrabold tabular-nums text-emerald-300">
+                              +<EnVivo>{(ahora) => formatearEuros(enCurso(ahora))}</EnVivo>
+                            </span>
+                          )}
                         </div>
-                      );
-                    })()}
+                        {cobraEnDirecto && (
+                          <p className="mt-1 text-[11px] text-emerald-200/70">Ya va en el saldo. Al fichar la salida se redondea a la media hora.</p>
+                        )}
+                      </div>
+                    ))}
 
                     {/* Horas reales fichadas sumadas al balance */}
                     {hours && hours.completedShifts > 0 && (

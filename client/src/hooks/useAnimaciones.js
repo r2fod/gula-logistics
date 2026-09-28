@@ -9,7 +9,9 @@ export function movimientoReducido() {
 }
 
 // Número que "corre" hasta su valor: al aparecer sube desde 0 y, cuando cambia
-// (otro periodo), sigue desde donde estaba en vez de saltar. Ease-out cúbico.
+// (otro periodo), sigue desde donde estaba en vez de saltar. Ease-out cúbico. Un
+// cambio de menos del 1 % (los céntimos de un turno en curso, cada segundo) va
+// directo: animarlo dejaría el número repintándose sin parar.
 export function useCountUp(objetivo, duracion = 700) {
   const meta = Number.isFinite(objetivo) ? objetivo : 0;
   const [valor, setValor] = useState(() => (movimientoReducido() ? meta : 0));
@@ -22,10 +24,11 @@ export function useCountUp(objetivo, duracion = 700) {
       return undefined;
     }
     const desde = actual.current;
+    const tiempo = Math.abs(meta - desde) <= Math.abs(meta) * 0.01 ? 0 : duracion;
     const inicio = performance.now();
     let id;
     const paso = () => {
-      const p = Math.min(1, (performance.now() - inicio) / duracion);
+      const p = tiempo > 0 ? Math.min(1, (performance.now() - inicio) / tiempo) : 1;
       const v = p >= 1 ? meta : desde + (meta - desde) * (1 - Math.pow(1 - p, 3));
       actual.current = v;
       setValor(v);

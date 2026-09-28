@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, within, waitFor } from '../../test/render';
+import { render, screen, fireEvent, within, waitFor, act } from '../../test/render';
 import TeamBalancesTab from './TeamBalancesTab';
 
 const ficha = {
@@ -71,13 +71,40 @@ describe('TeamBalancesTab — desglose separado', () => {
     expect(cambios.currentBalance).toBe(35 - 10 - 50); // lo que se le debe baja 50 €
   });
 
-  it('si está fichado ahora, enseña lo que lleva de este turno subiendo en directo (sin tocar el saldo)', () => {
+  it('si está fichado ahora, el saldo sube en directo con lo que lleva el turno y se ve lo ya cerrado', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 28, 10, 0, 0));
     pintar({ turnosAbiertos: { Ana: { workerName: 'Ana', type: 'entrada', rate: 10, timestamp: new Date(2026, 8, 28, 9, 30).toISOString() } } });
-    expect(screen.getByText('En turno ahora')).toBeInTheDocument();
-    expect(screen.getByText('+5,00 € y subiendo')).toBeInTheDocument();
-    expect(screen.getByText('+45,00 €')).toBeInTheDocument(); // el saldo no cambia hasta fichar la salida
+    expect(screen.getByText('0h 30m 00s')).toBeInTheDocument();
+    expect(screen.getByText('+5,00 €')).toBeInTheDocument();
+    expect(screen.getByText('+50,00 €')).toBeInTheDocument(); // 45 cerrado + 5 del turno
+    expect(screen.getByText('Cerrado: +45,00 €')).toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(36 * 1000); }); // 36 s a 10 €/h = 10 céntimos
+    expect(screen.getByText('+50,10 €')).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('un turno abierto más de 16 h (salida olvidada) avisa y no se suma al saldo', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 28, 10, 0, 0));
+    pintar({ turnosAbiertos: { Ana: { workerName: 'Ana', type: 'entrada', rate: 10, timestamp: new Date(2026, 8, 27, 9, 0).toISOString() } } });
+    expect(screen.getByRole('status').textContent).toMatch(/olvidó fichar la salida/);
+    expect(screen.getByText('+45,00 €')).toBeInTheDocument();
+    expect(screen.queryByText(/Cerrado:/)).toBeNull();
+    vi.useRealTimers();
+  });
+
+  it('en nómina fija: se ve que está en turno, pero sin euros subiendo', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 28, 10, 0, 0));
+    render(<TeamBalancesTab
+      balancesData={{ workers: [{ ...ficha, statusType: 'payroll' }] }} adminUnlocked onOpenShareModal={vi.fn()} onDeleteClockEntry={vi.fn()}
+      persistWorkerBalance={vi.fn()} findWorkerHours={() => horas}
+      turnosAbiertos={{ Ana: { workerName: 'Ana', type: 'entrada', rate: 14, timestamp: new Date(2026, 8, 28, 9, 30).toISOString() } }}
+    />);
+    expect(screen.getByText('0h 30m 00s')).toBeInTheDocument();
+    expect(screen.queryByText('+7,00 €')).toBeNull();
+    expect(screen.queryByText(/Ya va en el saldo/)).toBeNull();
     vi.useRealTimers();
   });
 });
