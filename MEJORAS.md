@@ -40,7 +40,8 @@ _Resumen de lo que ya está hecho y por qué es así. El detalle de cada cambio 
 - **Build verde ≠ funciona.** Tras un refactor grande, barrido de ESLint (`no-undef`) — hubo pantallas en negro por referencias colgando — y mirar la app desplegada.
 - Los efectos con `[]` congelan las funciones de la primera render: quien las llame desde un `setInterval` lo hace por `ref`.
 - El service worker no cachea el bundle a propósito (evita servir versiones viejas).
-- Render (plan gratuito) se duerme a los 15 min: la primera petición tarda 30–50 s. Sus despliegues tardan y no avisan.
+- Render (plan gratuito) se duerme a los 15 min: la primera petición tarda 30–50 s. Sus despliegues tardan (hasta 25 min el 28/09) y no avisan: el cliente nuevo debe funcionar también con el servidor viejo.
+- **Tests del servidor que fallaban sueltos** (un 403 ajeno, peticiones colgadas 15 s): supertest escuchaba en todas las interfaces y se conectaba a 127.0.0.1, y en macOS otro proceso puede quedarse ese puerto solo en 127.0.0.1. `server/vitest.setup.js` lo fija a 127.0.0.1 (0 fallos en 20 pasadas).
 - `npm run dev` apunta a la API de producción: en local solo mirar.
 - Varias sesiones (Claude, Gemini) trabajan a la vez: traer `origin/main` antes de fusionar y revisar lo que entró (el 27/09 un commit ajeno rompió el marcado de bodas en la vista de trabajador).
 
