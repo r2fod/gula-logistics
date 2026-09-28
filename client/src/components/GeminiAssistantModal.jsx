@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Check, AlertCircle, RefreshCw, Key, Wand2, BrainCircuit, X } from 'lucide-react';
 import { generateScheduleWithGemini, extraerMemoriaDelPrompt, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
+import { promptCorreccion } from '../data/planificadorIa';
 import { useMemoriaIa } from '../hooks/useMemoriaIa';
 import { diffSemana, avisosDeSemana } from '../data/diffSemana';
 import CambiosPropuestos from './asistente/CambiosPropuestos';
@@ -65,6 +66,21 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
 
     setLoading(false);
   };
+
+  // Lo que avisosDeSemana encontró en la propuesta se le devuelve a Gemini para que lo
+  // arregle sobre ella misma (no sobre la semana de antes), sin tocar el resto.
+  const corregirAvisos = async (avisos) => {
+    setLoading(true);
+    setErrorMsg('');
+    const { generatedJson: result, errorMsg: err } = await generateScheduleWithGemini({
+      prompt: promptCorreccion(avisos), apiKey, activeWeekData: { ...activeWeekData, ...generatedJson }, roster: workersList, aiMemories: memoria.activas, aprendizaje,
+    });
+    if (result) setGeneratedJson(result);
+    if (err) setErrorMsg(err);
+    setLoading(false);
+  };
+
+  const avisos = generatedJson ? avisosDeSemana(generatedJson, { equipo: workersList, camiones: (activeWeekData?.trucks || []).map(t => t?.name) }) : [];
 
   const handleApply = () => {
     if (generatedJson) {
@@ -211,14 +227,23 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
               <Check className="w-4 h-4" />
               <span>Planificación Generada por Gemini AI</span>
             </h4>
-            <span className="text-[11px] text-slate-400">{generatedJson.meta?.week}</span>
+            <span className="text-[11px] text-slate-400">{activeWeekData?.meta?.week}</span>
           </div>
 
           {/* Qué cambia y qué revisar antes de aplicar (antes solo se veían las bodas del sábado) */}
-          <CambiosPropuestos
-            diff={diffSemana(activeWeekData, generatedJson)}
-            avisos={avisosDeSemana(generatedJson, { equipo: workersList, camiones: (activeWeekData?.trucks || []).map(t => t?.name) })}
-          />
+          <CambiosPropuestos diff={diffSemana(activeWeekData, generatedJson)} avisos={avisos} />
+
+          {avisos.length > 0 && (
+            <button
+              type="button"
+              onClick={() => corregirAvisos(avisos)}
+              disabled={loading}
+              className="w-full py-2.5 px-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-200 text-xs font-bold hover:bg-amber-500/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {loading ? <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Wand2 className="w-4 h-4" aria-hidden="true" />}
+              <span>{loading ? 'Corrigiendo…' : 'Pedir a Gemini que lo corrija'}</span>
+            </button>
+          )}
 
           <button
             onClick={handleApply}

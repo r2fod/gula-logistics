@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { buildWeekPrompt, generateScheduleWithGemini, validateGeneratedSchedule, extraerMemoriaDelPrompt, GEMINI_MODELS } from './geminiScheduleService';
+import { completarPlanGenerado } from './planificadorIa';
 
 const base = { weekName: 'Semana 4', dateRange: 'Del 22 al 27 de Septiembre de 2026', trucks: ['Camión Gula'], workers: ['Ana', 'Luis'] };
 const dia = { martes: 'Martes 22', viernes: 'Viernes 25', sabado: 'Sábado 26' };
@@ -50,6 +51,8 @@ describe('buildWeekPrompt', () => {
 
 const okResponse = (obj) => ({ ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(obj) }] } }] }) });
 const semanaOk = { meta: { week: 'Semana 4' }, schedule: { martes: { tasks: [] } }, saturdaySpecial: { weddings: [] }, sundayMonday: { tasks: [] } };
+// Lo que devuelve la app: la propuesta ya completada (planificadorIa.js).
+const planOk = completarPlanGenerado(semanaOk);
 
 describe('generateScheduleWithGemini — nunca inventa una semana', () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -58,7 +61,7 @@ describe('generateScheduleWithGemini — nunca inventa una semana', () => {
     const fetchMock = vi.fn().mockResolvedValue(okResponse(semanaOk));
     vi.stubGlobal('fetch', fetchMock);
     const r = await generateScheduleWithGemini({ prompt: 'x', apiKey: '  ' });
-    expect(r.generatedJson).toEqual(semanaOk);
+    expect(r.generatedJson).toEqual(planOk);
     const [url, opts] = fetchMock.mock.calls[0];
     expect(url).toMatch(/\/ia\/gemini$/);
     expect(opts.headers['x-goog-api-key']).toBeUndefined();
@@ -85,7 +88,7 @@ describe('generateScheduleWithGemini — nunca inventa una semana', () => {
     const fetchMock = vi.fn().mockResolvedValue(okResponse(semanaOk));
     vi.stubGlobal('fetch', fetchMock);
     const r = await generateScheduleWithGemini({ prompt: 'x', apiKey: 'CLAVE-FALSA' });
-    expect(r).toEqual({ generatedJson: semanaOk, errorMsg: '' });
+    expect(r).toEqual({ generatedJson: planOk, errorMsg: '' });
     const [url, opts] = fetchMock.mock.calls[0];
     expect(url).toContain(GEMINI_MODELS[0]);
     expect(url).not.toContain('CLAVE-FALSA');
@@ -99,7 +102,7 @@ describe('generateScheduleWithGemini — nunca inventa una semana', () => {
       .mockResolvedValueOnce(okResponse(semanaOk));
     vi.stubGlobal('fetch', fetchMock);
     const r = await generateScheduleWithGemini({ prompt: 'x', apiKey: 'k' });
-    expect(r.generatedJson).toEqual(semanaOk);
+    expect(r.generatedJson).toEqual(planOk);
     expect(fetchMock.mock.calls[1][0]).toContain(GEMINI_MODELS[1]);
   });
 
@@ -110,6 +113,50 @@ describe('generateScheduleWithGemini — nunca inventa una semana', () => {
     expect(r.generatedJson).toBeNull();
     expect(r.errorMsg).toContain('403');
     expect(r.errorMsg).toContain('clave');
+  });
+
+  const equipo = [{ name: 'Ana', role: 'Conductora', rate: 37 }, { name: 'Luis', role: 'Apoyo', rate: 37 }];
+  const semanaReal = {
+    meta: { week: 'Semana 9', dateRange: 'Del 22 al 27 de Septiembre de 2026', status: 'Borrador' },
+    schedule: { martes: { tasks: [{ id: 'm1', text: 'Boda Uno - Carga', timeFrame: '09:00 - 11:00', assigned: ['Ana'], completed: true, phone: '600000000', mapsUrl: 'https://maps/x' }] } },
+    saturdaySpecial: { weddings: [] }, sundayMonday: { tasks: [] },
+  };
+
+  it('pide la respuesta con esquema (solo nombres del equipo) y temperatura baja', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse(semanaOk));
+    vi.stubGlobal('fetch', fetchMock);
+    await generateScheduleWithGemini({ prompt: 'x', apiKey: 'k', roster: equipo });
+    const { generationConfig } = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(generationConfig.temperature).toBe(0.3);
+    const asignados = generationConfig.responseSchema.properties.schedule.properties.martes.properties.tasks.items.properties.assigned;
+    expect(asignados.items.enum).toEqual(['Ana', 'Luis']);
+  });
+
+  it('si el modelo rechaza el esquema (400) lo repite sin él antes de rendirse', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({}) })
+      .mockResolvedValueOnce(okResponse(semanaOk));
+    vi.stubGlobal('fetch', fetchMock);
+    const r = await generateScheduleWithGemini({ prompt: 'x', apiKey: 'k', roster: equipo });
+    expect(r.generatedJson).toEqual(planOk);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).generationConfig.responseSchema).toBeDefined();
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).generationConfig.responseSchema).toBeUndefined();
+  });
+
+  it('BUG evitado: el prompt no lleva teléfonos, enlaces de Maps ni tarifas del equipo', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse(semanaOk));
+    vi.stubGlobal('fetch', fetchMock);
+    await generateScheduleWithGemini({ prompt: 'x', apiKey: 'k', roster: equipo, activeWeekData: semanaReal });
+    const texto = JSON.parse(fetchMock.mock.calls[0][1].body).contents[0].parts[0].text;
+    expect(texto).toContain('Boda Uno - Carga');
+    expect(texto).not.toMatch(/600000000|maps\/x|37/);
+  });
+
+  it('BUG evitado: una tarea hecha sobrevive aunque Gemini la quite o la desmarque', async () => {
+    const sinLaHecha = { ...semanaOk, schedule: { martes: { tasks: [{ id: 'm1', text: 'Boda Uno - Carga', timeFrame: '09:00 - 11:00', assigned: ['Luis'], completed: false }] } } };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(okResponse(sinLaHecha)));
+    const r = await generateScheduleWithGemini({ prompt: 'x', apiKey: 'k', roster: equipo, activeWeekData: semanaReal });
+    expect(r.generatedJson.schedule.martes.tasks[0]).toEqual(semanaReal.schedule.martes.tasks[0]);
   });
 
   it('una respuesta que no es una semana válida se rechaza', async () => {

@@ -4,7 +4,8 @@
 // "Crear Nueva Semana" (WeekManagerModal.jsx) necesita la misma llamada,
 // con las mismas reglas de negocio — mantenerlas en dos sitios las habría
 // desincronizado en cuanto alguien ajustara una sola copia.
-import { EVENT_CATEGORIES, buildEventName, normalizeGeneratedEvents } from './eventNaming';
+import { EVENT_CATEGORIES, buildEventName } from './eventNaming';
+import { semanaParaPrompt, semanaVacia, esquemaPlan, nombresPermitidos, completarPlanGenerado, contextoParaPrompt } from './planificadorIa';
 import { textoAprendizajeParaPrompt } from './aprendizajeFichajes';
 import { esMemoriaActiva } from './memoriaIa';
 import { llamarGeminiEnServidor } from './apiService';
@@ -67,7 +68,7 @@ export function buildWeekPrompt({ weekName, dateRange, trucks = [], workers = []
   return parts.filter(Boolean).join(' ');
 }
 
-function buildSystemPrompt(activeWeekData, roster = [], aiMemories = [], aprendizaje = null) {
+function buildSystemPrompt({ semana = null, roster = [], aiMemories = [], aprendizaje = null, disponibles = null }) {
   // Construimos las reglas de negocio dinámicamente basadas en los roles de los trabajadores
   const workerRules = roster.length > 0 ? roster.map(w => {
     const role = w.role.toLowerCase();
@@ -97,39 +98,30 @@ function buildSystemPrompt(activeWeekData, roster = [], aiMemories = [], aprendi
     ? `\nPREFERENCIAS DEL USUARIO (MEMORIA A LARGO PLAZO):\n${activas.map(m => `- ${m.content}`).join('\n')}\nTen en cuenta obligatoriamente estas preferencias operativas al asignar o ajustar tareas.`
     : '';
 
-  return `Eres el Asistente Experto en Logística de "Gula Logística".
+  const plan = semanaParaPrompt(semana);
+  const contexto = contextoParaPrompt({ semana, equipo: roster, disponibles });
+  const actual = semanaVacia(plan)
+    ? 'La semana está vacía: créala entera con lo que pide el usuario.'
+    : `PLANIFICACIÓN ACTUAL (las tareas con "completed": true ya están hechas: déjalas exactamente igual):\n${JSON.stringify(plan)}`;
+
+  return `Eres el Asistente Experto en Logística de "Gula Logística" (catering y eventos en Valencia).
+${contexto}
+
 REGLAS DE NEGOCIO IMPORTANTES:
 1. Para las tareas de RECOGIDA, asigna SIEMPRE a una sola persona, a menos que el usuario pida explícitamente que asigne a dos.
 ${workerRules}${memoryRules}
 3. Al planificar recogidas (especialmente recogidas de camión), prográmalas SIEMPRE por la mañana temprano, a menos que se indique lo contrario.
 4. Cuando se descargue en un evento, ten en cuenta que también hay MONTAJE DE ESTRUCTURA. Esto debe reflejarse en el texto y el tiempo estimado de la tarea.
-5. Genera las tareas como OBJETOS, intentando siempre separar el texto de la tarea (ej: "Recoger material") del horario (ej: "09:00 - 11:30") y de la ubicación (ej: "Alquileres Norte").
-6. Para cada tarea, si es fuera de la base, GENERA UN ENLACE DE GOOGLE MAPS válido para la ubicación usando este formato exacto: "https://www.google.com/maps/search/?api=1&query=Nombre+Del+Sitio". Si es en la base, déjalo vacío "".
-7. En "sundayMonday.tasks" (domingo y lunes comparten lista) pon SIEMPRE "targetDay": "Domingo" o "Lunes" según el día real de cada tarea; sin él la app no sabe a qué día pertenece.
+5. Cada tarea lleva por separado el texto (ej: "Recoger material"), el horario "HH:MM - HH:MM" y el lugar (ej: "Alquileres Norte"; en la base, "Almacén Base").
+6. Nadie puede estar en dos tareas a la vez: revisa los horarios de cada persona en cada día. Reparte la carga de forma equilibrada entre el personal disponible y, tras una boda que acaba de madrugada, evita poner a esas personas a primera hora del día siguiente.
+7. En "sundayMonday.tasks" (domingo y lunes comparten lista) pon SIEMPRE "targetDay": "Domingo" o "Lunes" según el día real de cada tarea.
 8. FORMATO DEL TEXTO DE CADA TAREA (de él salen los costes por evento y por persona): "EVENTO - Tarea", con un guion normal entre espacios UNA sola vez. EVENTO es el nombre exacto de la boda o evento (ej. "Boda Ana y Luis", "Evento Catering Norte") cuando la tarea es de ese evento; si es logística general, una de estas categorías: ${EVENT_CATEGORIES.map(c => `"${c}"`).join(', ')} ("Logística Preparación" = recogidas y devoluciones de camión o material, preparación de material, supervisión; "Logística Carga" = cargas de camión; "Limpieza Eventos" = limpieza de vajilla y utensilios). Si una tarea sirve a VARIOS eventos a la vez (ej. una recogida de material para dos bodas), pon los nombres separados por " + " antes del guion: "Boda Ana y Luis + Boda Eva y Pau - Recoger material Alquileres Norte" (su coste se reparte a partes iguales). La parte "Tarea" es corta y concreta, sin guiones con espacios ni horas ni nombres de personas (van en timeFrame y assigned). Ejemplos: "Boda Ana y Luis - Descarga + Montaje Estructura", "Boda Ana y Luis - Recoger generador", "Boda Ana y Luis - Logística Cierre", "Boda Ana y Luis - Supervisión", "Logística Preparación - Recogida Camión Covey", "Logística Preparación - Devolución Alquileres Norte", "Logística Carga - Carga Camión Miércoles", "Limpieza Eventos - Limpieza eventos".
-9. Te pasaré la SEMANA ACTUAL en formato JSON. Si el usuario te pide un cambio o ajuste, MODIFICA el JSON actual de forma inteligente, preservando lo que no cambie, y devuelve el JSON completo actualizado.${historyRule}
+9. Si el usuario pide un cambio, modifica SOLO lo necesario y conserva el resto de la planificación tal cual, con el mismo "id" en las tareas que ya existen.${historyRule}
 
-Este es el JSON ACTUAL de la semana (únelo con los cambios que pide el usuario):
-${JSON.stringify(activeWeekData || {}, null, 2)}
+${actual}
 
-Genera una respuesta EXCLUSIVAMENTE en formato JSON válido sin texto previo ni posterior, con TODAS LAS CLAVES ORIGINALES Y TUS CAMBIOS, siguiendo esta estructura exacta:
-{
-  "meta": { "week": "Semana X", "dateRange": "Fechas", "status": "Operativa Activa" },
-  "schedule": {
-    "martes": { "title": "Martes", "badge": "Arranque", "tasks": [{ "id": "m1", "text": "Texto", "location": "Alquileres Norte", "timeFrame": "09:00 - 11:00", "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Alquileres Norte", "assigned": ["Nombre exacto del equipo"], "completed": false }] },
-    "miercoles": { "title": "Miércoles", "badge": "Pre-carga", "tasks": [...] },
-    "jueves": { "title": "Jueves", "badge": "Eventos", "tasks": [...] },
-    "viernes": { "title": "Viernes", "badge": "Cierre", "tasks": [...] }
-  },
-  "saturdaySpecial": {
-    "title": "Sábado — Eventos Simultáneos",
-    "weddings": [{ "location": "Lugar", "truck": "Camión X", "details": "Detalles", "timeFrame": "10:00 - 02:00", "mapsUrl": "https://www.google.com/maps/search/?api=1&query=Lugar", "assigned": ["Nombre exacto del equipo"] }]
-  },
-  "sundayMonday": {
-    "title": "Domingo & Lunes — Logística Inversa",
-    "tasks": [{ "id": "sl1", "text": "Texto", "location": "Almacén", "timeFrame": "09:00 - 14:00", "mapsUrl": "", "assigned": ["Nombre exacto del equipo"], "targetDay": "Domingo", "completed": false }]
-  }
-}`;
+Responde SOLO con JSON con esta forma: {"schedule":{"martes":{"tasks":[...]},"miercoles":{"tasks":[...]},"jueves":{"tasks":[...]},"viernes":{"tasks":[...]}},"saturdaySpecial":{"weddings":[...]},"sundayMonday":{"tasks":[...]}}.
+Cada tarea: {"id","text","location","timeFrame","assigned":["nombre exacto"],"truck","event"} ("truck" y "event" solo si hacen falta; en sundayMonday añade "targetDay"). Cada boda del sábado: {"location","truck","details","timeFrame","assigned","event"}. No escribas enlaces de Maps ni el estado de hecha: la app los pone sola.`;
 }
 
 // Modelos a probar por orden. El código llevaba `gemini-1.5-flash`, ya retirado
@@ -205,17 +197,23 @@ export function validateGeneratedSchedule(json) {
 // interfaz dejaba "Crear la Semana con esta Planificación": el usuario
 // generaba la semana nueva y salía con los eventos de la anterior. Un dato
 // inventado que parece real es peor que un error claro.
-export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData, eventNames = [], roster = [], aiMemories = [], aprendizaje = null }) {
+export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData = null, eventNames = null, roster = [], aiMemories = [], aprendizaje = null, disponibles = null }) {
   const activeApiKey = (apiKey || '').trim();
 
-  const systemPrompt = buildSystemPrompt(activeWeekData, roster, aiMemories, aprendizaje);
-  const body = JSON.stringify({
+  const systemPrompt = buildSystemPrompt({ semana: activeWeekData, roster, aiMemories, aprendizaje, disponibles });
+  const nombres = nombresPermitidos({ equipo: roster, disponibles, semana: activeWeekData });
+  const eventos = eventNames || (activeWeekData?.events || []).map(e => e?.name).filter(Boolean);
+  // Con esquema la respuesta es siempre JSON válido y no puede inventarse a nadie;
+  // temperatura baja: una planificación se quiere coherente, no creativa.
+  const cuerpo = (conEsquema) => JSON.stringify({
     contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\nSolicitud del usuario: ${prompt}` }] }],
-    generationConfig: { responseMimeType: 'application/json' }
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.3, ...(conEsquema ? { responseSchema: esquemaPlan(nombres) } : {}) },
   });
 
   try {
-    const res = await llamarGemini(activeApiKey, body);
+    let res = await llamarGemini(activeApiKey, cuerpo(true));
+    // Si el modelo no acepta el esquema (400), se repite sin él antes de rendirse.
+    if (res?.status === 400) res = await llamarGemini(activeApiKey, cuerpo(false));
 
     if (!res?.ok) {
       const status = res?.status || 0;
@@ -236,8 +234,8 @@ export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekDat
     const invalid = validateGeneratedSchedule(parsed);
     if (invalid) throw new Error(invalid);
 
-    // Si la IA se salta el formato "Evento - Tarea", se completa aquí.
-    return { generatedJson: normalizeGeneratedEvents(parsed, eventNames), errorMsg: '' };
+    // Hechas intactas, desactivadas conservadas, nombres exactos, ids, Maps y "Evento - Tarea".
+    return { generatedJson: completarPlanGenerado(parsed, { original: activeWeekData, equipo: roster, eventNames: eventos }), errorMsg: '' };
   } catch (err) {
     console.error(err);
     return {
