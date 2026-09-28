@@ -135,3 +135,51 @@ describe('useWeeks — semana activa siempre válida', () => {
     expect(result.current.activeWeekId).toBe('week_4');
   });
 });
+
+describe('useWeeks — deshacer lo último que aplicó Gemini', () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('guarda la versión anterior y, al deshacer, la restaura con el updatedAt actual (sin conflicto)', async () => {
+    const { saveWeeksToAPI } = await import('../data/apiService');
+    const { result } = montar();
+    const antes = result.current.activeWeek;
+    saveWeeksToAPI.mockResolvedValueOnce({ success: true, data: { week_3: { ...antes, schedule: { martes: { tasks: [{ text: 'De Gemini' }] } }, updatedAt: 'v2' } } });
+    await act(async () => { await result.current.handleApplyGeminiSchedule({ schedule: { martes: { tasks: [{ text: 'De Gemini' }] } } }); });
+    expect(result.current.deshacerIa).toMatchObject({ weekId: 'week_3', nombre: 'Semana 3' });
+    expect(result.current.activeWeek.schedule.martes.tasks[0].text).toBe('De Gemini');
+    expect(result.current.cambiadaTrasIa()).toBe(false);
+
+    saveWeeksToAPI.mockResolvedValueOnce({ success: true, data: {} });
+    await act(async () => { await result.current.deshacerUltimaIa(); });
+    const enviado = saveWeeksToAPI.mock.calls.at(-1)[0].week_3;
+    expect(enviado.schedule).toEqual(antes.schedule); // como antes de Gemini
+    expect(enviado.updatedAt).toBe('v2'); // con la versión actual: el servidor no lo toma por conflicto
+    expect(result.current.deshacerIa).toBeNull();
+  });
+
+  it('si el guardado falla no se ofrece deshacer', async () => {
+    const { saveWeeksToAPI } = await import('../data/apiService');
+    const { result } = montar();
+    saveWeeksToAPI.mockResolvedValueOnce(null);
+    // Con el guardado fallido la app se queda esperando a que se cierre su aviso de
+    // error: no se espera a eso, solo a que termine el intento de guardar.
+    await act(async () => { result.current.handleApplyGeminiSchedule({ schedule: {} }); await Promise.resolve(); await Promise.resolve(); });
+    expect(saveWeeksToAPI).toHaveBeenCalled();
+    expect(result.current.deshacerIa).toBeNull();
+  });
+});
+
+describe('useWeeks — guardar solo lo que cambia', () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it('BUG evitado: al guardar una semana solo se envía esa (antes iban todas y, con muchas, el servidor lo rechazaba)', async () => {
+    const { saveWeeksToAPI } = await import('../data/apiService');
+    const { result } = montar();
+    act(() => result.current.setAllWeeks({ week_3: semana(), week_4: { ...semana(), id: 'week_4', name: 'Semana 4' } }));
+    saveWeeksToAPI.mockClear();
+    saveWeeksToAPI.mockResolvedValueOnce({ success: true, data: {} });
+    await act(async () => { await result.current.handleUpdateActiveWeek({ ...result.current.activeWeek, name: 'Semana 3 editada' }); });
+    const enviado = saveWeeksToAPI.mock.calls[0][0];
+    expect(Object.keys(enviado)).toEqual([result.current.activeWeekId]);
+  });
+});

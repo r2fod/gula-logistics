@@ -8,21 +8,37 @@ const router = express.Router();
 
 // Fallback in-memory storage when Mongo is offline
 let memoryClockEntries = [];
+// Lo que se guarda en memoria lleva su propia marca de cambio, como Mongo con
+// `timestamps`, para que ?desde= también funcione sin base de datos.
+const conMarca = (e) => ({ ...e, updatedAt: new Date().toISOString() });
 
-// GET /api/clock - Get all clock entries (optional query ?worker=Name)
+// El nombre llega del navegador: se escapa antes de meterlo en una expresión
+// regular (antes iba tal cual: con un patrón malicioso se podía cargar la base).
+const escaparRegex = (texto) => String(texto).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// GET /api/clock - Fichajes (opcional ?worker=Nombre). Con ?desde=<fecha ISO>, solo
+// los creados o cambiados desde entonces (también los borrados: se marcan, no se
+// quitan): la app sondea cada 20 s y así no descarga el histórico entero cada vez.
 router.get('/', async (req, res) => {
   try {
-    const { worker } = req.query;
+    const { worker, desde } = req.query;
+    const desdeFecha = desde ? new Date(String(desde)) : null;
+    if (desdeFecha && Number.isNaN(desdeFecha.getTime())) {
+      return res.status(400).json({ error: 'desde debe ser una fecha ISO' });
+    }
 
     if (mongoose.connection.readyState === 1) {
-      const query = worker ? { workerName: new RegExp(`^${worker}$`, 'i') } : {};
+      const query = {};
+      if (worker) query.workerName = new RegExp(`^${escaparRegex(worker)}$`, 'i');
+      if (desdeFecha) query.updatedAt = { $gte: desdeFecha };
       const entries = await ClockEntry.find(query).sort({ createdAt: -1 });
       return res.json(entries);
     }
 
     let filtered = memoryClockEntries;
+    if (desdeFecha) filtered = filtered.filter(e => e.updatedAt && new Date(e.updatedAt) >= desdeFecha);
     if (worker) {
-      filtered = memoryClockEntries.filter(e => e.workerName?.toLowerCase() === worker.toLowerCase());
+      filtered = filtered.filter(e => e.workerName?.toLowerCase() === String(worker).toLowerCase());
     }
     return res.json(filtered);
   } catch (error) {
@@ -65,8 +81,9 @@ router.post('/', async (req, res) => {
       return res.status(201).json(entryDoc);
     }
 
-    memoryClockEntries.push(newEntryData);
-    return res.status(201).json(newEntryData);
+    const enMemoria = conMarca(newEntryData);
+    memoryClockEntries.push(enMemoria);
+    return res.status(201).json(enMemoria);
   } catch (error) {
     // id duplicado (índice único) = este fichaje YA se guardó antes — lo
     // más probable es que el móvil no recibiera la respuesta original (sin
@@ -100,7 +117,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
 
     const idx = memoryClockEntries.findIndex(e => e.id === id);
     if (idx !== -1) {
-      memoryClockEntries[idx] = { ...memoryClockEntries[idx], ...updateData };
+      memoryClockEntries[idx] = conMarca({ ...memoryClockEntries[idx], ...updateData });
       return res.json(memoryClockEntries[idx]);
     }
     return res.status(404).json({ error: 'Fichaje no encontrado en memoria' });
@@ -149,7 +166,7 @@ router.delete('/:id', async (req, res) => {
       if (!isAdmin && ageMs > 15 * 60 * 1000) {
         return res.status(401).json({ error: 'No autorizado para borrar fichajes antiguos' });
       }
-      memoryClockEntries[idx] = { ...entry, deleted: true };
+      memoryClockEntries[idx] = conMarca({ ...entry, deleted: true });
       return res.json({ success: true, message: 'Fichaje movido a papelera en local' });
     }
     
@@ -173,7 +190,7 @@ router.put('/:id/restore', requireAdmin, async (req, res) => {
 
     const idx = memoryClockEntries.findIndex(e => e.id === id);
     if (idx !== -1) {
-      memoryClockEntries[idx] = { ...memoryClockEntries[idx], deleted: false };
+      memoryClockEntries[idx] = conMarca({ ...memoryClockEntries[idx], deleted: false });
       return res.json(memoryClockEntries[idx]);
     }
     return res.status(404).json({ error: 'Fichaje no encontrado en memoria' });

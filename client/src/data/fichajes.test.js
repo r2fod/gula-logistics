@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { crearFichaje, horaDeFichaje, fechaDeFichaje, fichajesDeLaSemana } from './fichajes';
+import { crearFichaje, horaDeFichaje, fechaDeFichaje, fichajesDeLaSemana, ultimaModificacion, fusionarCambiosFichajes } from './fichajes';
 
 const trabajador = { name: 'Ana', role: 'Conductora', isPayroll: false, rate: 12 };
 const fecha = new Date(2026, 8, 21, 9, 5, 7);
@@ -82,5 +82,34 @@ describe('fichajesDeLaSemana — martes a martes, con el lunes de cola', () => {
     const roto = { id: 'x', type: 'entrada', timestamp: 'nada' };
     expect(fichajesDeLaSemana([roto], null)).toEqual([roto]);
     expect(fichajesDeLaSemana([roto], rango)).toEqual([]);
+  });
+});
+
+describe('sincronización por cambios', () => {
+  const f = (id, updatedAt, extra = {}) => ({ id, updatedAt, workerName: 'Ana', type: 'entrada', timestamp: updatedAt, ...extra });
+
+  it('ultimaModificacion: el updatedAt más reciente (los que no lo traen, fuera)', () => {
+    expect(ultimaModificacion([f('a', '2026-09-28T10:00:00.000Z'), f('b', '2026-09-28T11:00:00.000Z'), { id: 'c' }])).toBe('2026-09-28T11:00:00.000Z');
+    expect(ultimaModificacion([])).toBeNull();
+  });
+
+  it('sustituye lo que cambió (p. ej. un borrado), añade lo nuevo al principio y deja el resto', () => {
+    const actuales = [f('a', '2026-09-28T10:00:00.000Z'), f('b', '2026-09-28T09:00:00.000Z')];
+    const r = fusionarCambiosFichajes(actuales, [f('b', '2026-09-28T12:00:00.000Z', { deleted: true }), f('c', '2026-09-28T12:05:00.000Z')]);
+    expect(r.map(x => x.id)).toEqual(['c', 'a', 'b']);
+    expect(r.find(x => x.id === 'b').deleted).toBe(true);
+  });
+
+  it('si no cambia nada de verdad devuelve la MISMA lista (la pantalla no se recalcula)', () => {
+    const actuales = [f('a', '2026-09-28T10:00:00.000Z')];
+    expect(fusionarCambiosFichajes(actuales, [f('a', '2026-09-28T10:00:00.000Z')])).toBe(actuales);
+    expect(fusionarCambiosFichajes(actuales, [])).toBe(actuales);
+  });
+
+  it('un fichaje hecho en este móvil (aún sin updatedAt) se sustituye por el del servidor', () => {
+    const local = { id: 'x', workerName: 'Ana', type: 'entrada', timestamp: '2026-09-28T10:00:00.000Z' };
+    const r = fusionarCambiosFichajes([local], [f('x', '2026-09-28T10:00:01.000Z')]);
+    expect(r).toHaveLength(1);
+    expect(r[0].updatedAt).toBe('2026-09-28T10:00:01.000Z');
   });
 });

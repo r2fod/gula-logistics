@@ -10,7 +10,8 @@ _Resumen de lo que ya está hecho y por qué es así. El detalle de cada cambio 
 - **Token de admin fuera de la URL visible** (se quita con `replaceState`) y `<meta name="referrer" content="no-referrer">`.
 - **Endpoints públicos acotados:** `PATCH /weeks/:id/tasks` solo escribe `completed`/`reopened`/`completedAt` (validados) de una tarea; `POST /api/clock` descarta importes calculados y limita la tarifa a 0–100 €/h; `DELETE /weeks/:id` solo borradores; recuerdos de IA de 1–300 caracteres.
 - **Vista pública por defecto:** sin sesión de admin ni trabajador reconocido se ve `PublicView` (el icono de la PWA pierde los parámetros de la URL). El Grafo de un trabajador solo enseña lo suyo.
-- **Clave de Gemini** solo en el `localStorage` de cada navegador (nunca en variables `VITE_`, que acaban en el bundle).
+- **Clave de Gemini en el servidor** (28/09): `POST /api/ia/gemini` (solo admin) llama a Google con `GEMINI_API_KEY` de Render; una clave pegada en el navegador sigue valiendo y va primero. Nunca en variables `VITE_`, que acaban en el bundle.
+- **Texto del navegador en una `RegExp`, siempre escapado** (`GET /api/clock?worker=` lo metía tal cual).
 
 ## Planning y fechas
 - **Toda la lógica de "¿qué día es / ya pasó?" vive en `taskPlanning.js`** y sale de la fecha real (`meta.dateRange`), nunca del día de la semana suelto (un "martes" existe en todas las semanas). Hubo cuatro copias que se arreglaban por separado.
@@ -33,7 +34,7 @@ _Resumen de lo que ya está hecho y por qué es así. El detalle de cada cambio 
 - **Carga por partes:** el panel de admin y sus editores van con `React.lazy` (App.jsx); lo que descarga un trabajador pasó de 985 KB a 356 KB. Si tras un despliegue falta un trozo, `main.jsx` recarga una vez.
 - **Nada se redibuja entero cada segundo:** lo que cambia cada segundo (cronómetros, dinero en directo) va en `<EnVivo>`; las pantallas se recalculan cada 15–30 s.
 - **Dinero en tiempo real** (`costeEnVivo.js`): solo en vistas con sesión (monitor en vivo de admin/socias y Saldos), nunca en la vista pública; con bolsa, como en Saldos.
-- **Gemini, revisar antes de aplicar** (`diffSemana.js`): qué cambia por día y avisos de gente o camiones inventados y de solapes de horario.
+- **Gemini, revisar antes de aplicar** (`diffSemana.js`): qué cambia por día y avisos de gente o camiones inventados y de solapes de horario. Tras aplicar, **Deshacer** devuelve la semana anterior (avisa si desde entonces tuvo otros cambios).
 
 ## Forma de trabajar
 - **Build verde ≠ funciona.** Tras un refactor grande, barrido de ESLint (`no-undef`) — hubo pantallas en negro por referencias colgando — y mirar la app desplegada.
@@ -44,5 +45,6 @@ _Resumen de lo que ya está hecho y por qué es así. El detalle de cada cambio 
 - Varias sesiones (Claude, Gemini) trabajan a la vez: traer `origin/main` antes de fusionar y revisar lo que entró (el 27/09 un commit ajeno rompió el marcado de bodas en la vista de trabajador).
 
 ## Escala (notas)
-- `GET /api/clock` trae todo el histórico sin paginar: bien para el volumen actual; revisar si crece mucho.
+- **Fichajes por cambios** (28/09): el histórico entero solo al abrir y cada 10 min; entre medias `GET /api/clock?desde=` (por `updatedAt`, con 30 s de margen). Borrar es marcar, así que la papelera también llega por cambios.
+- **Guardar semanas manda solo las que cambiaron**: con todas, hacia la semana 10 se pasaba del límite de 100 KB de Express (ahora 2 MB de margen).
 - El bootstrap de Mongo solo crea `week_3` si la base está vacía.

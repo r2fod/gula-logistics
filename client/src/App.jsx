@@ -28,6 +28,8 @@ const CargandoPanel = () => (
 import { logisticsData as BASE_DATA } from './data/logisticsData';
 import {
   fetchClockEntriesFromAPI,
+  fetchClockEntryChangesFromAPI,
+  guardarCopiaFichajes,
   getStoredAdminToken,
   setStoredAdminToken,
   getStoredSociasToken,
@@ -41,7 +43,7 @@ import {
   deleteWeekFromAPI
 } from './data/apiService';
 import { pairShiftsFromEntries } from './data/shiftCalculations';
-import { fichajesDeLaSemana } from './data/fichajes';
+import { fichajesDeLaSemana, ultimaModificacion, fusionarCambiosFichajes } from './data/fichajes';
 import { aprenderDeFichajes } from './data/aprendizajeFichajes';
 import { semanaDeLaVispera } from './data/vispera';
 import { getWeekRange } from './data/taskPlanning';
@@ -77,6 +79,10 @@ export default function App() {
     markTaskCompleted,
     handleCreateWeek,
     handleApplyGeminiSchedule,
+    deshacerIa,
+    cambiadaTrasIa,
+    deshacerUltimaIa,
+    olvidarDeshacerIa,
     lastLocalEditRef
   } = useWeeks();
 
@@ -325,13 +331,6 @@ export default function App() {
       });
     }
 
-    // Sync sensitive clock entries from backend MongoDB Atlas
-    fetchClockEntriesFromAPI().then(remoteEntries => {
-      if (remoteEntries && Array.isArray(remoteEntries) && remoteEntries.length > 0) {
-        setClockEntries(remoteEntries);
-      }
-    });
-
     // Sync the shared weekly planning from MongoDB Atlas — this is the
     // source of truth now, not each browser's own localStorage copy.
     fetchWeeksFromAPI().then(remoteWeeks => {
@@ -352,7 +351,36 @@ export default function App() {
 
   // Poll for fresh clock entries so the Live Monitor reflects fichajes made
   // from other workers' own links (their phones) without a manual refresh.
+  // Solo se descarga el histórico entero al abrir y cada 10 min (red de seguridad);
+  // el resto de ciclos piden lo cambiado desde el último fichaje visto (?desde=).
+  const cursorFichajesRef = useRef(null);
+  const ultimaCompletaRef = useRef(0);
   useEffect(() => {
+    const sincronizarFichajes = async () => {
+      const toca = !cursorFichajesRef.current || Date.now() - ultimaCompletaRef.current > 10 * 60 * 1000;
+      if (toca) {
+        const todos = await fetchClockEntriesFromAPI();
+        if (!Array.isArray(todos)) return;
+        // Al abrir, una lista vacía no pisa la copia local (puede ser el servidor despertando).
+        if (todos.length > 0 || cursorFichajesRef.current) setClockEntries(todos);
+        cursorFichajesRef.current = ultimaModificacion(todos);
+        ultimaCompletaRef.current = Date.now();
+        return;
+      }
+      // 30 s de margen: dos fichajes guardados a la vez pueden llegar a la base
+      // en otro orden; lo repetido se descarta al fusionar (mismo updatedAt).
+      const desde = new Date(Date.parse(cursorFichajesRef.current) - 30 * 1000).toISOString();
+      const cambios = await fetchClockEntryChangesFromAPI(desde);
+      if (!cambios?.length) return;
+      cursorFichajesRef.current = ultimaModificacion([...cambios, { updatedAt: cursorFichajesRef.current }]);
+      setClockEntries(prev => {
+        const siguiente = fusionarCambiosFichajes(prev, cambios);
+        if (siguiente !== prev) guardarCopiaFichajes(siguiente);
+        return siguiente;
+      });
+    };
+    sincronizarFichajes();
+
     // En cuanto el móvil recupera cobertura, reintentar YA los fichajes
     // pendientes en vez de esperar hasta 20s al siguiente tick del
     // intervalo — importante en fincas de boda con cobertura intermitente.
@@ -364,11 +392,7 @@ export default function App() {
       // caído (para todos, no solo admin — cualquier trabajador puede
       // tener fichajes pendientes en su propio móvil).
       retryPendingClockEntries();
-      fetchClockEntriesFromAPI().then(remoteEntries => {
-        if (remoteEntries && Array.isArray(remoteEntries)) {
-          setClockEntries(remoteEntries);
-        }
-      });
+      sincronizarFichajes();
       // No sobreescribir semanas si el usuario ha tocado algo en los últimos 5s
       // (el PATCH puede tardar un poco en llegar al servidor y reflejarse en el GET)
       const msSinceLastEdit = Date.now() - (lastLocalEditRef?.current || 0);
@@ -582,6 +606,10 @@ export default function App() {
         activeWeekData={activeWeek}
         allWeeks={allWeeks}
         aprendizaje={aprendizaje}
+        deshacerIa={deshacerIa}
+        cambiadaTrasIa={cambiadaTrasIa()}
+        onDeshacerIa={deshacerUltimaIa}
+        onOlvidarDeshacerIa={olvidarDeshacerIa}
         activeWeekId={activeWeekId}
         onSelectWeek={setActiveWeekId}
         onUpdateWeek={handleUpdateActiveWeek}

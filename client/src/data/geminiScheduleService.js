@@ -7,6 +7,7 @@
 import { EVENT_CATEGORIES, buildEventName, normalizeGeneratedEvents } from './eventNaming';
 import { textoAprendizajeParaPrompt } from './aprendizajeFichajes';
 import { esMemoriaActiva } from './memoriaIa';
+import { llamarGeminiEnServidor } from './apiService';
 
 export const GEMINI_API_KEY_STORAGE_KEY = 'gula_gemini_api_key';
 
@@ -141,7 +142,10 @@ export const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest'];
 // POST a Gemini probando GEMINI_MODELS por orden (solo pasa al siguiente si el
 // modelo no existe, 404). La clave va en la cabecera, no en la URL, para que no
 // quede en historiales ni registros de red. Devuelve la última Response.
+// Sin clave en este navegador se pasa por el servidor (/api/ia/gemini, solo admin),
+// que usa la suya (GEMINI_API_KEY en Render): así no hay que pegarla en cada móvil.
 async function llamarGemini(apiKey, body) {
+  if (!apiKey) return llamarGeminiEnServidor(body);
   let res = null;
   for (const model of GEMINI_MODELS) {
     res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -164,7 +168,7 @@ export const MAX_MEMORIA_IA = 300;
 // lo que se guarda aquí entra en TODOS los prompts futuros como "obligatorio".
 export async function extraerMemoriaDelPrompt({ prompt, apiKey }) {
   const clave = (apiKey || '').trim();
-  if (!clave || !prompt?.trim()) return null;
+  if (!prompt?.trim()) return null;
   const memPrompt = `Analiza el siguiente texto del usuario: "${prompt}".\n¿El usuario está expresando una regla, preferencia o hecho general que debe recordarse a largo plazo para futuras planificaciones? (Ej: "A Luis no le gusta el camión X", "Las bodas dobles necesitan más tiempo").\nSi es así, extrae esa regla como una frase corta y clara. Si es solo una orden puntual para esta semana (Ej: "Pon a Ana mañana", "Quita a Eva del viernes"), responde EXACTAMENTE y únicamente con la palabra: NO_MEMORY.`;
   try {
     const res = await llamarGemini(clave, JSON.stringify({
@@ -204,13 +208,6 @@ export function validateGeneratedSchedule(json) {
 export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData, eventNames = [], roster = [], aiMemories = [], aprendizaje = null }) {
   const activeApiKey = (apiKey || '').trim();
 
-  if (!activeApiKey) {
-    return {
-      generatedJson: null,
-      errorMsg: 'Falta la clave de Gemini en este dispositivo (se guarda solo en este navegador, así que hay que pegarla en cada móvil u ordenador). Pégala en el campo de arriba y vuelve a generar. No se ha creado nada.'
-    };
-  }
-
   const systemPrompt = buildSystemPrompt(activeWeekData, roster, aiMemories, aprendizaje);
   const body = JSON.stringify({
     contents: [{ role: 'user', parts: [{ text: `${systemPrompt}\n\nSolicitud del usuario: ${prompt}` }] }],
@@ -220,9 +217,13 @@ export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekDat
   try {
     const res = await llamarGemini(activeApiKey, body);
 
-    if (!res.ok) {
-      const hint = res.status === 400 || res.status === 403 ? ' — comprueba que la clave es correcta' : res.status === 429 ? ' — demasiadas peticiones, espera un minuto' : '';
-      throw new Error(`Error Gemini API (${res.status})${hint}`);
+    if (!res?.ok) {
+      const status = res?.status || 0;
+      const hint = status === 503 && !activeApiKey ? ' — falta la clave de Gemini: pégala en este navegador (botón de la llave) o ponla en el servidor (GEMINI_API_KEY en Render)'
+        : status === 401 && !activeApiKey ? ' — inicia sesión de administrador para usar la clave del servidor'
+        : status === 400 || status === 403 ? ' — comprueba que la clave es correcta'
+        : status === 429 ? ' — demasiadas peticiones, espera un minuto' : '';
+      throw new Error(`Error Gemini API (${status})${hint}`);
     }
 
     const data = await res.json();

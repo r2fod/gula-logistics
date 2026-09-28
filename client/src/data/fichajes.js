@@ -66,3 +66,28 @@ export function fichajesDeLaSemana(fichajes = [], rango, abiertos = []) {
     return !Number.isNaN(t) && t >= desde && t < hasta;
   });
 }
+
+// Sincronización por cambios (GET /api/clock?desde=): hasta cuándo se tiene todo
+// —el `updatedAt` más reciente que ha mandado el servidor, así no depende del reloj
+// del móvil— y cómo meter los cambios en la lista.
+export function ultimaModificacion(fichajes = []) {
+  let max = null;
+  fichajes.forEach(f => {
+    const t = f?.updatedAt ? new Date(f.updatedAt).getTime() : NaN;
+    if (!Number.isNaN(t) && (max === null || t > max)) max = t;
+  });
+  return max === null ? null : new Date(max).toISOString();
+}
+
+// Sustituye por `id` los que ya estaban y añade al principio los nuevos (el servidor
+// los manda del más reciente al más antiguo). Si nada cambia de verdad (mismo
+// `updatedAt`), devuelve la MISMA lista: así la pantalla no se recalcula en balde.
+export function fusionarCambiosFichajes(actuales = [], cambios = []) {
+  const porId = new Map(actuales.map(f => [f.id, f]));
+  const reales = (cambios || []).filter(c => c?.id && (!porId.has(c.id) || porId.get(c.id).updatedAt !== c.updatedAt));
+  if (!reales.length) return actuales;
+  const nuevos = new Map(reales.map(c => [c.id, c]));
+  const sustituidos = actuales.map(f => nuevos.get(f.id) || f);
+  const anadidos = reales.filter(c => !porId.has(c.id));
+  return [...anadidos, ...sustituidos];
+}

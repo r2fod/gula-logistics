@@ -133,3 +133,43 @@ describe('DELETE /api/clock (sin id)', () => {
     expect(ClockEntry.deleteMany).not.toHaveBeenCalled();
   });
 });
+
+describe('GET /api/clock — sincronización por cambios y filtro por persona', () => {
+  const ordenar = (lista) => ({ sort: vi.fn().mockResolvedValue(lista) });
+
+  it('?desde= pide a la base solo lo creado o cambiado desde esa fecha', async () => {
+    ClockEntry.find.mockReturnValue(ordenar([{ id: 'n1' }]));
+    const r = await request(buildApp()).get('/api/clock?desde=2026-09-28T10:00:00.000Z');
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual([{ id: 'n1' }]);
+    expect(ClockEntry.find).toHaveBeenCalledWith({ updatedAt: { $gte: new Date('2026-09-28T10:00:00.000Z') } });
+  });
+
+  it('una fecha rara da 400, sin tocar la base', async () => {
+    expect((await request(buildApp()).get('/api/clock?desde=ayer')).status).toBe(400);
+    expect(ClockEntry.find).not.toHaveBeenCalled();
+  });
+
+  it('BUG evitado: ?worker= se escapa antes de ir a la expresión regular (antes se podía meter un patrón)', async () => {
+    ClockEntry.find.mockReturnValue(ordenar([]));
+    await request(buildApp()).get(`/api/clock?worker=${encodeURIComponent('(a+)+$')}`);
+    const { workerName } = ClockEntry.find.mock.calls[0][0];
+    expect(workerName.source).toBe('^\\(a\\+\\)\\+\\$$');
+    expect(workerName.test('(a+)+$')).toBe(true);
+    expect(workerName.test('aaaa')).toBe(false);
+  });
+
+  it('BUG evitado: sin Mongo, ?worker= ya no se salta ?desde= y lo guardado lleva su marca de cambio', async () => {
+    mongoose.connection.readyState = 0;
+    const antes = new Date(Date.now() - 1000).toISOString();
+    await request(buildApp()).post('/api/clock').send({ id: 'mem-1', workerName: 'Persona Memoria', type: 'entrada', timestamp: antes });
+    await request(buildApp()).post('/api/clock').send({ id: 'mem-2', workerName: 'Otra Memoria', type: 'entrada', timestamp: antes });
+
+    const suyos = await request(buildApp()).get(`/api/clock?desde=${antes}&worker=persona memoria`);
+    expect(suyos.body.map(e => e.id)).toEqual(['mem-1']);
+    expect(suyos.body[0].updatedAt).toBeTruthy();
+
+    const futuro = new Date(Date.now() + 60 * 1000).toISOString();
+    expect((await request(buildApp()).get(`/api/clock?desde=${futuro}&worker=Persona Memoria`)).body).toEqual([]);
+  });
+});

@@ -1,12 +1,11 @@
 # Pendientes
 
-_Solo lo que sigue abierto (actualizado el 27/09/2026). Lo resuelto se borra de aquí: queda en `git log` y, si deja una lección, en `MEJORAS.md`. La versión larga anterior: `git show 19e5547:PENDIENTES.md`._
+_Solo lo que sigue abierto (actualizado el 28/09/2026). Lo resuelto se borra de aquí: queda en `git log` y, si deja una lección, en `MEJORAS.md`. La versión larga anterior: `git show 19e5547:PENDIENTES.md`._
 
 ## 🔴 Seguridad y datos
 - [ ] **Enlaces de socias VIEJOS con la sesión de admin dentro** (`?token=`, del modal de WhatsApp anterior al 27/09): siguen dando acceso de ADMIN hasta que se cambie la clave de admin (eso los anula). Cambiar la clave y reenviar a las socias el enlace nuevo de solo lectura.
 - [ ] **Otros endpoints públicos sin datos de acceso** (por diseño: el trabajador no tiene sesión): `GET /api/clock` (todos los fichajes, con tarifa), `GET /api/roster` (tarifa y nómina de cada persona) y `DELETE /api/clock/:id` (cualquiera puede mandar a la papelera un fichaje de menos de 15 min; se restaura desde admin). Se cerrarían con un token por trabajador, como el de socias (ver "Enlaces firmados").
 - [ ] **El historial público de git conserva datos sensibles** (saldos reales de 14–15/09, una clave VAPID privada ya sin uso, contraseñas de componentes antiguos). Opciones: purgar el historial (`git filter-repo` + force-push, destructivo) o repo privado (Pages privado es de pago). Mientras tanto: **cambiar la clave de admin** desde "Clave".
-- [ ] **Datos personales en el árbol actual:** nombres y tarifas en `DEFAULT_WORKERS_LIST` (repetida en `App.jsx` y `hooks/useWorkers.js`) y en `server/src/routes/roster.routes.js`; nombres en `ClockInModal`/`LiveMonitorPanel`, en el JSON de ejemplo del prompt de Gemini, en `weekGenerator.js` (comentario) y en algunos tests antiguos. El equipo ya está en Mongo: se pueden sustituir por datos de ejemplo.
 - [ ] **Variables del calendario en Render** (`CALENDARIO_PROJECT_ID`, `CALENDARIO_API_KEY`, `CALENDARIO_CODIGO`; mejor el código de solo lectura). Sin ellas no hay borradores automáticos. Comprobar con `GET /api/calendario/estado` (admin).
 
 ## 🟡 Funcional
@@ -27,13 +26,9 @@ _Solo lo que sigue abierto (actualizado el 27/09/2026). Lo resuelto se borra de 
 - [ ] Los conceptos a mano ANTERIORES al 28/09 no llevan fecha ni tipo (los nuevos sí): los pagos antiguos se reconocen por el texto ("pago", "efectivo", "Bizum", "adelanto"…) y los que no tienen fecha (bolsa, roturas, pagos) solo se suman en «Todo».
 - [ ] Revisar en producción con sesión de admin: Saldos (dos grupos), "Ver sus horas por evento", el Resumen con lo apuntado a mano y lo previsto, copiar para WhatsApp y la papelera del Historial.
 
-## Auditoría 28/09 — siguiente paso recomendado
-- [ ] **Clave de Gemini en el servidor** (en Render, llamada a través de `/api`, solo admin): hoy hay que pegarla en cada navegador y vive en su `localStorage`.
-- [ ] **Deshacer lo último que aplicó Gemini** (guardar la semana anterior al aplicar y un botón para volver).
-- [ ] **Sincronización por cambios** (`GET /api/clock?desde=`): hoy cada dispositivo pide todos los fichajes cada 20 s. Aguanta porque Render comprime y responde 304 si no cambia, pero crece con el histórico.
-- [ ] **Lista de equipo de arranque sin nombres reales** (`hooks/useWorkers.js` y `server/src/routes/roster.routes.js`): con el enlace de trabajador ya resuelto al llegar el equipo real, se puede dejar vacía.
+## Auditoría 28/09 — lo que queda
+- [ ] **Poner `GEMINI_API_KEY` en Render** (Environment del servicio; la pega el usuario, nunca en el chat ni en el repo). Mientras no esté, el asistente pide la clave en el navegador como antes.
 - [ ] **Tests** de `ClockInModal`, `useClockings` y `AdminClockEditModal` (fichar y editar fichajes aún sin cubrir).
-- [ ] ¿Enseñar al trabajador, en su propia pantalla, lo que lleva ganado en el turno? (hoy solo admin y socias). **Decisión del usuario.**
 
 ## 🟢 Código
 - [ ] ESLint del cliente: 21 errores (reglas nuevas de React: `setState` dentro de efectos en varios modales) y ~130 avisos, todos anteriores. No añadir nuevos.

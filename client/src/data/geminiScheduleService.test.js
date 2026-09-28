@@ -54,13 +54,23 @@ const semanaOk = { meta: { week: 'Semana 4' }, schedule: { martes: { tasks: [] }
 describe('generateScheduleWithGemini — nunca inventa una semana', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('BUG evitado: sin clave NO devuelve una demo con eventos de otra semana, devuelve un error claro', async () => {
-    const fetchMock = vi.fn();
+  it('sin clave en el navegador pasa por el servidor (su clave, solo admin); la del navegador no viaja', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse(semanaOk));
     vi.stubGlobal('fetch', fetchMock);
     const r = await generateScheduleWithGemini({ prompt: 'x', apiKey: '  ' });
+    expect(r.generatedJson).toEqual(semanaOk);
+    const [url, opts] = fetchMock.mock.calls[0];
+    expect(url).toMatch(/\/ia\/gemini$/);
+    expect(opts.headers['x-goog-api-key']).toBeUndefined();
+  });
+
+  it('BUG evitado: si nadie tiene clave, error claro (nunca una demo con eventos de otra semana)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({}) }));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const r = await generateScheduleWithGemini({ prompt: 'x', apiKey: '' });
     expect(r.generatedJson).toBeNull();
-    expect(r.errorMsg).toContain('Falta la clave de Gemini');
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(r.errorMsg).toContain('falta la clave de Gemini');
+    expect(r.errorMsg).toContain('GEMINI_API_KEY');
     expect(JSON.stringify(r)).not.toContain('Evento Especial 3');
   });
 
@@ -207,14 +217,14 @@ describe('extraerMemoriaDelPrompt — recuerdos a largo plazo', () => {
     }
   });
 
-  it('sin clave, sin texto o si la API falla, null y sin lanzar', async () => {
+  it('sin texto no llama; si la API (directa o por el servidor) falla, null y sin lanzar', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('sin red'));
     vi.stubGlobal('fetch', fetchMock);
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    expect(await extraerMemoriaDelPrompt({ prompt: 'x', apiKey: ' ' })).toBeNull();
     expect(await extraerMemoriaDelPrompt({ prompt: '  ', apiKey: 'k' })).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
     expect(await extraerMemoriaDelPrompt({ prompt: 'x', apiKey: 'k' })).toBeNull();
+    expect(await extraerMemoriaDelPrompt({ prompt: 'x', apiKey: ' ' })).toBeNull(); // por el servidor, sin red
   });
 });
 

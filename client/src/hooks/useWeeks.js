@@ -54,7 +54,12 @@ export function useWeeks() {
 
   const updateWeeks = async (newWeeks) => {
     applyLocalWeeksState(newWeeks);
-    const result = await saveWeeksToAPI(newWeeks);
+    // Solo se envían las semanas que han cambiado. Antes iban TODAS en cada guardado:
+    // el servidor las reescribía todas (y subía su `updatedAt`, provocando conflictos
+    // falsos en otras semanas) y, con unas 10 semanas, la petición pasaba del límite
+    // del servidor y guardar dejaba de funcionar.
+    const cambiadas = Object.fromEntries(Object.entries(newWeeks).filter(([id, semana]) => semana !== allWeeks[id]));
+    const result = await saveWeeksToAPI(Object.keys(cambiadas).length ? cambiadas : newWeeks);
 
     if (result?.conflict) {
       // Alguien más ha guardado esta semana desde que se abrió para editar
@@ -83,6 +88,7 @@ export function useWeeks() {
     if (result.data) {
       applyLocalWeeksState({ ...newWeeks, ...result.data });
     }
+    return result;
   };
 
   const handleUpdateActiveWeek = (updatedWeekData) => {
@@ -168,10 +174,17 @@ export function useWeeks() {
     setActiveWeekId(newId);
   };
 
-  const handleApplyGeminiSchedule = (aiGeneratedJson) => {
+  // Lo último que aplicó Gemini, para poder deshacerlo: { weekId, nombre, anterior,
+  // updatedAtTras } (la semana tal como estaba y la versión que dejó el guardado).
+  // Solo en memoria: vale mientras no se recargue la app.
+  const [deshacerIa, setDeshacerIa] = useState(null);
+
+  const handleApplyGeminiSchedule = async (aiGeneratedJson) => {
     // dateRange se conserva: el JSON de la IA trae un texto de relleno
     // ("Fechas...") que dejaría la semana sin fechas legibles y desactivaría
     // el marcado/tachado de tareas por horario.
+    const anterior = activeWeek;
+    const weekId = activeWeekId;
     const updatedWeek = {
       ...activeWeek,
       meta: { ...activeWeek.meta, ...aiGeneratedJson.meta, dateRange: activeWeek.meta?.dateRange },
@@ -179,7 +192,29 @@ export function useWeeks() {
       saturdaySpecial: aiGeneratedJson.saturdaySpecial || activeWeek.saturdaySpecial,
       sundayMonday: aiGeneratedJson.sundayMonday || activeWeek.sundayMonday
     };
-    updateWeeks({ ...allWeeks, [activeWeekId]: updatedWeek });
+    const resultado = await updateWeeks({ ...allWeeks, [weekId]: updatedWeek });
+    // Solo se ofrece deshacer si de verdad se guardó.
+    if (resultado && !resultado.conflict) {
+      setDeshacerIa({ weekId, nombre: anterior?.name || 'la semana', anterior, updatedAtTras: resultado.data?.[weekId]?.updatedAt ?? null });
+    }
+  };
+
+  // ¿Ha cambiado la semana (alguien marcó tareas, se editó…) desde que se aplicó?
+  const cambiadaTrasIa = () => {
+    if (!deshacerIa) return false;
+    const actual = allWeeks[deshacerIa.weekId];
+    return !!(deshacerIa.updatedAtTras && actual?.updatedAt && actual.updatedAt !== deshacerIa.updatedAtTras);
+  };
+
+  // Vuelve a dejar la semana como estaba antes de aplicar lo de Gemini. Se guarda con
+  // el `updatedAt` actual (si no, el servidor lo rechazaría como conflicto).
+  const deshacerUltimaIa = async () => {
+    if (!deshacerIa) return false;
+    const actual = allWeeks[deshacerIa.weekId];
+    const restaurada = { ...deshacerIa.anterior, updatedAt: actual?.updatedAt ?? deshacerIa.anterior?.updatedAt };
+    const resultado = await updateWeeks({ ...allWeeks, [deshacerIa.weekId]: restaurada });
+    if (resultado && !resultado.conflict) { setDeshacerIa(null); return true; }
+    return false;
   };
 
   return {
@@ -194,6 +229,10 @@ export function useWeeks() {
     markTaskCompleted,
     handleCreateWeek,
     handleApplyGeminiSchedule,
+    deshacerIa,
+    cambiadaTrasIa,
+    deshacerUltimaIa,
+    olvidarDeshacerIa: () => setDeshacerIa(null),
     lastLocalEditRef
   };
 }
