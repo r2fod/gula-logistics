@@ -518,8 +518,8 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                   <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
                     {connectedRouteDetails.connectedTasks.map(ct => (
                       <div key={ct.id} className="text-xs bg-slate-950/90 p-2 rounded-lg border border-slate-800 flex items-center justify-between gap-2">
-                        <span className={`truncate ${ct.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>
-                          {ct.timeFrame ? `${ct.timeFrame} • ` : ''}{ct.label}
+                        <span className={`min-w-0 ${ct.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>
+                          {ct.timeFrame && <span className="whitespace-nowrap">{ct.timeFrame} • </span>}{ct.label}
                         </span>
                         {ct.completed && (
                           <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
@@ -614,7 +614,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                               <CategoryIcon className="w-3 h-3" />
                             </span>
                             {t.timeFrame && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded-md">
+                              <span className="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded-md">
                                 <Clock className="w-3 h-3" />
                                 {t.timeFrame}
                               </span>
@@ -748,7 +748,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                         <div key={t.id} className={`text-xs bg-slate-950 p-2.5 rounded-xl border border-l-4 border-slate-800/80 ${category.border} text-slate-300 flex items-start space-x-2`}>
                           <CategoryIcon className={`w-3.5 h-3.5 ${category.color} mt-0.5 shrink-0`} />
                           <span className={t.completed ? 'line-through text-slate-500' : 'text-slate-200'}>
-                            {t.timeFrame && <span className="text-blue-300 font-bold">{t.timeFrame} — </span>}
+                            {t.timeFrame && <span className="whitespace-nowrap text-blue-300 font-bold">{t.timeFrame} — </span>}
                             {t.label}
                           </span>
                         </div>

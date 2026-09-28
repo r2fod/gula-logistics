@@ -18,10 +18,11 @@
 // calendario la trae; si no, son una PROPUESTA (con aviso).
 
 import { EVENT_CATEGORIES } from './eventNaming';
+import { enlaceMaps, LUGAR_BASE } from './mapas';
 
 const DIAS = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'];
 const JS_DIA = { 0: 'domingo', 1: 'lunes', 2: 'martes', 3: 'miercoles', 4: 'jueves', 5: 'viernes', 6: 'sabado' };
-const PREFIJO_ID = { martes: 'm', miercoles: 'mi', jueves: 'j', viernes: 'v', domingo: 'sl', lunes: 'sl' };
+export const PREFIJO_ID = { martes: 'm', miercoles: 'mi', jueves: 'j', viernes: 'v', domingo: 'sl', lunes: 'sl' };
 const NOMBRE_DIA = { martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes', sabado: 'Sábado', domingo: 'Domingo', lunes: 'Lunes' };
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const [CAT_PREP, CAT_CARGA, CAT_LIMPIEZA] = ['Logística Preparación', 'Logística Carga', 'Limpieza Eventos'];
@@ -185,8 +186,8 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
   // t: { dia, ini, fin, accion, evento, n, pool, lugar, extra, tipoTarea }
   const tareas = [];
   const enSemana = (iso) => iso >= aIso(inicioMartes) && iso <= aIso(finSemana);
-  const nueva = (t) => { tareas.push({ n: 1, lugar: 'Almacén Base', maps: '', ...t }); };
-  const mapa = (lugar) => (lugar && lugar !== 'Almacén Base' ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lugar).replace(/%20/g, '+')}` : '');
+  const nueva = (t) => { tareas.push({ n: 1, lugar: LUGAR_BASE, maps: '', ...t }); };
+  const mapa = enlaceMaps;
 
   const eventosPorDia = {};
   eventos.forEach(e => { (eventosPorDia[e.fecha] = eventosPorDia[e.fecha] || []).push(e); });

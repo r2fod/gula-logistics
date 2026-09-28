@@ -228,7 +228,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
                       {w.location}
                     </span>
                     {w.timeFrame && (
-                      <span className="text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1">
+                      <span className="text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 whitespace-nowrap">
                         <Clock className="w-3 h-3" />
                         {w.timeFrame}
                       </span>

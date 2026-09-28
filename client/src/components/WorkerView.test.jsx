@@ -22,7 +22,7 @@ describe('WorkerView', () => {
 
   it('en turno: el cronómetro avanza solo, segundo a segundo', () => {
     pintar([{ id: 'e1', workerName: 'Ana', type: 'entrada', timestamp: new Date(2026, 8, 24, 9, 0, 0).toISOString(), taskName: 'JORNADA' }]);
-    expect(screen.getByText('TURNO ACTIVO EN CURSO')).toBeInTheDocument();
+    expect(screen.getAllByText('EN TURNO')[0]).toBeInTheDocument();
     expect(screen.getByText('1h 00m 00s')).toBeInTheDocument();
     act(() => { vi.advanceTimersByTime(3000); });
     expect(screen.getByText('1h 00m 03s')).toBeInTheDocument();
@@ -30,7 +30,7 @@ describe('WorkerView', () => {
 
   it('el trabajador ve lo que lleva ganado en su turno, subiendo en directo', () => {
     pintar([{ id: 'e1', workerName: 'Ana', type: 'entrada', rate: 10, timestamp: new Date(2026, 8, 24, 9, 0, 0).toISOString(), taskName: 'JORNADA' }]);
-    expect(screen.getByText('Llevas ganado en este turno')).toBeInTheDocument();
+    expect(screen.getByText('Llevas ganado')).toBeInTheDocument();
     expect(screen.getByText('≈ 10,00 €')).toBeInTheDocument();
     act(() => { vi.advanceTimersByTime(36000); });
     expect(screen.getByText('≈ 10,10 €')).toBeInTheDocument();
@@ -39,8 +39,8 @@ describe('WorkerView', () => {
   it('en nómina fija no se enseña (no cobra por horas)', () => {
     render(<WorkerView workerName="Luis" workersList={[{ name: 'Luis', isPayroll: true, rate: 14 }]} activeWeekData={semana}
       clockEntries={[{ id: 'e2', workerName: 'Luis', type: 'entrada', timestamp: new Date(2026, 8, 24, 9, 0, 0).toISOString(), taskName: 'JORNADA' }]} onClockEntryCreated={vi.fn()} onToggleTask={vi.fn()} />);
-    expect(screen.getByText('TURNO ACTIVO EN CURSO')).toBeInTheDocument();
-    expect(screen.queryByText('Llevas ganado en este turno')).toBeNull();
+    expect(screen.getAllByText('EN TURNO')[0]).toBeInTheDocument();
+    expect(screen.queryByText('Llevas ganado')).toBeNull();
   });
 
   it('los días van de martes a domingo y el lunes (cola) el último', () => {
@@ -51,6 +51,8 @@ describe('WorkerView', () => {
 
   it('sin turno no enseña el cronómetro', () => {
     pintar();
-    expect(screen.queryByText('TURNO ACTIVO EN CURSO')).toBeNull();
+    expect(screen.queryByText('Llevas ganado')).toBeNull();
+    expect(screen.queryByText(/^\d+h \d\dm \d\ds$/)).toBeNull();
+    expect(screen.queryByText('Fichar salida')).toBeNull();
   });
 });
