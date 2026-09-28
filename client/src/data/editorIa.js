@@ -198,11 +198,27 @@ export async function revisarBorradorConGemini({ semana, apiKey, equipo = [], me
   }
 }
 
+// "¿Qué puedes hacer?", "ayuda"…: se contesta aquí, sin gastar Gemini.
+const PREGUNTA_DE_AYUDA = /\b(que (puedes|sabes) hacer|ayuda|como (funcionas|funciona|te uso|se usa)|que haces|para que sirves|instrucciones)\b/;
+export const esPreguntaDeAyuda = (peticion) => PREGUNTA_DE_AYUDA.test(plano(peticion));
+export function textoDeAyuda(equipo = []) {
+  const [a = 'Luis', b = 'Ana'] = equipo.map(w => w.name.split(/\s+/)[0]);
+  return [
+    'Trabajo sobre la semana abierta y siempre te enseño los cambios antes de aplicarlos:',
+    `• Disponibilidad, sin gastar Gemini: «${a} no puede el jueves», «${b} solo de 9 a 14 el viernes», «${a} descansa el fin de semana».`,
+    `• Cambios concretos: «Pon a ${b} en la carga del jueves», «Mueve la recogida del miércoles a las 8:00».`,
+    '• Rehacer la semana: «Rehaz toda la semana repartiendo mejor las horas».',
+    '• Reglas para siempre: «A partir de ahora, las bodas grandes llevan un apoyo más en la carga».',
+  ].join('\n');
+}
+
 // El enrutador: cada petición por el camino que menos gasta.
 // → { generatedJson, errorMsg, via: 'local' | 'cambios' | 'completo', uso, resumen?, avisosExtra? }
 // En 'local', generatedJson lleva además `disponibilidad` (lo que se ha entendido),
 // para guardarlo en la semana al aplicar.
 export async function resolverPeticion({ peticion, apiKey, semana, equipo = [], memorias = [], aprendizaje = null, ahora = new Date() }) {
+  if (esPreguntaDeAyuda(peticion)) return { generatedJson: null, errorMsg: '', via: 'local', uso: null, resumen: textoDeAyuda(equipo) };
+
   const restricciones = restriccionesEfectivas(semana, equipo);
   const limites = limitesDe(semana);
 

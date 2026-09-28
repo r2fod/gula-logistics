@@ -92,6 +92,14 @@ describe('generateScheduleWithGemini — nunca inventa una semana', () => {
     expect(r.errorMsg).not.toMatch(/falta la clave/);
   });
 
+  it('BUG evitado: un modelo retirado (404 NOT_FOUND de Google) no se toma por "falta la clave"', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({ error: { code: 404, status: 'NOT_FOUND', message: 'models/x is not found' } }) }));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const r = await generateScheduleWithGemini({ prompt: 'x', apiKey: '' });
+    expect(r.errorMsg).toMatch(/ya no tiene ese modelo/);
+    expect(r.errorMsg).not.toMatch(/falta la clave/);
+  });
+
   it('si el servidor dice que no tiene clave, se enseña su motivo', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({ error: 'El servidor no tiene clave de Gemini (GEMINI_API_KEY en Render).' }) }));
     vi.spyOn(console, 'error').mockImplementation(() => {});

@@ -132,4 +132,15 @@ describe('GeminiAssistantModal — revisar antes de aplicar', () => {
     expect(screen.getByText(/entra Luis/)).toBeInTheDocument();
     expect(extraer).not.toHaveBeenCalled();
   });
+
+  it('la ayuda que contesta la app se ve, sin propuesta y "0 tokens"', async () => {
+    generar.mockResolvedValueOnce({ via: 'local', uso: null, errorMsg: '', generatedJson: null, resumen: 'Trabajo sobre la semana abierta…' });
+    render(<GeminiAssistantModal isOpen onClose={() => {}} onApplyGeneratedSchedule={() => {}} activeWeekData={{}} workersList={[]} aprendizaje={aprendizaje} />);
+    await waitFor(() => expect(api.getAiMemories).toHaveBeenCalled());
+    fireEvent.change(screen.getByPlaceholderText(/Escribe tu solicitud/), { target: { value: '¿Qué puedes hacer?' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar Planificación/ }));
+    expect(await screen.findByText('Trabajo sobre la semana abierta…')).toBeInTheDocument();
+    expect(screen.getByText(/0 tokens: contestado sin Gemini/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Aplicar esta Planificación/ })).toBeNull();
+  });
 });
