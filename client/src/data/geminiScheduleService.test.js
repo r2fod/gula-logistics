@@ -84,6 +84,31 @@ describe('generateScheduleWithGemini — nunca inventa una semana', () => {
     expect(r.errorMsg).toContain('falta la clave de Gemini');
   });
 
+  it('BUG evitado: Google saturado (503) NO se toma por "falta la clave"', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({ error: { code: 503, status: 'UNAVAILABLE', message: 'The model is overloaded. Please try again later.' } }) }));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const r = await generateScheduleWithGemini({ prompt: 'x', apiKey: '' });
+    expect(r.errorMsg).toMatch(/saturado ahora mismo/);
+    expect(r.errorMsg).not.toMatch(/falta la clave/);
+  });
+
+  it('si el servidor dice que no tiene clave, se enseña su motivo', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({ error: 'El servidor no tiene clave de Gemini (GEMINI_API_KEY en Render).' }) }));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const r = await generateScheduleWithGemini({ prompt: 'x', apiKey: '' });
+    expect(r.errorMsg).toMatch(/El servidor no tiene clave de Gemini/);
+  });
+
+  it('con clave del navegador, si un modelo está saturado prueba el siguiente', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 503, json: async () => ({}) })
+      .mockResolvedValueOnce(okResponse(semanaOk));
+    vi.stubGlobal('fetch', fetchMock);
+    const r = await generateScheduleWithGemini({ prompt: 'x', apiKey: 'k' });
+    expect(r.generatedJson).toEqual(planOk);
+    expect(fetchMock.mock.calls[1][0]).toContain(GEMINI_MODELS[1]);
+  });
+
   it('con clave devuelve el JSON y manda la clave en la cabecera, no en la URL', async () => {
     const fetchMock = vi.fn().mockResolvedValue(okResponse(semanaOk));
     vi.stubGlobal('fetch', fetchMock);

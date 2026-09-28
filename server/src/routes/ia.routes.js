@@ -6,15 +6,16 @@ import { requireAdmin } from '../middleware/requireAdmin.js';
 // cada móvil. La app la usa cuando el navegador no tiene clave propia.
 const router = express.Router();
 
-// Mismo orden que el cliente (GEMINI_MODELS): solo se pasa al siguiente si el
-// modelo ya no existe (404).
-const MODELOS = ['gemini-2.5-flash', 'gemini-flash-latest'];
+// Mismo orden que el cliente (GEMINI_MODELS): se pasa al siguiente si el modelo ya
+// no existe (404) o si Google dice que está saturado (503, pasa a menudo con Flash).
+const MODELOS = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+const PROBAR_OTRO = [404, 503];
 
 router.get('/estado', requireAdmin, (req, res) => res.json({ configurada: !!process.env.GEMINI_API_KEY }));
 
 router.post('/gemini', requireAdmin, async (req, res) => {
   const clave = process.env.GEMINI_API_KEY;
-  if (!clave) return res.status(503).json({ error: 'El servidor no tiene clave de Gemini (GEMINI_API_KEY en Render).' });
+  if (!clave) return res.status(503).json({ error: 'El servidor no tiene clave de Gemini: en Render (Environment) la variable tiene que llamarse exactamente GEMINI_API_KEY y hay que guardar con «Save, rebuild and deploy».' });
   const { contents, generationConfig } = req.body || {};
   if (!Array.isArray(contents) || contents.length === 0) return res.status(400).json({ error: 'Falta el contenido para Gemini' });
 
@@ -26,7 +27,7 @@ router.post('/gemini', requireAdmin, async (req, res) => {
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': clave },
         body: JSON.stringify({ contents, generationConfig }),
       });
-      if (respuesta.status !== 404) break;
+      if (!PROBAR_OTRO.includes(respuesta.status)) break;
     }
     const datos = await respuesta.json().catch(() => ({}));
     return res.status(respuesta.status).json(datos);
