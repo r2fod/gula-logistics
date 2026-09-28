@@ -95,7 +95,7 @@ describe('WeekManagerModal — clave de Gemini y errores', () => {
     fireEvent.click(screen.getByRole('button', { name: /Generar Planificación Inteligente/ }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Falta la clave de Gemini');
-    expect(screen.queryByRole('button', { name: /Crear la Semana con esta Planificación/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Crear la semana$/ })).not.toBeInTheDocument();
   });
 
   it('la clave pegada se guarda en este navegador y se manda al generar', async () => {
@@ -139,7 +139,7 @@ describe('WeekManagerModal — pax de cada evento', () => {
     await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
     expect(generate.mock.calls[0][0].prompt).toContain('Boda Finca Norte (120 pax)');
 
-    fireEvent.click(await screen.findByRole('button', { name: /Crear la Semana con esta Planificación/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Crear la semana$/ }));
     expect(onCreateWeek.mock.calls[0][0].events).toEqual([
       { name: 'Boda Finca Norte', pax: 120 },
       { name: 'Boda Finca Sur', pax: null },

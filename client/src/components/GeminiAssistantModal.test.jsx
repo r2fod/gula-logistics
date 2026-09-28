@@ -85,4 +85,26 @@ describe('GeminiAssistantModal — revisar antes de aplicar', () => {
     expect(screen.getByText('1 cambiadas')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('Asigna a quien no está en el equipo: Inventado.');
   });
+
+  it('"Pedir a Gemini que lo corrija" le manda los avisos sobre SU propuesta y enseña la corregida', async () => {
+    generar.mockClear();
+    extraer.mockClear();
+    const actual = { meta: { week: 'Semana 9' }, schedule: { martes: { tasks: [] } } };
+    const conFallo = { schedule: { martes: { tasks: [{ id: 'm1', text: 'Recogida', timeFrame: '12:00 - 13:00', assigned: ['Inventado'] }] } } };
+    const corregida = { schedule: { martes: { tasks: [{ id: 'm1', text: 'Recogida', timeFrame: '12:00 - 13:00', assigned: ['Ana'] }] } } };
+    generar.mockResolvedValueOnce({ generatedJson: conFallo, errorMsg: '' }).mockResolvedValueOnce({ generatedJson: corregida, errorMsg: '' });
+    extraer.mockResolvedValue(null);
+    render(<GeminiAssistantModal isOpen onClose={() => {}} onApplyGeneratedSchedule={() => {}} activeWeekData={actual} workersList={[{ name: 'Ana' }]} aprendizaje={aprendizaje} />);
+    await waitFor(() => expect(api.getAiMemories).toHaveBeenCalled());
+    fireEvent.change(screen.getByPlaceholderText(/Escribe tu solicitud/), { target: { value: 'x' } });
+    fireEvent.click(screen.getByRole('button', { name: /Generar Planificación/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Pedir a Gemini que lo corrija/ }));
+    await waitFor(() => expect(generar).toHaveBeenCalledTimes(2));
+    const { prompt, activeWeekData } = generar.mock.calls[1][0];
+    expect(prompt).toMatch(/^Corrige SOLO estos problemas[\s\S]*Inventado/);
+    expect(activeWeekData).toMatchObject({ meta: { week: 'Semana 9' }, schedule: conFallo.schedule });
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    expect(screen.queryByRole('button', { name: /Pedir a Gemini que lo corrija/ })).toBeNull();
+    expect(extraer).toHaveBeenCalledTimes(1); // la corrección no se toma por una regla nueva
+  });
 });

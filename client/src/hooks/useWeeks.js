@@ -180,14 +180,15 @@ export function useWeeks() {
   const [deshacerIa, setDeshacerIa] = useState(null);
 
   const handleApplyGeminiSchedule = async (aiGeneratedJson) => {
-    // dateRange se conserva: el JSON de la IA trae un texto de relleno
-    // ("Fechas...") que dejaría la semana sin fechas legibles y desactivaría
-    // el marcado/tachado de tareas por horario.
+    // Gemini solo cambia la planificación: el meta (fechas, nombre, estado) se queda
+    // como estaba. Antes se mezclaba el suyo: su "status" de ejemplo ("Operativa
+    // Activa") aceptaba sin querer un borrador, y sus fechas de relleno la dejaban
+    // sin fechas legibles.
     const anterior = activeWeek;
     const weekId = activeWeekId;
     const updatedWeek = {
       ...activeWeek,
-      meta: { ...activeWeek.meta, ...aiGeneratedJson.meta, dateRange: activeWeek.meta?.dateRange },
+      meta: activeWeek.meta,
       schedule: aiGeneratedJson.schedule || activeWeek.schedule,
       saturdaySpecial: aiGeneratedJson.saturdaySpecial || activeWeek.saturdaySpecial,
       sundayMonday: aiGeneratedJson.sundayMonday || activeWeek.sundayMonday

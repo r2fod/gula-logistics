@@ -10,6 +10,7 @@ import { buildEventName } from '../data/eventNaming';
 import { useMemoriaIa } from '../hooks/useMemoriaIa';
 import { avisosDeSemana } from '../data/diffSemana';
 import CambiosPropuestos from './asistente/CambiosPropuestos';
+import { promptCorreccion } from '../data/planificadorIa';
 import EstadoClaveIa from './asistente/EstadoClaveIa';
 import { useClaveIaServidor } from '../hooks/useClaveIaServidor';
 import { AreaTexto, Input, Selector } from './ui/Campo';
@@ -148,8 +149,10 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
     const { generatedJson: result, errorMsg: err } = await generateScheduleWithGemini({
       prompt: buildPrompt(),
       apiKey,
+      activeWeekData: { meta: { dateRange } },
       eventNames: events.map(e => buildEventName(e, dayLabel)),
       roster: workersList,
+      disponibles: [...selectedWorkers],
       aiMemories: memoria.activas,
       aprendizaje
     });
@@ -158,6 +161,29 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
     if (err) setErrorMsg(err);
     setLoading(false);
   };
+
+  // Lo que avisosDeSemana encontró se le devuelve a Gemini para que lo arregle sobre
+  // su propia propuesta, sin tocar el resto.
+  const corregirAvisos = async (avisos) => {
+    setLoading(true);
+    setErrorMsg('');
+    const { generatedJson: result, errorMsg: err } = await generateScheduleWithGemini({
+      prompt: promptCorreccion(avisos),
+      apiKey,
+      activeWeekData: { meta: { dateRange }, ...generatedJson },
+      eventNames: events.map(e => buildEventName(e, dayLabel)),
+      roster: workersList,
+      disponibles: [...selectedWorkers],
+      aiMemories: memoria.activas,
+      aprendizaje
+    });
+    if (result) setGeneratedJson(result);
+    if (err) setErrorMsg(err);
+    setLoading(false);
+  };
+
+  const avisos = generatedJson ? avisosDeSemana(generatedJson, { equipo: workersList, camiones: [...selectedTrucks] }) : [];
+  const quien = (t) => (t.assigned?.length ? ` — ${t.assigned.join(', ')}` : ' — sin asignar');
 
   // Bodas y eventos con sus pax, para repartir el coste de las tareas
   // compartidas entre eventos en proporción a su tamaño.
@@ -557,7 +583,19 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
               </h4>
             </div>
 
-            <CambiosPropuestos avisos={avisosDeSemana(generatedJson, { equipo: workersList, camiones: [...selectedTrucks] })} />
+            <CambiosPropuestos avisos={avisos} />
+
+            {avisos.length > 0 && (
+              <button
+                type="button"
+                onClick={() => corregirAvisos(avisos)}
+                disabled={loading}
+                className="w-full py-2.5 px-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-200 text-xs font-bold hover:bg-amber-500/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Sparkles className="w-4 h-4" aria-hidden="true" />}
+                <span>{loading ? 'Corrigiendo…' : 'Pedir a Gemini que lo corrija'}</span>
+              </button>
+            )}
 
             <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs space-y-3 max-h-60 overflow-y-auto">
               {generatedJson.saturdaySpecial?.weddings?.length > 0 && (
@@ -566,22 +604,32 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
                   <ul className="space-y-1.5 text-slate-300">
                     {generatedJson.saturdaySpecial.weddings.map((w, idx) => (
                       <li key={idx} className="bg-slate-900 p-2.5 rounded-xl border border-slate-800">
-                        <span className="font-bold text-amber-300">{w.location}</span> ({w.truck}) - {w.details}
+                        <span className="font-bold text-amber-300">{w.location}</span> ({w.truck}) - {w.details} <span className="whitespace-nowrap text-slate-500">({w.timeFrame})</span><span className="text-slate-500">{quien(w)}</span>
                       </li>
                     ))}
                   </ul>
                 </>
               )}
-              {Object.entries(generatedJson.schedule || {}).map(([dayKey, day]) => (
+              {Object.entries(generatedJson.schedule || {}).filter(([, day]) => day?.tasks?.length).map(([dayKey, day]) => (
                 <div key={dayKey}>
                   <div className="font-bold text-white">{day.title}</div>
                   <ul className="space-y-1 text-slate-300 mt-1">
                     {(day.tasks || []).map((t, idx) => (
-                      <li key={idx} className="text-slate-400">• {t.text} <span className="whitespace-nowrap text-slate-500">({t.timeFrame})</span></li>
+                      <li key={idx} className="text-slate-400">• {t.text} <span className="whitespace-nowrap text-slate-500">({t.timeFrame})</span><span className="text-slate-500">{quien(t)}</span></li>
                     ))}
                   </ul>
                 </div>
               ))}
+              {generatedJson.sundayMonday?.tasks?.length > 0 && (
+                <div>
+                  <div className="font-bold text-white">{generatedJson.sundayMonday.title}</div>
+                  <ul className="space-y-1 text-slate-300 mt-1">
+                    {generatedJson.sundayMonday.tasks.map((t, idx) => (
+                      <li key={idx} className="text-slate-400">• <span className="font-semibold text-slate-300">{t.targetDay}:</span> {t.text} <span className="whitespace-nowrap text-slate-500">({t.timeFrame})</span><span className="text-slate-500">{quien(t)}</span></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <button
@@ -590,7 +638,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
             >
               <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent group-hover:animate-[shimmer_1.5s_infinite]"></div>
               <Plus className="w-5 h-5 relative z-10" />
-              <span className="relative z-10 tracking-wide">Crear la Semana con esta Planificación</span>
+              <span className="relative z-10 whitespace-nowrap tracking-wide">Crear la semana</span>
             </button>
           </div>
         )}

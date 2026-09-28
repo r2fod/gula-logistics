@@ -157,6 +157,18 @@ describe('useWeeks — deshacer lo último que aplicó Gemini', () => {
     expect(result.current.deshacerIa).toBeNull();
   });
 
+  it('BUG evitado: aplicar Gemini a un BORRADOR no lo acepta ni le cambia fechas ni nombre', async () => {
+    const { saveWeeksToAPI } = await import('../data/apiService');
+    const { result } = montar();
+    const metaAntes = { ...result.current.activeWeek.meta, status: 'Borrador' };
+    act(() => { result.current.setAllWeeks(prev => ({ ...prev, week_3: { ...prev.week_3, meta: metaAntes } })); });
+    saveWeeksToAPI.mockResolvedValueOnce({ success: true, data: {} });
+    await act(async () => {
+      await result.current.handleApplyGeminiSchedule({ meta: { status: 'Operativa Activa', week: 'Semana X', dateRange: 'Fechas' }, schedule: { martes: { tasks: [] } } });
+    });
+    expect(saveWeeksToAPI.mock.calls.at(-1)[0].week_3.meta).toEqual(metaAntes);
+  });
+
   it('si el guardado falla no se ofrece deshacer', async () => {
     const { saveWeeksToAPI } = await import('../data/apiService');
     const { result } = montar();
