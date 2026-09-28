@@ -219,6 +219,14 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
         </div>
       )}
 
+      {/* Lo que la app contesta sin Gemini y sin propuesta (p. ej. "¿qué puedes hacer?") */}
+      {resultado?.via === 'local' && !generatedJson && resultado.resumen && (
+        <div role="status" className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-3 text-xs text-slate-300">
+          <p className="whitespace-pre-line leading-relaxed">{resultado.resumen}</p>
+          <p className="mt-2 text-[11px] text-slate-500">0 tokens: contestado sin Gemini.</p>
+        </div>
+      )}
+
       {/* Regla propuesta: se recuerda solo si el admin dice que sí */}
       {propuesta && (
         <div role="status" className="mt-4 space-y-2 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-3 animate-aparecer motion-reduce:animate-none">

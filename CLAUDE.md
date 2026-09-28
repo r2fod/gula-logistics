@@ -30,7 +30,7 @@
 ## WORKFLOW
 - El planning vive en Mongo: `logisticsData.js` (cliente/servidor) es solo semilla. Cambiar una semana = `POST /api/logistics/weeks` con el objeto COMPLETO (reemplaza el documento; control por `updatedAt`, 409 si alguien guardó antes).
 - Dos checkouts: el worktree (rama de trabajo) y `/Users/raul/Desktop/projects/gula-logistics` (`main`, solo para merge + push). Antes de fusionar, traer `origin/main` a la rama (otras sesiones trabajan en paralelo).
-- Deploy cliente: automático en cada push a `main` (GitHub Action, ~1 min; comprobar `gh run list` y el hash del bundle en la URL pública). Servidor: Render auto-despliega (de 5 a 25 min y no avisa: comprobar con `curl` algo observable del cambio).
+- Deploy cliente: automático en cada push a `main` (GitHub Action, ~1 min; comprobar `gh run list` y el hash del bundle en la URL pública). Servidor: Render auto-despliega (de 5 a 30 min y no avisa): `curl …onrender.com/api/health` dice el commit desplegado (`version`).
 
 ```bash
 git add -A && git commit -m "..."                                        # en el worktree

@@ -60,10 +60,12 @@ app.use('/api/roster', rosterRoutes);
 app.use('/api/aimemory', aiMemoryRoutes);
 app.use('/api/ia', iaRoutes);
 
-// Endpoint de verificación de salud
+// Endpoint de verificación de salud. `version`: el commit desplegado (Render lo da en
+// RENDER_GIT_COMMIT; el repo es público): así se sabe si un despliegue ya está en marcha.
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
+    version: (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7),
     mongoConnected: mongoose.connection.readyState === 1,
     timestamp: new Date().toISOString()
   });

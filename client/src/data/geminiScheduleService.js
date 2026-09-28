@@ -230,9 +230,11 @@ export async function pedirJsonAGemini({ apiKey, texto, esquema = null, temperat
     const hint = saturado ? ' — Gemini (Google) está saturado ahora mismo: vuelve a probar en un minuto'
       : status === 401 && !clave ? ' — inicia sesión de administrador para usar la clave del servidor'
       : delServidor && !clave ? ` — ${delServidor}`
+      : status === 404 && deGoogle?.status === 'NOT_FOUND' ? ' — Google ya no tiene ese modelo de Gemini; el servidor busca otro solo: vuelve a probar'
       : (status === 503 || status === 404) && !clave ? ' — falta la clave de Gemini: pégala en este navegador (botón de la llave) o ponla en el servidor (GEMINI_API_KEY en Render)'
       : status === 400 || status === 403 ? ' — comprueba que la clave es correcta'
-      : status === 429 ? ' — demasiadas peticiones, espera un minuto' : '';
+      : status === 429 ? ' — demasiadas peticiones, espera un minuto'
+      : deGoogle?.message ? ` — ${deGoogle.message}` : '';
     throw new Error(`Error Gemini API (${status})${hint}`);
   }
 

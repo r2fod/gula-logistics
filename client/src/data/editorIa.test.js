@@ -129,6 +129,15 @@ describe('resolverPeticion — el camino que menos gasta', () => {
     expect(r.resumen).toMatch(/^Entendido sin gastar Gemini: Ana no puede el martes\. 1 tarea cambia de persona\./);
   });
 
+  it('"¿Qué puedes hacer?" se contesta sin Gemini, con ejemplos del propio equipo', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const r = await resolverPeticion({ peticion: 'Dime que puedes hacer?', apiKey: '', semana: semana(), equipo });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(r).toMatchObject({ via: 'local', generatedJson: null, errorMsg: '' });
+    expect(r.resumen).toMatch(/«Ana no puede el jueves»/);
+  });
+
   it('un cambio concreto va por "cambios"; rehacer la semana, por "completo"', async () => {
     const fetchMock = vi.fn().mockResolvedValue(respuesta({ cambios: [{ op: 'personas', t: 'T2', personas: ['Luis'] }] }));
     vi.stubGlobal('fetch', fetchMock);
