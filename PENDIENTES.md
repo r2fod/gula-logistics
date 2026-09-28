@@ -20,19 +20,18 @@ _Solo lo que sigue abierto (actualizado el 28/09/2026). Lo resuelto se borra de 
 - [ ] Revisión responsive sistemática 320–1920 px del resto de vistas.
 
 ## Asistente IA (27/09)
-- [ ] Memoria del asistente hecha (grafo visual, reglas propuestas → aprobar, aprendizaje de fichajes). Pendiente: probarlo con sesión de admin en producción (pestaña Memoria IA) y ver que Gemini genera horarios razonables con el aprendizaje. Solo mide tramos "limpios": se aprende más si la gente ficha cada tarea al cambiar.
+- [ ] Memoria del asistente hecha (grafo visual, reglas propuestas → aprobar, aprendizaje de fichajes). Pendiente: probarlo con sesión de admin en producción (pestaña Memoria IA), que el asistente diga «Usa la clave del servidor» (la clave ya está en Render, 28/09), que Gemini genere horarios razonables con el aprendizaje y el botón «Deshacer» tras aplicar. Solo mide tramos "limpios": se aprende más si la gente ficha cada tarea al cambiar.
 
 ## Saldos y Resumen Financiero (28/09)
 - [ ] Los conceptos a mano ANTERIORES al 28/09 no llevan fecha ni tipo (los nuevos sí): los pagos antiguos se reconocen por el texto ("pago", "efectivo", "Bizum", "adelanto"…) y los que no tienen fecha (bolsa, roturas, pagos) solo se suman en «Todo».
-- [ ] Revisar en producción con sesión de admin: Saldos (dos grupos), "Ver sus horas por evento", el Resumen con lo apuntado a mano y lo previsto, copiar para WhatsApp y la papelera del Historial.
+- [ ] Revisar en producción con sesión de admin: Saldos (dos grupos y el saldo subiendo con alguien en turno), "Ver sus horas por evento", el Resumen con lo apuntado a mano y lo previsto, copiar para WhatsApp y la papelera del Historial.
 
 ## Auditoría 28/09 — lo que queda
-- [ ] **Poner `GEMINI_API_KEY` en Render** (Environment del servicio; la pega el usuario, nunca en el chat ni en el repo). Mientras no esté, el asistente pide la clave en el navegador como antes.
 - [ ] **Tests** de `ClockInModal`, `useClockings` y `AdminClockEditModal` (fichar y editar fichajes aún sin cubrir).
 
 ## 🟢 Código
-- [ ] ESLint del cliente: 21 errores (reglas nuevas de React: `setState` dentro de efectos en varios modales) y ~130 avisos, todos anteriores. No añadir nuevos.
-- [ ] Archivos grandes: `AdminTaskEditorModal` (~1050 líneas), `WorkerView` (~1090), `TeamBalancesTab` (~780). Siguientes piezas: fila de tarea/tarjeta de boda de `WorkerView`, `Boton`, `Chip` seleccionable, `PuntoEstado`.
+- [ ] ESLint del cliente: 21 errores (reglas nuevas de React: `setState` dentro de efectos en varios modales) y ~140 avisos, todos anteriores. No añadir nuevos.
+- [ ] Archivos grandes: `AdminTaskEditorModal` (~1050 líneas), `WorkerView` (~1090), `TeamBalancesTab` (~840). Siguientes piezas: fila de tarea/tarjeta de boda de `WorkerView`, `Boton`, `Chip` seleccionable, `PuntoEstado`.
 - [ ] Normalizar las tareas a objeto al cargar la semana y quitar los `typeof task === 'object' ? task.text : task` repartidos.
 - [ ] `npm audit` del cliente: `vite`/`esbuild` (solo afectan a `npm run dev`); arreglarlo es subir `vite` de versión mayor, en rama aparte.
 

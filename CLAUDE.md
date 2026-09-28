@@ -13,15 +13,15 @@
 - Texto de tarea `"EVENTO - Tarea"` (guion normal entre espacios, `data/eventNaming.js`; `+` para varios eventos) — de ahí sale el coste por evento. No reescribir textos de tareas ya fichadas (el fichaje guarda el texto): usar el campo `event`.
 - Task ID: corta y manual por día (`m1`, `mi2`, `v1c`…), sin chocar con las del mismo día. `taskRef` de los fichajes apunta por índice (ver `PENDIENTES.md`).
 - Week ID: `week_<Date.now()>` a mano; borradores automáticos `week_auto_AAAA-MM-DD` (martes que la abre). `meta.status` `"Borrador"` hasta que un admin la acepta (`"Operativa Activa"`). `week_3` es la semilla base (no renombrar sin tocar `server/src/data/logisticsData.js` y el bootstrap).
-- Equipo: en Mongo (`/api/roster`, `hooks/useWorkers.js`); `DEFAULT_WORKERS_LIST` solo es el arranque. `assigned` usa sus nombres exactos: renombrar a alguien sin migrar los `assigned` los deja huérfanos.
+- Equipo: solo en Mongo (`/api/roster`, `hooks/useWorkers.js`); el código no trae ninguna lista de arranque. `assigned` usa sus nombres exactos: renombrar a alguien sin migrar los `assigned` los deja huérfanos.
 - WorkerBalance ID: `nombre.toLowerCase().replace(/\s+/g, '-')` — cambiar el nombre sin el id rompe su vínculo con fichajes/saldos.
 - ClockEntry ID: `crypto.randomUUID()` (`data/fichajes.js`, `crearFichaje`). `POST /api/clock` es idempotente por id (cola offline).
 
 ## CODE & UX
 - Diffs mínimos, sin duplicar: buscar primero el helper que ya existe. Responsive 320–1920 px de verdad (sin scroll horizontal).
 - UI: solo Tailwind + animaciones propias (`animate-fadeIn|aparecer|pop|pulse…`, keyframes en `client/src/index.css`; iconos animados por regla global o clase `icono-campana|camion|reloj|latido|destello`). Respetar "reducir movimiento". Sin librerías de animación.
-- Componentes base (`components/ui/`) antes de copiar clases: `Modal`+`CabeceraModal`, `Input`/`Selector`/`AreaTexto`/`Campo`, `Tarjeta`, `EstadoVacio`, `BarraProgreso`, `KpiCard`, `Seccion`, `SelectorPosicion`. Acciones del panel: `components/panel/acciones.js`. Importes/horas: `data/formatoFinanciero.js`; fechas: `utils/dateUtils.js`; fichajes: `data/fichajes.js`. Avisos y confirmaciones: `useDialog()` (`contexts/DialogContext.jsx`), nunca `window.alert/confirm`. Iconos: lucide.
-- Tests (Vitest): `npx vitest run` en `client/` (~490) y en `server/` (~90), `npx eslint <archivos>` en `client/`. Componentes con `client/src/test/render.jsx` (monta los proveedores). Un bug arreglado lleva su test "BUG evitado: …".
+- Componentes base (`components/ui/`) antes de copiar clases: `Modal`+`CabeceraModal`, `Input`/`Selector`/`AreaTexto`/`Campo`, `Tarjeta`, `EstadoVacio`, `BarraProgreso`, `KpiCard`, `Seccion`, `SelectorPosicion`. Acciones del panel: `components/panel/acciones.js`. Importes/horas: `data/formatoFinanciero.js`; fechas: `utils/dateUtils.js`; fichajes: `data/fichajes.js`; dinero de un turno abierto: `data/costeEnVivo.js`, y lo que cambia cada segundo va en `<EnVivo>` (nunca repintar la pantalla entera). Avisos y confirmaciones: `useDialog()` (`contexts/DialogContext.jsx`), nunca `window.alert/confirm`. Iconos: lucide.
+- Tests (Vitest): `npx vitest run` en `client/` (~610) y en `server/` (~110; `vitest.setup.js` fija supertest a 127.0.0.1), `npx eslint <archivos>` en `client/`. Componentes con `client/src/test/render.jsx` (monta los proveedores). Un bug arreglado lleva su test "BUG evitado: …".
 - Verificación = tests + `npm run build` + mirar la app en el navegador (escritorio y móvil) + `curl` a Render si toca servidor. Build verde ≠ funciona.
 - ⚠️ `npm run dev` usa la API de PRODUCCIÓN (`client/.env`): en local solo mirar; nada de fichar, marcar ni guardar.
 - Seguridad: secretos solo en Render/Atlas; todo acceso de admin por `/api/auth/*` y `requireAdmin`. Antes de mergear algo de auth o dinero, releer esta sección y `MEJORAS.md`.
@@ -30,7 +30,7 @@
 ## WORKFLOW
 - El planning vive en Mongo: `logisticsData.js` (cliente/servidor) es solo semilla. Cambiar una semana = `POST /api/logistics/weeks` con el objeto COMPLETO (reemplaza el documento; control por `updatedAt`, 409 si alguien guardó antes).
 - Dos checkouts: el worktree (rama de trabajo) y `/Users/raul/Desktop/projects/gula-logistics` (`main`, solo para merge + push). Antes de fusionar, traer `origin/main` a la rama (otras sesiones trabajan en paralelo).
-- Deploy cliente: automático en cada push a `main` (GitHub Action, ~1 min; comprobar `gh run list` y el hash del bundle en la URL pública). Servidor: Render auto-despliega (5–10 min y no avisa: comprobar con `curl` algo observable del cambio).
+- Deploy cliente: automático en cada push a `main` (GitHub Action, ~1 min; comprobar `gh run list` y el hash del bundle en la URL pública). Servidor: Render auto-despliega (de 5 a 25 min y no avisa: comprobar con `curl` algo observable del cambio).
 
 ```bash
 git add -A && git commit -m "..."                                        # en el worktree
