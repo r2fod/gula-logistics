@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { construirEnlaceTrabajador, semanaInicialDeEnlace, urlBase, enlaceTrabajador, enlaceSocias, enlaceVistaPublica, enlaceWhatsApp } from './enlaces';
+import { construirEnlaceTrabajador, semanaPedidaEnEnlace, urlBase, enlaceTrabajador, enlaceSocias, enlaceVistaPublica, enlaceWhatsApp } from './enlaces';
 
 const semana = (dateRange, status = 'Operativa Activa') => ({ meta: { dateRange, status } });
 const semanas = {
@@ -7,7 +7,6 @@ const semanas = {
   s4: semana('Del 22 al 27 de Septiembre de 2026'),
   s5: semana('Del 29 de Septiembre al 4 de Octubre de 2026', 'Borrador'),
 };
-const hoy = new Date(2026, 8, 24, 12, 0); // jueves de la semana 4
 
 describe('construirEnlaceTrabajador', () => {
   it('el enlace no lleva la semana: es el mismo todas las semanas', () => {
@@ -21,40 +20,30 @@ describe('construirEnlaceTrabajador', () => {
   });
 });
 
-describe('semanaInicialDeEnlace', () => {
-  it('un trabajador con el enlace nuevo (sin semana) ve la semana de hoy', () => {
-    expect(semanaInicialDeEnlace({ workerParam: 'Ana', semanas, hoy })).toBe('s4');
+// null = el enlace no fija semana: la app sigue sola la de hoy (useWeeks).
+describe('semanaPedidaEnEnlace', () => {
+  it('un trabajador con el enlace nuevo (sin semana) no fija ninguna: ve la de hoy', () => {
+    expect(semanaPedidaEnEnlace({ workerParam: 'Ana', semanas })).toBeNull();
   });
 
   it('BUG evitado: un enlace viejo con ?week= de una semana pasada ya no ancla al trabajador a ella', () => {
-    expect(semanaInicialDeEnlace({ weekParam: 's3', workerParam: 'Ana', semanas, hoy })).toBe('s4');
+    expect(semanaPedidaEnEnlace({ weekParam: 's3', workerParam: 'Ana', semanas })).toBeNull();
   });
 
-  it('el enlace es el mismo pero la semana cambia sola con la fecha', () => {
-    const args = { workerParam: 'Ana', semanas };
-    expect(semanaInicialDeEnlace({ ...args, hoy: new Date(2026, 8, 17, 9) })).toBe('s3');
-    expect(semanaInicialDeEnlace({ ...args, hoy: new Date(2026, 8, 24, 9) })).toBe('s4');
-  });
-
-  it('un borrador no se abre nunca a un trabajador, ni por ?week= ni por defecto', () => {
-    expect(semanaInicialDeEnlace({ weekParam: 's5', workerParam: 'Ana', semanas, hoy })).toBe('s4');
-    expect(semanaInicialDeEnlace({ weekParam: 's5', semanas, hoy })).toBe('s4'); // sin admin, tampoco
-    expect(semanaInicialDeEnlace({ workerParam: 'Ana', semanas, hoy: new Date(2026, 9, 1, 9) })).toBe('s4'); // el borrador de la semana en curso no cuenta
+  it('un borrador no se abre nunca a un trabajador por ?week=', () => {
+    expect(semanaPedidaEnEnlace({ weekParam: 's5', workerParam: 'Ana', semanas })).toBeNull();
+    expect(semanaPedidaEnEnlace({ weekParam: 's5', semanas })).toBeNull(); // sin admin, tampoco
   });
 
   it('un admin sí respeta ?week=, también a un borrador, aunque abra un enlace de trabajador', () => {
-    expect(semanaInicialDeEnlace({ weekParam: 's3', hayAdmin: true, semanas, hoy })).toBe('s3');
-    expect(semanaInicialDeEnlace({ weekParam: 's5', hayAdmin: true, semanas, hoy })).toBe('s5');
-    expect(semanaInicialDeEnlace({ weekParam: 's3', workerParam: 'Ana', hayAdmin: true, semanas, hoy })).toBe('s3');
+    expect(semanaPedidaEnEnlace({ weekParam: 's3', hayAdmin: true, semanas })).toBe('s3');
+    expect(semanaPedidaEnEnlace({ weekParam: 's5', hayAdmin: true, semanas })).toBe('s5');
+    expect(semanaPedidaEnEnlace({ weekParam: 's3', workerParam: 'Ana', hayAdmin: true, semanas })).toBe('s3');
   });
 
-  it('sin trabajador, un ?week= válido se respeta y uno inexistente cae en la semana de hoy', () => {
-    expect(semanaInicialDeEnlace({ weekParam: 's3', semanas, hoy })).toBe('s3');
-    expect(semanaInicialDeEnlace({ weekParam: 'no_existe', semanas, hoy })).toBe('s4');
-  });
-
-  it('sin semanas devuelve null', () => {
-    expect(semanaInicialDeEnlace({ workerParam: 'Ana', semanas: {}, hoy })).toBeNull();
+  it('sin trabajador, un ?week= válido se respeta; uno inexistente no fija nada', () => {
+    expect(semanaPedidaEnEnlace({ weekParam: 's3', semanas })).toBe('s3');
+    expect(semanaPedidaEnEnlace({ weekParam: 'no_existe', semanas })).toBeNull();
   });
 });
 

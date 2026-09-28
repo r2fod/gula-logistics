@@ -509,6 +509,25 @@ describe('isWeekFinished — cuándo ha terminado una semana', () => {
   it('una semana futura no está terminada', () => {
     expect(isWeekFinished(semana(), at(2026, 9, 10))).toBe(false);
   });
+
+  it('una tarea ya marcada como hecha no la deja abierta aunque su horario no haya acabado', () => {
+    const w = semana();
+    w.sundayMonday.tasks[0].completed = true;
+    expect(isWeekFinished(w, at(2026, 9, 21, 10, 0))).toBe(true);
+  });
+
+  it('BUG evitado: por persona, el lunes de cola solo cuentan SUS tareas (la limpieza de otro hasta las 20:00 no le deja la semana abierta)', () => {
+    const w = semana();
+    w.sundayMonday.tasks = [
+      { text: 'Devolución', timeFrame: '09:30-10:00', targetDay: 'Lunes', assigned: ['Luis'] },
+      { text: 'Limpieza', timeFrame: '13:30-20:00', targetDay: 'Lunes', assigned: ['Ana'] },
+    ];
+    const lunes = at(2026, 9, 21, 12, 0);
+    expect(isWeekFinished(w, lunes)).toBe(false); // para el equipo, aún no
+    expect(isWeekFinished(w, lunes, undefined, 'Luis')).toBe(true);
+    expect(isWeekFinished(w, lunes, undefined, 'Ana')).toBe(false);
+    expect(isWeekFinished(w, lunes, undefined, 'Eva')).toBe(true); // nada suyo esta semana
+  });
 });
 
 describe('getTaskText', () => {

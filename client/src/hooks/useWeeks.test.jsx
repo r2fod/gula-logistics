@@ -104,6 +104,43 @@ describe('useWeeks — semana con la que se abre', () => {
     expect(renderHook(() => useWeeks()).result.current.activeWeekId).toBe('week_4');
   });
 
+  const lunesDeCola = () => ({
+    week_3: { ...w('week_3', 'Del 15 al 20 de Septiembre de 2026'), sundayMonday: { tasks: [
+      { text: 'Devolución', timeFrame: '09:30 - 10:00', targetDay: 'Lunes', assigned: ['Luis'], completed: false },
+      { text: 'Limpieza', timeFrame: '13:30 - 20:00', targetDay: 'Lunes', assigned: ['Ana'], completed: false },
+    ] } },
+    week_4: w('week_4', 'Del 22 al 27 de Septiembre de 2026'),
+  });
+
+  it('BUG evitado: con la app abierta pasa sola a la semana nueva cuando la anterior termina (antes, solo al recargar)', () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 21, 20, 0));
+    conSemanas(lunesDeCola());
+    const { result } = renderHook(() => useWeeks());
+    expect(result.current.activeWeekId).toBe('week_3'); // la limpieza acaba a las 20:00 (+ margen)
+    act(() => { vi.advanceTimersByTime(60 * 60 * 1000); });
+    expect(result.current.activeWeekId).toBe('week_4');
+  });
+
+  it('elegida a mano, o con un editor abierto, la semana no cambia sola', () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 21, 20, 0));
+    conSemanas(lunesDeCola());
+    const elegida = renderHook(() => useWeeks());
+    act(() => elegida.result.current.setActiveWeekId('week_3'));
+    const editando = renderHook(({ congelar }) => useWeeks({ congelar }), { initialProps: { congelar: true } });
+    act(() => { vi.advanceTimersByTime(60 * 60 * 1000); });
+    expect(elegida.result.current.activeWeekId).toBe('week_3');
+    expect(editando.result.current.activeWeekId).toBe('week_3');
+    editando.rerender({ congelar: false }); // al cerrar el editor, ya sí
+    expect(editando.result.current.activeWeekId).toBe('week_4');
+  });
+
+  it('un trabajador sin nada pendiente en el lunes de cola ya ve la semana siguiente', () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 21, 14, 0));
+    conSemanas(lunesDeCola());
+    expect(renderHook(() => useWeeks({ persona: 'Luis' })).result.current.activeWeekId).toBe('week_4');
+    expect(renderHook(() => useWeeks({ persona: 'Ana' })).result.current.activeWeekId).toBe('week_3');
+  });
+
   it('sin semanas legibles abre la primera que existe (no la de ejemplo del código)', () => {
     vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 24, 10, 0));
     conSemanas({ x: w('x', 'fechas raras') });

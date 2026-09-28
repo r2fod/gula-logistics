@@ -42,6 +42,7 @@ _Resumen de lo que ya está hecho y por qué es así. El detalle de cada cambio 
 ## Forma de trabajar
 - **Build verde ≠ funciona.** Tras un refactor grande, barrido de ESLint (`no-undef`) — hubo pantallas en negro por referencias colgando — y mirar la app desplegada.
 - Los efectos con `[]` congelan las funciones de la primera render: quien las llame desde un `setInterval` lo hace por `ref`.
+- **Lo que depende de la hora se deriva, no se fija al abrir** (28/09): la semana activa se decidía una vez al montar y la app se quedaba en la semana vieja hasta recargar. Ahora `useWeeks` la recalcula cada minuto (`useAhora`) y solo se fija si alguien la elige; con un editor abierto no cambia (guardaría encima de la otra semana).
 - El service worker no cachea el bundle a propósito (evita servir versiones viejas).
 - Render (plan gratuito) se duerme a los 15 min: la primera petición tarda 30–50 s. Sus despliegues tardan (hasta 25 min el 28/09) y no avisan: el cliente nuevo debe funcionar también con el servidor viejo.
 - **El equipo en un solo sitio** (`/api/roster` + `equipoRoles.js`): el bloque «Equipo» de la vista pública era un texto por semana que se copiaba de una a otra y se quedaba viejo (seguía nombrando a gente que no es de logística y no incluía a los nuevos); ahora se construye desde las fichas, por rol. **Ojo con el esquema de Mongoose:** `TeamWorkerSchema` es estricto y descartaba sin avisar cualquier campo nuevo; se añadieron `backup`, `nota` y `disponibilidad` al esquema y se validan al guardar.

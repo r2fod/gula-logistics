@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { logisticsData as BASE_DATA } from '../data/logisticsData';
 import { saveWeeksToAPI, patchTaskCompletionInAPI } from '../data/apiService';
 import { semanaPorDefecto } from '../data/anticipacion';
 import { getTaskListForDay, buildTaskListPatch, isTaskEffectivelyDone, ensureYearInDateRange, clearWeekCompletion } from '../data/taskPlanning';
 import { useDialog } from '../contexts/DialogContext';
+import { useAhora } from './useAhora';
 
 const BASE_WEEK_3 = {
   id: "week_3",
@@ -11,7 +12,9 @@ const BASE_WEEK_3 = {
   ...BASE_DATA
 };
 
-export function useWeeks() {
+// `persona`: el trabajador cuya vista se enseña (su semana "de hoy" mira solo sus
+// tareas). `congelar`: hay un editor abierto y la semana no puede cambiar sola.
+export function useWeeks({ persona = null, congelar = false } = {}) {
   const { alert } = useDialog();
   const [allWeeks, setAllWeeks] = useState(() => {
     try {
@@ -22,21 +25,23 @@ export function useWeeks() {
     }
   });
 
-  // Al abrir, la semana en la que estamos (la de hoy; si ya terminó del todo, la
-  // siguiente) según lo último que se guardó en este dispositivo: así no se ve un
-  // instante la semana 3 antes de que lleguen los datos del servidor.
-  const [semanaElegida, setActiveWeekId] = useState(() => {
-    const inicial = semanaPorDefecto(allWeeks, new Date());
-    return inicial && allWeeks[inicial] ? inicial : 'week_3';
-  });
+  // Semana elegida a mano (selector, víspera, semana nueva, ?week= de un admin). null =
+  // la app sigue sola "la de hoy" (semanaPorDefecto): se recalcula cada minuto y con
+  // cada dato nuevo, así que el lunes de cola pasa a la semana siguiente en cuanto la
+  // anterior termina, sin recargar. Antes se decidía una vez al abrir y la app se
+  // quedaba en la semana vieja hasta recargar.
+  const [semanaElegida, setActiveWeekId] = useState(null);
+  const ahora = useAhora(60 * 1000);
+  const deHoy = useMemo(() => semanaPorDefecto(allWeeks, ahora, persona), [allWeeks, ahora, persona]);
+  // Con un editor abierto no cambia: guardaría lo editado encima de la otra semana.
+  const [deHoyVista, setDeHoyVista] = useState(deHoy);
+  if (!congelar && deHoy !== deHoyVista) setDeHoyVista(deHoy);
   // La semana activa SIEMPRE es una que existe. Si el id elegido no está entre las
   // semanas (un selector con un valor que no es un id, una semana que aún no ha
   // llegado del servidor...) se usa la semana de hoy, o la primera: antes se caía en
   // la semana de ejemplo del código ("Tarea de ejemplo", sin datos) y cualquier cambio
   // se guardaba con ese id inventado.
-  const activeWeekId = allWeeks[semanaElegida]
-    ? semanaElegida
-    : (semanaPorDefecto(allWeeks, new Date()) || Object.keys(allWeeks)[0] || semanaElegida);
+  const activeWeekId = [semanaElegida, deHoyVista, deHoy].find(id => id && allWeeks[id]) || Object.keys(allWeeks)[0] || 'week_3';
   const activeWeek = allWeeks[activeWeekId] || BASE_WEEK_3;
 
   // Timestamp del último cambio local (toggle, etc.) para que el polling
