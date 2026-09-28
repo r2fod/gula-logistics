@@ -54,3 +54,12 @@ describe('disponibilidad fija (ficha del equipo)', () => {
     expect(asignados.m).toEqual(['Ana']);
   });
 });
+
+describe('textos agrupados por días', () => {
+  it('entre semana desde las 15:00 y el fin de semana todo el día: una sola nota', () => {
+    const dias = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
+    const persona = { name: 'Luis', role: 'Conductor Extra', disponibilidad: dias.map(dia => ({ dia, tipo: 'solo', desde: '15:00', hasta: '23:59' })) };
+    expect(nombreConNotas(persona)).toBe('Luis (desde las 15:00 de lunes a viernes)');
+    expect(restriccionesDelEquipo([persona])).toHaveLength(5);
+  });
+});

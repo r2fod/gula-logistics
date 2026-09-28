@@ -61,12 +61,6 @@ export function restriccionQueBloquea(restricciones = [], persona, dia, ini, fin
   return null;
 }
 
-// "Tomás no puede el jueves", "Ana solo puede de 09:00 a 14:00 el viernes".
-export function textoRestriccion(r) {
-  const cuando = r.dia === 'semana' ? 'toda la semana' : `el ${NOMBRE_DIA[r.dia].toLowerCase()}`;
-  const que = r.tipo === 'solo' ? `solo puede de ${r.desde} a ${r.hasta}` : r.tipo === 'descansa' ? 'descansa' : 'no puede';
-  return `${r.persona} ${que} ${cuando}${r.nota ? ` (${r.nota})` : ''}`;
-}
 
 // ─── Disponibilidad FIJA (ficha del equipo, para todas las semanas) ─────────
 // [{ dia, tipo, desde, hasta }] en cada persona de /api/roster ("Luis, desde las 15:00").
@@ -78,11 +72,87 @@ export const restriccionesDelEquipo = (equipo = []) => equipo.flatMap(w => (Arra
 // de la semana se guardan en ella (meta.disponibilidad).
 export const restriccionesEfectivas = (semana, equipo = []) => [...restriccionesDelEquipo(equipo), ...restriccionesDe(semana)];
 
+
+// ─── Días agrupados y textos ─────────────────────────────────────────────────
+// Se guarda un apunte por día, pero se elige y se lee por grupos: "de lunes a viernes",
+// "el fin de semana". Así una persona que "entre semana solo puede desde las 15:00"
+// no son cinco líneas, y a Gemini le llega en una (menos tokens).
+const ORDEN_CALENDARIO = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+const ENTRE_SEMANA = ORDEN_CALENDARIO.slice(0, 5);
+const FIN_DE_SEMANA = ['sabado', 'domingo'];
+
+// Lo que se puede elegir como "día" en los formularios.
+export const OPCIONES_DIA = [
+  { valor: 'semana', etiqueta: 'Todos los días' },
+  { valor: 'entresemana', etiqueta: 'De lunes a viernes' },
+  { valor: 'finde', etiqueta: 'Fin de semana' },
+  ...DIAS_SEMANA.map(d => ({ valor: d, etiqueta: NOMBRE_DIA[d] })),
+];
+export const diasDeOpcion = (valor) => (valor === 'entresemana' ? ENTRE_SEMANA : valor === 'finde' ? FIN_DE_SEMANA : [valor]);
+
+// "de lunes a viernes" → los días en orden de calendario (da la vuelta si hace falta).
+export function diasEntre(desde, hasta) {
+  const [a, b] = [ORDEN_CALENDARIO.indexOf(desde), ORDEN_CALENDARIO.indexOf(hasta)];
+  if (a < 0 || b < 0) return [];
+  const dias = [];
+  for (let i = a; ; i = (i + 1) % 7) { dias.push(ORDEN_CALENDARIO[i]); if (i === b) break; }
+  return dias;
+}
+
 const EN_PLURAL = { sabado: 'sábados', domingo: 'domingos' };
-// Corto, para la ficha y el bloque del equipo: "desde las 15:00", "de 09:00 a 14:00 los viernes", "no los lunes".
-export function textoDisponibilidadFija(r) {
-  const cuando = r.dia === 'semana' ? '' : ` los ${EN_PLURAL[r.dia] || NOMBRE_DIA[r.dia].toLowerCase()}`;
-  if (r.tipo !== 'solo') return `${r.tipo === 'descansa' ? 'descansa' : 'no'}${cuando || ' disponible'}`;
-  const franja = r.hasta === '23:59' ? `desde las ${r.desde}` : ['00:00', '06:00'].includes(r.desde) ? `hasta las ${r.hasta}` : `de ${r.desde} a ${r.hasta}`;
-  return `${franja}${cuando}`;
+const iguales = (a, b) => a.length === b.length && a.every(x => b.includes(x));
+
+// Semanal ("el jueves", "toda la semana") o fija ("los jueves"; todos los días, nada).
+function textoDias(dias, fija) {
+  const orden = ORDEN_CALENDARIO.filter(d => dias.includes(d));
+  if (dias.includes('semana') || orden.length === 7) return fija ? '' : 'toda la semana';
+  if (iguales(orden, ENTRE_SEMANA)) return 'de lunes a viernes';
+  if (iguales(orden, FIN_DE_SEMANA)) return 'el fin de semana';
+  const nombres = orden.map(d => (fija ? EN_PLURAL[d] || NOMBRE_DIA[d].toLowerCase() : NOMBRE_DIA[d].toLowerCase()));
+  return `${fija ? 'los' : 'el'} ${nombres.length > 1 ? `${nombres.slice(0, -1).join(', ')} y ${nombres.at(-1)}` : nombres[0]}`;
+}
+
+// Junta las que solo se diferencian en el día: [{ persona, tipo, desde, hasta, fija, nota, dias, ids }].
+export function agruparRestricciones(lista = []) {
+  const grupos = new Map();
+  lista.forEach((r, i) => {
+    const clave = [r.persona, r.tipo, r.desde || '', r.hasta || '', r.fija ? 1 : 0, r.nota || ''].join('|');
+    if (!grupos.has(clave)) grupos.set(clave, { ...r, dias: [], ids: [], indices: [] });
+    const g = grupos.get(clave);
+    g.dias.push(r.dia);
+    g.ids.push(r.id);
+    g.indices.push(i);
+  });
+  return [...grupos.values()];
+}
+
+// "Luis solo puede desde las 15:00 de lunes a viernes", "Ana no puede el jueves"; sin
+// persona (ficha del equipo): "desde las 15:00 de lunes a viernes", "no los lunes".
+export function textoGrupo(g, { conPersona = true } = {}) {
+  const cuando = textoDias(g.dias || [g.dia], !!g.fija || !conPersona);
+  const franja = g.hasta === '23:59' ? `desde las ${g.desde}` : ['00:00', '06:00'].includes(g.desde) ? `hasta las ${g.hasta}` : `de ${g.desde} a ${g.hasta}`;
+  const que = g.tipo === 'solo' ? `${conPersona ? 'solo puede ' : ''}${franja}` : g.tipo === 'descansa' ? 'descansa' : conPersona ? 'no puede' : 'no';
+  const sufijo = cuando || (g.tipo === 'no' && !conPersona ? 'disponible' : '');
+  return `${conPersona ? `${g.persona} ` : ''}${que}${sufijo ? ` ${sufijo}` : ''}${g.nota ? ` (${g.nota})` : ''}`;
+}
+
+// Una sola: "Tomás no puede el jueves", "Ana solo puede de 09:00 a 14:00 el viernes".
+export const textoRestriccion = (r) => textoGrupo({ ...r, dias: [r.dia] });
+// Corta, para la ficha y el bloque del equipo: "desde las 15:00", "no los lunes".
+export const textoDisponibilidadFija = (r) => textoGrupo({ ...r, dias: [r.dia] }, { conPersona: false });
+// Todas, agrupadas por días, en una línea cada grupo (avisos, prompts, listas).
+export const textosAgrupados = (lista = [], opciones) => agruparRestricciones(lista).map(g => textoGrupo(g, opciones));
+
+// Del formulario (persona, un día o un grupo de OPCIONES_DIA, tipo, horas) a las
+// restricciones de cada día → { restricciones } o { error }. Con una sola hora basta:
+// sin "hasta" es "a partir de esa hora"; sin "desde", "hasta esa hora".
+export function restriccionesDeFormulario({ persona, dia, tipo, desde = '', hasta = '' }) {
+  const horas = tipo === 'solo' && (desde || hasta) ? { desde: desde || '06:00', hasta: hasta || '23:59' } : { desde, hasta };
+  const restricciones = [];
+  for (const d of diasDeOpcion(dia)) {
+    const { restriccion, error } = crearRestriccion({ persona, dia: d, tipo, ...horas });
+    if (error) return { error };
+    restricciones.push(restriccion);
+  }
+  return { restricciones };
 }

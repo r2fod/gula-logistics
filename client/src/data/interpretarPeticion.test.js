@@ -24,6 +24,15 @@ describe('interpretarDisponibilidad (sin Gemini, 0 tokens)', () => {
     expect(leer('Luis no puede el viernes por la mañana')).toEqual(['Luis viernes solo 14:00 23:59']);
   });
 
+  it('grupos de días: de lunes a viernes, entre semana, el fin de semana, en plural', () => {
+    const entreSemana = ['martes', 'miercoles', 'jueves', 'viernes', 'lunes'];
+    expect(leer('Luis solo puede a partir de las 15:00 de lunes a viernes')).toEqual(entreSemana.map(d => `Luis ${d} solo 15:00 23:59`));
+    expect(leer('Pau no puede entre semana')).toEqual(entreSemana.map(d => `Pau ${d} no`));
+    expect(leer('Eva descansa el fin de semana')).toEqual(['Eva sabado descansa', 'Eva domingo descansa']);
+    expect(leer('Ana no puede los sábados')).toEqual(['Ana sabado no']);
+    expect(leer('Tomás no puede de viernes a domingo')).toEqual(['Tomás viernes no', 'Tomás sabado no', 'Tomás domingo no']);
+  });
+
   it('varias personas y varios días', () => {
     expect(leer('Ana y Luis no pueden el jueves ni el viernes')).toEqual(['Ana jueves no', 'Ana viernes no', 'Luis jueves no', 'Luis viernes no']);
   });

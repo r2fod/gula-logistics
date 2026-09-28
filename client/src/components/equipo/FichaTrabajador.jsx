@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Save, X } from 'lucide-react';
 import Boton from '../ui/Boton';
 import { Campo, Input, Selector } from '../ui/Campo';
-import { crearRestriccion, DIAS_SEMANA, NOMBRE_DIA, textoDisponibilidadFija, TIPOS_DISPONIBILIDAD } from '../../data/disponibilidad';
+import { agruparRestricciones, OPCIONES_DIA, restriccionesDeFormulario, textoGrupo, TIPOS_DISPONIBILIDAD } from '../../data/disponibilidad';
 
 const NUEVA = { dia: 'semana', tipo: 'solo', desde: '', hasta: '' };
 
@@ -21,13 +21,9 @@ export default function FichaTrabajador({ trabajador, onGuardar, onCerrar }) {
   const [guardando, setGuardando] = useState(false);
 
   const anadir = () => {
-    // Con una sola hora se entiende sola: sin "hasta" es desde esa hora; sin "desde", hasta ella.
-    const horario = nueva.tipo === 'solo' && (nueva.desde || nueva.hasta)
-      ? { desde: nueva.desde || '06:00', hasta: nueva.hasta || '23:59' } : {};
-    const { restriccion, error } = crearRestriccion({ ...nueva, ...horario, persona: trabajador.name });
+    const { restricciones, error } = restriccionesDeFormulario({ ...nueva, persona: trabajador.name });
     if (error) { setMensaje({ tipo: 'error', texto: error }); return; }
-    const { dia, tipo, desde = '', hasta = '' } = restriccion;
-    setDisponibilidad(d => [...d, { dia, tipo, desde, hasta }]);
+    setDisponibilidad(d => [...d, ...restricciones.map(({ dia, tipo, desde = '', hasta = '' }) => ({ dia, tipo, desde, hasta }))]);
     setNueva(NUEVA);
     setMensaje(null);
   };
@@ -59,10 +55,11 @@ export default function FichaTrabajador({ trabajador, onGuardar, onCerrar }) {
         <p className="text-xs font-semibold uppercase tracking-wider text-slate-300">Disponibilidad fija <span className="whitespace-nowrap normal-case tracking-normal text-slate-500">(todas las semanas)</span></p>
         {disponibilidad.length > 0 && (
           <ul className="flex flex-wrap gap-2">
-            {disponibilidad.map((r, i) => (
-              <li key={`${r.dia}-${r.tipo}-${i}`} className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 py-0.5 pl-2 pr-0.5 text-xs text-slate-200">
-                {textoDisponibilidadFija(r)}
-                <button type="button" onClick={() => setDisponibilidad(d => d.filter((_, j) => j !== i))} aria-label={`Quitar: ${textoDisponibilidadFija(r)}`} className="rounded p-1 text-slate-500 hover:text-rose-300">
+            {/* Agrupadas por días: "desde las 15:00 de lunes a viernes" es una sola etiqueta. */}
+            {agruparRestricciones(disponibilidad.map(r => ({ ...r, persona: trabajador.name, fija: true }))).map(g => (
+              <li key={g.indices.join('-')} className="flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-900 py-0.5 pl-2 pr-0.5 text-xs text-slate-200">
+                {textoGrupo(g, { conPersona: false })}
+                <button type="button" onClick={() => setDisponibilidad(d => d.filter((_, j) => !g.indices.includes(j)))} aria-label={`Quitar: ${textoGrupo(g, { conPersona: false })}`} className="rounded p-1 text-slate-500 hover:text-rose-300">
                   <X className="h-3 w-3" aria-hidden="true" />
                 </button>
               </li>
@@ -71,8 +68,7 @@ export default function FichaTrabajador({ trabajador, onGuardar, onCerrar }) {
         )}
         <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
           <Selector id={`fija-dia-${trabajador.name}`} tamano="sm" aria-label="Día" acento="emerald" {...campo('dia')}>
-            <option value="semana">Todos los días</option>
-            {DIAS_SEMANA.map(d => <option key={d} value={d}>{NOMBRE_DIA[d]}</option>)}
+            {OPCIONES_DIA.map(o => <option key={o.valor} value={o.valor}>{o.etiqueta}</option>)}
           </Selector>
           <Selector id={`fija-tipo-${trabajador.name}`} tamano="sm" aria-label="Qué pasa" acento="emerald" {...campo('tipo')}>
             {Object.entries(TIPOS_DISPONIBILIDAD).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
