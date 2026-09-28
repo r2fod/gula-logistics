@@ -56,3 +56,38 @@ describe('WorkerView', () => {
     expect(screen.queryByText('Fichar salida')).toBeNull();
   });
 });
+
+describe('WorkerView — botón de fichar la entrada', () => {
+  afterEach(() => vi.useRealTimers());
+  const botonEntrada = () => screen.getAllByRole('button').find(b => /INICIAR JORNADA|para fichar|Sin tareas pendientes/.test(b.textContent));
+  const a = (dia, h, m = 0) => { vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, dia, h, m, 0)); };
+
+  it('antes de 5 min de la primera tarea está bloqueado y dice desde cuándo', () => {
+    a(28, 9, 0); // la del lunes empieza a las 10:00
+    pintar();
+    expect(botonEntrada()).toBeDisabled();
+    expect(botonEntrada()).toHaveTextContent('Espera 55 min para fichar');
+    expect(screen.getByText(/Podrás fichar a partir de las 09:55 \(5 min antes de tu primera tarea\)/)).toBeInTheDocument();
+  });
+
+  it('a 5 min de la primera tarea se activa', () => {
+    a(28, 9, 56);
+    pintar();
+    expect(botonEntrada()).toBeEnabled();
+    expect(botonEntrada()).toHaveTextContent(/INICIAR JORNADA/);
+  });
+
+  it('BUG evitado: con solo tareas ya pasadas sin marcar no queda activo (antes lo estaba siempre)', () => {
+    a(28, 12, 0); // la del martes y la del lunes ya terminaron y nadie las marcó
+    pintar();
+    expect(botonEntrada()).toBeDisabled();
+    expect(botonEntrada()).toHaveTextContent('Sin tareas pendientes');
+    expect(screen.getByText(/usa «O fichar otra tarea libre»/)).toBeInTheDocument();
+  });
+
+  it('con las fechas de la semana ilegibles no deja a nadie sin poder fichar', () => {
+    a(28, 12, 0);
+    render(<WorkerView workerName="Ana" workersList={equipo} activeWeekData={{ ...semana, meta: { dateRange: 'por decidir' } }} clockEntries={[]} onClockEntryCreated={vi.fn()} onToggleTask={vi.fn()} />);
+    expect(botonEntrada()).toBeEnabled();
+  });
+});

@@ -245,13 +245,21 @@ export default function WorkerView({
       }
     }
     const startOf = ({ day, t }) => getNextTaskStart(activeWeekData, day.key, t, currentTime)?.getTime() ?? Infinity;
-    candidates.sort((a, b) => {
+    // Una tarea con horario que ya terminó no es "la siguiente" aunque nadie la
+    // marcara (desde el 25/09 nada se marca solo): antes, con solo tareas pasadas
+    // sin marcar, la puerta de los 5 min no se cerraba nunca y el botón de fichar
+    // quedaba siempre activo. Con fechas ilegibles no se descarta nada (se podría
+    // dejar a todos sin poder fichar).
+    const fechasLegibles = !!getWeekRange(activeWeekData, currentTime);
+    const conHorario = ({ t }) => typeof t === 'object' && /\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}/.test(t?.timeFrame || '');
+    const pendientes = candidates.filter(c => !(fechasLegibles && conHorario(c) && startOf(c) === Infinity));
+    pendientes.sort((a, b) => {
       const sa = startOf(a);
       const sb = startOf(b);
       return sa === sb ? 0 : sa < sb ? -1 : 1;
     });
 
-    const next = candidates[0];
+    const next = pendientes[0];
     if (!next) return null;
     const { day, t } = next;
     if (next.isWedding) {
@@ -383,8 +391,12 @@ export default function WorkerView({
   const firstTaskStart = jornadaStarted || !immediateTask?.dayKey
     ? null
     : getNextTaskStart(activeWeekData, immediateTask.dayKey, immediateTask.rawTask, currentTime);
-  const jornadaGateClosed = !!firstTaskStart && isTaskTooEarlyToStart(activeWeekData, immediateTask.dayKey, immediateTask.rawTask, currentTime);
+  // Sin ninguna tarea pendiente tampoco se abre (evita fichar sin querer); para algo
+  // que no está en el planning queda «O fichar otra tarea libre».
+  const sinTareasPendientes = !jornadaStarted && !immediateTask;
+  const jornadaGateClosed = sinTareasPendientes || (!!firstTaskStart && isTaskTooEarlyToStart(activeWeekData, immediateTask.dayKey, immediateTask.rawTask, currentTime));
   const gateText = () => {
+    if (sinTareasPendientes) return 'No tienes tareas pendientes ahora';
     if (!firstTaskStart) return '';
     const opens = new Date(firstTaskStart.getTime() - 5 * 60 * 1000);
     const hhmm = formatTimeShort(opens);
@@ -633,10 +645,11 @@ export default function WorkerView({
                 // tarea, no solo la hora de hoy: una tarea de un día futuro no
                 // deja iniciar jornada antes de tiempo.
                 const isReady = !jornadaGateClosed;
-                const minutesLeft = isReady ? 0 : Math.max(1, Math.ceil((firstTaskStart.getTime() - currentTime.getTime()) / 60000 - 5));
+                const minutesLeft = isReady || !firstTaskStart ? 0 : Math.max(1, Math.ceil((firstTaskStart.getTime() - currentTime.getTime()) / 60000 - 5));
                 const waitText = minutesLeft >= 60 ? `${Math.floor(minutesLeft / 60)} h ${minutesLeft % 60} min` : `${minutesLeft} min`;
 
                 return (
+                  <>
                   <button
                     disabled={!isReady}
                     onClick={() => {
@@ -659,13 +672,24 @@ export default function WorkerView({
                         <Play className="w-4 h-4 fill-current" />
                         <span>{startLabel}</span>
                       </>
+                    ) : sinTareasPendientes ? (
+                      <>
+                        <Lock className="w-4 h-4 shrink-0" />
+                        <span className="whitespace-nowrap">Sin tareas pendientes</span>
+                      </>
                     ) : (
                       <>
-                        <Clock className="w-4 h-4" />
-                        <span>Espera {waitText} para fichar</span>
+                        <Clock className="w-4 h-4 shrink-0" />
+                        <span className="whitespace-nowrap">Espera {waitText} para fichar</span>
                       </>
                     )}
                   </button>
+                  {!isReady && (
+                    <p className="text-[11px] text-slate-400">
+                      {sinTareasPendientes ? 'Si te han llamado para algo que no está en tu planning, usa «O fichar otra tarea libre».' : `${gateText()} (5 min antes de tu primera tarea).`}
+                    </p>
+                  )}
+                  </>
                 );
               })()}
             </div>
