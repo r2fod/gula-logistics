@@ -88,7 +88,7 @@ describe('generateScheduleWithGemini — nunca inventa una semana', () => {
     const fetchMock = vi.fn().mockResolvedValue(okResponse(semanaOk));
     vi.stubGlobal('fetch', fetchMock);
     const r = await generateScheduleWithGemini({ prompt: 'x', apiKey: 'CLAVE-FALSA' });
-    expect(r).toEqual({ generatedJson: planOk, errorMsg: '' });
+    expect(r).toMatchObject({ generatedJson: planOk, errorMsg: '' });
     const [url, opts] = fetchMock.mock.calls[0];
     expect(url).toContain(GEMINI_MODELS[0]);
     expect(url).not.toContain('CLAVE-FALSA');

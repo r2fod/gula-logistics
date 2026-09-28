@@ -1,10 +1,10 @@
+import { plano } from '../utils/texto';
 // Lógica del Historial de Fichajes, separada de la pantalla: filtrar, agrupar por
 // día y unir cada fichaje con el turno al que pertenece. Son funciones puras,
 // probadas aparte (fichajesAgrupados.test.js).
 
 export const TIPOS_FICHAJE = ['entrada', 'salida', 'fichaje'];
 
-const plano = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const instante = (e) => new Date(e?.timestamp).getTime();
 
 // Día local del fichaje ("2026-9-21"), o "sin-fecha" si no tiene marca de tiempo legible.

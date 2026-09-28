@@ -1,5 +1,6 @@
 import { getTaskInterval, getWeekRange, esTareaActiva } from './taskPlanning';
 import { parseEventAndTask, EVENT_CATEGORIES, GENERAL_EVENT, paxDeSemana, esBorradorSemana, getWeddingTaskName } from './eventNaming';
+import { plano } from '../utils/texto';
 
 // Reparto del tiempo de jornada SIN TAREA entre los eventos del planning.
 //
@@ -22,7 +23,6 @@ import { parseEventAndTask, EVENT_CATEGORIES, GENERAL_EVENT, paxDeSemana, esBorr
 // Cada trozo lleva `estimado: true` para poder avisar en pantalla de que ese
 // reparto sale del planning y no de un fichaje.
 
-const plain = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 const MINUTO = 60 * 1000;
 const mismoDia = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
@@ -54,7 +54,7 @@ export function listarTareasPlanificadas(weeksMap = {}, now = new Date(), { incl
       if (!task || typeof task !== 'object' || !esTareaActiva(task) || !Array.isArray(task.assigned) || (!evento && !incluirSinEvento)) return;
       const tramo = getTaskInterval(week, dayKey, task, now);
       if (!tramo) return;
-      tareas.push({ evento: evento || null, pax, asignados: task.assigned.map(plain), nombresAsignados: task.assigned, inicio: tramo.start, fin: tramo.end, texto, semanaDesde, semanaHasta });
+      tareas.push({ evento: evento || null, pax, asignados: task.assigned.map(plano), nombresAsignados: task.assigned, inicio: tramo.start, fin: tramo.end, texto, semanaDesde, semanaHasta });
     };
     Object.entries(week.schedule || {}).forEach(([dayKey, day]) => {
       (day?.tasks || []).forEach(t => t?.text && anadir(dayKey, t, t.text, eventoDeTarea(t.text, t.event)));
@@ -84,7 +84,7 @@ export function repartirTiempoSinTarea(shifts = [], weeksMap = {}, resolveEvent 
     const ini = new Date(shift.startEntry?.timestamp);
     const fin = new Date(shift.endEntry?.timestamp);
     if (isNaN(ini) || isNaN(fin) || fin <= ini) return shift;
-    const persona = plain(shift.workerName);
+    const persona = plano(shift.workerName);
     const suyas = tareas.filter(t => t.asignados.includes(persona));
 
     // Peso de cada tarea suya: minutos de solape con el turno; si no hay ninguna

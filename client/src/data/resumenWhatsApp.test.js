@@ -12,14 +12,14 @@ describe('textoResumenWhatsApp', () => {
     });
     expect(texto).toContain('📅 Semana 4 · 22 sept – 28 sept 2026');
     expect(texto).toContain('💶 *Extras a pagar:* 120,00 €');
-    expect(texto).toContain('👤 *Ana*: 12 h · 120,00 €');
-    expect(texto).toContain('👤 *Luis* (nómina): 5 h · valoración 70,00 €');
+    expect(texto).toContain('👤 *Ana*: 12\u00a0h · 120,00 €');
+    expect(texto).toContain('👤 *Luis* (nómina): 5\u00a0h · valoración 70,00 €');
     expect(texto).toContain('• Turnos apuntados a mano: +35,00 €');
     expect(texto).toContain('• Ajustes (roturas, saldos iniciales…): -12,00 €');
     expect(texto).toContain('💰 *Coste (extras + a mano):* 143,00 €');
     expect(texto).toContain('💵 *Ya pagado (efectivo, Bizum, adelantos):* 50,00 €');
     expect(texto).not.toContain('• Pagado');
-    expect(texto).toContain('Previsto según el planning (no son fichajes):* 20 h de extras · 200,00 €');
+    expect(texto).toContain('Previsto según el planning (no son fichajes):* 20\u00a0h de extras · 200,00 €');
   });
 
   it('sin conceptos ni previsto no añade esas partes', () => {

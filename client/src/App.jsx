@@ -40,14 +40,15 @@ import {
   fetchCalendarioApuntes,
   createDraftWeekInAPI,
   retryPendingClockEntries,
-  deleteWeekFromAPI
+  deleteWeekFromAPI,
+  saveWeeksToAPI,
+  getAiMemories
 } from './data/apiService';
 import { pairShiftsFromEntries } from './data/shiftCalculations';
 import { fichajesDeLaSemana, ultimaModificacion, fusionarCambiosFichajes } from './data/fichajes';
 import { aprenderDeFichajes } from './data/aprendizajeFichajes';
 import { semanaDeLaVispera } from './data/vispera';
 import { getWeekRange } from './data/taskPlanning';
-import { anticiparSemanas } from './data/anticipacion';
 import { semanaInicialDeEnlace } from './data/enlaces';
 import { parseWeekRange } from './data/taskPlanning';
 
@@ -120,6 +121,32 @@ export default function App() {
   // configurado. Por ref porque el efecto que la dispara se monta una vez.
   const [avisoAnticipacion, setAvisoAnticipacion] = useState(null);
   const anticipacionEnCursoRef = useRef(false);
+
+  // Tras crear o regenerar borradores, Gemini los revisa una vez (modo barato: solo
+  // cambios, editorIa.js) y se guarda lo que cambió en meta.revisionIa; el admin da
+  // el toque final al aceptarlos. Sin clave o si falla, el borrador se queda como salió
+  // del calendario. Se carga aparte para no pesar en la vista del trabajador.
+  const revisarBorradoresConIa = async (weekIds, semanas) => {
+    const [{ revisarBorradorConGemini }, { GEMINI_API_KEY_STORAGE_KEY }] = await Promise.all([import('./data/editorIa'), import('./data/geminiScheduleService')]);
+    let apiKey = '';
+    try { apiKey = localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || ''; } catch { /* sin almacenamiento: la del servidor */ }
+    const memorias = await getAiMemories().catch(() => []);
+    let revisadas = 0;
+    for (const weekId of weekIds) {
+      const semana = semanas?.[weekId];
+      if (!semana) continue;
+      const r = await revisarBorradorConGemini({ semana, apiKey, equipo: workersList, memorias, aprendizaje });
+      if (r.errorMsg) continue;
+      const revisionIa = { el: new Date().toISOString(), cambios: r.aplicados || 0, tokens: r.uso?.total || 0 };
+      const guardado = await saveWeeksToAPI({ [weekId]: { ...semana, ...(r.generatedJson || {}), meta: { ...semana.meta, revisionIa } } });
+      if (guardado && !guardado.conflict) revisadas += 1;
+    }
+    if (revisadas) {
+      const nuevas = await fetchWeeksFromAPI();
+      if (nuevas) setAllWeeks(nuevas);
+    }
+    return revisadas;
+  };
   const ejecutarAnticipacion = async (force = false) => {
     if (!getStoredAdminToken() || anticipacionEnCursoRef.current) return;
     const CLAVE = 'gula_anticipacion_v1';
@@ -130,6 +157,8 @@ export default function App() {
     try {
       const semanas = await fetchWeeksFromAPI();
       if (!semanas) return { ok: false };
+      // Solo lo usa el admin: se carga aparte (generador + optimizador) para no pesar en la vista del trabajador.
+      const { anticiparSemanas } = await import('./data/anticipacion');
       const r = await anticiparSemanas({
         semanas, hoy: new Date(), roster: workersList,
         leerApuntes: fetchCalendarioApuntes, crearBorrador: createDraftWeekInAPI,
@@ -140,7 +169,8 @@ export default function App() {
       if (r.creadas.length > 0) {
         const nuevas = await fetchWeeksFromAPI();
         if (nuevas) setAllWeeks(nuevas);
-        setAvisoAnticipacion(`📅 Borrador${r.creadas.length > 1 ? 'es' : ''} preparado${r.creadas.length > 1 ? 's' : ''} desde el calendario: ${r.creadas.map(c => `${c.name} (${c.dateRange.replace(/^Del /, '')})`).join(' · ')}. Revísalo${r.creadas.length > 1 ? 's' : ''} y acéptalo${r.creadas.length > 1 ? 's' : ''} en el selector de semanas.`);
+        const revisadas = nuevas ? await revisarBorradoresConIa(r.creadas.map(c => c.weekId), nuevas) : 0;
+        setAvisoAnticipacion(`📅 Borrador${r.creadas.length > 1 ? 'es' : ''} preparado${r.creadas.length > 1 ? 's' : ''} desde el calendario${revisadas ? ' y revisado por Gemini' : ''}: ${r.creadas.map(c => `${c.name} (${c.dateRange.replace(/^Del /, '')})`).join(' · ')}. Revísalo${r.creadas.length > 1 ? 's' : ''} y acéptalo${r.creadas.length > 1 ? 's' : ''} en el selector de semanas.`);
       }
       return { ok: true, creadas: r.creadas.length, omitidas: r.omitidas.length, detallesOmitidas: r.omitidas };
     } finally {
@@ -169,6 +199,7 @@ export default function App() {
     if (!isConfirmed) return;
     
     const clave = `${rango.start.getFullYear()}-${String(rango.start.getMonth() + 1).padStart(2, '0')}-${String(rango.start.getDate()).padStart(2, '0')}`;
+    const { anticiparSemanas } = await import('./data/anticipacion');
     const r = await anticiparSemanas({
       semanas, hoy: new Date(), roster: workersList,
       leerApuntes: fetchCalendarioApuntes, crearBorrador: createDraftWeekInAPI,
@@ -178,7 +209,10 @@ export default function App() {
     if (r.estado === 'error') { await alert(`No se pudo leer el calendario: ${r.error}`, { type: 'error' }); return; }
     if (r.creadas.length === 0) { await alert(`No se ha regenerado: ${r.omitidas[0]?.motivo || 'sin cambios'}.`, { type: 'info' }); return; }
     const nuevas = await fetchWeeksFromAPI();
-    if (nuevas) setAllWeeks(nuevas);
+    if (nuevas) {
+      setAllWeeks(nuevas);
+      await revisarBorradoresConIa([weekId], nuevas);
+    }
   };
 
   const eliminarSemana = async (weekId) => {

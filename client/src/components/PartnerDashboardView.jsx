@@ -21,6 +21,8 @@ import AdminSettingsModal from './AdminSettingsModal';
 import AdminAiMemoryModal from './AdminAiMemoryModal';
 import AvisoDeshacerIa from './panel/AvisoDeshacerIa';
 import SemanaBorradorBanner from './SemanaBorradorBanner';
+import DisponibilidadSemana from './planning/DisponibilidadSemana';
+import RevisionIaBorrador from './panel/RevisionIaBorrador';
 import CabeceraPanel from './panel/CabeceraPanel';
 import MenuLateral from './panel/MenuLateral';
 import { BarraPestanas, BarraInferior } from './panel/NavegacionPrincipal';
@@ -242,6 +244,7 @@ export default function PartnerDashboardView({
           }}
           onRegenerar={onRegenerateDraft ? () => onRegenerateDraft(activeWeekId) : undefined}
           onEliminar={onEliminarSemana ? () => onEliminarSemana(activeWeekId) : undefined}
+          extra={<RevisionIaBorrador semana={activeWeekData} equipo={workersList} aprendizaje={aprendizaje} onGuardar={(parcial) => actualizarSemana(activeWeekId, parcial)} />}
         />
       )}
 
@@ -304,6 +307,15 @@ export default function PartnerDashboardView({
           activeWeekData={activeWeekData}
           adminUnlocked={adminUnlocked}
           onUpdateWeek={actualizarSemana}
+        />
+      )}
+
+      {activeTab === 'schedule' && adminUnlocked && (
+        <DisponibilidadSemana
+          semana={activeWeekData}
+          equipo={workersList}
+          esBorrador={esBorrador(activeWeekData)}
+          onGuardar={(parcial) => actualizarSemana(activeWeekId, parcial)}
         />
       )}
 

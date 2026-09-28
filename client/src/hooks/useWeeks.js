@@ -186,9 +186,11 @@ export function useWeeks() {
     // sin fechas legibles.
     const anterior = activeWeek;
     const weekId = activeWeekId;
+    // Única excepción: la disponibilidad que la app entendió de lo que se escribió
+    // ("Persona1 no puede el jueves"), nunca algo que venga de Gemini.
     const updatedWeek = {
       ...activeWeek,
-      meta: activeWeek.meta,
+      meta: Array.isArray(aiGeneratedJson.disponibilidad) ? { ...activeWeek.meta, disponibilidad: aiGeneratedJson.disponibilidad } : activeWeek.meta,
       schedule: aiGeneratedJson.schedule || activeWeek.schedule,
       saturdaySpecial: aiGeneratedJson.saturdaySpecial || activeWeek.saturdaySpecial,
       sundayMonday: aiGeneratedJson.sundayMonday || activeWeek.sundayMonday

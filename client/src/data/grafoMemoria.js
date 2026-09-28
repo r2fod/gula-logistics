@@ -2,6 +2,7 @@ import { esBorradorSemana } from './eventNaming';
 import { tipoDeTarea } from './aprendizajeFichajes';
 import { esMemoriaPropuesta } from './memoriaIa';
 import { esTareaActiva } from './taskPlanning';
+import { plano } from '../utils/texto';
 
 // Grafo de lo que sabe el asistente, hecho con datos que ya existen:
 //   · tipos de tarea  ← aprendizaje de los fichajes (con su duración real)
@@ -12,7 +13,6 @@ import { esTareaActiva } from './taskPlanning';
 // { nodos: [{ id, tipo, etiqueta, peso, texto?, propuesta?, detalle? }],
 //   enlaces: [{ origen, destino, peso, etiqueta }] }
 
-const plano = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 const escapar = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const nombra = (texto, clave) => clave.length > 1 && new RegExp(`(^|[^a-z0-9])${escapar(clave)}([^a-z0-9]|$)`).test(texto);
 

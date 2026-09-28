@@ -2,11 +2,10 @@
 // semanas (por defecto las 2 siguientes) leyendo el calendario, para tenerlas
 // controladas con tiempo. Nunca activa nada: un admin revisa el borrador y lo
 // acepta (ver el banner de PartnerDashboardView).
-import { generarBorrador, martesDeSemana, weekIdParaInicio, formatearRango } from './weekGenerator';
+import { aIso, formatearRango, martesDeSemana, sumarDias, weekIdParaInicio } from './fechasSemana';
 import { parseWeekRange, isWeekFinished } from './taskPlanning';
+import { limitesDe, restriccionesDe } from './disponibilidad';
 
-const aIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const sumarDias = (d, n) => { const r = new Date(d.getFullYear(), d.getMonth(), d.getDate()); r.setDate(r.getDate() + n); return r; };
 
 // Cuántos días por delante puede empezar la semana siguiente para abrirla ya, cuando la actual ha terminado.
 const DIAS_PARA_ADELANTAR = 3;
@@ -83,6 +82,9 @@ export async function anticiparSemanas({ semanas, hoy = new Date(), roster = [],
   if (!lectura || lectura.error) return { estado: 'error', error: lectura?.error || 'sin respuesta', creadas: [], omitidas: [] };
 
   const plantilla = plantillaDe(semanas, hoy);
+  // El generador (con el optimizador) se carga solo cuando hace falta: lo demás de
+  // este archivo lo usa también la vista del trabajador.
+  const { generarBorrador } = await import('./weekGenerator');
   const creadas = [];
   const omitidas = [];
   for (const inicio of candidatos) {
@@ -94,8 +96,12 @@ export async function anticiparSemanas({ semanas, hoy = new Date(), roster = [],
     // Si es nueva, le asignamos el siguiente nombre libre.
     const nombreParaBorrador = existingWeek?.name || siguienteNombre(semanas, creadas.length);
 
+    // Al regenerar se respeta lo que el admin ya dijo de esa semana (quién no puede,
+    // límites de horas): se vuelve a guardar en el borrador nuevo.
     const { week, resumen } = generarBorrador({
       inicio, apuntes: lectura.apuntes, roster, plantilla, nombre: nombreParaBorrador, ahora: hoy,
+      restricciones: restriccionesDe(existingWeek),
+      ...(existingWeek?.meta?.limites ? { limites: limitesDe(existingWeek) } : {}),
     });
     if (resumen.eventos === 0 && resumen.alquileres === 0) { omitidas.push({ inicio, motivo: 'sin eventos ni alquileres en el calendario' }); continue; }
     

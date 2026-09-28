@@ -10,7 +10,9 @@ import { estimarHorasPlanning } from './estimadoPlanning';
 import { formatearHoras } from './formatoFinanciero';
 import { tareasDeSemana } from './diffSemana';
 import { enlaceMaps } from './mapas';
-import { PREFIJO_ID } from './weekGenerator';
+import { PREFIJO_ID } from './fechasSemana';
+import { restriccionesDe, textoRestriccion } from './disponibilidad';
+import { normalizarHorario } from './horarios';
 
 const DIAS = ['martes', 'miercoles', 'jueves', 'viernes'];
 // Los de la semilla (logisticsData.js), para una semana nueva.
@@ -94,15 +96,6 @@ export function esquemaPlan(nombres = []) {
     required: ['schedule', 'saturdaySpecial', 'sundayMonday'],
     propertyOrdering: ['schedule', 'saturdaySpecial', 'sundayMonday'],
   };
-}
-
-// "9:00-11:30", "09.00 a 11.30" → "09:00 - 11:30". Lo que no se entiende se deja tal cual.
-export function normalizarHorario(horario) {
-  const texto = String(horario || '').trim();
-  const m = /^(\d{1,2})[:.h](\d{2})\s*(?:-|–|—|a)\s*(\d{1,2})[:.h](\d{2})$/i.exec(texto);
-  if (!m) return texto;
-  const dos = (n) => String(n).padStart(2, '0');
-  return `${dos(m[1])}:${m[2]} - ${dos(m[3])}:${m[4]}`;
 }
 
 // Empareja cada tarea que devuelve Gemini con la que había (primero por id y, si no,
@@ -211,6 +204,8 @@ export function contextoParaPrompt({ semana = null, equipo = [], disponibles = n
   if (libres.length) lineas.push(`EQUIPO DISPONIBLE (usa EXACTAMENTE estos nombres en "assigned"):\n${libres.map(w => `- ${w.name}${w.role ? ` — ${w.role}` : ''}`).join('\n')}`);
   const fuera = disponibles?.length ? equipo.filter(w => !libres.includes(w)).map(w => w.name) : [];
   if (fuera.length) lineas.push(`NO DISPONIBLES esta semana (no los asignes): ${fuera.join(', ')}.`);
+  const restricciones = restriccionesDe(semana);
+  if (restricciones.length) lineas.push(`DISPONIBILIDAD (obligatoria): ${restricciones.map(textoRestriccion).join('; ')}.`);
   const camiones = (semana?.trucks || []).map(t => t?.name).filter(Boolean);
   if (camiones.length) lineas.push(`CAMIONES de la semana: ${camiones.join(', ')}.`);
   const eventos = (semana?.events || []).filter(e => e?.name).map(e => `${e.name}${Number(e.pax) > 0 ? ` (${e.pax} pax)` : ''}`);

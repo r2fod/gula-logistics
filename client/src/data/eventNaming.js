@@ -1,3 +1,4 @@
+import { plano } from '../utils/texto';
 // Nombres de EVENTO de las tareas — para el desglose de costes por evento y
 // por persona (pestaña Resumen Financiero), igual que la hoja de planing:
 // columnas Evento / Tarea, con eventos tipo "Boda Ana y Luis" y las
@@ -20,12 +21,11 @@ export const EVENT_CATEGORIES = ['Logística Preparación', 'Logística Carga', 
 export const GENERAL_EVENT = 'Tareas Internas';
 const DEFAULT_CATEGORY = 'Logística Preparación';
 
-const plain = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 // Categoría general a la que pertenece un texto sin evento propio.
 // Devuelve null si ninguna palabra clave encaja.
 export function inferCategory(text) {
-  const t = plain(text);
+  const t = plano(text);
   if (/limpieza|vajilla|higieniz/.test(t)) return 'Limpieza Eventos';
   if (/descarg|montaje/.test(t)) return DEFAULT_CATEGORY; // "descarga" contiene "carga": se mira antes
   if (/\bcarg(a|ar|ado|ando|amos)\b|estiba|precint/.test(t)) return 'Logística Carga';
@@ -142,7 +142,7 @@ export function getEventShares(eventNames, paxByEvent = {}) {
 // aparte en `task.event` (o `wedding.event`) y aquí se enlaza por el texto.
 // Prioridad: evento escrito en el texto > `event` de la tarea. Devuelve null si
 // el texto no es de ninguna tarea conocida (jornada general, tareas libres...).
-export const normalizarEtiquetaTarea = (s) => plain(s)
+export const normalizarEtiquetaTarea = (s) => plano(s)
   .replace(/\s*\(\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}\)\s*$/, '')
   .replace(/\s+/g, ' ')
   .trim();
@@ -191,12 +191,12 @@ export function normalizeGeneratedEvents(json, knownEventNames = []) {
 
   const known = knownEventNames
     .filter(Boolean)
-    .map(name => ({ name, full: plain(name), place: plain(name.replace(/^(boda|evento)\s+/i, '')) }));
+    .map(name => ({ name, full: plano(name), place: plano(name.replace(/^(boda|evento)\s+/i, '')) }));
 
   const withEvent = (text) => {
     if (typeof text !== 'string' || !text.trim()) return text;
     if (parseEventAndTask(text).explicit) return text;
-    const t = plain(text);
+    const t = plano(text);
     // Todos los eventos conocidos que aparecen en el texto (una recogida para
     // dos bodas nombra las dos): se unen con " + " y el coste se reparte.
     const hits = known.filter(k => t.includes(k.full) || (k.place.length >= 3 && t.includes(k.place)));
