@@ -219,7 +219,8 @@ export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekDat
 
     if (!res?.ok) {
       const status = res?.status || 0;
-      const hint = status === 503 && !activeApiKey ? ' — falta la clave de Gemini: pégala en este navegador (botón de la llave) o ponla en el servidor (GEMINI_API_KEY en Render)'
+      // 404 sin clave = el servidor aún no tiene /api/ia (Render sin desplegar): mismo remedio.
+      const hint = (status === 503 || status === 404) && !activeApiKey ? ' — falta la clave de Gemini: pégala en este navegador (botón de la llave) o ponla en el servidor (GEMINI_API_KEY en Render)'
         : status === 401 && !activeApiKey ? ' — inicia sesión de administrador para usar la clave del servidor'
         : status === 400 || status === 403 ? ' — comprueba que la clave es correcta'
         : status === 429 ? ' — demasiadas peticiones, espera un minuto' : '';
