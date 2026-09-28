@@ -31,9 +31,21 @@ export function useWorkers() {
     saveRosterToAPI(updatedWorkers).catch(() => {});
   };
 
+  // Cambia la ficha de alguien (rol, "solo si hace falta", nota, disponibilidad fija).
+  // Nunca el nombre: de él cuelgan sus fichajes y su saldo. → true si se guardó.
+  const handleUpdateWorker = (nombre, cambios) => {
+    const sinNombre = { ...cambios };
+    delete sinNombre.name;
+    const updatedWorkers = workersList.map(w => (w.name === nombre ? { ...w, ...sinNombre } : w));
+    setWorkersList(updatedWorkers);
+    try { localStorage.setItem('gula_workers_v1', JSON.stringify(updatedWorkers)); } catch { /* sin almacenamiento */ }
+    return saveRosterToAPI(updatedWorkers);
+  };
+
   return {
     workersList,
     setWorkersList,
-    handleRemoveWorker
+    handleRemoveWorker,
+    handleUpdateWorker
   };
 }

@@ -1,7 +1,7 @@
 import { coincideNombre } from './nombresTrabajadores';
 import { aMinutos } from './horarios';
 
-// Lo que el admin dice del equipo para UNA semana: "Gonzalo no puede el jueves",
+// Lo que el admin dice del equipo para UNA semana: "Tomás no puede el jueves",
 // "Ana solo de 9 a 14 el viernes", "Luis descansa el sábado". Vive en
 // week.meta.disponibilidad y lo respetan el generador del calendario, el reajuste
 // del planning y Gemini.
@@ -61,9 +61,28 @@ export function restriccionQueBloquea(restricciones = [], persona, dia, ini, fin
   return null;
 }
 
-// "Gonzalo no puede el jueves", "Ana solo puede de 09:00 a 14:00 el viernes".
+// "Tomás no puede el jueves", "Ana solo puede de 09:00 a 14:00 el viernes".
 export function textoRestriccion(r) {
   const cuando = r.dia === 'semana' ? 'toda la semana' : `el ${NOMBRE_DIA[r.dia].toLowerCase()}`;
   const que = r.tipo === 'solo' ? `solo puede de ${r.desde} a ${r.hasta}` : r.tipo === 'descansa' ? 'descansa' : 'no puede';
   return `${r.persona} ${que} ${cuando}${r.nota ? ` (${r.nota})` : ''}`;
+}
+
+// ─── Disponibilidad FIJA (ficha del equipo, para todas las semanas) ─────────
+// [{ dia, tipo, desde, hasta }] en cada persona de /api/roster ("Luis, desde las 15:00").
+export const restriccionesDelEquipo = (equipo = []) => equipo.flatMap(w => (Array.isArray(w?.disponibilidad) ? w.disponibilidad : [])
+  .filter(r => r && (r.dia === 'semana' || DIAS_SEMANA.includes(r.dia)) && TIPOS_DISPONIBILIDAD[r.tipo])
+  .map((r, i) => ({ ...r, id: `fija|${w.name}|${i}`, persona: w.name, fija: true })));
+
+// Las que cuentan en una semana: las fijas del equipo más las de esa semana. Solo las
+// de la semana se guardan en ella (meta.disponibilidad).
+export const restriccionesEfectivas = (semana, equipo = []) => [...restriccionesDelEquipo(equipo), ...restriccionesDe(semana)];
+
+const EN_PLURAL = { sabado: 'sábados', domingo: 'domingos' };
+// Corto, para la ficha y el bloque del equipo: "desde las 15:00", "de 09:00 a 14:00 los viernes", "no los lunes".
+export function textoDisponibilidadFija(r) {
+  const cuando = r.dia === 'semana' ? '' : ` los ${EN_PLURAL[r.dia] || NOMBRE_DIA[r.dia].toLowerCase()}`;
+  if (r.tipo !== 'solo') return `${r.tipo === 'descansa' ? 'descansa' : 'no'}${cuando || ' disponible'}`;
+  const franja = r.hasta === '23:59' ? `desde las ${r.desde}` : ['00:00', '06:00'].includes(r.desde) ? `hasta las ${r.hasta}` : `de ${r.desde} a ${r.hasta}`;
+  return `${franja}${cuando}`;
 }

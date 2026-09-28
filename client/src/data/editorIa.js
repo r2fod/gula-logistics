@@ -15,7 +15,8 @@ import { normalizarHorario } from './horarios';
 import { generateScheduleWithGemini, pedirJsonAGemini } from './geminiScheduleService';
 import { esMemoriaActiva } from './memoriaIa';
 import { textoAprendizajeParaPrompt } from './aprendizajeFichajes';
-import { LIMITES_POR_DEFECTO, limitesDe, restriccionesDe, textoRestriccion } from './disponibilidad';
+import { LIMITES_POR_DEFECTO, limitesDe, restriccionesDe, restriccionesDelEquipo, restriccionesEfectivas, textoRestriccion } from './disponibilidad';
+import { descripcionParaIa } from './equipoRoles';
 import { interpretarDisponibilidad } from './interpretarPeticion';
 import { reajustarSemana } from './optimizadorPlanning';
 import { plano } from '../utils/texto';
@@ -87,7 +88,7 @@ export function promptDeCambios({ semana, equipo = [], restricciones = [], limit
   const reglas = memorias.filter(esMemoriaActiva).map(m => m.content);
   return [
     `Planificador de Gula Logística (logística de bodas y eventos). Semana ${semana?.meta?.dateRange || ''} (${dias}).`,
-    `Equipo: ${equipo.map(w => `${w.name} (${w.role || 'sin rol'})`).join('; ')}.`,
+    `Equipo: ${equipo.map(descripcionParaIa).join('; ')}.`,
     restricciones.length ? `No disponible: ${restricciones.map(textoRestriccion).join('; ')}.` : '',
     reglas.length ? `Preferencias: ${reglas.join('; ')}.` : '',
     textoAprendizajeParaPrompt(aprendizaje, 'Aprendido de los fichajes reales:').trim(),
@@ -179,7 +180,7 @@ export const PETICION_REVISION = 'Revisa este borrador y mejóralo solo si hace 
 // de las reglas estrictas (disponibilidad, solapes). Sin cambios no es un error:
 // → { generatedJson (null si no cambia nada), aplicados, uso, avisos, errorMsg }
 export async function revisarBorradorConGemini({ semana, apiKey, equipo = [], memorias = [], aprendizaje = null, ahora = new Date() }) {
-  const restricciones = restriccionesDe(semana);
+  const restricciones = restriccionesEfectivas(semana, equipo);
   const limites = limitesDe(semana);
   try {
     const { plan, aplicados, uso } = await pedirCambios({ peticion: PETICION_REVISION, apiKey, semana, equipo, restricciones, limites, memorias, aprendizaje });
@@ -202,13 +203,14 @@ export async function revisarBorradorConGemini({ semana, apiKey, equipo = [], me
 // En 'local', generatedJson lleva además `disponibilidad` (lo que se ha entendido),
 // para guardarlo en la semana al aplicar.
 export async function resolverPeticion({ peticion, apiKey, semana, equipo = [], memorias = [], aprendizaje = null, ahora = new Date() }) {
-  const restricciones = restriccionesDe(semana);
+  const restricciones = restriccionesEfectivas(semana, equipo);
   const limites = limitesDe(semana);
 
   const nuevas = interpretarDisponibilidad(peticion, equipo);
   if (nuevas) {
-    const todas = [...restricciones, ...nuevas];
-    const r = reajustarSemana({ ...semana, meta: { ...semana?.meta, disponibilidad: todas } }, { equipo, restricciones: todas, limites, ahora });
+    // En la semana solo se guardan las de la semana; las fijas del equipo cuentan igual.
+    const todas = [...restriccionesDe(semana), ...nuevas];
+    const r = reajustarSemana({ ...semana, meta: { ...semana?.meta, disponibilidad: todas } }, { equipo, restricciones: [...restriccionesDelEquipo(equipo), ...todas], limites, ahora });
     if (r.error) return { generatedJson: null, errorMsg: r.error, via: 'local', uso: null };
     const cuantos = r.cambios.length;
     return {

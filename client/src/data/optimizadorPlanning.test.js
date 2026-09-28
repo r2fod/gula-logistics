@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { asignarEquipo, clasificarEquipo, candidatosDePerfil, perfilDeTarea, revisarPlanning, reajustarSemana } from './optimizadorPlanning';
+import { asignarEquipo, perfilDeTarea, revisarPlanning, reajustarSemana } from './optimizadorPlanning';
+import { clasificarEquipo, candidatosDePerfil } from './equipoRoles';
 import { tramoDeHorario } from './horarios';
 import { crearRestriccion, restriccionQueBloquea, textoRestriccion, limitesDe } from './disponibilidad';
 

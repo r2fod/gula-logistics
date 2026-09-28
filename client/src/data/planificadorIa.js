@@ -11,7 +11,8 @@ import { formatearHoras } from './formatoFinanciero';
 import { tareasDeSemana } from './diffSemana';
 import { enlaceMaps } from './mapas';
 import { PREFIJO_ID } from './fechasSemana';
-import { restriccionesDe, textoRestriccion } from './disponibilidad';
+import { restriccionesEfectivas, textoRestriccion } from './disponibilidad';
+import { descripcionParaIa } from './equipoRoles';
 import { normalizarHorario } from './horarios';
 
 const DIAS = ['martes', 'miercoles', 'jueves', 'viernes'];
@@ -201,10 +202,10 @@ export function contextoParaPrompt({ semana = null, equipo = [], disponibles = n
     lineas.push(`SEMANA: ${semana.meta.dateRange}. Días: ${dias.join(', ')} (el lunes es la cola: devoluciones, limpieza y cargas).`);
   }
   const libres = disponibles?.length ? equipo.filter(w => disponibles.some(n => coincideNombre(n, w.name))) : equipo;
-  if (libres.length) lineas.push(`EQUIPO DISPONIBLE (usa EXACTAMENTE estos nombres en "assigned"):\n${libres.map(w => `- ${w.name}${w.role ? ` — ${w.role}` : ''}`).join('\n')}`);
+  if (libres.length) lineas.push(`EQUIPO DISPONIBLE (usa EXACTAMENTE estos nombres en "assigned"):\n${libres.map(w => `- ${descripcionParaIa(w)}`).join('\n')}`);
   const fuera = disponibles?.length ? equipo.filter(w => !libres.includes(w)).map(w => w.name) : [];
   if (fuera.length) lineas.push(`NO DISPONIBLES esta semana (no los asignes): ${fuera.join(', ')}.`);
-  const restricciones = restriccionesDe(semana);
+  const restricciones = restriccionesEfectivas(semana, equipo);
   if (restricciones.length) lineas.push(`DISPONIBILIDAD (obligatoria): ${restricciones.map(textoRestriccion).join('; ')}.`);
   const camiones = (semana?.trucks || []).map(t => t?.name).filter(Boolean);
   if (camiones.length) lineas.push(`CAMIONES de la semana: ${camiones.join(', ')}.`);

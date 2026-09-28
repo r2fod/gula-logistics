@@ -3,7 +3,7 @@ import { esTareaActiva } from './taskPlanning';
 import { plano } from '../utils/texto';
 import { tramoDeHorario } from './horarios';
 import { revisarPlanning } from './optimizadorPlanning';
-import { limitesDe, restriccionesDe } from './disponibilidad';
+import { limitesDe, restriccionesDelEquipo, restriccionesEfectivas } from './disponibilidad';
 
 // Qué cambia entre la semana actual y la que propone Gemini, y qué hay que
 // revisar antes de aplicarla (CLAUDE.md: la IA puede inventar asignaciones o
@@ -116,10 +116,10 @@ export function avisosDeSemana(semana, { equipo = [], camiones = [] } = {}) {
 // `restricciones`: las de la propuesta si trae otras (null = las de la semana).
 export function avisosDePropuesta({ actual = null, propuesta, equipo = [], camiones = [], restricciones = null, extra = [] }) {
   const limites = limitesDe(actual);
-  const antes = restriccionesDe(actual);
+  const antes = restriccionesEfectivas(actual, equipo);
   const previos = new Set(actual ? revisarPlanning(actual, { restricciones: antes, limites }) : []);
   const nuevos = [
-    ...revisarPlanning({ ...(actual || {}), ...propuesta }, { restricciones: restricciones || antes, limites }),
+    ...revisarPlanning({ ...(actual || {}), ...propuesta }, { restricciones: restricciones ? [...restriccionesDelEquipo(equipo), ...restricciones] : antes, limites }),
     ...extra,
   ].filter(a => !previos.has(a));
   return [...new Set([...avisosDeSemana(propuesta, { equipo, camiones }), ...nuevos])];

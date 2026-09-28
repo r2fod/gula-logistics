@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
-import { Users, Save, Trash2 } from 'lucide-react';
+import { Users, Save, Trash2, Pencil } from 'lucide-react';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input, Selector } from './ui/Campo';
+import FichaTrabajador from './equipo/FichaTrabajador';
+import { nombreConNotas } from '../data/equipoRoles';
+import { useDialog } from '../contexts/DialogContext';
 
-export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = [], onAddWorker, onRemoveWorker }) {
+// `onUpdateWorker(nombre, cambios)` → true si se guardó (rol, "solo si hace falta",
+// nota y disponibilidad fija; ver FichaTrabajador).
+export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = [], onAddWorker, onRemoveWorker, onUpdateWorker = null }) {
+  const { alert } = useDialog();
+  const [editando, setEditando] = useState(null); // nombre con la ficha abierta
   const [name, setName] = useState('');
   const [role, setRole] = useState('Conductor Extra');
   const [avatar, setAvatar] = useState('🚚');
@@ -44,24 +51,22 @@ export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = 
 
   return (
     <Modal onCerrar={onClose} ancho="md">
-      <CabeceraModal icono={Users} degradado="emerald-teal" titulo="Gestionar Equipo" subtitulo="Añade o quita gente del roster de fichaje y asignación." className="mb-6" />
+      <CabeceraModal icono={Users} degradado="emerald-teal" titulo="Gestionar Equipo" subtitulo="Añade, edita o quita gente del equipo." className="mb-6" />
 
       {workersList.length > 0 && (
         <div className="mb-6 space-y-2">
           <span className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">
             Equipo Actual ({workersList.length})
           </span>
-          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+          <div className="space-y-1.5 max-h-[50vh] overflow-y-auto pr-1">
             {workersList.map((w) => (
-              <div
-                key={w.name}
-                className="flex items-center justify-between gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2"
-              >
+              <div key={w.name} className="space-y-1.5">
+              <div className="flex items-center justify-between gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-lg shrink-0">{w.avatar}</span>
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold truncate">{w.name}</p>
-                    <p className="text-[10px] text-slate-500 truncate">{w.role}</p>
+                    <p className="text-sm font-semibold break-words">{nombreConNotas(w)}</p>
+                    <p className="text-[10px] text-slate-500 break-words">{w.role}</p>
                   </div>
                 </div>
 
@@ -81,6 +86,18 @@ export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = 
                     </button>
                   </div>
                 ) : (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                  {onUpdateWorker && (
+                    <button
+                      onClick={() => setEditando(editando === w.name ? null : w.name)}
+                      aria-expanded={editando === w.name}
+                      className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all"
+                      title={`Editar la ficha de ${w.name}`}
+                      aria-label={`Editar la ficha de ${w.name}`}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <button
                     onClick={() => setConfirmRemove(w.name)}
                     className="shrink-0 p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all"
@@ -88,7 +105,12 @@ export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = 
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
+                  </div>
                 )}
+              </div>
+              {editando === w.name && (
+                <FichaTrabajador trabajador={w} onGuardar={(cambios) => onUpdateWorker(w.name, cambios)} onCerrar={() => setEditando(null)} />
+              )}
               </div>
             ))}
           </div>

@@ -3,7 +3,7 @@ import { Sparkles, Check, AlertCircle, RefreshCw, Key, Wand2, BrainCircuit, X } 
 import { extraerMemoriaDelPrompt, GEMINI_API_KEY_STORAGE_KEY } from '../data/geminiScheduleService';
 import { promptCorreccion } from '../data/planificadorIa';
 import { resolverPeticion, editarConGemini, pareceRegla } from '../data/editorIa';
-import { limitesDe, restriccionesDe } from '../data/disponibilidad';
+import { limitesDe, restriccionesDe, restriccionesDelEquipo } from '../data/disponibilidad';
 
 import { useMemoriaIa } from '../hooks/useMemoriaIa';
 import { diffSemana, avisosDePropuesta } from '../data/diffSemana';
@@ -86,7 +86,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
     const disponibilidad = generatedJson.disponibilidad;
     const r = await editarConGemini({
       peticion: promptCorreccion(avisos), apiKey, semana: { ...activeWeekData, ...generatedJson }, equipo: workersList,
-      restricciones: disponibilidad || restriccionesDe(activeWeekData), limites: limitesDe(activeWeekData), memorias: memoria.activas,
+      restricciones: [...restriccionesDelEquipo(workersList), ...(disponibilidad || restriccionesDe(activeWeekData))], limites: limitesDe(activeWeekData), memorias: memoria.activas,
     });
     if (r.generatedJson) {
       setGeneratedJson(disponibilidad ? { ...r.generatedJson, disponibilidad } : r.generatedJson);

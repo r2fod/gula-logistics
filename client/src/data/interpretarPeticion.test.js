@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { interpretarDisponibilidad } from './interpretarPeticion';
 
-const equipo = [{ name: 'Gonzalo' }, { name: 'Ana' }, { name: 'Luis' }, { name: 'Eva' }, { name: 'Pau' }];
+const equipo = [{ name: 'Tomás' }, { name: 'Ana' }, { name: 'Luis' }, { name: 'Eva' }, { name: 'Pau' }];
 const leer = (texto) => (interpretarDisponibilidad(texto, equipo) || []).map(({ persona, dia, tipo, desde, hasta }) => [persona, dia, tipo, desde, hasta].filter(Boolean).join(' '));
 
 describe('interpretarDisponibilidad (sin Gemini, 0 tokens)', () => {
   it('no puede / descansa un día', () => {
-    expect(leer('Gonzalo no puede el jueves')).toEqual(['Gonzalo jueves no']);
+    expect(leer('Tomás no puede el jueves')).toEqual(['Tomás jueves no']);
     expect(leer('Ana descansa el sábado.')).toEqual(['Ana sabado descansa']);
     expect(leer('Luis está de vacaciones toda la semana')).toEqual(['Luis semana no']);
   });
@@ -20,7 +20,7 @@ describe('interpretarDisponibilidad (sin Gemini, 0 tokens)', () => {
 
   it('por la mañana / por la tarde', () => {
     expect(leer('Eva no puede el martes por la tarde')).toEqual(['Eva martes solo 06:00 14:00']);
-    expect(leer('Gonzalo solo por la mañana el jueves')).toEqual(['Gonzalo jueves solo 06:00 14:00']);
+    expect(leer('Tomás solo por la mañana el jueves')).toEqual(['Tomás jueves solo 06:00 14:00']);
     expect(leer('Luis no puede el viernes por la mañana')).toEqual(['Luis viernes solo 14:00 23:59']);
   });
 
@@ -30,10 +30,10 @@ describe('interpretarDisponibilidad (sin Gemini, 0 tokens)', () => {
 
   it('si no lo tiene claro, no inventa (se le pasa a Gemini)', () => {
     expect(interpretarDisponibilidad('Pon a Luis en la carga del jueves', equipo)).toBeNull();
-    expect(interpretarDisponibilidad('Gonzalo no puede el jueves, pon a Luis en su lugar', equipo)).toBeNull();
+    expect(interpretarDisponibilidad('Tomás no puede el jueves, pon a Luis en su lugar', equipo)).toBeNull();
     expect(interpretarDisponibilidad('Alguien no puede el jueves', equipo)).toBeNull();
-    expect(interpretarDisponibilidad('Gonzalo no puede', equipo)).toBeNull();
-    expect(interpretarDisponibilidad('Gonzalo solo puede el jueves', equipo)).toBeNull();
+    expect(interpretarDisponibilidad('Tomás no puede', equipo)).toBeNull();
+    expect(interpretarDisponibilidad('Tomás solo puede el jueves', equipo)).toBeNull();
     expect(interpretarDisponibilidad('Reorganiza las cargas del miércoles', equipo)).toBeNull();
   });
 });

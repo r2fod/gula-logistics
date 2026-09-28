@@ -5,7 +5,7 @@ import BarraProgreso from '../ui/BarraProgreso';
 import Desplegable from '../ui/Desplegable';
 import { Input, Selector } from '../ui/Campo';
 import PropuestaAplicable from '../asistente/PropuestaAplicable';
-import { crearRestriccion, DIAS_SEMANA, limitesDe, NOMBRE_DIA, restriccionesDe, textoRestriccion, TIPOS_DISPONIBILIDAD } from '../../data/disponibilidad';
+import { crearRestriccion, DIAS_SEMANA, limitesDe, NOMBRE_DIA, restriccionesDe, restriccionesDelEquipo, restriccionesEfectivas, textoRestriccion, TIPOS_DISPONIBILIDAD } from '../../data/disponibilidad';
 import { interpretarDisponibilidad } from '../../data/interpretarPeticion';
 import { reajustarSemana, revisarPlanning } from '../../data/optimizadorPlanning';
 import { avisosDePropuesta } from '../../data/diffSemana';
@@ -28,9 +28,10 @@ export default function DisponibilidadSemana({ semana, equipo = [], esBorrador =
   const [mensaje, setMensaje] = useState(null); // { tipo: 'error' | 'ok', texto }
   const [propuesta, setPropuesta] = useState(null); // { base, semana, cambios, avisos }
 
-  const restricciones = restriccionesDe(semana);
+  const restricciones = restriccionesDe(semana); // las de esta semana (se pueden quitar aquí)
+  const fijas = restriccionesDelEquipo(equipo); // las de la ficha de cada persona
   const limites = limitesDe(semana);
-  const incumple = useMemo(() => revisarPlanning(semana, { restricciones: restriccionesDe(semana), limites: limitesDe(semana) }), [semana]);
+  const incumple = useMemo(() => revisarPlanning(semana, { restricciones: restriccionesEfectivas(semana, equipo), limites: limitesDe(semana) }), [semana, equipo]);
   const horas = useMemo(() => estimarHorasPlanning(semana, equipo).porPersona, [semana, equipo]);
   const maxHoras = Math.max(1, ...horas.map(p => p.horas));
 
@@ -38,7 +39,7 @@ export default function DisponibilidadSemana({ semana, equipo = [], esBorrador =
 
   // Reajuste sobre la semana con la disponibilidad nueva: se enseña antes de aplicarlo.
   const proponer = (base, modo = 'reparar') => {
-    const r = reajustarSemana(base, { equipo, restricciones: restriccionesDe(base), limites: limitesDe(base), modo });
+    const r = reajustarSemana(base, { equipo, restricciones: restriccionesEfectivas(base, equipo), limites: limitesDe(base), modo });
     if (r.error) { setMensaje({ tipo: 'error', texto: r.error }); return; }
     if (!r.cambios.length) {
       setPropuesta(null);
@@ -140,8 +141,14 @@ export default function DisponibilidadSemana({ semana, equipo = [], esBorrador =
             <p role={mensaje.tipo === 'error' ? 'alert' : 'status'} className={`text-xs ${mensaje.tipo === 'error' ? 'text-rose-300' : 'text-emerald-300'}`}>{mensaje.texto}</p>
           )}
 
-          {restricciones.length > 0 && (
+          {(fijas.length > 0 || restricciones.length > 0) && (
             <ul className="flex flex-wrap gap-2">
+              {fijas.map(r => (
+                <li key={r.id} title="Todas las semanas: se cambia en la ficha del equipo" className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900 px-2.5 py-1 text-xs text-slate-400">
+                  <span>{textoRestriccion(r)}</span>
+                  <span className="rounded bg-slate-800 px-1.5 text-[10px] font-bold uppercase text-slate-400">fija</span>
+                </li>
+              ))}
               {restricciones.map(r => (
                 <li key={r.id} className="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 py-1 pl-2.5 pr-1 text-xs text-slate-200">
                   <span>{textoRestriccion(r)}</span>

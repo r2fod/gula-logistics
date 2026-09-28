@@ -17,35 +17,12 @@ import { esTareaActiva, getWeekRange, resolveTaskDate } from './taskPlanning';
 import { getWeddingTaskName } from './eventNaming';
 import { formatearHoras } from './formatoFinanciero';
 import { LIMITES_POR_DEFECTO, NOMBRE_DIA, restriccionQueBloquea, textoRestriccion } from './disponibilidad';
-import { plano } from '../utils/texto';
 import { tramoDeHorario } from './horarios';
+import { candidatosDePerfil, clasificarEquipo, esBackup as marcadoBackup } from './equipoRoles';
 
 const DIAS = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'];
 const DIA_IDX = Object.fromEntries(DIAS.map((d, i) => [d, i]));
 const PENALIZACION_BACKUP = 6; // horas: el "backup" solo entra cuando los demás van cargados
-
-// ─── Equipo por perfiles (según el ROL de cada persona) ────────────────────
-export function clasificarEquipo(equipo = []) {
-  const pools = { conductores: [], apoyo: [], prep: [], supervisor: [], limpieza: [] };
-  equipo.forEach((p, i) => {
-    const rol = plano(p.role);
-    const entrada = { name: p.name, orden: i, backup: /backup/.test(rol) };
-    if (/limpieza/.test(rol)) pools.limpieza.push(entrada);
-    else if (/conductor/.test(rol)) pools.conductores.push(entrada);
-    else if (/jefe/.test(rol)) pools.supervisor.push(entrada);
-    else if (/prepara|checklist|ayudante/.test(rol)) pools.prep.push(entrada);
-    else if (/apoyo/.test(rol)) pools.apoyo.push(entrada);
-  });
-  return pools;
-}
-
-// Quién puede hacer una tarea de ese perfil, por orden de preferencia.
-export function candidatosDePerfil(pools, perfil) {
-  if (perfil === 'prepEquipo') return [...pools.prep, ...pools.supervisor, ...pools.apoyo];
-  if (perfil === 'carga') return [...pools.conductores, ...pools.apoyo];
-  if (perfil === 'equipo') return [...pools.conductores, ...pools.apoyo, ...pools.supervisor];
-  return pools[perfil] || [];
-}
 
 // El perfil de una tarea que no lo trae guardado (hecha a mano o antigua), por su texto;
 // si no se reconoce, el de quien la tiene asignada.
@@ -75,7 +52,7 @@ export function asignarEquipo({ tareas = [], equipo = [], restricciones = [], li
   const agenda = new Map(); // persona → [{ clave, dia, ini, fin }] en minutos desde el martes 00:00
   const horas = {};
   equipo.forEach(p => { horas[p.name] = 0; });
-  const esBackup = new Set(equipo.filter(p => /backup/.test(plano(p.role))).map(p => p.name));
+  const esBackup = new Set(equipo.filter(marcadoBackup).map(p => p.name));
   const abs = (dia, min) => DIA_IDX[dia] * 1440 + min;
   const itemDe = (t) => ({ clave: t.clave, dia: t.dia, ini: abs(t.dia, t.ini), fin: abs(t.dia, t.fin) });
   const duracion = (it) => (it.fin - it.ini) / 60;
