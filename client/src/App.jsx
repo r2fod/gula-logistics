@@ -66,7 +66,7 @@ import { useDialog } from './contexts/DialogContext';
 
 export default function App() {
   const { alert, confirm } = useDialog();
-  const { workersList, setWorkersList, handleRemoveWorker } = useWorkers();
+  const { workersList, setWorkersList, handleRemoveWorker, handleUpdateWorker } = useWorkers();
   const { balancesData, setBalancesData, handleAddWorker } = useBalances(workersList, setWorkersList);
   
   const {
@@ -719,6 +719,7 @@ export default function App() {
         workersList={workersList}
         onAddWorker={handleAddWorker}
         onRemoveWorker={handleRemoveWorker}
+        onUpdateWorker={handleUpdateWorker}
       />
 
       <AdminTaskEditorModal

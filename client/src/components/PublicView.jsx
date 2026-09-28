@@ -13,6 +13,7 @@ import {
 
 import LiveMonitorPanel from './LiveMonitorPanel';
 import { getTaskListForDay, isTaskEffectivelyDone, esTareaActiva } from '../data/taskPlanning';
+import { equipoPorRoles } from '../data/equipoRoles';
 
 export default function PublicView({ 
   data = {}, 
@@ -38,7 +39,8 @@ export default function PublicView({
     { name: "Camión Covey", tag: "Alquiler Covey", status: "Operativo — Vehículo de Alquiler" },
     { name: "Camión Albacar", tag: "Alquiler Albacar", status: "Operativo — Vehículo de Alquiler" }
   ];
-  const team = data.team || [];
+  // Desde el equipo real (equipoRoles.js), no del texto que se copiaba en cada semana.
+  const team = equipoPorRoles(workersList);
 
   // Progreso real de la semana: antes esto leía `data.tasks` (un campo plano
   // que ya no existe — las tareas viven por día en schedule[día].tasks,

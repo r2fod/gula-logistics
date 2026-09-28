@@ -15,7 +15,6 @@ _Solo lo que sigue abierto (actualizado el 28/09/2026). Lo resuelto se borra de 
 - [ ] **Ficha de Saldos con el nombre mal escrito** (una letra de más): corregir `name` en Atlas → `workerbalances` (no el `id`). La app lo puentea mientras tanto.
 - [ ] **Semana 3:** 62,5 h de jornada sin tarea van repartidas por estimación; si el usuario dice qué se hizo el domingo por la noche, se ajustan asignaciones/horas y el reparto cambia solo. Anotar los **pax** de cada evento (sin pax, reparto a partes iguales).
 - [ ] **27/09: dos entradas duplicadas de un trabajador a las 11:07** (se creó una tercera al no verse en turno por el fallo del domingo, ya arreglado). Borrar solo con permiso del usuario.
-- [ ] **Bloque `team` de la Vista Pública sin pantalla de edición** (solo `POST /weeks` o Atlas).
 - [ ] **Enlaces de trabajador firmados y revocables** (hoy `?worker=Nombre` sin token; quitar del roster ya revoca). Rompe los enlaces actuales al desplegar: coordinar con el usuario.
 - [ ] Revisión responsive sistemática 320–1920 px del resto de vistas.
 
@@ -24,7 +23,7 @@ _Solo lo que sigue abierto (actualizado el 28/09/2026). Lo resuelto se borra de 
 
 ## Planificador con disponibilidad (28/09)
 - [ ] Probar con sesión de admin: el recuadro «Disponibilidad» del Cuadrante (escribir "X no puede el jueves" y aplicar el reajuste), la revisión automática de Gemini en el próximo borrador (cambios y tokens en su recuadro) y el asistente (cuánto gasta cada petición).
-- [ ] La disponibilidad es por semana; no hay aún una fija ("X nunca los lunes"): se añadiría al equipo (`/api/roster`).
+- [ ] **Rellenar en la ficha del equipo** (lo hace el admin, datos reales fuera del repo): quien solo puede a partir de las 15:00 y quien ayuda "solo si hace falta" cuando no está en cocina. El campo `team` antiguo de las semanas ya no se usa (queda en Mongo, sin efecto).
 
 ## Saldos y Resumen Financiero (28/09)
 - [ ] Los conceptos a mano ANTERIORES al 28/09 no llevan fecha ni tipo (los nuevos sí): los pagos antiguos se reconocen por el texto ("pago", "efectivo", "Bizum", "adelanto"…) y los que no tienen fecha (bolsa, roturas, pagos) solo se suman en «Todo».

@@ -99,7 +99,8 @@ describe('anticiparSemanas', () => {
     const [weekId, week, reemplazar] = crearBorrador.mock.calls[0];
     expect(weekId).toBe('week_auto_2026-09-22');
     expect(week.meta.status).toBe('Borrador');
-    expect(week.team).toEqual(SEMANAS.week_3.team); // equipo y camiones de la última semana aceptada
+    expect(week.trucks.map(t => t.name)).toEqual(SEMANAS.week_3.trucks.map(t => t.name)); // camiones de la última semana aceptada
+    expect(week.team).toBeUndefined(); // el equipo sale de /api/roster, no de un texto copiado de semana en semana
     expect(reemplazar).toBe(false);
   });
 

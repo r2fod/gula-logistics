@@ -58,12 +58,12 @@ export function siguienteNombre(semanas, ya = 0) {
   return `Semana ${(numeros.length ? Math.max(...numeros) : 0) + 1 + ya}`;
 }
 
-// Equipo y camiones de la semana más reciente que NO es borrador.
+// Camiones de la semana más reciente que NO es borrador (el equipo sale de /api/roster).
 const plantillaDe = (semanas, hoy) => {
   const validas = Object.values(semanas || {}).filter(w => !esBorrador(w) && inicioDeSemana(w, hoy));
   validas.sort((a, b) => inicioDeSemana(a, hoy) - inicioDeSemana(b, hoy));
   const w = validas[validas.length - 1] || {};
-  return { team: w.team || [], trucks: w.trucks || [] };
+  return { trucks: w.trucks || [] };
 };
 
 // Genera y guarda los borradores que falten. Todas las dependencias se inyectan:

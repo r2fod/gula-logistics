@@ -2,7 +2,7 @@ import { crearRestriccion, DIAS_SEMANA } from './disponibilidad';
 import { plano } from '../utils/texto';
 
 // Entiende SIN Gemini (0 tokens) lo que se pide a menudo sobre el equipo:
-//   "Persona1 no puede el jueves", "Ana descansa el sábado",
+//   "Tomás no puede el jueves", "Ana descansa el sábado",
 //   "Luis solo puede de 9 a 14 el viernes", "Eva no puede el martes por la tarde",
 //   "Pau hasta las 13 el lunes", "Ana y Luis no pueden el jueves ni el viernes".
 // Devuelve las restricciones (disponibilidad.js) o null si no lo tiene claro: entonces

@@ -161,7 +161,7 @@ describe('contextoParaPrompt', () => {
   it('días con su número, equipo con rol, no disponibles, camiones, eventos y carga', () => {
     const texto = contextoParaPrompt({ semana: semana(), equipo, disponibles: ['Ana', 'Luis'] });
     expect(texto).toMatch(/Martes 22, Miércoles 23, Jueves 24, Viernes 25, Sábado 26, Domingo 27, Lunes 28/);
-    expect(texto).toMatch(/- Ana — Conductora/);
+    expect(texto).toMatch(/- Ana \(Conductora\)/);
     expect(texto).toMatch(/NO DISPONIBLES esta semana \(no los asignes\): Eva/);
     expect(texto).toMatch(/CAMIONES de la semana: Camión Norte/);
     expect(texto).toMatch(/Boda Uno \(120 pax\)/);

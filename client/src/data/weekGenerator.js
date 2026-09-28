@@ -21,8 +21,9 @@
 
 import { EVENT_CATEGORIES } from './eventNaming';
 import { enlaceMaps, LUGAR_BASE } from './mapas';
-import { asignarEquipo, candidatosDePerfil, clasificarEquipo } from './optimizadorPlanning';
-import { LIMITES_POR_DEFECTO } from './disponibilidad';
+import { asignarEquipo } from './optimizadorPlanning';
+import { candidatosDePerfil, clasificarEquipo } from './equipoRoles';
+import { LIMITES_POR_DEFECTO, restriccionesDelEquipo } from './disponibilidad';
 import { plano } from '../utils/texto';
 import { PREFIJO_ID, aIso, fechaLocal, formatearRango, sumarDias } from './fechasSemana';
 
@@ -286,7 +287,8 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
   tareas.sort((a, b) => DIAS.indexOf(a.dia) - DIAS.indexOf(b.dia) || a.ini - b.ini);
   const fechasIso = Object.fromEntries(DIAS.map(d => [d, aIso(fechas[d])]));
   const { asignados, horas, avisos: avisosReparto } = asignarEquipo({
-    equipo: roster, restricciones, limites, vacaciones, fechas: fechasIso,
+    // La disponibilidad fija de cada persona (su ficha) cuenta igual que la de la semana.
+    equipo: roster, restricciones: [...restriccionesDelEquipo(roster), ...restricciones], limites, vacaciones, fechas: fechasIso,
     tareas: tareas.map((t, i) => ({
       clave: i, dia: t.dia, ini: t.ini, fin: t.fin <= t.ini ? t.fin + 1440 : t.fin, n: t.n,
       candidatos: candidatosDePerfil(pools, t.pool).map(p => p.name),
@@ -343,7 +345,6 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
       ...(restricciones.length ? { disponibilidad: restricciones } : {}),
       ...(limites !== LIMITES_POR_DEFECTO ? { limites } : {}),
     },
-    team: (plantilla.team || []).map(t => ({ ...t })),
     trucks: (() => {
       const trucksBase = (plantilla.trucks || []).map(t => ({ ...t, pickupCompleted: false, returnCompleted: false }));
       // Agregar los alquileres continuos del calendario si no están ya en la lista

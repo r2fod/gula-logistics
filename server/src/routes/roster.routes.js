@@ -26,12 +26,26 @@ router.get('/', async (req, res) => {
 });
 
 // PUT /api/roster - Actualizar lista completa de trabajadores (Admin only)
+const DIAS = ['semana', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'];
+const HORA = /^([01]?\d|2[0-3]):[0-5]\d$/;
+// Solo lo que la app sabe usar: lo demás de la disponibilidad fija se descarta y la
+// nota se acota (entra en los prompts de Gemini).
+const limpiarTrabajador = (w) => ({
+  ...w,
+  backup: w.backup === true,
+  nota: String(w.nota || '').trim().slice(0, 120),
+  disponibilidad: (Array.isArray(w.disponibilidad) ? w.disponibilidad : [])
+    .filter(r => r && DIAS.includes(r.dia) && ['no', 'descansa', 'solo'].includes(r.tipo) && (r.tipo !== 'solo' || (HORA.test(r.desde || '') && HORA.test(r.hasta || ''))))
+    .slice(0, 14)
+    .map(r => ({ dia: r.dia, tipo: r.tipo, desde: r.tipo === 'solo' ? r.desde : '', hasta: r.tipo === 'solo' ? r.hasta : '' })),
+});
+
 router.put('/', requireAdmin, async (req, res) => {
   try {
-    const { workers } = req.body;
-    if (!Array.isArray(workers)) {
+    if (!Array.isArray(req.body?.workers)) {
       return res.status(400).json({ error: 'Se esperaba un array de trabajadores' });
     }
+    const workers = req.body.workers.map(limpiarTrabajador);
 
     if (mongoose.connection.readyState === 1) {
       const rosterDoc = await TeamRoster.findOneAndUpdate(
