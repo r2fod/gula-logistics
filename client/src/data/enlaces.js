@@ -38,3 +38,12 @@ export const enlaceVistaPublica = () => `${urlBase()}?view=public`;
 
 // Abre WhatsApp con el texto ya escrito.
 export const enlaceWhatsApp = (texto) => `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+
+// Abre un enlace en otra pestaña sin darle acceso a la de la app (`window.opener`):
+// la página abierta no puede redirigir la app a otra dirección. Es lo que hace
+// rel="noopener" en un <a>. No se usa la opción 'noopener' de window.open porque
+// algún navegador antiguo abre entonces una ventana suelta en vez de una pestaña.
+export function abrirEnPestanaNueva(url) {
+  const ventana = window.open(url, '_blank');
+  if (ventana) ventana.opener = null;
+}

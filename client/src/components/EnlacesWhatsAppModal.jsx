@@ -1,6 +1,6 @@
 import React from 'react';
 import { ShieldCheck, Share2, Copy, Check, MessageCircle, ExternalLink, RefreshCw } from 'lucide-react';
-import { enlaceTrabajador, enlaceWhatsApp } from '../data/enlaces';
+import { abrirEnPestanaNueva, enlaceTrabajador, enlaceWhatsApp } from '../data/enlaces';
 import { useCopiado } from '../hooks/useCopiado';
 import { useEnlaceSocias } from '../hooks/useEnlaceSocias';
 import { useDialog } from '../contexts/DialogContext';
@@ -21,7 +21,7 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
 
   const compartirTrabajador = (nombre) => {
     const texto = `🚚 Hola ${nombre}, aquí tienes tu planificación y fichaje de Gula Logística: ${enlaceTrabajador(nombre)}\n\nGuarda este enlace: es siempre el mismo y se actualiza solo cada semana.`;
-    window.open(enlaceWhatsApp(texto), '_blank');
+    abrirEnPestanaNueva(enlaceWhatsApp(texto));
   };
 
   return (
@@ -83,7 +83,7 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
               </button>
 
               <button
-                onClick={() => window.open(enlaceTrabajador(w.name), '_blank')}
+                onClick={() => abrirEnPestanaNueva(enlaceTrabajador(w.name))}
                 className="col-span-1 sm:col-span-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-blue-600/20 whitespace-nowrap shrink-0"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -107,7 +107,7 @@ function EnlaceSocias() {
 
   const compartir = () => {
     const texto = `🔒 Hola Socias, aquí tenéis el enlace de Gula Logística (planificación y saldos, solo lectura): ${enlace}`;
-    window.open(enlaceWhatsApp(texto), '_blank');
+    abrirEnPestanaNueva(enlaceWhatsApp(texto));
   };
 
   const anularAnteriores = async () => {
