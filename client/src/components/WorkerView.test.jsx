@@ -43,16 +43,22 @@ describe('WorkerView', () => {
     expect(screen.queryByText('Llevas ganado')).toBeNull();
   });
 
-  it('BUG evitado: las horas de la semana suman sus turnos cerrados (antes salía siempre 0 h) y cada salida dice cuánto duró', () => {
+  it('BUG evitado: las horas de la semana y del mes suman sus turnos cerrados (antes salía siempre 0 h) y cada salida dice cuánto duró', () => {
     const t = (d, h, m) => new Date(2026, 8, d, h, m).toISOString();
-    pintar([
+    const fichajes = [
       { id: 'a1', workerName: 'Ana', type: 'entrada', timestamp: t(22, 9, 0), taskName: 'JORNADA' },
       { id: 'a2', workerName: 'Ana', type: 'salida', timestamp: t(22, 12, 15) }, // 3 h 15 min → 3,5 h
       { id: 'a3', workerName: 'Ana', type: 'entrada', timestamp: t(23, 8, 0), taskName: 'JORNADA' },
       { id: 'a4', workerName: 'Ana', type: 'salida', timestamp: t(23, 9, 0) },
-    ]);
+    ];
+    render(<WorkerView workerName="Ana" workersList={equipo} activeWeekData={semana} clockEntries={fichajes} fichajesDeTodo={[
+      ...fichajes,
+      { id: 'b1', workerName: 'Ana', type: 'entrada', timestamp: t(8, 9, 0), taskName: 'JORNADA' }, // semana anterior, mismo mes
+      { id: 'b2', workerName: 'Ana', type: 'salida', timestamp: t(8, 11, 0) },
+    ]} onClockEntryCreated={vi.fn()} onToggleTask={vi.fn()} />);
     const resumen = screen.getByRole('region', { name: 'Tus horas y tu saldo' });
-    expect(resumen.textContent).toMatch(/Esta semana4,5\s?h/);
+    expect(resumen.textContent).toMatch(/4,5\s?hsemana/);
+    expect(resumen.textContent).toMatch(/6,5\s?hseptiembre/);
     fireEvent.click(screen.getByRole('button', { name: /Fichajes/ }));
     expect(screen.getByText(/Duración: 3,5\s?h/)).toBeInTheDocument();
     expect(screen.getByText(/Duración: 1\s?h/)).toBeInTheDocument();

@@ -14,7 +14,12 @@ const { default: ResumenHorasSaldo } = await import('./ResumenHorasSaldo');
 const { REFRESCO_SALDO_MS } = await import('../../hooks/useMiSaldo');
 
 const equipo = [{ name: 'Ana', role: 'Conductora' }];
-const pintar = (props = {}) => render(<ResumenHorasSaldo nombre="Ana" horasSemana={6} equipo={equipo} {...props} />);
+// Un turno cerrado de 6 h el martes 29 (misma semana y mes que "hoy", miércoles 30).
+const cerrado = [
+  { id: 'c1', workerName: 'Ana', type: 'entrada', timestamp: new Date(2026, 8, 29, 8, 0).toISOString(), rate: 10 },
+  { id: 'c2', workerName: 'Ana', type: 'salida', timestamp: new Date(2026, 8, 29, 14, 0).toISOString() },
+];
+const pintar = (props = {}) => render(<ResumenHorasSaldo nombre="Ana" equipo={equipo} fichajesDeTodo={cerrado} {...props} />);
 const esperarRed = () => act(async () => { await vi.advanceTimersByTimeAsync(0); });
 
 beforeEach(() => {
@@ -30,10 +35,10 @@ describe('ResumenHorasSaldo (vista del trabajador)', () => {
     fetchMio.mockResolvedValue({ ok: true, ficha: { id: 'ana', name: 'Ana', currentBalance: 120 } });
     pintar();
     await esperarRed();
-    expect(screen.getByText('Esta semana')).toBeInTheDocument();
-    expect(screen.getByText(/^6\s?h$/)).toBeInTheDocument();
+    expect(screen.getByText('semana').previousSibling.textContent).toMatch(/^6\s?h$/);
+    expect(screen.getByText('septiembre').previousSibling.textContent).toMatch(/^6\s?h$/);
     expect(screen.getByText('Por cobrar')).toBeInTheDocument();
-    expect(screen.getByText('+120,00 €')).toBeInTheDocument();
+    expect(screen.getByText('+180,00 €')).toBeInTheDocument(); // 120 a mano + 6 h fichadas a 10 €/h
     expect(fetchMio).toHaveBeenCalledWith('firma.ana');
   });
 
@@ -41,7 +46,7 @@ describe('ResumenHorasSaldo (vista del trabajador)', () => {
     token.mockReturnValue('firma.ana');
     fetchMio.mockResolvedValueOnce({ ok: true, ficha: { id: 'ana', name: 'Ana', currentBalance: 120 } })
       .mockResolvedValue({ ok: true, ficha: { id: 'ana', name: 'Ana', currentBalance: 70 } });
-    pintar();
+    pintar({ fichajesDeTodo: [] });
     await esperarRed();
     expect(screen.getByText('+120,00 €')).toBeInTheDocument();
     await act(async () => { await vi.advanceTimersByTimeAsync(REFRESCO_SALDO_MS); });
@@ -54,10 +59,23 @@ describe('ResumenHorasSaldo (vista del trabajador)', () => {
     const turnoAbierto = { workerName: 'Ana', type: 'entrada', timestamp: new Date(2026, 8, 30, 10, 0).toISOString(), rate: 10 };
     pintar({ turnoAbierto });
     await esperarRed();
-    expect(screen.getByText('+30,00 €')).toBeInTheDocument(); // 10 + 2 h a 10 €/h
-    expect(screen.getByText(/^8\s?h$/)).toBeInTheDocument();
+    expect(screen.getByText('+90,00 €')).toBeInTheDocument(); // 10 + 6 h cerradas + 2 h en curso, a 10 €/h
+    expect(screen.getByText('semana').previousSibling.textContent).toMatch(/^8\s?h$/);
+    expect(screen.getByText('septiembre').previousSibling.textContent).toMatch(/^8\s?h$/);
     await act(async () => { await vi.advanceTimersByTimeAsync(30 * 60 * 1000); });
-    expect(screen.getByText('+35,00 €')).toBeInTheDocument();
+    expect(screen.getByText('+95,00 €')).toBeInTheDocument();
+  });
+
+  it('el mes es el natural: un turno del 31 de agosto no cuenta en septiembre (ni en esta semana)', async () => {
+    token.mockReturnValue(null);
+    const agosto = [
+      { id: 'd1', workerName: 'Ana', type: 'entrada', timestamp: new Date(2026, 7, 31, 8, 0).toISOString() },
+      { id: 'd2', workerName: 'Ana', type: 'salida', timestamp: new Date(2026, 7, 31, 12, 0).toISOString() },
+    ];
+    pintar({ fichajesDeTodo: [...cerrado, ...agosto] });
+    await esperarRed();
+    expect(screen.getByText('septiembre').previousSibling.textContent).toMatch(/^6\s?h$/);
+    expect(screen.getByText('semana').previousSibling.textContent).toMatch(/^6\s?h$/);
   });
 
   it('sin enlace personal no enseña dinero y le dice cómo verlo; en nómina fija, tampoco euros', async () => {
