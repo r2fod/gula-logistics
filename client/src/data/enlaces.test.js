@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { construirEnlaceTrabajador, semanaPedidaEnEnlace, urlBase, enlaceTrabajador, enlaceSocias, enlaceVistaPublica, enlaceWhatsApp } from './enlaces';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { construirEnlaceTrabajador, semanaPedidaEnEnlace, urlBase, enlaceTrabajador, enlaceSocias, enlaceVistaPublica, enlaceWhatsApp, abrirEnPestanaNueva } from './enlaces';
 
 const semana = (dateRange, status = 'Operativa Activa') => ({ meta: { dateRange, status } });
 const semanas = {
@@ -72,5 +72,22 @@ describe('enlaces con la dirección actual', () => {
 
   it('el de WhatsApp codifica el texto', () => {
     expect(enlaceWhatsApp('Hola & adiós')).toBe('https://api.whatsapp.com/send?text=Hola%20%26%20adi%C3%B3s');
+  });
+});
+
+describe('abrirEnPestanaNueva', () => {
+  it('abre en otra pestaña y la página abierta no puede tocar la de la app (sin window.opener)', () => {
+    const ventana = { opener: window };
+    const abrir = vi.spyOn(window, 'open').mockReturnValue(ventana);
+    abrirEnPestanaNueva('https://api.whatsapp.com/send?text=hola');
+    expect(abrir).toHaveBeenCalledWith('https://api.whatsapp.com/send?text=hola', '_blank');
+    expect(ventana.opener).toBeNull();
+    abrir.mockRestore();
+  });
+
+  it('si el navegador bloquea la ventana no falla', () => {
+    const abrir = vi.spyOn(window, 'open').mockReturnValue(null);
+    expect(() => abrirEnPestanaNueva('https://ejemplo.test')).not.toThrow();
+    abrir.mockRestore();
   });
 });

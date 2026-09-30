@@ -10,6 +10,7 @@ import EnVivo from '../ui/EnVivo';
 import { costeEnCurso, duracionEnCurso } from '../../data/costeEnVivo';
 import { isZombieShift } from '../../data/shiftCalculations';
 import { coincideNombre } from '../../data/nombresTrabajadores';
+import { abrirEnPestanaNueva, enlaceWhatsApp } from '../../data/enlaces';
 
 // Horas tal como se escriben DENTRO del texto de un concepto ("4,5" → "4.5", sin ceros de
 // sobra). Ese texto se guarda en Mongo: no cambiar el formato, o los conceptos nuevos
@@ -311,8 +312,7 @@ export default function TeamBalancesTab({
       message += `\n💡 *Notas:* ${worker.notes}`;
     }
 
-    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
+    abrirEnPestanaNueva(enlaceWhatsApp(message));
   };
 
   return (
