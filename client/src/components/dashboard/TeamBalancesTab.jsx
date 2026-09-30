@@ -4,11 +4,11 @@ import { formatearEuros, formatearEurosConSigno, formatearHoras, formatearNumero
 import { Input } from '../ui/Campo';
 import BarraProgreso from '../ui/BarraProgreso';
 import { useDialog } from '../../contexts/DialogContext';
-import { repartirBolsa, tieneBolsa } from '../../data/bolsaHoras';
+import { tieneBolsa } from '../../data/bolsaHoras';
 import GrupoConceptos from './saldos/GrupoConceptos';
 import EnVivo from '../ui/EnVivo';
-import { costeEnCurso, duracionEnCurso } from '../../data/costeEnVivo';
-import { isZombieShift } from '../../data/shiftCalculations';
+import { duracionEnCurso } from '../../data/costeEnVivo';
+import { saldoDeTrabajador } from '../../data/saldoTrabajador';
 import { coincideNombre } from '../../data/nombresTrabajadores';
 import { abrirEnPestanaNueva, enlaceWhatsApp } from '../../data/enlaces';
 
@@ -348,22 +348,27 @@ export default function TeamBalancesTab({
               const isExpanded = expandedWorkerId === worker.id;
 
               const hours = findWorkerHours(worker.name);
-              let dynamicCost = 0;
+              // El saldo sale de saldoDeTrabajador (la misma cuenta que ve el trabajador
+              // en su vista). Quien tiene bolsa paga sus fichajes con la misma regla que el
+              // Resumen Financiero (bolsaHoras.js): arranca desde lo YA consumido a mano.
+              // Turno abierto ahora mismo: su dinero se suma al saldo en directo (sin
+              // redondear; al fichar la salida se paga a la media hora). Con más de 16 h
+              // abierto es una salida olvidada: se avisa y no se suma.
+              const abierto = Object.values(turnosAbiertos).find(e => coincideNombre(e.workerName, worker.name)) || null;
+              const saldo = saldoDeTrabajador({ ficha: worker, horas: hours, abierto });
+              const { enNomina, olvidado, cobraEnDirecto, enCurso } = saldo;
+              const dynamicCost = saldo.fichado;
               const dynamicShifts = [];
-              // Quien tiene bolsa paga sus fichajes con la misma regla que el Resumen
-              // Financiero (bolsaHoras.js): arranca desde lo YA consumido a mano.
               const turnosDia = hours?.shifts || [];
-              const repartoBolsa = tieneBolsa(worker) ? repartirBolsa(turnosDia.map(s => s.durationHours), worker.purseInfo) : null;
 
               turnosDia.forEach((s, i) => {
                 const timeRangeText = s.ranges ? s.ranges.join(' y ') : `${s.startTime} a ${s.endTime}`;
-                let computedCost = s.cost;
+                const computedCost = saldo.costes[i].coste;
                 let computedConcept = `🕒 ${s.startDate} [${timeRangeText}] - ${fmtHours(s.durationHours)}h a ${s.rate}€/h`;
 
-                if (repartoBolsa) {
+                if (tieneBolsa(worker)) {
                   const p = worker.purseInfo;
-                  const { horasBolsa: purseHours, horasExtra: extraHours, coste } = repartoBolsa[i];
-                  computedCost = coste;
+                  const { horasBolsa: purseHours, horasExtra: extraHours } = saldo.costes[i];
                   if (extraHours === 0) {
                     computedConcept = `🕒 ${s.startDate} [${timeRangeText}] - ${fmtHours(s.durationHours)}h a ${p.hourlyRate}€/h (Bolsa)`;
                   } else if (purseHours === 0) {
@@ -373,7 +378,6 @@ export default function TeamBalancesTab({
                   }
                 }
 
-                dynamicCost += computedCost;
                 dynamicShifts.push({
                   concept: computedConcept,
                   amount: computedCost,
@@ -383,17 +387,7 @@ export default function TeamBalancesTab({
                 });
               });
 
-              const displayBalance = worker.currentBalance + dynamicCost;
-              // Turno abierto ahora mismo: su dinero se suma al saldo en directo (sin
-              // redondear; al fichar la salida se paga a la media hora). Con más de 16 h
-              // abierto es una salida olvidada: se avisa y no se suma.
-              const abierto = Object.values(turnosAbiertos).find(e => coincideNombre(e.workerName, worker.name)) || null;
-              const enNomina = worker.statusType === 'payroll';
-              const olvidado = !!abierto && isZombieShift(abierto);
-              const cobraEnDirecto = !!abierto && !olvidado && !enNomina;
-              const enCurso = (ahora) => costeEnCurso({
-                entrada: abierto, ahora, tarifa: abierto.rate || worker.hourlyRate || 10, ficha: worker, horasPrevias: hours?.totalHours || 0,
-              }).coste;
+              const displayBalance = saldo.cerrado;
               const colorSaldo = (valor) => (valor > 0 ? 'text-emerald-400' : valor < 0 ? 'text-rose-400' : 'text-slate-400');
               const derivedStatusType = worker.statusType === 'payroll' 
                 ? 'payroll'

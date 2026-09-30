@@ -4,13 +4,14 @@ import request from 'supertest';
 import mongoose from 'mongoose';
 
 vi.mock('../models/WorkerBalance.model.js', () => ({
-  WorkerBalance: { find: vi.fn(), findOneAndUpdate: vi.fn() },
+  WorkerBalance: { find: vi.fn(), findOneAndUpdate: vi.fn(), findOne: vi.fn() },
 }));
 vi.mock('../models/AdminConfig.model.js', () => ({
   AdminConfig: { findOne: vi.fn().mockResolvedValue(null) },
 }));
 
 const { WorkerBalance } = await import('../models/WorkerBalance.model.js');
+const { AdminConfig } = await import('../models/AdminConfig.model.js');
 const balancesRoutes = (await import('./balances.routes.js')).default;
 const { signToken } = await import('../utils/authToken.js');
 
@@ -98,5 +99,39 @@ describe('PUT /api/balances/:id (actualización parcial de saldo)', () => {
 
     expect(res.status).toBe(401);
     expect(WorkerBalance.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe('GET /api/balances/mio (el trabajador ve SOLO su saldo)', () => {
+  const trabajador = (w, tv = 1) => `Bearer ${signToken({ role: 'trabajador', w, tv })}`;
+  const devuelve = (ficha) => WorkerBalance.findOne.mockReturnValue({ select: vi.fn().mockReturnValue({ lean: vi.fn().mockResolvedValue(ficha) }) });
+
+  it('sin enlace firmado, o con la sesión de admin/socias, no responde', async () => {
+    const app = buildApp();
+    expect((await request(app).get('/api/balances/mio')).status).toBe(401);
+    expect((await request(app).get('/api/balances/mio').set('Authorization', adminAuthHeader())).status).toBe(401);
+    expect(WorkerBalance.findOne).not.toHaveBeenCalled();
+  });
+
+  it('devuelve la ficha del id que va DENTRO del enlace (no se puede pedir la de otro)', async () => {
+    devuelve({ id: 'ana', name: 'Ana', currentBalance: 12 });
+    const r = await request(buildApp()).get('/api/balances/mio?id=luis').set('Authorization', trabajador('ana'));
+    expect(r.status).toBe(200);
+    expect(WorkerBalance.findOne).toHaveBeenCalledWith({ id: 'ana' });
+    expect(r.body.name).toBe('Ana');
+  });
+
+  it('BUG evitado: el enlace de un trabajador NO abre los saldos de todos', async () => {
+    const r = await request(buildApp()).get('/api/balances').set('Authorization', trabajador('ana'));
+    expect(r.status).toBe(401);
+    expect(WorkerBalance.find).not.toHaveBeenCalled();
+  });
+
+  it('un enlace anulado deja de valer; cambiar la contraseña de admin NO lo anula', async () => {
+    devuelve({ id: 'ana', name: 'Ana' });
+    AdminConfig.findOne.mockResolvedValue({ tokenVersion: 7, trabajadoresVersion: 2 });
+    expect((await request(buildApp()).get('/api/balances/mio').set('Authorization', trabajador('ana', 1))).status).toBe(401);
+    expect((await request(buildApp()).get('/api/balances/mio').set('Authorization', trabajador('ana', 2))).status).toBe(200);
+    AdminConfig.findOne.mockResolvedValue(null);
   });
 });

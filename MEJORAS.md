@@ -43,6 +43,7 @@ _Resumen de lo que ya está hecho y por qué es así. El detalle de cada cambio 
 ## Forma de trabajar
 - **Build verde ≠ funciona.** Tras un refactor grande, barrido de ESLint (`no-undef`) — hubo pantallas en negro por referencias colgando — y mirar la app desplegada.
 - Los efectos con `[]` congelan las funciones de la primera render: quien las llame desde un `setInterval` lo hace por `ref`.
+- **El dinero de una persona, solo con su enlace firmado** (30/09): el enlace `?worker=Nombre` no lleva clave, así que el saldo va aparte (`GET /api/balances/mio`, token con el id de SU ficha dentro; no se puede pedir otra). Saldos y la vista del trabajador usan la misma cuenta (`data/saldoTrabajador.js`). Un 404 del servidor (a medio desplegar) no debe borrar el enlace guardado: solo el 401.
 - **Cada acción, alcanzable en todos los tamaños** (30/09): Memoria IA y el borrador manual solo estaban en el menú lateral, que en el ordenador no tenía botón; y la barra de escritorio, centrada con scroll oculto, cortaba "Fichar" a 1024 px. Ahora "Más" abre el menú en el ordenador y la barra baja de línea antes que cortar.
 - **Lo que depende de la hora se deriva, no se fija al abrir** (28/09): la semana activa se decidía una vez al montar y la app se quedaba en la semana vieja hasta recargar. Ahora `useWeeks` la recalcula cada minuto (`useAhora`) y solo se fija si alguien la elige; con un editor abierto no cambia (guardaría encima de la otra semana).
 - El service worker no cachea el bundle a propósito (evita servir versiones viejas).

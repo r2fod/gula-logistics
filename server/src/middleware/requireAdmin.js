@@ -5,7 +5,10 @@ import { AdminConfig } from '../models/AdminConfig.model.js';
 // Guardias de las rutas. Esperan "Authorization: Bearer <token>".
 //  · requireAdmin   → solo la sesión de administrador (todo lo que escribe).
 //  · requireLectura → administrador o enlace de socias (solo lectura: saldos).
-// Cambiar la contraseña sube `tokenVersion` y anula TODO lo emitido antes;
+//  · requireTrabajador → enlace firmado de UN trabajador (`w` = id de su ficha de
+//    Saldos): solo sirve para leer lo suyo (GET /api/balances/mio).
+// Cambiar la contraseña sube `tokenVersion` y anula TODO lo emitido antes, salvo los
+// enlaces de trabajador, que van con su propia versión (`trabajadoresVersion`);
 // "anular enlaces de socias" sube `sociasVersion` y anula solo esos.
 function crearGuardia(rolesPermitidos, mensaje) {
   return async function guardia(req, res, next) {
@@ -20,7 +23,11 @@ function crearGuardia(rolesPermitidos, mensaje) {
     try {
       if (mongoose.connection.readyState === 1) {
         const config = await AdminConfig.findOne({ configKey: 'admin' });
-        if (config && payload.v !== config.tokenVersion) {
+        if (config && payload.role === 'trabajador') {
+          if (payload.tv !== (config.trabajadoresVersion || 1)) {
+            return res.status(401).json({ error: 'Este enlace se ha anulado. Pide el nuevo al administrador.' });
+          }
+        } else if (config && payload.v !== config.tokenVersion) {
           return res.status(401).json({ error: 'La sesión ha sido revocada (la contraseña cambió). Vuelve a iniciar sesión.' });
         }
         if (config && payload.role === 'socias' && payload.sv !== (config.sociasVersion || 1)) {
@@ -41,3 +48,4 @@ function crearGuardia(rolesPermitidos, mensaje) {
 
 export const requireAdmin = crearGuardia(['admin'], 'Acceso restringido: se requiere sesión de Administrador válida');
 export const requireLectura = crearGuardia(['admin', 'socias'], 'Acceso restringido: se requiere sesión de Administrador o enlace de socias válido');
+export const requireTrabajador = crearGuardia(['trabajador'], 'Este enlace no permite ver el saldo: pide tu enlace nuevo al administrador');

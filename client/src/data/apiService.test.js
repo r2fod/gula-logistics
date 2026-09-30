@@ -12,6 +12,9 @@ import {
   fetchBalancesFromAPI,
   comprobarSesionEnAPI,
   crearTokenSociasEnAPI,
+  guardarTokenTrabajador,
+  tokenTrabajador,
+  olvidarTokenTrabajador,
 } from './apiService';
 
 // Fichaje mínimo de prueba: entra si el worker/type/timestamp bastan para
@@ -246,5 +249,27 @@ describe('límite de espera: ninguna petición se queda colgada para siempre', (
     await vi.advanceTimersByTimeAsync(60 * 1000);
     expect(await guardado).toBeNull();
     expect(getPendingClockEntriesSnapshot().map(e => e.id)).toEqual(['colgado']);
+  });
+});
+
+describe('enlace personal del trabajador (ve su saldo)', () => {
+  const tokenCon = (cuerpo) => `${btoa(JSON.stringify(cuerpo)).replace(/=+$/, '')}.firma`;
+
+  it('se guarda con SU nombre: en el mismo móvil, otra persona no lo usa', () => {
+    const t = tokenCon({ role: 'trabajador', w: 'ana', exp: Date.now() + 60000 });
+    guardarTokenTrabajador('Ana', t);
+    expect(tokenTrabajador('ana')).toBe(t);
+    expect(tokenTrabajador('Luis')).toBeNull();
+    olvidarTokenTrabajador();
+    expect(tokenTrabajador('Ana')).toBeNull();
+  });
+
+  it('caducado no vale; recién abierto se lee del ?t= de su propio enlace', () => {
+    guardarTokenTrabajador('Ana', tokenCon({ exp: Date.now() - 1 }));
+    expect(tokenTrabajador('Ana')).toBeNull();
+    window.history.replaceState({}, '', '/gula-logistics/?worker=Ana&t=de.url');
+    expect(tokenTrabajador('Ana')).toBe('de.url');
+    expect(tokenTrabajador('Luis')).toBeNull();
+    window.history.replaceState({}, '', '/');
   });
 });

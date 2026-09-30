@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { AdminConfig } from '../models/AdminConfig.model.js';
+import { WorkerBalance } from '../models/WorkerBalance.model.js';
 import { signToken, timingSafeStringEqual } from '../utils/authToken.js';
 import { requireAdmin, requireLectura } from '../middleware/requireAdmin.js';
 
@@ -10,6 +11,8 @@ const router = express.Router();
 const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 días de sesión de admin
 // Enlace de socias: solo lectura (saldos y panel), 90 días; el admin puede anularlos antes.
 const SOCIAS_TTL_SECONDS = 60 * 60 * 24 * 90;
+// Enlace de cada trabajador (ve su propio saldo): un año. Es "su" enlace fijo.
+const TRABAJADOR_TTL_SECONDS = 60 * 60 * 24 * 365;
 
 // Límite de intentos fallidos de login por IP. En memoria a propósito: el
 // servidor es un único proceso (plan gratuito de Render) y con este tráfico
@@ -176,6 +179,30 @@ router.post('/socias-token', requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error al generar el enlace de socias:', error);
     return res.status(500).json({ error: 'No se pudo generar el enlace de socias' });
+  }
+});
+
+// POST /api/auth/enlaces-trabajadores — el admin obtiene el enlace firmado de cada
+// ficha de Saldos: [{ id, name, token }]. Con él, ese trabajador ve SU saldo en su
+// vista (GET /api/balances/mio) y nada más. `anularAnteriores: true` sube
+// `trabajadoresVersion` y deja sin efecto todos los ya enviados.
+router.post('/enlaces-trabajadores', requireAdmin, async (req, res) => {
+  try {
+    if (mongoose.connection.readyState !== 1) return res.status(503).json({ error: 'Base de datos no disponible' });
+    const config = await AdminConfig.findOne({ configKey: 'admin' });
+    if (config && req.body?.anularAnteriores === true) {
+      config.trabajadoresVersion = (config.trabajadoresVersion || 1) + 1;
+      await config.save();
+    }
+    const tv = config?.trabajadoresVersion || 1;
+    const fichas = await WorkerBalance.find({}, { id: 1, name: 1 }).lean();
+    const enlaces = fichas
+      .filter(f => f?.id && f?.name)
+      .map(f => ({ id: f.id, name: f.name, token: signToken({ role: 'trabajador', w: f.id, tv }, TRABAJADOR_TTL_SECONDS) }));
+    return res.json({ enlaces });
+  } catch (error) {
+    console.error('Error al generar los enlaces de trabajador:', error);
+    return res.status(500).json({ error: 'No se pudieron generar los enlaces' });
   }
 });
 

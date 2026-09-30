@@ -4,8 +4,10 @@ import { esBorrador } from './anticipacion';
 // (`?worker=Nombre`, sin semana): al abrirlo enseña la semana que contiene hoy
 // (semanaPorDefecto), así que se actualiza solo cada semana y no hay que volver a
 // enviárselo. Antes llevaba `?week=<semana>` y cada semana había que mandar uno nuevo.
-export function construirEnlaceTrabajador(origen, ruta, nombre) {
-  return `${origen}${ruta}?worker=${encodeURIComponent(nombre)}`;
+// Con `token` (el firmado que da el servidor al admin, ver crearEnlacesTrabajadoresEnAPI)
+// la persona ve además SU saldo; sin él, solo su planning y sus horas.
+export function construirEnlaceTrabajador(origen, ruta, nombre, token = null) {
+  return `${origen}${ruta}?worker=${encodeURIComponent(nombre)}${token ? `&t=${encodeURIComponent(token)}` : ''}`;
 }
 
 // ¿El enlace pide una semana concreta (?week=) y hay que abrirla? Su id; si no, null
@@ -27,7 +29,7 @@ export function semanaPedidaEnEnlace({ weekParam = null, workerParam = null, hay
 export const urlBase = () => `${window.location.origin}${window.location.pathname}`;
 
 // Enlace fijo de un trabajador (ver `construirEnlaceTrabajador`) con la dirección actual.
-export const enlaceTrabajador = (nombre) => construirEnlaceTrabajador(window.location.origin, window.location.pathname, nombre);
+export const enlaceTrabajador = (nombre, token = null) => construirEnlaceTrabajador(window.location.origin, window.location.pathname, nombre, token);
 
 // Panel de socias. `tokenSocias` es el token de SOLO LECTURA que genera el servidor
 // (crearTokenSociasEnAPI), nunca la sesión de admin; sin él el enlace no da acceso.

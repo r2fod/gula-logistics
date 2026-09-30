@@ -11,7 +11,11 @@ const AdminConfigSchema = new mongoose.Schema({
   tokenVersion: { type: Number, default: 1 },
   // Versión de los enlaces de socias (solo lectura): subirla anula todos los
   // enlaces de socias ya enviados sin tocar la sesión de admin.
-  sociasVersion: { type: Number, default: 1 }
+  sociasVersion: { type: Number, default: 1 },
+  // Versión de los enlaces firmados de los trabajadores (ven su propio saldo):
+  // subirla los anula todos. NO depende de la contraseña de admin: cambiarla no
+  // obliga a reenviar el enlace a todo el equipo.
+  trabajadoresVersion: { type: Number, default: 1 }
 }, {
   timestamps: true
 });
