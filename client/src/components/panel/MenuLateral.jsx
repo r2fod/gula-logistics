@@ -5,9 +5,9 @@ import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import BotonAccion from './BotonAccion';
 import { SECCIONES_MENU, accionesDe } from './acciones';
 
-// Menú lateral del móvil y la tablet (se desliza desde la derecha): estado de la
-// sesión y todas las acciones del panel agrupadas por sección. Cada acción cierra
-// el menú al pulsarla.
+// Menú lateral (se desliza desde la derecha): estado de la sesión y todas las
+// acciones del panel agrupadas por sección. Se abre con "Menú" en el móvil y la
+// tablet y con "Más" en el ordenador. Cada acción cierra el menú al pulsarla.
 //
 // Props: abierto, onCerrar, acciones (de `crearAcciones`), adminUnlocked,
 // onSalir y onDesbloquear (cerrar la sesión de admin / pedir el acceso).
@@ -20,7 +20,7 @@ export default function MenuLateral({ abierto, onCerrar, acciones, adminUnlocked
   const delMenu = accionesDe(acciones, 'menu');
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Menú de Gestión" className="fixed inset-0 z-50 lg:hidden flex justify-end">
+    <div role="dialog" aria-modal="true" aria-label="Menú de Gestión" className="fixed inset-0 z-50 flex justify-end">
       <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" onClick={onCerrar} />
 
       <div className="relative w-full max-w-xs bg-slate-900 border-l border-slate-800 h-full p-5 flex flex-col justify-between shadow-2xl overflow-y-auto z-10">

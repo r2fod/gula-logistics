@@ -101,6 +101,12 @@ describe('CabeceraPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Abrir Menú' }));
     expect(props.onAbrirMenu).toHaveBeenCalled();
   });
+
+  it('BUG evitado: en el ordenador "Más" abre el menú (antes Memoria IA y el borrador manual no se alcanzaban)', () => {
+    const { props } = pintar();
+    fireEvent.click(screen.getByRole('button', { name: 'Más opciones' }));
+    expect(props.onAbrirMenu).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('MenuLateral', () => {
