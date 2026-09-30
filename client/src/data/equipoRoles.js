@@ -53,11 +53,22 @@ const GRUPOS = [
   ['limpieza', 'Limpieza'],
 ];
 
-// El bloque «Equipo» de la vista pública: [{ role, members }] por perfil, en orden.
-export function equipoPorRoles(equipo = []) {
+// El equipo agrupado por perfil, en orden: [{ titulo, personas }] (las fichas tal cual).
+// Quien no encaja en ningún perfil va al final, en "Otros".
+export function gruposDeEquipo(equipo = []) {
   const pools = clasificarEquipo(equipo);
   const porNombre = new Map(equipo.map(p => [p.name, p]));
-  return GRUPOS
-    .map(([clave, role]) => ({ role, members: pools[clave].map(p => nombreConNotas(porNombre.get(p.name))).join(' · ') }))
-    .filter(g => g.members);
+  const grupos = GRUPOS
+    .map(([clave, titulo]) => ({ titulo, personas: pools[clave].map(p => porNombre.get(p.name)) }))
+    .filter(g => g.personas.length);
+  const clasificados = new Set(Object.values(pools).flat().map(p => p.name));
+  const otros = equipo.filter(p => !clasificados.has(p.name));
+  return otros.length ? [...grupos, { titulo: 'Otros', personas: otros }] : grupos;
+}
+
+// El bloque «Equipo» de la vista pública: [{ role, members }] por perfil, en orden.
+export function equipoPorRoles(equipo = []) {
+  return gruposDeEquipo(equipo)
+    .filter(g => g.titulo !== 'Otros')
+    .map(g => ({ role: g.titulo, members: g.personas.map(nombreConNotas).join(' · ') }));
 }
