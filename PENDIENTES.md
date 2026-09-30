@@ -9,7 +9,6 @@ _Solo lo que sigue abierto (actualizado el 28/09/2026). Lo resuelto se borra de 
 - [ ] **Variables del calendario en Render** (`CALENDARIO_PROJECT_ID`, `CALENDARIO_API_KEY`, `CALENDARIO_CODIGO`; mejor el código de solo lectura). Sin ellas no hay borradores automáticos. Comprobar con `GET /api/calendario/estado` (admin).
 
 ## 🟡 Funcional
-- [ ] **`taskRef` apunta a la tarea por índice**: si el admin reordena un día con alguien fichado en él, la salida marcaría otra tarea. Pasar a `id` exige antes dar id a las tareas que no lo tienen (manual, ver `CLAUDE.md`).
 - [ ] **Regla "base/checklist y jefe de logística no cargan":** el usuario quitó ese texto de las tarjetas de equipo (21/09) pero sigue en el generador y en el prompt de Gemini. ¿Sigue vigente?
 - [ ] **Ficha de Saldos con el nombre mal escrito** (una letra de más): corregir `name` en Atlas → `workerbalances` (no el `id`). La app lo puentea mientras tanto.
 - [ ] **Semana 3:** 62,5 h de jornada sin tarea van repartidas por estimación; si el usuario dice qué se hizo el domingo por la noche, se ajustan asignaciones/horas y el reparto cambia solo. Anotar los **pax** de cada evento (sin pax, reparto a partes iguales).

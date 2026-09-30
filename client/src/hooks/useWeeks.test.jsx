@@ -51,12 +51,29 @@ describe('useWeeks — marcar y desmarcar tareas (solo a mano)', () => {
   it('la salida de un fichaje de la tarea la marca (con hora) y no la vuelve a escribir si ya estaba hecha', () => {
     vi.setSystemTime(new Date(2026, 8, 21, 10, 5));
     const { result } = montar();
-    act(() => result.current.markTaskCompleted('domingo', 0));
+    act(() => result.current.markTaskCompleted({ dayKey: 'domingo', taskIndex: 0 }));
     expect(patch).toHaveBeenCalledTimes(1);
     expect(patch).toHaveBeenCalledWith('week_3', 'domingo', 0, true, false, new Date(2026, 8, 21, 10, 5).toISOString());
 
-    act(() => result.current.markTaskCompleted('domingo', 0));
+    act(() => result.current.markTaskCompleted({ dayKey: 'domingo', taskIndex: 0 }));
     expect(patch).toHaveBeenCalledTimes(1);
+  });
+
+  it('BUG evitado: si el admin reordenó el día, la salida marca SU tarea (por texto), no la que quedó en su posición', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 10, 5));
+    const { result } = montar();
+    // Se fichó la entrada de "Devolución Generador" cuando estaba la 1.ª; ahora es la 2.ª.
+    const ref = { dayKey: 'domingo', taskIndex: 1, weekId: 'week_3', taskId: null, taskText: 'Devolución Generador' };
+    act(() => result.current.markTaskCompleted(ref));
+    expect(patch).toHaveBeenLastCalledWith('week_3', 'domingo', 0, true, false, expect.any(String));
+    expect(result.current.activeWeek.sundayMonday.tasks[1].completed).toBe(false);
+  });
+
+  it('por id si la tarea lo tiene; si ya no está en el día, no marca ninguna', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 10, 5));
+    const { result } = montar();
+    act(() => result.current.markTaskCompleted({ dayKey: 'domingo', taskIndex: 0, taskText: 'Ya no existe' }));
+    expect(patch).not.toHaveBeenCalled();
   });
 
   it('BUG evitado: el hook ya no ofrece nada que marque tareas solas por la hora', () => {

@@ -8,7 +8,7 @@ import WorkerViewWeddingCard from './dashboard/WorkerViewWeddingCard';
 import ResumenHorasSaldo from './dashboard/ResumenHorasSaldo';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
 import TaskTextWithEvent from './TaskTextWithEvent';
-import { getTaskListForDay, resolveTaskIndexByText, isTaskEffectivelyDone, isTaskAssignedTo, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart, esTareaActiva } from '../data/taskPlanning';
+import { getTaskListForDay, resolveTaskIndexByText, isTaskEffectivelyDone, isTaskAssignedTo, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart, esTareaActiva, refDeTareaFichada } from '../data/taskPlanning';
 import { subscribeToPush } from '../data/pushService';
 import { crearFichaje, horaDeFichaje, fechaDeFichaje } from '../data/fichajes';
 import { getWeddingTaskName } from '../data/eventNaming';
@@ -570,7 +570,7 @@ export default function WorkerView({
                                 tipo: 'fichaje',
                                 taskName: immediateTask.taskName.trim(),
                                 note: '',
-                                taskRef: tRef
+                                taskRef: refDeTareaFichada(activeWeekData, tRef)
                               }));
                             }}
                             disabled={isLocked}
@@ -1124,7 +1124,7 @@ export default function WorkerView({
         workersList={workersList}
         initialWorkerName={currentWorkerObj.name}
         initialTaskName={prefilledTask}
-        taskRef={taskRef}
+        taskRef={refDeTareaFichada(activeWeekData, taskRef)}
         clockEntries={clockEntries}
         onClockEntryCreated={onClockEntryCreated}
       />

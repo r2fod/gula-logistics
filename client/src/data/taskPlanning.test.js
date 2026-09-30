@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getTaskListForDay, resolveTaskIndexByText, buildTaskListPatch, isTaskChronologicallyPast, isTaskTooEarlyToClockIn,
-  parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, getNextTaskStart, isTaskTooEarlyToStart, isTaskEffectivelyDone, isWeekFinished, getTaskText, isTaskAssignedTo, tareasDeLaFecha,
+  parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, getNextTaskStart, isTaskTooEarlyToStart, isTaskEffectivelyDone, isWeekFinished, getTaskText, isTaskAssignedTo, tareasDeLaFecha, refDeTareaFichada, indiceDeTareaFichada,
   esTareaActiva,
 } from './taskPlanning';
 
@@ -600,5 +600,28 @@ describe('tareasDeLaFecha (por fecha real, no por nombre del día)', () => {
 
   it('una semana sin fechas legibles no aporta nada', () => {
     expect(tareasDeLaFecha({ x: { meta: { dateRange: 'fechas raras' }, schedule: { martes: { tasks: [{ text: 'x' }] } } } }, at(2026, 9, 22))).toEqual([]);
+  });
+});
+
+describe('refDeTareaFichada / indiceDeTareaFichada (la salida marca la tarea correcta)', () => {
+  const semana = (tareas) => ({ weekId: 'week_x', meta: { dateRange: 'Del 22 al 27 de Septiembre de 2026' }, schedule: { martes: { tasks: tareas } } });
+  const a = { id: 'm1', text: 'Carga' }, b = { id: 'm2', text: 'Montaje' }, c = { text: 'Recogida' };
+
+  it('guarda semana, id y texto de la tarea al fichar la entrada', () => {
+    expect(refDeTareaFichada(semana([a, b]), { dayKey: 'martes', taskIndex: 1 })).toEqual({ dayKey: 'martes', taskIndex: 1, weekId: 'week_x', taskId: 'm2', taskText: 'Montaje' });
+    expect(refDeTareaFichada(semana([a]), null)).toBeNull();
+  });
+
+  it('la encuentra aunque se reordene el día; si ya no está, null (no se marca otra)', () => {
+    const ref = refDeTareaFichada(semana([a, b, c]), { dayKey: 'martes', taskIndex: 1 });
+    expect(indiceDeTareaFichada(semana([b, a, c]), ref)).toBe(0);
+    const sinId = refDeTareaFichada(semana([a, b, c]), { dayKey: 'martes', taskIndex: 2 });
+    expect(indiceDeTareaFichada(semana([c, a, b]), sinId)).toBe(0);
+    expect(indiceDeTareaFichada(semana([a, c]), ref)).toBeNull();
+  });
+
+  it('un fichaje antiguo (solo día e índice) sigue funcionando como antes', () => {
+    expect(indiceDeTareaFichada(semana([a, b]), { dayKey: 'martes', taskIndex: 1 })).toBe(1);
+    expect(indiceDeTareaFichada(semana([a]), { dayKey: 'martes', taskIndex: 3 })).toBeNull();
   });
 });
