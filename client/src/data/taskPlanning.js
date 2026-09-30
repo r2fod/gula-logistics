@@ -382,6 +382,25 @@ function todasLasTareas(weekData) {
   return out;
 }
 
+// Tareas (activas) que caen en la FECHA real `fecha`, de todas las semanas que no son
+// borrador: [{ semana, dayKey, task }]. Se decide por fecha y no por el nombre del día:
+// el lunes de cola vive en la semana ANTERIOR y la semana que se está viendo puede no
+// ser la de hoy (el monitor en vivo enseñaba el "miércoles" de la semana abierta).
+export function tareasDeLaFecha(semanas = {}, fecha = new Date()) {
+  const out = [];
+  Object.values(semanas || {}).forEach(semana => {
+    if (!semana || semana.meta?.status === 'Borrador') return;
+    const range = getWeekRange(semana, fecha);
+    if (!range) return;
+    todasLasTareas(semana).forEach(([dayKey, task]) => {
+      if (!task || !esTareaActiva(task)) return;
+      const dia = resolveTaskDate(range, resolveTaskEvalDay(dayKey, task));
+      if (dia && dia.toDateString() === fecha.toDateString()) out.push({ semana, dayKey, task });
+    });
+  });
+  return out;
+}
+
 // `persona` (opcional): terminada PARA ESA PERSONA, mirando solo sus tareas. El lunes de
 // cola, a quien ya no le queda nada se le abre la semana siguiente aunque otros sigan
 // (una limpieza hasta las 20:00 no le deja a un conductor sin ver lo de mañana).

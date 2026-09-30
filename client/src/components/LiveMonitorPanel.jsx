@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Activity, AlertTriangle, Clock, MapPin, Package, Play, Radio, Square, Truck } from 'lucide-react';
 import { pairShiftsFromEntries, isZombieShift } from '../data/shiftCalculations';
-import { getTaskListForDay, isTaskEffectivelyDone, isTaskAssignedTo, getTaskText, esTareaActiva } from '../data/taskPlanning';
+import { isTaskEffectivelyDone, isTaskAssignedTo, getTaskText, tareasDeLaFecha } from '../data/taskPlanning';
 import { crearFichaje } from '../data/fichajes';
 import { formatTime } from '../utils/dateUtils';
 import BarraProgreso from './ui/BarraProgreso';
@@ -14,11 +14,14 @@ import { formatearEuros } from '../data/formatoFinanciero';
 
 // `mostrarDinero` (panel de admin/socias, nunca la vista pública): lo que lleva
 // ganado cada persona en turno, subiendo en tiempo real. `saldos` (fichas de Saldos)
-// sirve para cobrar la bolsa de horas igual que en Saldos.
+// sirve para cobrar la bolsa de horas igual que en Saldos. `semanas` (todas): las
+// tareas de hoy salen por su FECHA real, de la semana que sea (sin ellas, solo de la
+// semana abierta, y solo si contiene hoy).
 export default function LiveMonitorPanel({
   workersList = [],
   clockEntries = [],
   activeWeekData = {},
+  semanas = null,
   onClockEntryCreated,
   onOpenClockModal,
   mostrarDinero = false,
@@ -44,21 +47,15 @@ export default function LiveMonitorPanel({
     return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
   };
 
-  const getAssignedTasksForWorker = (workerName) => {
-    const days = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-    const todayIndex = currentTime.getDay();
-    const dayKey = days[todayIndex];
-    // domingo y lunes comparten sundayMonday.tasks bajo dayKey='domingo'
-    // (ver taskPlanning.js) — getTaskListForDay solo alía 'domingo'/
-    // 'sundayMonday', nunca 'lunes' literal. En lunes esto devolvía
-    // siempre [] (buscaba en schedule.lunes.tasks, que no existe), así que
-    // nadie veía su tarea real de domingo/lunes ese día — caía siempre al
-    // texto genérico por trabajador.
-    const listDayKey = dayKey === 'lunes' ? 'domingo' : dayKey;
-    const tasks = getTaskListForDay(activeWeekData, listDayKey);
-
-    return tasks.filter(t => esTareaActiva(t) && isTaskAssignedTo(t, workerName));
-  };
+  // Las tareas de HOY por fecha real (tareasDeLaFecha): antes se cogía el nombre del día
+  // ("miércoles") de la semana abierta, aunque no fuera la de hoy — el lunes por la noche,
+  // con la semana nueva ya abierta, salían las tareas del lunes de la semana siguiente.
+  const hoy = currentTime.toDateString();
+  const tareasHoy = useMemo(
+    () => tareasDeLaFecha(semanas || { activa: activeWeekData }, new Date(hoy)),
+    [semanas, activeWeekData, hoy]
+  );
+  const getAssignedTasksForWorker = (workerName) => tareasHoy.filter(({ task }) => isTaskAssignedTo(task, workerName));
 
   const getWorkerTaskInfo = (workerName) => {
     const allMatches = getAssignedTasksForWorker(workerName);
@@ -67,17 +64,9 @@ export default function LiveMonitorPanel({
       return { text: '📋 Asignado en Operativa Activa', extraCount: 0 };
     }
 
-    const days = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-    const dayKey = days[currentTime.getDay()];
-
-    const matches = allMatches.filter(t => {
-      if (typeof t !== 'object') return true; // Simple strings are assumed incomplete unless mapped to obj
-      // Hecha (marcada, o pasada su hora + margen y no desmarcada a propósito).
-      // En lunes la lista de domingo/lunes vive bajo 'domingo' (mismo alias que
-      // arriba); una tarea sin etiquetar cuenta como lunes.
-      if (isTaskEffectivelyDone(activeWeekData, dayKey === 'lunes' ? 'domingo' : dayKey, t, currentTime)) return false;
-      return true;
-    });
+    const matches = allMatches
+      .filter(({ semana, dayKey, task }) => typeof task !== 'object' || !isTaskEffectivelyDone(semana, dayKey, task))
+      .map(({ task }) => task);
 
     if (matches.length === 0) {
       return { text: '✅ Todas las tareas de hoy completadas', extraCount: 0 };

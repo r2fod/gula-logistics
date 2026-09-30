@@ -45,12 +45,26 @@ describe('LiveMonitorPanel — tareas desactivadas', () => {
   afterEach(() => vi.useRealTimers());
 
   it('BUG evitado: la tarea de hoy que está desactivada no sale como tarea asignada', () => {
-    const semana = { schedule: { martes: { tasks: [
+    const semana = { meta: { dateRange: 'Del 22 al 27 de Septiembre de 2026' }, schedule: { martes: { tasks: [
       { text: 'Tarea apagada', timeFrame: '09:00 - 12:00', assigned: ['Ana'], active: false },
       { text: 'Tarea buena', timeFrame: '09:00 - 12:00', assigned: ['Ana'] },
     ] } } };
     render(<LiveMonitorPanel workersList={equipo} clockEntries={[entrada('Ana', 9, 0).timestamp && { ...entrada('Ana', 9, 0), timestamp: new Date(2026, 8, 22, 9, 0).toISOString() }]} activeWeekData={semana} />);
     expect(document.body.textContent).toContain('Tarea buena');
     expect(document.body.textContent).not.toContain('Tarea apagada');
+  });
+
+  it('BUG evitado: las tareas de HOY salen por su fecha real, de la semana que sea (antes, el día con ese nombre de la semana abierta)', () => {
+    vi.setSystemTime(new Date(2026, 8, 28, 10, 0, 0)); // lunes 28: cola de la semana del 22
+    const anterior = { meta: { dateRange: 'Del 22 al 27 de Septiembre de 2026' }, schedule: {}, sundayMonday: { tasks: [
+      { text: 'Devolución de hoy', timeFrame: '09:00 - 12:00', targetDay: 'Lunes', assigned: ['Ana'] },
+    ] } };
+    const abierta = { meta: { dateRange: 'Del 29 de Septiembre al 4 de Octubre de 2026' }, schedule: {}, sundayMonday: { tasks: [
+      { text: 'Carga del lunes que viene', timeFrame: '09:00 - 12:00', targetDay: 'Lunes', assigned: ['Ana'] },
+    ] } };
+    const enTurno = [{ ...entrada('Ana', 9, 0), timestamp: new Date(2026, 8, 28, 9, 0).toISOString() }];
+    render(<LiveMonitorPanel workersList={equipo} clockEntries={enTurno} activeWeekData={abierta} semanas={{ anterior, abierta }} />);
+    expect(document.body.textContent).toContain('Devolución de hoy');
+    expect(document.body.textContent).not.toContain('Carga del lunes que viene');
   });
 });

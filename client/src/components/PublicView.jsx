@@ -19,6 +19,7 @@ export default function PublicView({
   data = {}, 
   workersList = [], 
   clockEntries = [], 
+  semanas = null,
   onOpenLogin,
   onClockEntryCreated,
   onOpenClockModal
@@ -142,7 +143,8 @@ export default function PublicView({
       <LiveMonitorPanel
         workersList={workersList}
         clockEntries={clockEntries}
-        activeSchedule={data.schedule || {}}
+        activeWeekData={data}
+        semanas={semanas}
         onClockEntryCreated={onClockEntryCreated}
         onOpenClockModal={onOpenClockModal}
       />

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   getTaskListForDay, resolveTaskIndexByText, buildTaskListPatch, isTaskChronologicallyPast, isTaskTooEarlyToClockIn,
-  parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, getNextTaskStart, isTaskTooEarlyToStart, isTaskEffectivelyDone, isWeekFinished, getTaskText, isTaskAssignedTo,
+  parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, getNextTaskStart, isTaskTooEarlyToStart, isTaskEffectivelyDone, isWeekFinished, getTaskText, isTaskAssignedTo, tareasDeLaFecha,
   esTareaActiva,
 } from './taskPlanning';
 
@@ -581,5 +581,24 @@ describe('esTareaActiva', () => {
     expect(esTareaActiva({ text: 'x', active: true })).toBe(true);
     expect(esTareaActiva({ text: 'x' })).toBe(true);
     expect(esTareaActiva('texto plano')).toBe(true);
+  });
+});
+
+describe('tareasDeLaFecha (por fecha real, no por nombre del día)', () => {
+  const s3 = { meta: { dateRange: 'Del 15 al 20 de Septiembre de 2026' }, schedule: { martes: { tasks: [{ text: 'Martes 15' }] } },
+    sundayMonday: { tasks: [{ text: 'Domingo 20', targetDay: 'Domingo' }, { text: 'Lunes 21', targetDay: 'Lunes' }, { text: 'Apagada', targetDay: 'Lunes', active: false }] } };
+  const s4 = { meta: { dateRange: 'Del 22 al 27 de Septiembre de 2026' }, schedule: { martes: { tasks: [{ text: 'Martes 22' }] } }, sundayMonday: { tasks: [{ text: 'Lunes 28' }] } };
+  const borrador = { meta: { dateRange: 'Del 22 al 27 de Septiembre de 2026', status: 'Borrador' }, schedule: { martes: { tasks: [{ text: 'Del borrador' }] } } };
+  const textos = (fecha) => tareasDeLaFecha({ s3, s4, borrador }, fecha).map(({ task }) => task.text);
+
+  it('el lunes de cola sale de la semana anterior; nunca un borrador ni una tarea desactivada', () => {
+    expect(textos(at(2026, 9, 21, 10))).toEqual(['Lunes 21']);
+    expect(textos(at(2026, 9, 20, 10))).toEqual(['Domingo 20']);
+    expect(textos(at(2026, 9, 22, 10))).toEqual(['Martes 22']);
+    expect(textos(at(2026, 9, 28, 10))).toEqual(['Lunes 28']); // sin targetDay cuenta como lunes
+  });
+
+  it('una semana sin fechas legibles no aporta nada', () => {
+    expect(tareasDeLaFecha({ x: { meta: { dateRange: 'fechas raras' }, schedule: { martes: { tasks: [{ text: 'x' }] } } } }, at(2026, 9, 22))).toEqual([]);
   });
 });
