@@ -282,6 +282,7 @@ export default function PartnerDashboardView({
             workersList={workersList}
             clockEntries={clockEntries}
             activeWeekData={activeWeekData}
+            semanas={allWeeks}
             onClockEntryCreated={onClockEntryCreated}
             onOpenClockModal={onOpenClockIn}
             mostrarDinero
