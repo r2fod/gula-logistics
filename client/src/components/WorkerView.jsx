@@ -120,13 +120,13 @@ export default function WorkerView({
   const myEntries = clockEntries.filter(e => e.workerName.toLowerCase() === currentWorkerObj.name.toLowerCase());
   const activeShift = getActiveShiftForWorker(clockEntries, currentWorkerObj.name);
 
-  // Total hours worked in registered past shifts
-  const totalCompletedHours = myEntries.reduce((acc, entry) => {
-    if (entry.type === 'salida' && entry.durationHours) {
-      return acc + (Number(entry.durationHours) || 0);
-    }
-    return acc;
-  }, 0);
+  // Sus turnos cerrados de la semana, emparejando entrada y salida como en Saldos
+  // (pairShiftsFromEntries, redondeo a la media hora). Antes se sumaba `durationHours`
+  // de las salidas, que ningún fichaje lleva: la semana salía siempre con 0 h y la
+  // lista de fichajes nunca decía cuánto duró cada turno.
+  const misTurnos = pairShiftsFromEntries(myEntries).shifts;
+  const totalCompletedHours = misTurnos.reduce((acc, turno) => acc + (turno.durationHours || 0), 0);
+  const duracionDeSalida = new Map(misTurnos.map(turno => [turno.endEntry?.id, turno.durationHours]));
 
   // Standard 7 Days Definition
   // Títulos y números de día salen de meta.dateRange de la semana activa
@@ -1055,7 +1055,7 @@ export default function WorkerView({
                   </p>
                   <div className="flex items-center justify-between pt-2 border-t border-slate-800/60 mt-1">
                     <span className="text-[10px] text-slate-400">
-                      {entry.durationHours ? `Duración: ${formatearHoras(Number(entry.durationHours))}` : 'Turno registrado'}
+                      {duracionDeSalida.has(entry.id) ? `Duración: ${formatearHoras(duracionDeSalida.get(entry.id))}` : 'Turno registrado'}
                     </span>
                     <span className="text-[10px] font-bold text-amber-300 flex items-center gap-1">
                       <Lock className="w-3 h-3 text-amber-400" /> Bloqueado
