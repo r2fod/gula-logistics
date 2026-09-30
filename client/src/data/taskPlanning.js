@@ -499,6 +499,38 @@ export function getTaskText(task) {
   return '';
 }
 
+// Al fichar la ENTRADA de una tarea: su referencia { dayKey, taskIndex } con lo que hace
+// falta para volver a encontrarla al fichar la salida aunque el admin reordene el día: la
+// semana (`weekId`, igual que su clave), su `id` si lo tiene y su texto de ese momento.
+export function refDeTareaFichada(weekData, ref) {
+  if (!ref || ref.dayKey == null || ref.taskIndex == null) return ref || null;
+  const task = getTaskListForDay(weekData, ref.dayKey)[ref.taskIndex];
+  return {
+    ...ref,
+    weekId: weekData?.weekId || weekData?.id || null,
+    taskId: (task && typeof task === 'object' && task.id) || null,
+    taskText: getTaskText(task),
+  };
+}
+
+// Índice ACTUAL en su día de la tarea de un fichaje, o null si ya no se puede asegurar
+// cuál es: mejor no marcar nada que marcar otra (pasaba al reordenar un día con alguien
+// fichado). Por `id`; sin él, por su texto; los fichajes antiguos sin nada de eso, por
+// su índice (como antes).
+export function indiceDeTareaFichada(weekData, ref) {
+  const list = getTaskListForDay(weekData, ref?.dayKey);
+  if (ref?.taskId) {
+    const i = list.findIndex(t => t && typeof t === 'object' && t.id === ref.taskId);
+    return i !== -1 ? i : null;
+  }
+  if (ref?.taskText) {
+    if (getTaskText(list[ref.taskIndex]) === ref.taskText) return ref.taskIndex;
+    const i = list.findIndex(t => getTaskText(t) === ref.taskText);
+    return i !== -1 ? i : null;
+  }
+  return ref?.taskIndex != null && list[ref.taskIndex] !== undefined ? ref.taskIndex : null;
+}
+
 // ¿Es esta tarea (o boda) de esta persona? Manda la lista `assigned` de la tarea, con
 // el nombre exacto del equipo (sin distinguir mayúsculas). Solo si la tarea no trae
 // `assigned` (dato antiguo) se busca el nombre en su texto y en los datos de la boda.

@@ -36,7 +36,7 @@ export function useClockings(markTaskCompleted) {
     if (newEntry.type === 'salida' && markTaskCompleted) {
       const closingShift = getActiveShiftForWorker(clockEntries, newEntry.workerName);
       if (closingShift?.taskRef) {
-        markTaskCompleted(closingShift.taskRef.dayKey, closingShift.taskRef.taskIndex);
+        markTaskCompleted(closingShift.taskRef);
       }
     }
   };

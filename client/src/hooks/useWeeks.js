@@ -2,7 +2,7 @@ import { useState, useRef, useMemo } from 'react';
 import { logisticsData as BASE_DATA } from '../data/logisticsData';
 import { saveWeeksToAPI, patchTaskCompletionInAPI } from '../data/apiService';
 import { semanaPorDefecto } from '../data/anticipacion';
-import { getTaskListForDay, buildTaskListPatch, isTaskEffectivelyDone, ensureYearInDateRange, clearWeekCompletion } from '../data/taskPlanning';
+import { getTaskListForDay, buildTaskListPatch, isTaskEffectivelyDone, ensureYearInDateRange, clearWeekCompletion, indiceDeTareaFichada } from '../data/taskPlanning';
 import { useDialog } from '../contexts/DialogContext';
 import { useAhora } from './useAhora';
 
@@ -122,8 +122,16 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
     patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, newCompleted, reopened, completedAt);
   };
 
-  const markTaskCompleted = (dayKey, taskIdx) => {
-    const list = [...getTaskListForDay(activeWeek, dayKey)];
+  // `taskRef`: la del fichaje de entrada (refDeTareaFichada). Se marca en SU semana (el
+  // lunes de cola puede no ser la que se está viendo) y la tarea se busca por id o texto
+  // (indiceDeTareaFichada): si el admin reordenó el día, antes se marcaba otra.
+  const markTaskCompleted = (taskRef) => {
+    const weekId = taskRef?.weekId && allWeeks[taskRef.weekId] ? taskRef.weekId : activeWeekId;
+    const semana = allWeeks[weekId] || activeWeek;
+    const dayKey = taskRef?.dayKey;
+    const taskIdx = indiceDeTareaFichada(semana, taskRef);
+    if (taskIdx == null) return;
+    const list = [...getTaskListForDay(semana, dayKey)];
     const taskItem = list[taskIdx];
     if (taskItem === undefined) return;
     const completedAt = new Date().toISOString();
@@ -133,13 +141,13 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
     } else {
       list[taskIdx] = { text: taskItem, completed: true, reopened: false, completedAt };
     }
-    applyLocalWeeksState({ ...allWeeks, [activeWeekId]: { ...activeWeek, ...buildTaskListPatch(activeWeek, dayKey, list) } });
+    applyLocalWeeksState({ ...allWeeks, [weekId]: { ...semana, ...buildTaskListPatch(semana, dayKey, list) } });
     // Igual que toggleTask: sin esto, el polling de 20s podía traer de
     // vuelta datos del servidor de antes de que este PATCH llegara y
     // desmarcar la tarea que se acaba de completar (el mismo bug que ya
     // se arregló para el toggle manual, pero aquí faltaba).
     lastLocalEditRef.current = Date.now();
-    patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, true, false, completedAt);
+    patchTaskCompletionInAPI(weekId, dayKey, taskIdx, true, false, completedAt);
   };
 
   // aiGeneratedJson (opcional): viene del asistente guiado de
