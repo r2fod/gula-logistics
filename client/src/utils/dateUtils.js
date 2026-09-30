@@ -63,6 +63,10 @@ export const formatDayMonthShort = (dateObj) =>
 export const formatMonthYear = (dateObj) =>
   new Date(dateObj).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 
+// Format: septiembre
+export const formatMonthName = (dateObj) =>
+  new Date(dateObj).toLocaleDateString('es-ES', { month: 'long' });
+
 // Format: lun
 export const formatWeekdayShort = (dateObj) =>
   sinPunto(new Date(dateObj).toLocaleDateString('es-ES', { weekday: 'short' }));

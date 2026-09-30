@@ -2,6 +2,9 @@ import React, { useMemo } from 'react';
 import { Clock, Wallet } from 'lucide-react';
 import EnVivo from '../ui/EnVivo';
 import { formatearHoras, formatearEurosConSigno } from '../../data/formatoFinanciero';
+import { rangoDePeriodo, turnosDelPeriodo } from '../../data/periodosFinancieros';
+import { formatMonthName } from '../../utils/dateUtils';
+import { useAhora } from '../../hooks/useAhora';
 import { costeEnCurso } from '../../data/costeEnVivo';
 import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../../data/shiftCalculations';
 import { buscarPorNombreDeSaldo } from '../../data/saldosEquipo';
@@ -22,23 +25,46 @@ function Dato({ icono: Icono, etiqueta, children, pie = null, tono = 'text-emera
   );
 }
 
-// Horas de la semana y lo que tiene pendiente de cobro, en la vista del propio
-// trabajador. Suben en directo mientras está en turno (<EnVivo>), y el saldo es la
+// Una cifra de horas con lo que abarca debajo ("semana", "septiembre").
+function Horas({ valor, texto }) {
+  return (
+    <span className="whitespace-nowrap">
+      <span className="block font-mono text-lg font-extrabold tabular-nums text-sky-300">{valor}</span>
+      <span className="block font-sans text-[10px] font-normal text-slate-500">{texto}</span>
+    </span>
+  );
+}
+
+// Horas de la semana y del mes, y lo que tiene pendiente de cobro, en la vista del
+// propio trabajador. Semana (martes a lunes) y mes como en el Resumen Financiero
+// (periodosFinancieros.js): un turno cuenta en el periodo en que empieza, a la media
+// hora. Suben en directo mientras está en turno (<EnVivo>), y el saldo es la
 // MISMA cuenta que Saldos & Acuerdos (saldoDeTrabajador): lo que el admin apunte allí
 // (un pago, un ajuste) le llega aquí en unos segundos (useMiSaldo). El saldo solo
 // sale con su enlace personal firmado; en nómina fija no se enseñan euros.
 //
-// Props: nombre, enNomina, horasSemana (fichadas y cerradas esta semana),
-// turnoAbierto (su entrada sin salida, o null), fichajesDeTodo (el histórico: el saldo
-// cuenta todos sus turnos) y equipo.
-export default function ResumenHorasSaldo({ nombre, enNomina = false, horasSemana = 0, turnoAbierto = null, fichajesDeTodo = [], equipo = [] }) {
+// Props: nombre, enNomina, turnoAbierto (su entrada sin salida, o null),
+// fichajesDeTodo (el histórico: el mes y el saldo cuentan todos sus turnos) y equipo.
+export default function ResumenHorasSaldo({ nombre, enNomina = false, turnoAbierto = null, fichajesDeTodo = [], equipo = [] }) {
   const { ficha, sinEnlace } = useMiSaldo(nombre);
+  const ahora = useAhora(60 * 1000); // para cambiar de semana y de mes sin recargar
 
-  const horas = useMemo(() => {
-    if (!ficha) return null;
-    const { shifts } = pairShiftsFromEntries(fichajesDeTodo);
-    return buscarPorNombreDeSaldo(aggregateShiftsByWorker(shifts, equipo), ficha.name);
-  }, [ficha, fichajesDeTodo, equipo]);
+  const turnos = useMemo(() => pairShiftsFromEntries(fichajesDeTodo).shifts, [fichajesDeTodo]);
+  const horas = useMemo(
+    () => (ficha ? buscarPorNombreDeSaldo(aggregateShiftsByWorker(turnos, equipo), ficha.name) : null),
+    [ficha, turnos, equipo]
+  );
+
+  const suyos = turnos.filter(t => String(t.workerName || '').trim().toLowerCase() === String(nombre || '').trim().toLowerCase());
+  const periodo = (modo) => {
+    const rango = rangoDePeriodo(modo, ahora);
+    const cerradas = turnosDelPeriodo(suyos, rango).reduce((suma, t) => suma + (t.durationHours || 0), 0);
+    const inicioAbierto = turnoAbierto ? new Date(turnoAbierto.timestamp).getTime() : NaN;
+    const abiertoDentro = inicioAbierto >= rango.desde.getTime() && inicioAbierto < rango.hasta.getTime();
+    return { rango, cerradas, abiertoDentro };
+  };
+  const semana = periodo('semana');
+  const mes = periodo('mes');
 
   const saldo = ficha ? saldoDeTrabajador({ ficha, horas, abierto: turnoAbierto }) : null;
   const verSaldo = !!saldo && !saldo.enNomina && !enNomina;
@@ -47,10 +73,14 @@ export default function ResumenHorasSaldo({ nombre, enNomina = false, horasSeman
 
   return (
     <section aria-label="Tus horas y tu saldo" className="mt-3 flex flex-wrap gap-2">
-      <Dato icono={Clock} etiqueta="Esta semana" tono="text-sky-300" pie={turnoAbierto ? 'Con el turno en curso' : null}>
-        {turnoAbierto
-          ? <EnVivo>{(ahora) => formatearHoras(horasSemana + horasAbiertas(ahora))}</EnVivo>
-          : formatearHoras(horasSemana)}
+      <Dato icono={Clock} etiqueta="Horas" tono="text-sky-300" pie={turnoAbierto ? 'Con el turno en curso' : null}>
+        <span className="flex flex-wrap gap-x-4 gap-y-1">
+          {[[semana, 'semana'], [mes, formatMonthName(mes.rango.desde)]].map(([p, texto]) => (
+            p.abiertoDentro
+              ? <EnVivo key={texto}>{(momento) => <Horas valor={formatearHoras(p.cerradas + horasAbiertas(momento))} texto={texto} />}</EnVivo>
+              : <Horas key={texto} valor={formatearHoras(p.cerradas)} texto={texto} />
+          ))}
+        </span>
       </Dato>
 
       {verSaldo && (

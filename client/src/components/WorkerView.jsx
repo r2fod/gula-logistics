@@ -120,13 +120,10 @@ export default function WorkerView({
   const myEntries = clockEntries.filter(e => e.workerName.toLowerCase() === currentWorkerObj.name.toLowerCase());
   const activeShift = getActiveShiftForWorker(clockEntries, currentWorkerObj.name);
 
-  // Sus turnos cerrados de la semana, emparejando entrada y salida como en Saldos
-  // (pairShiftsFromEntries, redondeo a la media hora). Antes se sumaba `durationHours`
-  // de las salidas, que ningún fichaje lleva: la semana salía siempre con 0 h y la
-  // lista de fichajes nunca decía cuánto duró cada turno.
-  const misTurnos = pairShiftsFromEntries(myEntries).shifts;
-  const totalCompletedHours = misTurnos.reduce((acc, turno) => acc + (turno.durationHours || 0), 0);
-  const duracionDeSalida = new Map(misTurnos.map(turno => [turno.endEntry?.id, turno.durationHours]));
+  // Cuánto duró cada turno de la semana, emparejando entrada y salida como en Saldos
+  // (pairShiftsFromEntries, a la media hora): ningún fichaje de salida lleva su
+  // duración. Las horas de la semana y del mes las cuenta ResumenHorasSaldo.
+  const duracionDeSalida = new Map(pairShiftsFromEntries(myEntries).shifts.map(turno => [turno.endEntry?.id, turno.durationHours]));
 
   // Standard 7 Days Definition
   // Títulos y números de día salen de meta.dateRange de la semana activa
@@ -492,7 +489,6 @@ export default function WorkerView({
         <ResumenHorasSaldo
           nombre={currentWorkerObj.name}
           enNomina={!!currentWorkerObj.isPayroll}
-          horasSemana={totalCompletedHours}
           turnoAbierto={activeShift}
           fichajesDeTodo={fichajesDeTodo}
           equipo={workersList}
