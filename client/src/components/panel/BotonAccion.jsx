@@ -52,7 +52,7 @@ const ESTILOS = {
 
 // Lo común de cada variante (tamaño, alineación, transición).
 const BASE = {
-  barra: 'px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shrink-0',
+  barra: 'px-1.5 xl:px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1 xl:gap-1.5 transition-all shrink-0', // solo se ve desde lg: algo más prieta hasta xl
   movil: 'px-2.5 py-1.5 rounded-xl text-xs flex items-center gap-1 transition-all shrink-0',
   menu: 'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs',
   cabecera: 'flex items-center transition-colors shrink-0',

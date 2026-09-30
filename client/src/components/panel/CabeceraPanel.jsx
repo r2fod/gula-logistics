@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, KeyRound, Truck, Menu } from 'lucide-react';
+import { ShieldCheck, KeyRound, Truck, Menu, MoreHorizontal } from 'lucide-react';
 import { esBorrador } from '../../data/anticipacion';
 import BotonAccion from './BotonAccion';
 import { accionesDe } from './acciones';
@@ -13,7 +13,8 @@ import { Selector } from '../ui/Campo';
 // - activeWeekData / allWeeks / activeWeekId / onSelectWeek: semana que se ve y cómo cambiarla.
 // - acciones: la lista de `crearAcciones`.
 // - onSalir / onDesbloquear: cerrar la sesión de admin o pedir el acceso.
-// - onAbrirMenu: abre el menú lateral (móvil y tablet).
+// - onAbrirMenu: abre el menú lateral ("Menú" en el móvil, "Más" en el ordenador), donde
+//   están TODAS las acciones, también las que no caben en la barra (Memoria IA, borrador…).
 export default function CabeceraPanel({
   adminUnlocked,
   activeWeekData,
@@ -107,11 +108,24 @@ export default function CabeceraPanel({
         </button>
       </div>
 
-      {/* Barra de acciones de escritorio */}
-      <div className="hidden lg:flex items-center justify-center gap-1.5 w-full overflow-x-auto no-scrollbar pt-2 border-t border-slate-800/80">
+      {/* Barra de acciones de escritorio. Si no cabe (1024 px, letra grande) baja a otra
+          línea: antes se cortaba por los dos lados y "Fichar" quedaba fuera de alcance. "Más"
+          abre el menú lateral: en el ordenador era la única forma de llegar a Memoria IA
+          (el grafo de conocimiento) o al borrador manual, y no había botón para abrirlo. */}
+      <div className="hidden lg:flex flex-wrap items-center justify-center gap-1 xl:gap-1.5 w-full pt-2 border-t border-slate-800/80">
         {accionesDe(acciones, 'barra').map((accion) => (
           <BotonAccion key={accion.id} accion={accion} variante="barra" />
         ))}
+        <button
+          type="button"
+          onClick={onAbrirMenu}
+          title="Más opciones: Memoria IA, borrador manual, claves…"
+          aria-label="Más opciones"
+          className="px-1.5 xl:px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-center gap-1 xl:gap-1.5 transition-all shrink-0 bg-slate-900 hover:bg-slate-800 text-slate-200 font-bold border border-slate-800"
+        >
+          <MoreHorizontal className="w-3.5 h-3.5 shrink-0 text-amber-400" aria-hidden="true" />
+          <span className="hidden xl:inline whitespace-nowrap">Más</span>
+        </button>
       </div>
     </header>
   );
