@@ -5,6 +5,7 @@ import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
 import WorkerViewTaskItem from './dashboard/WorkerViewTaskItem';
 import WorkerViewWeddingCard from './dashboard/WorkerViewWeddingCard';
+import ResumenHorasSaldo from './dashboard/ResumenHorasSaldo';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
 import TaskTextWithEvent from './TaskTextWithEvent';
 import { getTaskListForDay, resolveTaskIndexByText, isTaskEffectivelyDone, isTaskAssignedTo, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart, esTareaActiva } from '../data/taskPlanning';
@@ -50,6 +51,7 @@ export default function WorkerView({
   workersList = [],
   activeWeekData = {},
   clockEntries = [],
+  fichajesDeTodo = [],
   isAdmin = false,
   onToggleTask,
   onClockEntryCreated,
@@ -448,7 +450,6 @@ export default function WorkerView({
                 {currentWorkerObj.truck && (
                   <span className="whitespace-nowrap text-amber-300 font-medium before:mr-2 before:text-slate-500 before:content-['•']">{currentWorkerObj.truck}</span>
                 )}
-                <span className="whitespace-nowrap font-mono text-emerald-400 font-bold before:mr-2 before:font-sans before:text-slate-500 before:content-['•']">{formatearHoras(totalCompletedHours)} esta semana</span>
               </div>
             </div>
           </div>
@@ -487,6 +488,15 @@ export default function WorkerView({
             )}
           </div>
         </div>
+        {/* Sus horas de la semana y lo que tiene pendiente de cobro, en directo. */}
+        <ResumenHorasSaldo
+          nombre={currentWorkerObj.name}
+          enNomina={!!currentWorkerObj.isPayroll}
+          horasSemana={totalCompletedHours}
+          turnoAbierto={activeShift}
+          fichajesDeTodo={fichajesDeTodo}
+          equipo={workersList}
+        />
         {/* 🎯 HERO ACTION CARD: IMMEDIATE TASK (0 SCROLL REQUIRED!) */}
         <div className={`mt-3 rounded-2xl p-4 sm:p-5 border transition-all ${
           activeShift
@@ -661,7 +671,7 @@ export default function WorkerView({
                         taskRef: null
                       }));
                     }}
-                    className={`w-full py-3.5 px-4 rounded-xl text-sm font-extrabold flex items-center justify-center space-x-2 transition-all ${
+                    className={`w-full py-3.5 px-3 sm:px-4 rounded-xl text-[13px] min-[360px]:text-sm font-extrabold flex items-center justify-center gap-2 transition-all ${
                       isReady 
                         ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 shadow-xl shadow-emerald-500/25 active:scale-95' 
                         : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
@@ -675,12 +685,14 @@ export default function WorkerView({
                     ) : sinTareasPendientes ? (
                       <>
                         <Lock className="w-4 h-4 shrink-0" />
-                        <span className="whitespace-nowrap">Sin tareas pendientes</span>
+                        <span className="text-center">Sin tareas pendientes</span>
                       </>
                     ) : (
                       <>
-                        <Clock className="w-4 h-4 shrink-0" />
-                        <span className="whitespace-nowrap">Espera {waitText} para fichar</span>
+                        <Clock className="w-4 h-4 shrink-0 hidden min-[360px]:block" aria-hidden="true" />
+                        {/* Si no cabe (320 px, letra grande) baja de línea entre palabras en
+                            vez de cortarse; el tiempo no se parte. */}
+                        <span className="text-center">Espera <span className="whitespace-nowrap">{waitText}</span> para fichar</span>
                       </>
                     )}
                   </button>

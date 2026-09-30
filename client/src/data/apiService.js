@@ -20,6 +20,9 @@ const TOKEN_STORAGE_KEY = 'gula_admin_token_v1';
 // Enlace de socias: token firmado de SOLO LECTURA (saldos y panel), aparte de
 // la sesión de admin. Lo genera el admin (crearTokenSociasEnAPI) y llega en la URL.
 const SOCIAS_TOKEN_STORAGE_KEY = 'gula_socias_token_v1';
+// Enlace firmado de un trabajador (?worker=Nombre&t=…): solo le deja ver SU saldo.
+// Se guarda con su nombre para no enseñárselo a otra persona que use el mismo móvil.
+const TRABAJADOR_TOKEN_STORAGE_KEY = 'gula_trabajador_token_v1';
 const BALANCES_CACHE_KEY = 'gula_balances_data_v1';
 
 function leerTokenGuardado(clave) {
@@ -58,13 +61,45 @@ export function getStoredSociasToken() {
 
 // Guarda el token de un enlace de socias con su caducidad real (va dentro del
 // token; el servidor es quien la hace cumplir, esto solo evita guardar de más).
-export function setStoredSociasToken(token) {
-  let expiresAt = Date.now() + 90 * 24 * 60 * 60 * 1000;
+// Caducidad que lleva dentro un token firmado (ms), o `porDefecto` si no se lee.
+function caducidadDeToken(token, porDefecto) {
   try {
     const cuerpo = JSON.parse(atob(token.split('.')[0].replace(/-/g, '+').replace(/_/g, '/')));
-    if (Number.isFinite(cuerpo.exp)) expiresAt = cuerpo.exp;
+    if (Number.isFinite(cuerpo.exp)) return cuerpo.exp;
   } catch { /* token raro: se guarda con la caducidad por defecto y el servidor decide */ }
+  return porDefecto;
+}
+
+export function setStoredSociasToken(token) {
+  const expiresAt = caducidadDeToken(token, Date.now() + 90 * 24 * 60 * 60 * 1000);
   localStorage.setItem(SOCIAS_TOKEN_STORAGE_KEY, JSON.stringify({ token, expiresAt }));
+}
+
+export function guardarTokenTrabajador(nombre, token) {
+  try {
+    const expiresAt = caducidadDeToken(token, Date.now() + 365 * 24 * 60 * 60 * 1000);
+    localStorage.setItem(TRABAJADOR_TOKEN_STORAGE_KEY, JSON.stringify({ nombre, token, expiresAt }));
+  } catch { /* sin almacenamiento: vale mientras esté abierta, con el ?t= de la URL */ }
+}
+
+export function olvidarTokenTrabajador() {
+  try { localStorage.removeItem(TRABAJADOR_TOKEN_STORAGE_KEY); } catch { /* nada que borrar */ }
+}
+
+const mismoNombre = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+
+// El enlace firmado de `nombre` en este navegador: el guardado o, recién abierto, el
+// ?t= de la URL (App lo guarda y lo quita de la barra de direcciones al arrancar).
+export function tokenTrabajador(nombre) {
+  try {
+    const raw = localStorage.getItem(TRABAJADOR_TOKEN_STORAGE_KEY);
+    if (raw && mismoNombre(JSON.parse(raw).nombre, nombre)) {
+      const guardado = leerTokenGuardado(TRABAJADOR_TOKEN_STORAGE_KEY);
+      if (guardado) return guardado;
+    }
+  } catch { /* sin almacenamiento: se mira la URL */ }
+  const params = new URLSearchParams(window.location.search);
+  return params.get('t') && mismoNombre(params.get('worker'), nombre) ? params.get('t') : null;
 }
 
 // Cierra cualquier acceso de este navegador (admin y socias) y borra la copia
@@ -102,6 +137,35 @@ export async function crearTokenSociasEnAPI({ anularAnteriores = false } = {}) {
     } catch {
       if (intento >= intentos) return { ok: false, error: 'el servidor no ha respondido. Prueba otra vez.' };
     }
+  }
+}
+
+// Admin: el enlace firmado de cada ficha de Saldos, [{ id, name, token }].
+// `anularAnteriores` deja sin efecto todos los ya enviados.
+export async function crearEnlacesTrabajadoresEnAPI({ anularAnteriores = false } = {}) {
+  try {
+    const res = await fetchConLimite(`${API_BASE}/auth/enlaces-trabajadores`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ anularAnteriores })
+    }, 20 * 1000);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return { ok: false, error: data.error || `Error ${res.status}` };
+    return { ok: true, enlaces: Array.isArray(data.enlaces) ? data.enlaces : [] };
+  } catch {
+    return { ok: false, error: 'el servidor no ha respondido. Prueba otra vez.' };
+  }
+}
+
+// La ficha de Saldos del trabajador de ese enlace firmado (solo la suya).
+// { ok, ficha } | { ok: false, status } (401: enlace anulado o caducado; 0: sin red).
+export async function fetchMiSaldoFromAPI(token) {
+  try {
+    const res = await fetchConLimite(`${API_BASE}/balances/mio`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return { ok: false, status: res.status };
+    return { ok: true, ficha: await res.json() };
+  } catch {
+    return { ok: false, status: 0 };
   }
 }
 

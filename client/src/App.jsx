@@ -34,6 +34,7 @@ import {
   setStoredAdminToken,
   getStoredSociasToken,
   setStoredSociasToken,
+  guardarTokenTrabajador,
   comprobarSesionEnAPI,
   logoutAdmin,
   fetchWeeksFromAPI,
@@ -288,6 +289,8 @@ export default function App() {
     const workerParam = params.get('worker');
     const tokenParam = params.get('token') || params.get('key');
     const accesoParam = params.get('acceso');
+    // `t=`: enlace firmado de un trabajador (?worker=Nombre&t=…): con él ve su saldo.
+    const tokenTrabajadorParam = workerParam ? params.get('t') : null;
     const hasSociasFlag = params.has('socias');
 
     // Qué semana se abre (ver data/enlaces.js): un trabajador siempre ve la de hoy,
@@ -336,11 +339,12 @@ export default function App() {
     // `token=`/`key=`: sesión de admin en la URL — solo la de enlaces viejos;
     // la app ya no la mete en ningún enlace, y cambiar la clave la anula.
     if (accesoParam) setStoredSociasToken(accesoParam);
+    if (tokenTrabajadorParam) guardarTokenTrabajador(workerParam, tokenTrabajadorParam);
     if (tokenParam) {
       setStoredAdminToken(tokenParam, Date.now() + 30 * 24 * 60 * 60 * 1000);
       setIsAdminUnlocked(true);
     }
-    if (tokenParam || accesoParam) {
+    if (tokenParam || accesoParam || tokenTrabajadorParam) {
       // Ya está guardado en localStorage — quitarlo de la barra de
       // direcciones ahora mismo. Sin esto, el token seguía viajando en la
       // URL visible (capturas de pantalla, historial del navegador) y, si
@@ -354,6 +358,7 @@ export default function App() {
         cleanUrl.searchParams.delete('token');
         cleanUrl.searchParams.delete('key');
         cleanUrl.searchParams.delete('acceso');
+        cleanUrl.searchParams.delete('t');
         window.history.replaceState({}, '', cleanUrl.pathname + cleanUrl.search);
       } catch (e) {
         console.error(e);
@@ -499,6 +504,7 @@ export default function App() {
           workersList={workersList}
           activeWeekData={activeWeek}
           clockEntries={currentWeekClockEntries}
+          fichajesDeTodo={activeClockEntries}
           isAdmin={isAdmin}
           onToggleTask={(dayKey, taskIdx) => toggleTask(dayKey, taskIdx)}
           onClockEntryCreated={handleClockEntryCreated}

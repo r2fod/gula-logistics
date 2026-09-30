@@ -2,7 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import { WorkerBalance } from '../models/WorkerBalance.model.js';
 import { initialBalancesData } from '../data/balancesData.js';
-import { requireAdmin, requireLectura } from '../middleware/requireAdmin.js';
+import { requireAdmin, requireLectura, requireTrabajador } from '../middleware/requireAdmin.js';
 
 const router = express.Router();
 
@@ -25,6 +25,22 @@ router.get('/', requireLectura, async (req, res) => {
   } catch (error) {
     console.error('Error al obtener saldos:', error);
     return res.json(memoryBalancesData);
+  }
+});
+
+// GET /api/balances/mio — la ficha de Saldos del trabajador del enlace firmado
+// (y SOLO la suya: el id va dentro del token, no se puede pedir otra). Lo justo
+// para calcular su saldo en su vista; sin teléfono ni notas internas.
+const CAMPOS_PROPIOS = 'id name currentBalance breakdown hourlyRate statusType isSpecialPurse purseInfo hasTransportBonus updatedAt';
+router.get('/mio', requireTrabajador, async (req, res) => {
+  try {
+    if (mongoose.connection.readyState !== 1) return res.status(503).json({ error: 'Base de datos no disponible' });
+    const ficha = await WorkerBalance.findOne({ id: req.admin.w }).select(CAMPOS_PROPIOS).lean();
+    if (!ficha) return res.status(404).json({ error: 'No hay ficha de saldo para este enlace' });
+    return res.json(ficha);
+  } catch (error) {
+    console.error('Error al leer el saldo propio:', error);
+    return res.status(500).json({ error: 'No se pudo leer el saldo' });
   }
 });
 

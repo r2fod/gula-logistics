@@ -6,9 +6,13 @@ import mongoose from 'mongoose';
 vi.mock('../models/AdminConfig.model.js', () => ({
   AdminConfig: { findOne: vi.fn().mockResolvedValue(null), create: vi.fn() },
 }));
+vi.mock('../models/WorkerBalance.model.js', () => ({
+  WorkerBalance: { find: vi.fn() },
+}));
 
 const authRoutes = (await import('./auth.routes.js')).default;
 const { AdminConfig } = await import('../models/AdminConfig.model.js');
+const { WorkerBalance } = await import('../models/WorkerBalance.model.js');
 const { signToken, verifyToken } = await import('../utils/authToken.js');
 
 // trust proxy = 1, igual que en server.js: sin esto req.ip ignoraría
@@ -149,5 +153,45 @@ describe('GET /api/auth/sesion', () => {
     expect((await request(app).get('/api/auth/sesion')).status).toBe(401);
     const r = await request(app).get('/api/auth/sesion').set('Authorization', `Bearer ${signToken({ role: 'socias', v: 1, sv: 1 })}`);
     expect(r.body).toEqual({ rol: 'socias' });
+  });
+});
+
+describe('POST /api/auth/enlaces-trabajadores (cada trabajador ve solo su saldo)', () => {
+  const admin = () => `Bearer ${signToken({ role: 'admin', v: 1 })}`;
+  const fichas = [{ id: 'ana', name: 'Ana' }, { id: 'luis-gula', name: 'Luis Gula' }];
+  const conFichas = () => WorkerBalance.find.mockReturnValue({ lean: vi.fn().mockResolvedValue(fichas) });
+
+  it('solo el admin los genera (ni socias ni un trabajador ni sin sesión)', async () => {
+    const app = buildApp();
+    mongoose.connection.readyState = 1;
+    expect((await request(app).post('/api/auth/enlaces-trabajadores')).status).toBe(401);
+    for (const rol of [{ role: 'socias', v: 1, sv: 1 }, { role: 'trabajador', w: 'ana', tv: 1 }]) {
+      expect((await request(app).post('/api/auth/enlaces-trabajadores').set('Authorization', `Bearer ${signToken(rol)}`)).status).toBe(401);
+    }
+  });
+
+  it('un enlace por ficha, firmado con su id y la versión de los enlaces (no la de la contraseña)', async () => {
+    mongoose.connection.readyState = 1;
+    AdminConfig.findOne.mockResolvedValue({ tokenVersion: 1, trabajadoresVersion: 3 });
+    conFichas();
+    const r = await request(buildApp()).post('/api/auth/enlaces-trabajadores').set('Authorization', admin());
+    expect(r.status).toBe(200);
+    expect(r.body.enlaces.map(e => e.id)).toEqual(['ana', 'luis-gula']);
+    const cuerpo = verifyToken(r.body.enlaces[1].token);
+    expect(cuerpo).toMatchObject({ role: 'trabajador', w: 'luis-gula', tv: 3 });
+    expect(cuerpo.v).toBeUndefined();
+    AdminConfig.findOne.mockResolvedValue(null);
+  });
+
+  it('"anular anteriores" sube la versión de los enlaces de trabajador', async () => {
+    mongoose.connection.readyState = 1;
+    const config = { tokenVersion: 1, trabajadoresVersion: 1, save: vi.fn() };
+    AdminConfig.findOne.mockResolvedValue(config);
+    conFichas();
+    const r = await request(buildApp()).post('/api/auth/enlaces-trabajadores').set('Authorization', admin()).send({ anularAnteriores: true });
+    expect(config.trabajadoresVersion).toBe(2);
+    expect(config.save).toHaveBeenCalled();
+    expect(verifyToken(r.body.enlaces[0].token).tv).toBe(2);
+    AdminConfig.findOne.mockResolvedValue(null);
   });
 });

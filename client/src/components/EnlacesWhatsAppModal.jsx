@@ -3,6 +3,7 @@ import { ShieldCheck, Share2, Copy, Check, MessageCircle, ExternalLink, RefreshC
 import { abrirEnPestanaNueva, enlaceTrabajador, enlaceWhatsApp } from '../data/enlaces';
 import { useCopiado } from '../hooks/useCopiado';
 import { useEnlaceSocias } from '../hooks/useEnlaceSocias';
+import { useEnlacesTrabajadores } from '../hooks/useEnlacesTrabajadores';
 import { useDialog } from '../contexts/DialogContext';
 import { formatDateLong } from '../utils/dateUtils';
 import Modal from './ui/Modal';
@@ -11,16 +12,21 @@ import CabeceraModal from './ui/CabeceraModal';
 // Enlaces para compartir: el de las socias (solo lo ve el admin: es un enlace
 // de SOLO LECTURA que genera el servidor, caduca y se puede anular) y uno por
 // trabajador, para copiar, mandar por WhatsApp o abrir. El de cada trabajador es
-// fijo (siempre el mismo, abre la semana en curso), ver data/enlaces.js.
+// fijo (siempre el mismo, abre la semana en curso), ver data/enlaces.js. Con sesión de
+// admin va firmado: así esa persona ve además SU saldo (y solo el suyo).
 //
 // Props: abierto, onCerrar, workersList y admin.
 export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = [], admin = false }) {
   const [copiadoTrabajador, copiarTrabajador] = useCopiado();
+  const { tokenDe, cargando: cargandoFirmas, error: errorFirmas } = useEnlacesTrabajadores(abierto && admin);
 
   if (!abierto) return null;
 
+  const enlaceDe = (nombre) => enlaceTrabajador(nombre, admin ? tokenDe(nombre) : null);
+
   const compartirTrabajador = (nombre) => {
-    const texto = `🚚 Hola ${nombre}, aquí tienes tu planificación y fichaje de Gula Logística: ${enlaceTrabajador(nombre)}\n\nGuarda este enlace: es siempre el mismo y se actualiza solo cada semana.`;
+    const conSaldo = admin && tokenDe(nombre);
+    const texto = `🚚 Hola ${nombre}, aquí tienes tu planificación y fichaje de Gula Logística${conSaldo ? ' (y tus horas y lo que tienes pendiente de cobro)' : ''}: ${enlaceDe(nombre)}\n\nGuarda este enlace: es siempre el mismo y se actualiza solo cada semana.${conSaldo ? ' Es personal: no lo compartas.' : ''}`;
     abrirEnPestanaNueva(enlaceWhatsApp(texto));
   };
 
@@ -39,6 +45,15 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
       {/* Workers List */}
       <div className="space-y-3 max-h-[50vh] overflow-y-auto overflow-x-hidden pr-1 no-scrollbar">
         <span className="text-xs font-semibold text-slate-400 block uppercase tracking-wider">Enlaces de Trabajadores</span>
+        {admin && (
+          <p role={errorFirmas ? 'alert' : undefined} className={`text-[11px] ${errorFirmas ? 'text-red-400' : 'text-slate-400'}`}>
+            {cargandoFirmas
+              ? 'Preparando los enlaces con saldo…'
+              : errorFirmas
+                ? `Los enlaces salen sin saldo: ${errorFirmas}`
+                : 'Cada enlace es personal: con él, esa persona ve también sus horas y lo que tiene pendiente de cobro (solo lo suyo). Reenvíalo una vez para que lo vea.'}
+          </p>
+        )}
         {workersList.map((w, idx) => (
           <div key={idx} className="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 overflow-hidden">
             <div className="flex items-center space-x-3 min-w-0 flex-1 w-full">
@@ -58,7 +73,7 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
 
             <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full sm:w-auto shrink-0">
               <button
-                onClick={() => copiarTrabajador(enlaceTrabajador(w.name), w.name)}
+                onClick={() => copiarTrabajador(enlaceDe(w.name), w.name)}
                 className="col-span-2 sm:col-span-1 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap shrink-0"
               >
                 {copiadoTrabajador === w.name ? (
@@ -83,7 +98,7 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
               </button>
 
               <button
-                onClick={() => abrirEnPestanaNueva(enlaceTrabajador(w.name))}
+                onClick={() => abrirEnPestanaNueva(enlaceDe(w.name))}
                 className="col-span-1 sm:col-span-1 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-colors shadow-md shadow-blue-600/20 whitespace-nowrap shrink-0"
               >
                 <ExternalLink className="w-3.5 h-3.5" />

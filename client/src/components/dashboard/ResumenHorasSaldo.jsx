@@ -1,0 +1,76 @@
+import React, { useMemo } from 'react';
+import { Clock, Wallet } from 'lucide-react';
+import EnVivo from '../ui/EnVivo';
+import { formatearHoras, formatearEurosConSigno } from '../../data/formatoFinanciero';
+import { costeEnCurso } from '../../data/costeEnVivo';
+import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../../data/shiftCalculations';
+import { buscarPorNombreDeSaldo } from '../../data/saldosEquipo';
+import { saldoDeTrabajador } from '../../data/saldoTrabajador';
+import { useMiSaldo } from '../../hooks/useMiSaldo';
+
+// Un dato del resumen. Nunca recorta: si no caben los dos en una fila (móvil
+// estrecho o letra grande), el segundo baja entero debajo.
+function Dato({ icono: Icono, etiqueta, children, pie = null, tono = 'text-emerald-400' }) {
+  return (
+    <div className="flex-1 min-w-[9.5rem] rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+      <p className="flex items-center gap-1.5 whitespace-nowrap text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        <Icono className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{etiqueta}
+      </p>
+      <p className={`mt-0.5 whitespace-nowrap font-mono text-lg font-extrabold tabular-nums ${tono}`}>{children}</p>
+      {pie && <p className="text-[10px] leading-snug text-slate-500">{pie}</p>}
+    </div>
+  );
+}
+
+// Horas de la semana y lo que tiene pendiente de cobro, en la vista del propio
+// trabajador. Suben en directo mientras está en turno (<EnVivo>), y el saldo es la
+// MISMA cuenta que Saldos & Acuerdos (saldoDeTrabajador): lo que el admin apunte allí
+// (un pago, un ajuste) le llega aquí en unos segundos (useMiSaldo). El saldo solo
+// sale con su enlace personal firmado; en nómina fija no se enseñan euros.
+//
+// Props: nombre, enNomina, horasSemana (fichadas y cerradas esta semana),
+// turnoAbierto (su entrada sin salida, o null), fichajesDeTodo (el histórico: el saldo
+// cuenta todos sus turnos) y equipo.
+export default function ResumenHorasSaldo({ nombre, enNomina = false, horasSemana = 0, turnoAbierto = null, fichajesDeTodo = [], equipo = [] }) {
+  const { ficha, sinEnlace } = useMiSaldo(nombre);
+
+  const horas = useMemo(() => {
+    if (!ficha) return null;
+    const { shifts } = pairShiftsFromEntries(fichajesDeTodo);
+    return buscarPorNombreDeSaldo(aggregateShiftsByWorker(shifts, equipo), ficha.name);
+  }, [ficha, fichajesDeTodo, equipo]);
+
+  const saldo = ficha ? saldoDeTrabajador({ ficha, horas, abierto: turnoAbierto }) : null;
+  const verSaldo = !!saldo && !saldo.enNomina && !enNomina;
+  const horasAbiertas = (ahora) => (turnoAbierto ? costeEnCurso({ entrada: turnoAbierto, ahora, tarifa: 0 }).horas : 0);
+  const colorSaldo = (valor) => (valor > 0 ? 'text-emerald-400' : valor < 0 ? 'text-rose-400' : 'text-slate-300');
+
+  return (
+    <section aria-label="Tus horas y tu saldo" className="mt-3 flex flex-wrap gap-2">
+      <Dato icono={Clock} etiqueta="Esta semana" tono="text-sky-300" pie={turnoAbierto ? 'Con el turno en curso' : null}>
+        {turnoAbierto
+          ? <EnVivo>{(ahora) => formatearHoras(horasSemana + horasAbiertas(ahora))}</EnVivo>
+          : formatearHoras(horasSemana)}
+      </Dato>
+
+      {verSaldo && (
+        <Dato
+          icono={Wallet}
+          etiqueta={saldo.cerrado < 0 ? 'Adelantado' : 'Por cobrar'}
+          tono={colorSaldo(saldo.cerrado)}
+          pie={saldo.cobraEnDirecto ? 'Sube con tu turno' : 'Al día con tus pagos'}
+        >
+          {saldo.cobraEnDirecto
+            ? <EnVivo>{(ahora) => formatearEurosConSigno(saldo.cerrado + saldo.enCurso(ahora))}</EnVivo>
+            : formatearEurosConSigno(saldo.cerrado)}
+        </Dato>
+      )}
+
+      {!verSaldo && sinEnlace && !enNomina && (
+        <p className="basis-full text-[11px] leading-snug text-slate-500">
+          Para ver aquí lo que tienes pendiente de cobro, pide tu enlace personal al administrador.
+        </p>
+      )}
+    </section>
+  );
+}

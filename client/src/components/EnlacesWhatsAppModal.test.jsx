@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, within, waitFor } from '../test/render';
 
 const crearToken = vi.fn();
-vi.mock('../data/apiService', () => ({ crearTokenSociasEnAPI: (...a) => crearToken(...a) }));
+const crearEnlaces = vi.fn();
+vi.mock('../data/apiService', () => ({ crearTokenSociasEnAPI: (...a) => crearToken(...a), crearEnlacesTrabajadoresEnAPI: (...a) => crearEnlaces(...a) }));
 const { default: EnlacesWhatsAppModal } = await import('./EnlacesWhatsAppModal');
 
 const equipo = [
@@ -19,6 +20,8 @@ beforeEach(() => {
   window.history.replaceState({}, '', '/gula-logistics/');
   guardarSesion(null);
   crearToken.mockReset();
+  crearEnlaces.mockReset();
+  crearEnlaces.mockResolvedValue({ ok: true, enlaces: [] });
 });
 
 afterEach(() => {
@@ -107,5 +110,29 @@ describe('EnlacesWhatsAppModal', () => {
     pintar({ onCerrar });
     fireEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
     expect(onCerrar).toHaveBeenCalled();
+  });
+});
+
+describe('enlaces firmados de los trabajadores (ven su saldo)', () => {
+  it('con admin, cada enlace lleva la firma de SU ficha; sin admin, el enlace de siempre', async () => {
+    crearToken.mockResolvedValue({ ok: true, token: 's.s', expiresAt: Date.now() + 1000 });
+    crearEnlaces.mockResolvedValue({ ok: true, enlaces: [{ id: 'ana-gula', name: 'Ana Gula', token: 'firma.ana' }] });
+    const abrir = vi.spyOn(window, 'open').mockImplementation(() => null);
+    pintar({ admin: true });
+    await screen.findByText(/Cada enlace es personal/);
+    fireEvent.click(screen.getAllByRole('button', { name: /Abrir/ })[0]);
+    expect(abrir).toHaveBeenLastCalledWith(expect.stringMatching(/\?worker=Ana&t=firma\.ana$/), '_blank');
+    fireEvent.click(screen.getAllByRole('button', { name: /Abrir/ })[1]);
+    expect(abrir).toHaveBeenLastCalledWith(expect.stringMatching(/\?worker=Luis$/), '_blank'); // sin ficha: sin firma
+  });
+
+  it('si el servidor no los da, lo dice y los enlaces siguen funcionando sin saldo', async () => {
+    crearToken.mockResolvedValue({ ok: true, token: 's.s', expiresAt: Date.now() + 1000 });
+    crearEnlaces.mockResolvedValue({ ok: false, error: 'sin conexión' });
+    const abrir = vi.spyOn(window, 'open').mockImplementation(() => null);
+    pintar({ admin: true });
+    expect(await screen.findByText(/Los enlaces salen sin saldo: sin conexión/)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: /Abrir/ })[0]);
+    expect(abrir).toHaveBeenLastCalledWith(expect.stringMatching(/\?worker=Ana$/), '_blank');
   });
 });
