@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act } from '../test/render';
+import { render, screen, act, fireEvent } from '../test/render';
 
 vi.mock('../data/pushService', () => ({ subscribeToPush: vi.fn().mockResolvedValue(null) }));
 vi.mock('./TaskFlowGraphView', () => ({ default: () => null }));
@@ -41,6 +41,21 @@ describe('WorkerView', () => {
       clockEntries={[{ id: 'e2', workerName: 'Luis', type: 'entrada', timestamp: new Date(2026, 8, 24, 9, 0, 0).toISOString(), taskName: 'JORNADA' }]} onClockEntryCreated={vi.fn()} onToggleTask={vi.fn()} />);
     expect(screen.getAllByText('EN TURNO')[0]).toBeInTheDocument();
     expect(screen.queryByText('Llevas ganado')).toBeNull();
+  });
+
+  it('BUG evitado: las horas de la semana suman sus turnos cerrados (antes salía siempre 0 h) y cada salida dice cuánto duró', () => {
+    const t = (d, h, m) => new Date(2026, 8, d, h, m).toISOString();
+    pintar([
+      { id: 'a1', workerName: 'Ana', type: 'entrada', timestamp: t(22, 9, 0), taskName: 'JORNADA' },
+      { id: 'a2', workerName: 'Ana', type: 'salida', timestamp: t(22, 12, 15) }, // 3 h 15 min → 3,5 h
+      { id: 'a3', workerName: 'Ana', type: 'entrada', timestamp: t(23, 8, 0), taskName: 'JORNADA' },
+      { id: 'a4', workerName: 'Ana', type: 'salida', timestamp: t(23, 9, 0) },
+    ]);
+    const resumen = screen.getByRole('region', { name: 'Tus horas y tu saldo' });
+    expect(resumen.textContent).toMatch(/Esta semana4,5\s?h/);
+    fireEvent.click(screen.getByRole('button', { name: /Fichajes/ }));
+    expect(screen.getByText(/Duración: 3,5\s?h/)).toBeInTheDocument();
+    expect(screen.getByText(/Duración: 1\s?h/)).toBeInTheDocument();
   });
 
   it('los días van de martes a domingo y el lunes (cola) el último', () => {

@@ -33,6 +33,7 @@ _Resumen de lo que ya está hecho y por qué es así. El detalle de cada cambio 
 - **Ninguna petición espera para siempre** (28/09, `fetchConLimite` en `apiService.js`): el enlace de socias se quedaba en "Generando enlace…" con el servidor respondiendo en 0,1 s (una petición colgada en una conexión que el servidor ya había cerrado: el navegador no repite un POST). 60 s por defecto (lo que tarda en despertar Render), 3 min Gemini, 2 min subir PDF; el enlace de socias, 15 s y un reintento. Llamadas nuevas al servidor: siempre por `fetchConLimite`.
 - La ventana de fichajes de una semana es martes 00:00 → martes siguiente (incluye domingo y lunes de cola) y conserva los turnos abiertos (`fichajesDeLaSemana`).
 - Nómina fija se decide por `isPayroll` del dato, nunca por nombre.
+- **Un fichaje de salida no trae su duración**: las horas salen SIEMPRE de emparejar entrada y salida (`pairShiftsFromEntries`). La vista del trabajador sumaba un `durationHours` inexistente y enseñaba 0 h (30/09).
 
 ## Rendimiento (28/09)
 - **Carga por partes:** el panel de admin y sus editores van con `React.lazy` (App.jsx); lo que descarga un trabajador pasó de 985 KB a 356 KB. Si tras un despliegue falta un trozo, `main.jsx` recarga una vez.
