@@ -65,7 +65,7 @@ export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = 
   const grupos = gruposDeEquipo(workersList);
 
   return (
-    <Modal onCerrar={onClose} ancho="lg" disposicion="columna" botonCerrar={false} etiqueta="Gestionar equipo">
+    <Modal onCerrar={onClose} ancho="4xl" disposicion="columna" botonCerrar={false} etiqueta="Gestionar equipo">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 p-4 sm:p-5">
         <CabeceraModal
           icono={Users}
@@ -126,32 +126,34 @@ export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = 
           </button>
         )}
 
-        {grupos.map(grupo => (
-          <section key={grupo.titulo} aria-label={grupo.titulo}>
-            <h3 className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              {grupo.titulo}
-              <span className="rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300">{grupo.personas.length}</span>
-            </h3>
-            <ul className="space-y-2">
-              {grupo.personas.map(w => (
-                <FilaTrabajador
-                  key={w.name}
-                  trabajador={w}
-                  editando={editando === w.name}
-                  confirmando={confirmRemove === w.name}
-                  onEditar={onUpdateWorker ? () => setEditando(editando === w.name ? null : w.name) : null}
-                  onQuitar={() => setConfirmRemove(w.name)}
-                  onConfirmarQuitar={() => { onRemoveWorker(w.name); setConfirmRemove(null); }}
-                  onCancelarQuitar={() => setConfirmRemove(null)}
-                >
-                  {editando === w.name && onUpdateWorker && (
-                    <FichaTrabajador trabajador={w} onGuardar={(cambios) => onUpdateWorker(w.name, cambios)} onCerrar={() => setEditando(null)} />
-                  )}
-                </FilaTrabajador>
-              ))}
-            </ul>
-          </section>
-        ))}
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {grupos.map(grupo => (
+            <section key={grupo.titulo} aria-label={grupo.titulo} className="flex flex-col h-full">
+              <h3 className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0">
+                {grupo.titulo}
+                <span className="rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300">{grupo.personas.length}</span>
+              </h3>
+              <ul className="space-y-2 flex-1">
+                {grupo.personas.map(w => (
+                  <FilaTrabajador
+                    key={w.name}
+                    trabajador={w}
+                    editando={editando === w.name}
+                    confirmando={confirmRemove === w.name}
+                    onEditar={onUpdateWorker ? () => setEditando(editando === w.name ? null : w.name) : null}
+                    onQuitar={() => setConfirmRemove(w.name)}
+                    onConfirmarQuitar={() => { onRemoveWorker(w.name); setConfirmRemove(null); }}
+                    onCancelarQuitar={() => setConfirmRemove(null)}
+                  >
+                    {editando === w.name && onUpdateWorker && (
+                      <FichaTrabajador trabajador={w} onGuardar={(cambios) => onUpdateWorker(w.name, cambios)} onCerrar={() => setEditando(null)} />
+                    )}
+                  </FilaTrabajador>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
 
         {workersList.length > 0 && (
           <p className="flex items-start gap-2 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2.5 text-[11px] leading-snug text-slate-400">
