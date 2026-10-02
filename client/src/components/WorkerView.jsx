@@ -69,7 +69,9 @@ export default function WorkerView({
   // segundo, que en un móvil modesto se nota.
   const currentTime = useAhora(15000);
   const [startLabel] = useState(() => START_JORNADA_LABELS[Math.floor(Math.random() * START_JORNADA_LABELS.length)]);
-  const [selectedDayKey, setSelectedDayKey] = useState('all');
+  const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+  const todayKeyInitial = dayNames[currentTime.getDay()];
+  const [selectedDayKey, setSelectedDayKey] = useState(todayKeyInitial);
   const [viewModeType, setViewModeType] = useState('calendar'); // 'calendar' | 'graph'
   const [workerTab, setWorkerTab] = useState('tasks'); // 'tasks' | 'history'
   // Solo para AÑADIR un fichaje manual olvidado (POST, sin admin) — nunca
@@ -326,7 +328,6 @@ export default function WorkerView({
   );
 
   const todayIndex = new Date().getDay();
-  const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
   const todayKey = dayNames[todayIndex];
 
   // Para deshabilitar "Fichar" en un día que todavía no ha llegado (evita
