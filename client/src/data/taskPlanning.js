@@ -15,7 +15,7 @@ import { getWeddingTaskName } from './eventNaming';
 export function getTaskListForDay(weekData, dayKey) {
   if (!weekData) return [];
   if (dayKey === 'sabado') return weekData.saturdaySpecial?.weddings || [];
-  return (dayKey === 'domingo' || dayKey === 'sundayMonday')
+  return (dayKey === 'domingo' || dayKey === 'lunes' || dayKey === 'sundayMonday')
     ? (weekData.sundayMonday?.tasks || [])
     : (weekData.schedule?.[dayKey]?.tasks || []);
 }
@@ -41,7 +41,7 @@ export function buildTaskListPatch(weekData, dayKey, updatedList) {
   if (dayKey === 'sabado') {
     return { saturdaySpecial: { ...weekData.saturdaySpecial, weddings: updatedList } };
   }
-  return (dayKey === 'domingo' || dayKey === 'sundayMonday')
+  return (dayKey === 'domingo' || dayKey === 'lunes' || dayKey === 'sundayMonday')
     ? { sundayMonday: { ...weekData.sundayMonday, tasks: updatedList } }
     : { schedule: { ...weekData.schedule, [dayKey]: { ...weekData.schedule?.[dayKey], tasks: updatedList } } };
 }
