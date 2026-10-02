@@ -15,17 +15,27 @@ export default function ClockInModal({
   initialTaskName,
   taskRef,
   clockEntries = [],
-  onClockEntryCreated
+  onClockEntryCreated,
+  isAdmin
 }) {
   const [selectedWorker, setSelectedWorker] = useState(initialWorkerName || workersList[0]?.name || '');
   const [note, setNote] = useState(initialTaskName || '');
   const [currentTime, setCurrentTime] = useState(new Date());
+  
+  const [isEditingTime, setIsEditingTime] = useState(false);
+  const [manualTimeStr, setManualTimeStr] = useState('');
+
+  const getDatetimeLocalString = (date) => {
+    const tzoffset = date.getTimezoneOffset() * 60000;
+    return (new Date(date - tzoffset)).toISOString().slice(0, 16);
+  };
 
   // Live timer
   useEffect(() => {
+    if (isEditingTime) return;
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isEditingTime]);
 
   // Sync note when initialTaskName changes (task-level clock-in)
   useEffect(() => {
@@ -58,17 +68,25 @@ export default function ClockInModal({
       tipo: 'entrada',
       taskName: note.trim() || 'Inicio de Jornada Operativa',
       note: note.trim(),
+      fecha: isEditingTime ? currentTime : new Date(),
       // Referencia a la tarea real del planning (día + índice) para poder
       // marcarla como hecha sola cuando se fiche la salida de este turno.
       taskRef: taskRef || null
     }));
     setNote('');
+    setIsEditingTime(false);
     onClose();
   };
 
   const handleClockOut = () => {
-    onClockEntryCreated(crearFichaje({ trabajador: trabajadorElegido, tipo: 'salida', note: note.trim() }));
+    onClockEntryCreated(crearFichaje({ 
+      trabajador: trabajadorElegido, 
+      tipo: 'salida', 
+      note: note.trim(),
+      fecha: isEditingTime ? currentTime : new Date() 
+    }));
     setNote('');
+    setIsEditingTime(false);
     onClose();
   };
 
@@ -76,14 +94,54 @@ export default function ClockInModal({
     <Modal onCerrar={onClose} ancho="md">
       <CabeceraModal icono={Clock} tono="emerald" titulo="Fichar Jornada Operativa" subtitulo="Registro de hora exacta de entrada y salida" className="mb-6" />
 
-      {/* Live Clock Display */}
-      <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-center mb-5">
-        <span className="text-3xl font-extrabold font-mono text-emerald-400 tracking-wider">
-          {formatTime(currentTime)}
-        </span>
-        <p className="text-xs text-slate-400 mt-1 capitalize">
-          {formatDateLong(currentTime)}
-        </p>
+      {/* Live Clock Display (Editable by Admin) */}
+      <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-center mb-5 relative group">
+        {isEditingTime ? (
+          <div className="flex flex-col items-center">
+            <input 
+              type="datetime-local" 
+              className="bg-slate-900 border border-emerald-500/50 text-emerald-400 font-mono text-lg p-2 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500/50"
+              value={manualTimeStr}
+              onChange={(e) => {
+                setManualTimeStr(e.target.value);
+                const d = new Date(e.target.value);
+                if (!isNaN(d.getTime())) setCurrentTime(d);
+              }}
+            />
+            <button 
+              onClick={() => {
+                setIsEditingTime(false);
+                setCurrentTime(new Date());
+              }} 
+              className="mt-2 text-xs text-slate-400 hover:text-white underline"
+            >
+              Volver a la hora actual
+            </button>
+          </div>
+        ) : (
+          <div 
+            onClick={() => {
+              if (isAdmin) {
+                setIsEditingTime(true);
+                setManualTimeStr(getDatetimeLocalString(currentTime));
+              }
+            }}
+            className={isAdmin ? "cursor-pointer hover:opacity-80" : ""}
+            title={isAdmin ? "Haz clic para editar la hora manualmente" : ""}
+          >
+            <span className="text-3xl font-extrabold font-mono text-emerald-400 tracking-wider">
+              {formatTime(currentTime)}
+            </span>
+            <p className="text-xs text-slate-400 mt-1 capitalize">
+              {formatDateLong(currentTime)}
+            </p>
+            {isAdmin && (
+              <span className="absolute top-2 right-3 text-[10px] text-emerald-500/60 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+                ✎ Editar
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Worker Selector */}
