@@ -114,7 +114,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
         icono={Wand2}
         degradado="amber-indigo"
         titulo="Asistente Gemini AI"
-        subtitulo="Genera planificaciones de eventos y rutas automáticamente"
+        subtitulo="Consulta, modifica o crea reglas de planificación conversando"
         insignia={
           <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-gradient-to-r from-amber-500 to-indigo-500 text-slate-950">
             POWERED BY GEMINI
@@ -162,12 +162,12 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
 
       {/* Prompt Input Form */}
       <form onSubmit={handleGenerate} className="space-y-4">
-        <Campo etiqueta="¿Qué quieres planificar con Gemini AI?">
+        <Campo etiqueta="¿En qué te puedo ayudar?">
           <AreaTexto
             rows={3}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Escribe tu solicitud (ej.: planifica la semana con dos bodas el sábado y reparte los tres camiones entre los conductores)..."
+            placeholder="Escribe tu solicitud (ej.: reorganiza las cargas de mañana, o añade un camión a Gonzalo el jueves)..."
             tamano="xl"
             redondeo="2xl"
             acento="amber-suave"
@@ -200,12 +200,12 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
           {loading ? (
             <>
               <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>Generando Planificación con Gemini AI...</span>
+              <span>Pensando...</span>
             </>
           ) : (
             <>
               <Sparkles className="w-4 h-4" />
-              <span>Generar Planificación Inteligente</span>
+              <span>Enviar a Gemini</span>
             </>
           )}
         </button>
