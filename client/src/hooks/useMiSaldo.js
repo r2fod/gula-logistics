@@ -1,21 +1,18 @@
 import { useEffect, useState } from 'react';
 import { fetchMiSaldoFromAPI, olvidarTokenTrabajador, tokenTrabajador } from '../data/apiService';
-import { coincideNombre } from '../data/nombresTrabajadores';
+import { coincideNombre, normalizarNombre } from '../data/nombresTrabajadores';
 
 // Cada cuánto se vuelve a pedir la ficha: lo que el admin apunte en Saldos & Acuerdos
 // (un pago, un ajuste) le llega al trabajador en ese tiempo, sin recargar.
 export const REFRESCO_SALDO_MS = 20 * 1000;
 
-// La ficha de Saldos de `nombre`, si este móvil tiene su enlace firmado.
-// { ficha, sinEnlace }: sinEnlace = no lo tiene (enlace antiguo, o anulado/caducado).
-// Sin red se queda con lo último que llegó (caché local).
-const CACHE_KEY = 'gula_mi_saldo_v1';
-
 export function useMiSaldo(nombre) {
+  const cacheKey = `gula_mi_saldo_v1_${normalizarNombre(nombre)}`;
+
   const [estado, setEstado] = useState(() => {
     let fichaCache = null;
     try {
-      const saved = localStorage.getItem(CACHE_KEY);
+      const saved = localStorage.getItem(cacheKey);
       if (saved) fichaCache = JSON.parse(saved);
     } catch {}
     
@@ -36,16 +33,16 @@ export function useMiSaldo(nombre) {
         // Por si acaso: solo se enseña si la ficha es de esta persona.
         const fichaValida = coincideNombre(nombre, r.ficha?.name) ? r.ficha : null;
         if (fichaValida) {
-          localStorage.setItem(CACHE_KEY, JSON.stringify(fichaValida));
+          localStorage.setItem(cacheKey, JSON.stringify(fichaValida));
         } else {
-          localStorage.removeItem(CACHE_KEY);
+          localStorage.removeItem(cacheKey);
         }
         setEstado({ ficha: fichaValida, sinEnlace: false });
       } else if (r.status === 401) {
         // Anulado o caducado: se olvida y deja de preguntar. Un 404 NO (servidor aún sin
         // esta ruta mientras se despliega, o ficha borrada): se sigue con lo que hubiera.
-        olvidarTokenTrabajador();
-        localStorage.removeItem(CACHE_KEY);
+        olvidarTokenTrabajador(nombre);
+        localStorage.removeItem(cacheKey);
         setEstado({ ficha: null, sinEnlace: true });
       }
     };
