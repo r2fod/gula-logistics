@@ -33,8 +33,8 @@ export default function FilaTrabajador({ trabajador: w, editando = false, confir
         <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-800/80 text-xl">{w.avatar || '👤'}</span>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold text-white">{w.name}</p>
-          <p className="truncate text-xs text-slate-400" title={w.role}>{w.role || 'Sin rol'}</p>
+          <p className="text-sm font-bold leading-tight text-white">{w.name}</p>
+          <p className="mt-0.5 text-[11px] leading-tight text-slate-400">{w.role || 'Sin rol'}</p>
           {(esBackup(w) || w.isPayroll || disponibilidad.length > 0 || w.nota) && (
             <div className="mt-1 flex flex-wrap gap-1">
               {esBackup(w) && <Chip tono="amber">Solo si hace falta</Chip>}
