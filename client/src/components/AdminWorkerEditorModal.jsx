@@ -11,11 +11,11 @@ import { useDialog } from '../contexts/DialogContext';
 
 // Iconos que se pueden elegir para alguien nuevo.
 const ICONOS = [
-  ['🚚', 'Camión'],
-  ['🚛', 'Tráiler'],
+  ['📋', 'Logística'],
+  ['🚚', 'Conductor Camión'],
   ['📦', 'Almacén'],
   ['🧹', 'Limpieza'],
-  ['👤', 'Persona'],
+  ['👤', 'Persona Genérica'],
 ];
 const ROL_INICIAL = 'Conductor Extra';
 
