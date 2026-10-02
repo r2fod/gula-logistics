@@ -583,6 +583,7 @@ export default function App() {
           initialWorkerName={trabajadorActivo}
           clockEntries={currentWeekClockEntries}
           onClockEntryCreated={handleClockEntryCreated}
+          isAdmin={isAdmin}
         />
       </div>
     );
@@ -627,6 +628,7 @@ export default function App() {
           initialWorkerName={trabajadorActivo}
           clockEntries={currentWeekClockEntries}
           onClockEntryCreated={handleClockEntryCreated}
+          isAdmin={isAdmin}
         />
 
         <AdminLoginModal
@@ -693,6 +695,7 @@ export default function App() {
         initialWorkerName={trabajadorActivo}
         clockEntries={currentWeekClockEntries}
         onClockEntryCreated={handleClockEntryCreated}
+        isAdmin={isAdmin}
       />
 
       <WeekManagerModal
