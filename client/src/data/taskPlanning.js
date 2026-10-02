@@ -266,7 +266,21 @@ function parseEndDateTime(date, timeFrame) {
   const [sh, sm, eh, em] = [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])];
   if (sh > 23 || eh > 23 || sm > 59 || em > 59) return null;
   const end = new Date(date.getFullYear(), date.getMonth(), date.getDate(), eh, em);
-  if (eh * 60 + em <= sh * 60 + sm) end.setDate(end.getDate() + 1); // cruza medianoche
+  
+  // Si la tarea entera empieza de madrugada (< 07:00), arranca el día siguiente
+  // (igual que en getTaskStartDateTime).
+  let offsetDias = 0;
+  if (sh < 7) {
+    offsetDias += 1;
+  }
+  // Si además la hora de fin es menor o igual a la de inicio, cruza otra medianoche.
+  if (eh * 60 + em <= sh * 60 + sm) {
+    offsetDias += 1;
+  }
+  if (offsetDias > 0) {
+    end.setDate(end.getDate() + offsetDias);
+  }
+  
   return end;
 }
 
@@ -295,7 +309,16 @@ export function getTaskStartDateTime(weekData, dayKey, task, now = new Date()) {
   const timeFrame = (task && typeof task === 'object') ? task.timeFrame : null;
   const m = /^\s*(\d{1,2}):(\d{2})/.exec(typeof timeFrame === 'string' ? timeFrame : '');
   if (!date || !m || Number(m[1]) > 23 || Number(m[2]) > 59) return null;
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), Number(m[1]), Number(m[2]));
+  const hora = Number(m[1]);
+  const minutos = Number(m[2]);
+  
+  // En hostelería, un día va de 07:00 a 06:59. Si apuntas una tarea a las 04:00 en
+  // "Sábado", físicamente ocurre en la madrugada del Domingo.
+  const fechaReal = new Date(date.getFullYear(), date.getMonth(), date.getDate(), hora, minutos);
+  if (hora < 7) {
+    fechaReal.setDate(fechaReal.getDate() + 1);
+  }
+  return fechaReal;
 }
 
 // Tramo REAL { start, end } (Date) de una tarea: la fecha de su día más su
