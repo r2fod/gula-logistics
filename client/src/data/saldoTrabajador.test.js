@@ -1,9 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { saldoDeTrabajador } from './saldoTrabajador';
 
-const hace = (horas, desde = new Date(2026, 8, 30, 12, 0)) => new Date(desde.getTime() - horas * 3600000).toISOString();
 const ahora = new Date(2026, 8, 30, 12, 0);
+const hace = (horas) => new Date(ahora.getTime() - horas * 3600000).toISOString();
 const horas = { totalHours: 5, shifts: [{ durationHours: 3, cost: 30 }, { durationHours: 2, cost: 20 }] };
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(ahora);
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('saldoDeTrabajador (la misma cuenta en Saldos y en la vista del trabajador)', () => {
   it('apuntado a mano (con los pagos restando) + turnos fichados', () => {

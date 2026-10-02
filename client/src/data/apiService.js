@@ -108,6 +108,7 @@ export function cerrarAccesosGuardados() {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
   localStorage.removeItem(SOCIAS_TOKEN_STORAGE_KEY);
   localStorage.removeItem(BALANCES_CACHE_KEY);
+  localStorage.removeItem('gula_mi_saldo_v1');
 }
 
 // La sesión de admin manda; si no la hay, el enlace de socias (solo sirve para

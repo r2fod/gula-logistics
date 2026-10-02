@@ -8,9 +8,22 @@ export const REFRESCO_SALDO_MS = 20 * 1000;
 
 // La ficha de Saldos de `nombre`, si este móvil tiene su enlace firmado.
 // { ficha, sinEnlace }: sinEnlace = no lo tiene (enlace antiguo, o anulado/caducado).
-// Sin red se queda con lo último que llegó.
+// Sin red se queda con lo último que llegó (caché local).
+const CACHE_KEY = 'gula_mi_saldo_v1';
+
 export function useMiSaldo(nombre) {
-  const [estado, setEstado] = useState(() => ({ ficha: null, sinEnlace: !tokenTrabajador(nombre) }));
+  const [estado, setEstado] = useState(() => {
+    let fichaCache = null;
+    try {
+      const saved = localStorage.getItem(CACHE_KEY);
+      if (saved) fichaCache = JSON.parse(saved);
+    } catch {}
+    
+    return { 
+      ficha: fichaCache && coincideNombre(nombre, fichaCache.name) ? fichaCache : null, 
+      sinEnlace: !tokenTrabajador(nombre) 
+    };
+  });
 
   useEffect(() => {
     let vigente = true;
@@ -21,11 +34,18 @@ export function useMiSaldo(nombre) {
       if (!vigente) return;
       if (r.ok) {
         // Por si acaso: solo se enseña si la ficha es de esta persona.
-        setEstado({ ficha: coincideNombre(nombre, r.ficha?.name) ? r.ficha : null, sinEnlace: false });
+        const fichaValida = coincideNombre(nombre, r.ficha?.name) ? r.ficha : null;
+        if (fichaValida) {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(fichaValida));
+        } else {
+          localStorage.removeItem(CACHE_KEY);
+        }
+        setEstado({ ficha: fichaValida, sinEnlace: false });
       } else if (r.status === 401) {
         // Anulado o caducado: se olvida y deja de preguntar. Un 404 NO (servidor aún sin
         // esta ruta mientras se despliega, o ficha borrada): se sigue con lo que hubiera.
         olvidarTokenTrabajador();
+        localStorage.removeItem(CACHE_KEY);
         setEstado({ ficha: null, sinEnlace: true });
       }
     };
