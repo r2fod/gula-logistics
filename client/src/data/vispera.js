@@ -38,12 +38,12 @@ export function semanaDeLaVispera(semanas = {}, semana, hoy = new Date()) {
 export function tareasDeLaVispera(semanas = {}, semana, hoy = new Date()) {
   const encontrada = semanaDeLaVispera(semanas, semana, hoy);
   if (!encontrada) return null;
-  const { semana: previa, fecha } = encontrada;
+  const { semana: previa, fecha, clave } = encontrada;
   const tareas = (previa.sundayMonday?.tasks || [])
     .map((task, idx) => ({ task, idx }))
     .filter(({ task }) => task && typeof task === 'object' && esTareaActiva(task) && resolveTaskEvalDay('domingo', task) === 'lunes')
     .sort((a, b) => inicioHora(a.task) - inicioHora(b.task));
-  return tareas.length ? { fecha, semana: previa, tareas } : null;
+  return tareas.length ? { fecha, semana: previa, tareas, clave } : null;
 }
 
 // Quién fichó ese día y cuántas horas: [{ nombre, horas }], de más a menos. Cuentan los
