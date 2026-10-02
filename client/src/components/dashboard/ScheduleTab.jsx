@@ -153,7 +153,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
                     task={task}
                     hecha={isTaskEffectivelyDone(vispera.semana, 'domingo', task, currentTime)}
                     filtro={selectedWorkerFilter}
-                    alPulsar={onToggleTask ? () => onToggleTask('domingo', idx, vispera.semana._id) : null}
+                    alPulsar={onToggleTask ? () => onToggleTask('domingo', idx, vispera.clave) : null}
                   />
                 );
               })}
