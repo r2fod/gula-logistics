@@ -337,7 +337,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
                         .filter(evt => evt.workers[w.name])
                         .map(evt => ({ nombre: evt.eventName, horas: evt.workers[w.name].hours, coste: evt.workers[w.name].cost }));
 
-                      const manualesDelTrabajador = (conceptos?.items || []).filter(it => it.tipo !== 'pago' && coincideNombre(it.persona, w.name));
+                      const manualesDelTrabajador = (conceptos?.items || []).filter(it => it.tipo !== 'pago' && coincideNombre(w.name, it.persona));
                       if (manualesDelTrabajador.length > 0) {
                         const costeManual = manualesDelTrabajador.reduce((suma, it) => suma + it.importe, 0);
                         const horasManual = manualesDelTrabajador.reduce((suma, it) => {
