@@ -43,7 +43,18 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Conexión a MongoDB Atlas mediante variable de entorno MONGODB_URI
 if (process.env.MONGODB_URI) {
   mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('MongoDB Atlas conectado correctamente (Saldos y Fichajes sincronizados)'))
+    .then(async () => {
+      console.log('MongoDB Atlas conectado correctamente (Saldos y Fichajes sincronizados)');
+      try {
+        const { WorkerBalance } = await import('./models/WorkerBalance.model.js');
+        const { TeamRoster } = await import('./models/TeamRoster.model.js');
+        await WorkerBalance.updateMany({ name: 'Jefferson' }, { $set: { name: 'Jeferson' } });
+        await TeamRoster.updateMany({ name: 'Jefferson' }, { $set: { name: 'Jeferson' } });
+        console.log('Migración de nombres Jeferson completada');
+      } catch (err) {
+        console.error('Error migrando nombres Jeferson:', err);
+      }
+    })
     .catch((err) => console.error('Error al conectar con MongoDB Atlas:', err.message));
 } else {
   console.log('Modo backend local sin MONGODB_URI (Respaldo en memoria local activo)');
