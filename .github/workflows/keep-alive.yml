@@ -1,0 +1,15 @@
+name: Keep Render Alive
+
+on:
+  schedule:
+    # Ejecuta cada 14 minutos para evitar que Render se duerma (límite de 15 min de inactividad)
+    - cron: '*/14 * * * *'
+  workflow_dispatch: # Permite ejecutarlo manualmente si hace falta
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping al servidor de Render
+        run: curl -s https://gula-logistics.onrender.com/api/roster > /dev/null
+        # Hacemos un ping a una ruta pública o rápida del API para mantenerla despierta
