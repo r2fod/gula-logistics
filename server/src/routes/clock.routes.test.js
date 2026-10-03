@@ -36,7 +36,7 @@ beforeEach(() => {
   // Los fichajes de prueba son del 19/09/2026: "hoy" es ese día.
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-09-19T10:00:00.000Z'));
-  TeamRoster.findOne.mockResolvedValue({ workers: [{ name: 'Carlos' }, { name: 'José' }, { name: 'Elena' }] });
+  TeamRoster.findOne.mockResolvedValue({ workers: [{ name: 'Carlos' }, { name: 'Sofía' }, { name: 'Elena' }] });
 });
 afterEach(() => vi.useRealTimers());
 
@@ -158,7 +158,7 @@ describe('POST /api/clock — lo que no vale sin sesión de admin', () => {
 
   it('el nombre se compara sin mayúsculas ni acentos', async () => {
     ClockEntry.create.mockImplementation(async (d) => d);
-    expect((await fichar({ workerName: 'Persona7', timestamp: '2026-09-19T08:00:00.000Z' })).status).toBe(201);
+    expect((await fichar({ workerName: 'sofia', timestamp: '2026-09-19T08:00:00.000Z' })).status).toBe(201);
   });
 
   it('fecha en el futuro, muy antigua o que no es fecha: 400', async () => {
@@ -194,7 +194,7 @@ describe('POST /api/clock — fichar con el enlace personal', () => {
   it('con su enlace queda firmado; sin él (o con el de otra persona), no; lo que diga la petición no cuenta', async () => {
     expect((await fichar('Carlos', { 'X-Enlace': enlace('carlos') })).body.firmado).toBe(true);
     expect((await fichar('Carlos')).body.firmado).toBe(false);
-    expect((await fichar('Carlos', { 'X-Enlace': enlace('Persona7') })).body.firmado).toBe(false);
+    expect((await fichar('Carlos', { 'X-Enlace': enlace('sofia') })).body.firmado).toBe(false);
   });
 
   it('un enlace anulado (versión vieja) no firma', async () => {

@@ -4,7 +4,7 @@
 ## CORE
 - Idioma: SOLO español (código, comentarios, UI, commits). Hay comentarios viejos en inglés (auth): no reescribirlos solo por eso.
 - Salida: código directo, sin relleno.
-- Privacidad: el repo es PÚBLICO. Nunca nombres reales, teléfonos, tarifas, saldos en €, contraseñas ni tokens en código, tests, docs ni commits (en tests: Ana, Luis, Eva…). Ya pasó con `balancesData.js` y con claves de admin (ver `MEJORAS.md`).
+- Privacidad: el repo es PÚBLICO. Nunca nombres reales, teléfonos, tarifas, saldos en €, contraseñas ni tokens en código, tests, docs ni commits (en tests: Ana, Luis, Eva…). Ya pasó con `balancesData.js` y con claves de admin; el historial se limpió el 04/10 (ver `MEJORAS.md`). Comprobarlo con `git grep -nIw -iE 'nombre1|nombre2'` (con `-w`: `\b` no funciona en `git grep` y da «limpio» en falso).
 - Docs: actualizar `CONTEXTO.md`/`PENDIENTES.md` en el mismo commit si el cambio afecta al negocio o deja algo a medias. Cortos: lo resuelto sale de `PENDIENTES.md` (queda en git), sin narrativas largas.
 
 ## DATA SCHEMA

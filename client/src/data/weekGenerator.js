@@ -48,7 +48,7 @@ const rango = (ini, fin) => `${hhmm(ini)} - ${hhmm(fin)}`;
 // ─── Nombres ───────────────────────────────────────────────────────────────
 const capitalizar = (s) => s.toLowerCase().replace(/(^|[\s(])([a-záéíóúñü])/g, (m, a, b) => a + b.toUpperCase());
 
-// "COFFE + COMIDA Cliente12" -> "Evento Coffe + Comida Cliente12"; "Boda Ana Y Luis" -> "Boda Ana y Luis"
+// "COFFE + COMIDA EMPRESA" -> "Evento Coffe + Comida Empresa"; "Boda Ana Y Luis" -> "Boda Ana y Luis"
 export function nombreDeEvento(apunte) {
   // Se quitan los pax escritos en el título y las dudas del calendario: "(¿este día?)".
   let t = String(apunte.titulo || '').replace(/\([^)]*\?[^)]*\)/g, '').replace(/\b\d+\s*pax\b/gi, '').replace(/\s+/g, ' ').trim();

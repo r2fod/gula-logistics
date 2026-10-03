@@ -57,7 +57,7 @@ describe('enlaces con la dirección actual', () => {
   });
 
   it('el enlace de un trabajador es fijo (sin semana) y lleva su nombre codificado', () => {
-    expect(enlaceTrabajador('Ana Cliente15')).toBe(`${urlBase()}?worker=Ana%20Mar%C3%ADa`);
+    expect(enlaceTrabajador('Ana Sofía')).toBe(`${urlBase()}?worker=Ana%20Sof%C3%ADa`);
   });
 
   it('el de socias lleva su token de solo lectura en `acceso` (nunca en `token`, que es sesión de admin)', () => {

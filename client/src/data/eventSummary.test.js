@@ -32,9 +32,9 @@ describe('summarizeByEvent', () => {
 
   it('agrupa sin distinguir mayúsculas y ordena por coste descendente', () => {
     const lista = summarizeByEvent([
-      turno('Ana', [sub('Boda Lugar1', 1, 10), sub('boda sot', 1, 10), sub('Limpieza Eventos', 1, 50)]),
+      turno('Ana', [sub('Boda Norte', 1, 10), sub('boda norte', 1, 10), sub('Limpieza Eventos', 1, 50)]),
     ], roster);
-    expect(lista.map(e => [e.eventName, e.totalCost])).toEqual([['Limpieza Eventos', 50], ['Boda Lugar1', 20]]);
+    expect(lista.map(e => [e.eventName, e.totalCost])).toEqual([['Limpieza Eventos', 50], ['Boda Norte', 20]]);
   });
 
   it('sin evento va a "Sin Asignar / Extra"', () => {

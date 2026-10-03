@@ -228,14 +228,14 @@ describe('generarBorrador — correcciones vistas con el calendario real', () =>
 
   it('el mismo evento apuntado en dos días se usa una sola vez y se AVISA (sin tareas duplicadas)', () => {
     const { week, resumen } = generar([
-      { id: 'a', fecha: '2026-09-25', tipo: 'boda', titulo: 'Boda Cliente15 Y Cliente8', pax: 29, sitio: 'Casa Uno' },
-      { id: 'b', fecha: '2026-09-26', tipo: 'boda', titulo: 'Boda Cliente15 y Cliente8 (¿este día?)', pax: 29, sitio: 'Casa Uno' },
+      { id: 'a', fecha: '2026-09-25', tipo: 'boda', titulo: 'Boda Eva Y Pau', pax: 29, sitio: 'Casa Uno' },
+      { id: 'b', fecha: '2026-09-26', tipo: 'boda', titulo: 'Boda Eva y Pau (¿este día?)', pax: 29, sitio: 'Casa Uno' },
     ]);
     expect(resumen.eventos).toBe(1);
     expect(resumen.avisos.some(a => /aparece apuntada en dos días/.test(a))).toBe(true);
     const cargas = [...Object.values(week.schedule).flatMap(d => d.tasks)].filter(x => /Carga de material/.test(x.text));
     expect(cargas).toHaveLength(1);
-    expect(week.events).toEqual([{ name: 'Boda Cliente15 y Cliente8', pax: 29 }]);
+    expect(week.events).toEqual([{ name: 'Boda Eva y Pau', pax: 29 }]);
   });
 });
 

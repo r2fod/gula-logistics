@@ -26,7 +26,7 @@ const esAdmin = (req) => {
 const plano = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
 // ¿Llega con el enlace personal de esa persona? (cabecera X-Enlace: el token del enlace
-// ?worker=…&t=…, cuyo `w` es el id de su ficha de Saldos: "Persona10 Gula" → persona10-gula; las
+// ?worker=…&t=…, cuyo `w` es el id de su ficha de Saldos: "Ana Gula" → ana-gula; las
 // fichas antiguas van sin el "-gula"). `exigido`: el admin ha activado que sea obligatorio.
 async function firmaDelFichaje(req, workerName) {
   const payload = verifyToken(req.headers['x-enlace'] || null);
