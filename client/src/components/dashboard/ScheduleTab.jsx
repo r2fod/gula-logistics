@@ -45,7 +45,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
           <TaskTextWithEvent text={taskText} event={typeof task === 'object' ? task.event : undefined} />
         </span>
         {timeFrame && (
-          <span className="mt-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded flex items-center gap-1 w-fit whitespace-nowrap">
+          <span className="mt-2 text-[11px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded flex items-center gap-1 w-fit whitespace-nowrap">
             <Clock className="w-3 h-3" />
             {timeFrame}
           </span>
@@ -114,7 +114,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
               <div 
                 key={idx} 
                 onClick={() => setSelectedWorkerFilter(isSelected ? null : w.name)}
-                className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-2 ${
+                className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col space-y-2 ${
                   isSelected 
                     ? 'bg-amber-500/15 border-amber-500 ring-2 ring-amber-500/40 text-white shadow-lg shadow-amber-500/10' 
                     : 'bg-slate-950/80 border-slate-800/80 hover:border-amber-500/40 text-slate-200'
@@ -123,15 +123,15 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
                 <div className="flex items-center justify-between">
                   <div className="text-2xl">{w.avatar}</div>
                   {w.isPayroll ? (
-                    <span className="text-[9px] font-extrabold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Nómina</span>
+                    <span className="text-[10px] font-extrabold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Nómina</span>
                   ) : (
-                    <span className="text-[9px] font-extrabold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">10€/h</span>
+                    <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">10€/h</span>
                   )}
                 </div>
 
                 <div className="min-w-0">
                   <span className="font-extrabold text-white truncate text-xs block font-['Outfit']">{w.name}</span>
-                  <span className="text-[10px] text-slate-400 block truncate mt-0.5">{w.role}</span>
+                  <span className="text-[11px] text-slate-400 block mt-0.5">{w.role}</span>
                 </div>
               </div>
             );
@@ -163,7 +163,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
             </p>
             {vispera.fichados?.length > 0 && (
               <div className="mt-3 pt-3 border-t border-slate-800/80">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Fichados ese día</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">Fichados ese día</p>
                 <ul className="flex flex-wrap gap-1.5">
                   {vispera.fichados.map(f => (
                     <li key={f.nombre} className="text-[11px] font-semibold bg-slate-950 border border-slate-800 text-slate-300 px-2.5 py-1 rounded-lg tabular-nums">
@@ -197,7 +197,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
 
       {/* Saturday Special Section */}
       {activeWeekData?.saturdaySpecial && (
-        <section className="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 border border-amber-500/30 rounded-3xl p-6 shadow-2xl space-y-4">
+        <section className="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 border border-amber-500/30 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-extrabold text-base sm:text-lg flex items-center gap-2 font-['Outfit'] text-white">
               <Sparkles className="text-amber-400 w-5 h-5" /> {activeWeekData.saturdaySpecial.title}
@@ -216,7 +216,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
               const matchesFilter = !selectedWorkerFilter || wAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
 
               return (
-                <div key={idx} className={`p-5 rounded-2xl border space-y-3 transition-all ${
+                <div key={idx} className={`p-4 sm:p-5 rounded-2xl border space-y-3 transition-all ${
                   isCompleted
                     ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 opacity-60'
                     : !matchesFilter 
@@ -229,7 +229,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
                       {w.location}
                     </span>
                     {w.timeFrame && (
-                      <span className="text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 whitespace-nowrap">
+                      <span className="text-[11px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 whitespace-nowrap">
                         <Clock className="w-3 h-3" />
                         {w.timeFrame}
                       </span>
@@ -246,7 +246,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
 
       {/* Sunday / Monday Section */}
       {activeWeekData?.sundayMonday && (
-        <section className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 shadow-xl space-y-4">
+        <section className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
           <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
             <Calendar className="text-amber-400 w-4 h-4" /> {activeWeekData.sundayMonday.title}
           </h3>

@@ -71,7 +71,7 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={etiqueta}
-        className={`relative w-full ${ANCHOS[ancho] || ANCHOS.md} bg-slate-900 border border-slate-800 shadow-2xl text-white ${panel} ${className}`}
+        className={`relative w-full ${ANCHOS[ancho] || ANCHOS.md} bg-slate-900 border border-slate-800 shadow-2xl text-white animate-entrarVentana motion-reduce:animate-none ${panel} ${className}`}
       >
         {botonCerrar && <BotonCerrar onClick={onCerrar} className="absolute top-5 right-5" />}
         {children}

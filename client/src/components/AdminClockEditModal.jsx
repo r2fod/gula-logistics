@@ -109,7 +109,7 @@ export default function AdminClockEditModal({
           ? 'Solo Administradores y Socias pueden alterar fichajes registrados.'
           : 'Añade un fichaje que se te olvidó registrar.'}
         insignia={isAdmin && (
-          <span className="px-2 py-0.5 text-[9px] font-extrabold bg-amber-500 text-slate-950 rounded-md">
+          <span className="px-2 py-0.5 text-[10px] font-extrabold bg-amber-500 text-slate-950 rounded-md">
             ADMIN ONLY
           </span>
         )}
@@ -184,7 +184,7 @@ export default function AdminClockEditModal({
             <div className="flex-1 w-full bg-rose-500/10 border border-rose-500/20 p-3 rounded-xl animate-fadeIn">
               <p className="text-xs text-rose-300 font-bold mb-2">¿Seguro que quieres borrar este fichaje?</p>
               {pairedEntry && (
-                <p className="text-[10px] text-rose-400 mb-3 bg-rose-500/20 p-2 rounded">
+                <p className="text-[11px] text-rose-400 mb-3 bg-rose-500/20 p-2 rounded">
                   <AlertTriangle className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" /><b>¡Ojo!</b> Este fichaje está emparejado con una <b>{pairedEntry.type.toUpperCase()}</b> a las <b>{pairedEntry.timeFormatted}</b>. 
                   Si borras esto, el turno quedará descuadrado. Deberías borrar también su pareja.
                 </p>

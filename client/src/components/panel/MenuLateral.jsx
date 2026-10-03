@@ -32,7 +32,7 @@ export default function MenuLateral({ abierto, onCerrar, acciones, adminUnlocked
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-white font-['Outfit']">Menú de Gestión</h3>
-                <p className="text-[10px] text-slate-400">Herramientas & Ajustes</p>
+                <p className="text-[11px] text-slate-400">Herramientas & Ajustes</p>
               </div>
             </div>
             <button onClick={onCerrar} className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white" aria-label="Cerrar Menú">
@@ -42,7 +42,7 @@ export default function MenuLateral({ abierto, onCerrar, acciones, adminUnlocked
 
           <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between">
             <div>
-              <span className="text-[10px] text-slate-400 block font-medium">Modo de Acceso</span>
+              <span className="text-[11px] text-slate-400 block font-medium">Modo de Acceso</span>
               <span className="text-xs font-bold text-white flex items-center gap-1 mt-0.5">
                 {adminUnlocked
                   ? <><ShieldCheck className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" /> Administrador</>
@@ -52,14 +52,14 @@ export default function MenuLateral({ abierto, onCerrar, acciones, adminUnlocked
             {adminUnlocked ? (
               <button
                 onClick={() => { onSalir(); onCerrar(); }}
-                className="px-2 py-1 text-[10px] font-bold rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                className="px-2 py-1 text-[11px] font-bold rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30"
               >
                 Salir
               </button>
             ) : (
               <button
                 onClick={() => { onDesbloquear(); onCerrar(); }}
-                className="px-2.5 py-1 text-[10px] font-extrabold rounded-lg bg-amber-500 text-slate-950 shadow-md"
+                className="px-2.5 py-1 text-[11px] font-extrabold rounded-lg bg-amber-500 text-slate-950 shadow-md"
               >
                 Desbloquear
               </button>
@@ -72,7 +72,7 @@ export default function MenuLateral({ abierto, onCerrar, acciones, adminUnlocked
               if (deLaSeccion.length === 0) return null;
               return (
                 <div key={seccion.id}>
-                  <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">{seccion.titulo}</h4>
+                  <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">{seccion.titulo}</h4>
                   <div className="space-y-1.5">
                     {deLaSeccion.map((accion) => (
                       <BotonAccion key={accion.id} accion={accion} variante="menu" alPulsar={onCerrar} />
@@ -85,7 +85,7 @@ export default function MenuLateral({ abierto, onCerrar, acciones, adminUnlocked
         </div>
 
         <div className="pt-4 border-t border-slate-800 text-center">
-          <span className="text-[10px] text-slate-500 block">Gula Logística · v2.5 Mobile</span>
+          <span className="text-[11px] text-slate-500 block">Gula Logística · v2.5 Mobile</span>
         </div>
       </div>
     </div>

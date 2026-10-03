@@ -152,7 +152,7 @@ export default function ClockInModal({
               {formatDateLong(currentTime)}
             </p>
             {isAdmin && (
-              <span className="absolute top-2 right-3 text-[10px] text-emerald-500/60 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="absolute top-2 right-3 text-[11px] text-emerald-500/60 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
                 ✎ Editar
               </span>
             )}

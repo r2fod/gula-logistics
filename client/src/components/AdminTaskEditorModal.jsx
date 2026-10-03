@@ -62,7 +62,7 @@ function TimeRangeEditor({ value, onChange }) {
           tamano="xs" texto="suave" className="flex-1 min-w-0 disabled:opacity-40 [color-scheme:dark]"
         />
       </div>
-      <label className="flex items-center gap-1.5 text-[10px] text-slate-400 cursor-pointer select-none">
+      <label className="flex items-center gap-1.5 text-[11px] text-slate-400 cursor-pointer select-none">
         <input
           type="checkbox"
           checked={pending}
@@ -335,7 +335,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
             key={w.name}
             type="button"
             onClick={() => onToggle(w.name)}
-            className={`text-[10px] sm:text-[11px] font-bold px-1.5 py-1.5 sm:px-2 sm:py-2 rounded-lg border transition-colors flex items-center justify-center gap-1.5 ${
+            className={`text-[11px] font-bold px-1.5 py-1.5 sm:px-2 sm:py-2 rounded-lg border transition-colors flex items-center justify-center gap-1.5 ${
               isChecked
                 ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/10'
                 : 'bg-slate-950 text-slate-400 border-slate-700/60 hover:border-slate-500 hover:bg-slate-900'
@@ -378,7 +378,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
 
       {/* Quick Day Jump Ribbon with Illuminated Active Day */}
       <div className="bg-slate-950/95 backdrop-blur-md px-3 sm:px-6 py-2.5 border-b border-slate-800 flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar shrink-0">
-        <span className="text-[10px] uppercase font-black text-amber-400 whitespace-nowrap mr-1 flex items-center gap-1">
+        <span className="text-[11px] uppercase font-black text-amber-400 whitespace-nowrap mr-1 flex items-center gap-1">
           <span>📍</span>
           <span>Ir a:</span>
         </span>
@@ -504,7 +504,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                   <h4 className="text-sm font-extrabold text-amber-400 capitalize truncate">
                     {localWeek.schedule[dayKey].title}
                   </h4>
-                  <span className="text-[10px] font-bold bg-slate-950 text-slate-400 px-2 py-0.5 rounded-md border border-slate-800 shrink-0">
+                  <span className="text-[11px] font-bold bg-slate-950 text-slate-400 px-2 py-0.5 rounded-md border border-slate-800 shrink-0">
                     {currentTasks.length} {currentTasks.length === 1 ? 'tarea' : 'tareas'}
                   </span>
                 </div>
@@ -586,7 +586,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                           return (
                             <div className="flex flex-col gap-2">
                               <div>
-                                <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Evento (Ej: Boda Lugar1) — si es de varios, sepáralos con +</label>
+                                <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Evento (Ej: Boda Lugar1) — si es de varios, sepáralos con +</label>
                                 <div className="relative">
                                   <div className="flex flex-nowrap overflow-x-auto gap-2 mb-2 w-full pb-2 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x">
                                     {eventChips.map(name => {
@@ -618,7 +618,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                                 />
                               </div>
                               <div>
-                                <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Descripción de la Tarea Específica</label>
+                                <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Descripción de la Tarea Específica</label>
                                 <AreaTexto
                                   rows={2}
                                   value={specificTask}
@@ -652,13 +652,13 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                             tamano="xs" acento="blue" texto="suave"
                           />
                           {mapsValue && (
-                            <a href={mapsValue} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:text-blue-300 underline mt-1 inline-block">
+                            <a href={mapsValue} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-400 hover:text-blue-300 underline mt-1 inline-block">
                               <MapPin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Abrir en Google Maps
                             </a>
                           )}
                         </div>
                         <div>
-                          <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Camión</label>
+                          <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Camión</label>
                           <Selector
                             value={truckValue}
                             onChange={(e) => handleTaskMetadataChange(dayKey, idx, 'truck', e.target.value)}
@@ -671,7 +671,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                           </Selector>
                         </div>
                         <div>
-                          <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Asignar a</label>
+                          <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Asignar a</label>
                           <AssignedPicker
                             assigned={assignedValue}
                             onToggle={(workerName) => toggleAssignedWorker(dayKey, idx, workerName)}
@@ -739,7 +739,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                 <h4 className="text-sm font-extrabold text-rose-400 truncate">
                   {localWeek.saturdaySpecial.title}
                 </h4>
-                <span className="text-[10px] font-bold bg-slate-950 text-slate-400 px-2 py-0.5 rounded-md border border-slate-800 shrink-0">
+                <span className="text-[11px] font-bold bg-slate-950 text-slate-400 px-2 py-0.5 rounded-md border border-slate-800 shrink-0">
                   {(localWeek.saturdaySpecial.weddings || []).length} eventos
                 </span>
               </div>
@@ -770,7 +770,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                   <div className="flex-1 min-w-0 space-y-3 pr-14">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Ubicación / Finca</label>
+                        <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Ubicación / Finca</label>
                         <Input 
                           type="text" 
                           value={w.location} 
@@ -779,7 +779,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Camión</label>
+                        <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Camión</label>
                         <Input 
                           type="text" 
                           value={w.truck} 
@@ -789,7 +789,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                       </div>
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Logística (Asignados / Notas)</label>
+                      <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Logística (Asignados / Notas)</label>
                       <Input 
                         type="text" 
                         value={w.details} 
@@ -799,14 +799,14 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Horario</label>
+                        <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Horario</label>
                         <TimeRangeEditor
                           value={w.timeFrame || ''}
                           onChange={(v) => handleWeddingChange(idx, 'timeFrame', v)}
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Teléfono</label>
+                        <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Teléfono</label>
                         <Input
                           type="tel"
                           value={w.phone || ''}
@@ -816,12 +816,12 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                       </div>
                     </div>
                     {w.mapsUrl && (
-                      <a href={w.mapsUrl} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:text-blue-300 underline inline-block">
+                      <a href={w.mapsUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-400 hover:text-blue-300 underline inline-block">
                         📍 Abrir en Google Maps
                       </a>
                     )}
                     <div>
-                      <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Asignar a</label>
+                      <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Asignar a</label>
                       <AssignedPicker
                         assigned={Array.isArray(w.assigned) ? w.assigned : []}
                         onToggle={(workerName) => toggleAssignedWedding(idx, workerName)}
@@ -883,7 +883,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                 <h4 className="text-sm font-extrabold text-emerald-400 truncate">
                   {localWeek.sundayMonday.title}
                 </h4>
-                <span className="text-[10px] font-bold bg-slate-950 text-slate-400 px-2 py-0.5 rounded-md border border-slate-800 shrink-0">
+                <span className="text-[11px] font-bold bg-slate-950 text-slate-400 px-2 py-0.5 rounded-md border border-slate-800 shrink-0">
                   {(localWeek.sundayMonday.tasks || []).length} tareas
                 </span>
               </div>
@@ -950,14 +950,14 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                           tamano="xs" acento="blue" texto="suave"
                         />
                         {mapsValue && (
-                          <a href={mapsValue} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-400 hover:text-blue-300 underline mt-1 inline-block">
+                          <a href={mapsValue} target="_blank" rel="noopener noreferrer" className="text-[11px] text-blue-400 hover:text-blue-300 underline mt-1 inline-block">
                             📍 Abrir en Google Maps
                           </a>
                         )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Camión</label>
+                          <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Camión</label>
                           <Selector
                             value={truckValue}
                             onChange={(e) => handleTaskMetadataChange('sundayMonday', idx, 'truck', e.target.value)}
@@ -970,7 +970,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                           </Selector>
                         </div>
                         <div>
-                          <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Día Específico</label>
+                          <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Día Específico</label>
                           <Selector
                             value={targetDayValue}
                             onChange={(e) => handleTaskMetadataChange('sundayMonday', idx, 'targetDay', e.target.value)}
@@ -983,7 +983,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                         </div>
                       </div>
                       <div>
-                        <label className="text-[10px] text-slate-400 uppercase font-bold mb-1 block">Asignar a</label>
+                        <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Asignar a</label>
                         <AssignedPicker
                           assigned={assignedValue}
                           onToggle={(workerName) => toggleAssignedWorker('sundayMonday', idx, workerName)}

@@ -368,7 +368,7 @@ export default function TeamBalancesTab({
               return (
                 <div 
                   key={worker.id}
-                  className={`border rounded-3xl p-6 transition-all shadow-xl flex flex-col justify-between space-y-4 ${
+                  className={`border rounded-3xl p-4 sm:p-6 transition-all shadow-xl flex flex-col justify-between space-y-4 ${
                     derivedStatusType === 'danger'
                       ? 'border-rose-500/40 bg-gradient-to-br from-slate-800 via-slate-800 to-rose-900/30'
                       : derivedStatusType === 'payroll'
@@ -387,27 +387,27 @@ export default function TeamBalancesTab({
                           <div className="flex flex-wrap items-center gap-2">
                             <h4 className="font-extrabold text-white text-lg font-['Outfit']">{worker.name}</h4>
                             {derivedStatusType === 'success' && (
-                              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                              <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
                                 🟢 A favor
                               </span>
                             )}
                             {derivedStatusType === 'danger' && (
-                              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                              <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30">
                                 🔴 Deuda Pendiente
                               </span>
                             )}
                             {derivedStatusType === 'payroll' && (
-                              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                              <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
                                 ⭐ Nómina Fija
                               </span>
                             )}
                             {derivedStatusType === 'neutral' && (
-                              <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                              <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400">
                                 ⚪ Sin Saldo
                               </span>
                             )}
                             {worker.hasTransportBonus && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center space-x-1">
+                              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center space-x-1">
                                 <Bus className="w-3 h-3" />
                                 <span>+10€ transport/día</span>
                               </span>
@@ -418,7 +418,7 @@ export default function TeamBalancesTab({
                       </div>
 
                       <div className="ml-auto text-right shrink-0">
-                        <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider">
+                        <span className="text-[11px] text-slate-500 block uppercase font-bold tracking-wider">
                           {worker.statusType === 'payroll' ? 'Coste Extra' : 'Saldo Actual'}
                         </span>
                         {enNomina ? (
@@ -486,7 +486,7 @@ export default function TeamBalancesTab({
                             <Clock className="w-4 h-4 text-amber-400" />
                             <span>Bolsa Mensual (80h)</span>
                           </span>
-                          <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded">
+                          <span className="text-[11px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded">
                             {Math.round((worker.purseInfo.consumedHours / worker.purseInfo.totalHours) * 100)}% Consumido
                           </span>
                         </div>
@@ -500,13 +500,13 @@ export default function TeamBalancesTab({
 
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                            <span className="text-slate-400 block text-[10px]">Condición Base:</span>
+                            <span className="text-slate-400 block text-[11px]">Condición Base:</span>
                             <span className="font-semibold text-white">
                               {formatearHoras(worker.purseInfo.totalHours)} ({formatearNumero(worker.purseInfo.grossBase, 0)}€ - {formatearNumero(worker.purseInfo.housingDeduction, 0)}€ Aloj.) = <b>{formatearNumero(worker.purseInfo.netFixedAt80h, 0)}€ Neto</b>
                             </span>
                           </div>
                           <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                            <span className="text-slate-400 block text-[10px]">Acumulado en la bolsa:</span>
+                            <span className="text-slate-400 block text-[11px]">Acumulado en la bolsa:</span>
                             <span className="font-bold text-emerald-400">{formatearHoras(worker.purseInfo.consumedHours)} ({formatearEuros(worker.purseInfo.consumedValue)})</span>
                           </div>
                         </div>
@@ -535,7 +535,7 @@ export default function TeamBalancesTab({
                     {/* Agreements */}
                     {worker.agreements && worker.agreements.length > 0 && (
                       <div className="mt-3.5 p-3 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-1">
-                        <span className="text-[10px] font-bold text-amber-400/90 uppercase tracking-wider block">
+                        <span className="text-[11px] font-bold text-amber-400/90 uppercase tracking-wider block">
                           <ScrollText className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Acuerdos & Condiciones
                         </span>
                         {worker.agreements.map((agr, aIdx) => (

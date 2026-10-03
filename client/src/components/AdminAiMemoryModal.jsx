@@ -42,7 +42,7 @@ export default function AdminAiMemoryModal({ isOpen, onClose, workersList = [], 
           <Chip key={id} variante="indigo" seleccionado={vista === id} onClick={() => setVista(id)}>
             <Icono className="h-3.5 w-3.5" aria-hidden="true" />
             {nombre}
-            {aviso > 0 && <span className="rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-slate-950" aria-label={`${aviso} por aprobar`}>{aviso}</span>}
+            {aviso > 0 && <span className="rounded-full bg-amber-500 px-1.5 text-[11px] font-bold text-slate-950" aria-label={`${aviso} por aprobar`}>{aviso}</span>}
           </Chip>
         ))}
       </div>

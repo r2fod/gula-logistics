@@ -6,7 +6,7 @@ import Tarjeta from '../ui/Tarjeta';
 // Un evento de la flota: dónde es, con qué camión y en qué consiste.
 function TarjetaEvento({ lugar, camion, detalle }) {
   return (
-    <Tarjeta className="p-5 space-y-2">
+    <Tarjeta className="p-4 sm:p-5 space-y-2">
       <span className="font-extrabold text-amber-300 block text-base font-['Outfit']"><MapPin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{lugar}</span>
       <span className="text-slate-200 block font-semibold">{camion}</span>
       <p className="text-xs text-slate-400 leading-relaxed">{detalle}</p>
@@ -18,7 +18,7 @@ export default function LogisticsTab({ activeWeekData, adminUnlocked, onUpdateWe
   const [isFleetManagerOpen, setIsFleetManagerOpen] = useState(false);
 
   return (
-    <Tarjeta variante="panel" className="p-6 space-y-4 animate-fadeIn">
+    <Tarjeta variante="panel" className="p-4 sm:p-6 space-y-4">
       <div className="flex justify-between items-center flex-wrap gap-4">
         <h4 className="font-bold text-white text-lg flex items-center space-x-2 font-['Outfit']">
           <Truck className="w-6 h-6 text-amber-400" />
@@ -42,7 +42,7 @@ export default function LogisticsTab({ activeWeekData, adminUnlocked, onUpdateWe
         onUpdateWeek={onUpdateWeek}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 text-sm">
         {(activeWeekData?.saturdaySpecial?.weddings || []).map((w, idx) => (
           <TarjetaEvento key={`boda-${idx}`} lugar={w.location} camion={w.truck} detalle={w.details} />
         ))}

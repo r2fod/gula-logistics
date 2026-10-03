@@ -36,7 +36,7 @@ export default function FilaDesglose({ icono = null, titulo, insignia = null, no
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <span className="text-sm font-semibold text-slate-100 break-words">{titulo}</span>
                 {insignia && (
-                  <span className="rounded-full border border-slate-700 bg-slate-800/70 px-1.5 py-px text-[10px] font-bold text-slate-400 whitespace-nowrap">{insignia}</span>
+                  <span className="rounded-full border border-slate-700 bg-slate-800/70 px-1.5 py-px text-[11px] font-bold text-slate-400 whitespace-nowrap">{insignia}</span>
                 )}
               </div>
               {nota && <p className="mt-0.5 text-[11px] text-slate-500 leading-snug">{nota}</p>}

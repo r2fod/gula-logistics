@@ -10,9 +10,7 @@ _Solo lo que sigue abierto (actualizado el 28/09/2026). Lo resuelto se borra de 
 
 ## 🟡 Funcional
 - [ ] **Regla "base/checklist y jefe de logística no cargan":** el usuario quitó ese texto de las tarjetas de equipo (21/09) pero sigue en el generador y en el prompt de Gemini. ¿Sigue vigente?
-- [ ] **Ficha de Saldos con el nombre mal escrito** (una letra de más): corregir `name` en Atlas → `workerbalances` (no el `id`). La app lo puentea mientras tanto.
 - [ ] **Semana 3:** 62,5 h de jornada sin tarea van repartidas por estimación; si el usuario dice qué se hizo el domingo por la noche, se ajustan asignaciones/horas y el reparto cambia solo. Anotar los **pax** de cada evento (sin pax, reparto a partes iguales).
-- [ ] **27/09: dos entradas duplicadas de un trabajador a las 11:07** (se creó una tercera al no verse en turno por el fallo del domingo, ya arreglado). Borrar solo con permiso del usuario.
 - [ ] **Enlaces de trabajador firmados** (30/09): ya existen (`&t=`, desde «Enlaces de WhatsApp» con sesión de admin) y con ellos cada uno ve sus horas y lo que tiene por cobrar. **El admin tiene que reenviar a cada persona su enlace nuevo** (los antiguos siguen valiendo, sin saldo). Falta: botón para anularlos todos (el servidor ya lo admite: `anularAnteriores`) y, cuando todos tengan el nuevo, exigirlo para fichar y cerrar los endpoints públicos de arriba.
 - [ ] Revisión responsive sistemática 320–1920 px del resto de vistas.
 
@@ -29,7 +27,7 @@ _Solo lo que sigue abierto (actualizado el 28/09/2026). Lo resuelto se borra de 
 - [ ] Revisar en producción con sesión de admin: Saldos (dos grupos y el saldo subiendo con alguien en turno), "Ver sus horas por evento", el Resumen con lo apuntado a mano y lo previsto, copiar para WhatsApp y la papelera del Historial.
 
 ## Auditoría 28/09 — lo que queda
-- [ ] **Tests** de `ClockInModal`, `useClockings` y `AdminClockEditModal` (fichar y editar fichajes aún sin cubrir).
+- [ ] **Tests** de `AdminClockEditModal` y del flujo completo de fichar en `ClockInModal` (abrir ya está cubierto, y `useClockings` en lo de la papelera).
 
 ## 🟢 Código
 - [ ] ESLint del cliente: 21 errores (reglas nuevas de React: `setState` dentro de efectos en varios modales) y ~140 avisos, todos anteriores. No añadir nuevos.

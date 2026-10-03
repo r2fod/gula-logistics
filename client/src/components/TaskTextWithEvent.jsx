@@ -14,7 +14,7 @@ export default function TaskTextWithEvent({ text, event }) {
   return (
     <>
       {splitEventNames(eventName).map(name => (
-        <span key={name} className="inline-block mr-1.5 px-1.5 py-0.5 rounded-md text-[10px] font-extrabold align-middle bg-amber-500/10 text-amber-300 border border-amber-500/20 not-italic no-underline">
+        <span key={name} className="inline-block mr-1.5 px-1.5 py-0.5 rounded-md text-[11px] font-extrabold align-middle bg-amber-500/10 text-amber-300 border border-amber-500/20 not-italic no-underline">
           {name}
         </span>
       ))}

@@ -66,7 +66,7 @@ export function BarraPestanas({ activa, onSeleccionar, contadorFichajes = 0 }) {
             />
             <span>{etiqueta}</span>
             {contador && (
-              <span className={`rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums transition-colors duration-300 ${esActiva ? 'bg-slate-950/20' : 'bg-slate-800 text-slate-300'}`}>
+              <span className={`rounded-full px-1.5 py-px text-[11px] font-bold tabular-nums transition-colors duration-300 ${esActiva ? 'bg-slate-950/20' : 'bg-slate-800 text-slate-300'}`}>
                 {contadorFichajes}
               </span>
             )}
@@ -104,7 +104,7 @@ export function BarraInferior({ activa, onSeleccionar, onAbrirMenu }) {
               className={`w-5 h-5 mb-0.5 ${vivo ? `animate-pulse ${esActiva ? '' : 'text-rose-400'}` : esActiva ? 'animate-pop' : (colorIcono || '')}`}
               aria-hidden="true"
             />
-            <span className="text-[10px]">{corta}</span>
+            <span className="text-[11px]">{corta}</span>
           </button>
         );
       })}
@@ -114,7 +114,7 @@ export function BarraInferior({ activa, onSeleccionar, onAbrirMenu }) {
         className="flex flex-col items-center justify-center py-1 px-2 rounded-xl text-slate-400 hover:text-amber-400 transition-all"
       >
         <Menu className="w-5 h-5 mb-0.5" aria-hidden="true" />
-        <span className="text-[10px]">Menú</span>
+        <span className="text-[11px]">Menú</span>
       </button>
     </nav>
   );

@@ -43,9 +43,9 @@ export default function GrupoConceptos({ titulo, ayuda = null, items = [], total
                     disabled={borrando}
                     aria-label={`${tituloBorrar}: ${item.concept}`}
                     title={tituloBorrar}
-                    className="text-slate-500 transition-colors hover:text-rose-400 disabled:opacity-40"
+                    className="-m-2 rounded-lg p-2 text-slate-500 transition-colors hover:bg-rose-500/10 hover:text-rose-400 disabled:opacity-40"
                   >
-                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+                    <Trash2 className="h-4 w-4" aria-hidden="true" />
                   </button>
                 )}
               </span>

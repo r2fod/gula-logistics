@@ -131,7 +131,7 @@ export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = 
             <section key={grupo.titulo} aria-label={grupo.titulo} className="flex flex-col h-full">
               <h3 className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0">
                 {grupo.titulo}
-                <span className="rounded-full bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300">{grupo.personas.length}</span>
+                <span className="rounded-full bg-slate-800 px-1.5 py-0.5 text-[11px] font-semibold text-slate-300">{grupo.personas.length}</span>
               </h3>
               <ul className="space-y-2 flex-1">
                 {grupo.personas.map(w => (

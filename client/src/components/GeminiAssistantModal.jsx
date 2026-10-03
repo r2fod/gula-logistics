@@ -116,7 +116,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
         titulo="Asistente Gemini AI"
         subtitulo="Consulta, modifica o crea reglas de planificación conversando"
         insignia={
-          <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-gradient-to-r from-amber-500 to-indigo-500 text-slate-950">
+          <span className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-gradient-to-r from-amber-500 to-indigo-500 text-slate-950">
             POWERED BY GEMINI
           </span>
         }

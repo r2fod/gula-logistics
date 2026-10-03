@@ -11,7 +11,7 @@ const TONOS = {
   slate: 'bg-slate-800 text-slate-300 border-slate-700',
 };
 const Chip = ({ tono, children }) => (
-  <span className={`inline-flex max-w-full items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold leading-tight ${TONOS[tono]}`}>
+  <span className={`inline-flex max-w-full items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold leading-tight ${TONOS[tono]}`}>
     <span className="truncate">{children}</span>
   </span>
 );

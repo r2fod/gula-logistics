@@ -146,7 +146,7 @@ export default function DisponibilidadSemana({ semana, equipo = [], esBorrador =
               {agruparRestricciones(fijas).map(g => (
                 <li key={g.ids.join('-')} title="Todas las semanas: se cambia en la ficha del equipo" className="flex items-center gap-1.5 rounded-xl border border-slate-800 bg-slate-900 px-2.5 py-1 text-xs text-slate-400">
                   <span>{textoGrupo(g)}</span>
-                  <span className="rounded bg-slate-800 px-1.5 text-[10px] font-bold uppercase text-slate-400">fija</span>
+                  <span className="rounded bg-slate-800 px-1.5 text-[11px] font-bold uppercase text-slate-400">fija</span>
                 </li>
               ))}
               {agruparRestricciones(restricciones).map(g => (

@@ -291,7 +291,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
   const workerNodes = graphData.nodes.filter(n => n.type === 'worker');
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fadeIn w-full max-w-full">
+    <div className="space-y-4 sm:space-y-6 w-full max-w-full">
       {/* Top Header & Interactive Mode Selectors */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 sm:gap-4 bg-slate-900/90 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-800 shadow-2xl">
         <div className="flex items-center space-x-3 min-w-0">
@@ -303,7 +303,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
               <h2 className="text-base sm:text-xl font-black font-['Outfit'] text-white">
                 Grafo Interactivo de Tareas & Flujo
               </h2>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-extrabold uppercase shrink-0 leading-tight">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[11px] font-extrabold uppercase shrink-0 leading-tight">
                 Visual Flow
               </span>
             </div>
@@ -446,10 +446,10 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                   <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[10px] uppercase font-extrabold text-amber-400 tracking-wider">
+                      <span className="text-[11px] uppercase font-extrabold text-amber-400 tracking-wider">
                         Ruta Conectada • Nodo Activo
                       </span>
-                      <span className="text-[9px] font-bold px-2 py-0.2 rounded-full bg-slate-800 text-slate-300 capitalize">
+                      <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-slate-800 text-slate-300 capitalize">
                         {selectedNodeObj.type}
                       </span>
                     </div>
@@ -471,7 +471,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                 {connectedRouteDetails?.connectedDays.length > 0 && (
                   <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-[10px] font-bold uppercase text-blue-400 block mb-1"><Calendar className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Días Involucrados</span>
+                    <span className="text-[11px] font-bold uppercase text-blue-400 block mb-1"><Calendar className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Días Involucrados</span>
                     <div className="flex flex-wrap gap-1">
                       {connectedRouteDetails.connectedDays.map(d => (
                         <span key={d.id} className="text-[11px] font-semibold text-slate-200 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-md">
@@ -484,7 +484,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
 
                 {connectedRouteDetails?.connectedTrucks.length > 0 && (
                   <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-[10px] font-bold uppercase text-emerald-400 block mb-1"><Truck className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Flota Asignada</span>
+                    <span className="text-[11px] font-bold uppercase text-emerald-400 block mb-1"><Truck className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Flota Asignada</span>
                     <div className="flex flex-wrap gap-1">
                       {connectedRouteDetails.connectedTrucks.map(tr => (
                         <span key={tr.id} className="text-[11px] font-semibold text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
@@ -497,7 +497,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
 
                 {connectedRouteDetails?.connectedWorkers.length > 0 && (
                   <div className="bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
-                    <span className="text-[10px] font-bold uppercase text-purple-400 block mb-1"><Users className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Personal en Ruta</span>
+                    <span className="text-[11px] font-bold uppercase text-purple-400 block mb-1"><Users className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Personal en Ruta</span>
                     <div className="flex flex-wrap gap-1">
                       {connectedRouteDetails.connectedWorkers.map(w => (
                         <span key={w.id} className="text-[11px] font-semibold text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-md">
@@ -512,7 +512,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
               {/* Connected Tasks list if selecting day, truck or worker */}
               {selectedNodeObj.type !== 'task' && connectedRouteDetails?.connectedTasks.length > 0 && (
                 <div className="pt-2 border-t border-slate-800/80">
-                  <span className="text-[10px] font-bold uppercase text-amber-400 block mb-1.5">
+                  <span className="text-[11px] font-bold uppercase text-amber-400 block mb-1.5">
                     <ListTodo className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Tareas en este Flujo ({connectedRouteDetails.connectedTasks.length})
                   </span>
                   <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
@@ -522,7 +522,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                           {ct.timeFrame && <span className="whitespace-nowrap">{ct.timeFrame} • </span>}{ct.label}
                         </span>
                         {ct.completed && (
-                          <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
+                          <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded shrink-0">
                             <Check className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Hecho
                           </span>
                         )}
@@ -560,7 +560,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-extrabold text-xs">{d.label}</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-900/60 text-slate-300 border border-slate-700/50">
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-900/60 text-slate-300 border border-slate-700/50">
                           {d.sub}
                         </span>
                       </div>
@@ -614,7 +614,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                               <CategoryIcon className="w-3 h-3" />
                             </span>
                             {t.timeFrame && (
-                              <span className="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded-md">
+                              <span className="inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded-md">
                                 <Clock className="w-3 h-3" />
                                 {t.timeFrame}
                               </span>
@@ -656,8 +656,8 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                       <div className="flex items-center space-x-3">
                         <Truck className="w-5 h-5 shrink-0" />
                         <div className="min-w-0">
-                          <h4 className="font-extrabold text-xs truncate">{tr.label}</h4>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{tr.sub}</span>
+                          <h4 className="font-extrabold text-xs break-words">{tr.label}</h4>
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">{tr.sub}</span>
                         </div>
                       </div>
                     </div>
@@ -689,7 +689,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                     >
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-xs">{w.label}</span>
-                        <span className="text-[10px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800">
+                        <span className="text-[11px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800">
                           {w.sub}
                         </span>
                       </div>

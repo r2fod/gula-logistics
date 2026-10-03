@@ -41,7 +41,7 @@ const ESTILOS = {
     menu: 'bg-slate-950 hover:bg-slate-800 text-slate-300 font-bold border border-slate-800',
   },
   claves: {
-    cabecera: 'px-1.5 py-0.5 text-[9px] rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold border border-slate-700 gap-1',
+    cabecera: 'px-1.5 py-0.5 text-[10px] rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold border border-slate-700 gap-1',
     menu: 'bg-slate-950 hover:bg-slate-800 text-slate-300 font-bold border border-slate-800',
   },
   semana: {

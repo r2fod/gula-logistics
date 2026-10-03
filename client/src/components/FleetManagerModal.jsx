@@ -164,7 +164,7 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
                     <div className="text-xs font-medium text-emerald-400">Datos de Recogida</div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[10px] text-slate-500 mb-1">Día</label>
+                        <label className="block text-[11px] text-slate-500 mb-1">Día</label>
                         <Selector
                           value={truck.pickupDay || ''}
                           onChange={(e) => handleUpdateTruck(idx, 'pickupDay', e.target.value)}
@@ -175,7 +175,7 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
                         </Selector>
                       </div>
                       <div>
-                        <label className="block text-[10px] text-slate-500 mb-1">Hora (Ej: 10:00)</label>
+                        <label className="block text-[11px] text-slate-500 mb-1">Hora (Ej: 10:00)</label>
                         <Input
                           type="time"
                           value={truck.pickupTime || ''}
@@ -190,7 +190,7 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
                     <div className="text-xs font-medium text-rose-400">Datos de Devolución</div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[10px] text-slate-500 mb-1">Día</label>
+                        <label className="block text-[11px] text-slate-500 mb-1">Día</label>
                         <Selector
                           value={truck.returnDay || ''}
                           onChange={(e) => handleUpdateTruck(idx, 'returnDay', e.target.value)}
@@ -201,7 +201,7 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
                         </Selector>
                       </div>
                       <div>
-                        <label className="block text-[10px] text-slate-500 mb-1">Hora límite</label>
+                        <label className="block text-[11px] text-slate-500 mb-1">Hora límite</label>
                         <Input
                           type="time"
                           value={truck.returnTime || ''}

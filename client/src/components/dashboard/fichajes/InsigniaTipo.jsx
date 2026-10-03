@@ -12,7 +12,7 @@ const TIPOS = {
 export default function InsigniaTipo({ tipo, enCurso = false }) {
   const { Icono, texto, clase } = TIPOS[tipo] || TIPOS.fichaje;
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide ${clase}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide ${clase}`}>
       {enCurso ? (
         <span className="relative flex h-2 w-2" aria-hidden="true">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />

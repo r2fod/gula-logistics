@@ -39,7 +39,7 @@ const START_JORNADA_LABELS = [
 // falta para la hora de la tarea). `className` pone su posición y `flex` si va suelto.
 function AvisoBloqueado({ className = '', children }) {
   return (
-    <span className={`${className || 'inline-flex'} items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed`}>
+    <span className={`${className || 'inline-flex'} items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed`}>
       <Lock className="w-3 h-3" />
       <span>{children}</span>
     </span>
@@ -440,12 +440,12 @@ export default function WorkerView({
                   Hola, {currentWorkerObj.name} 👋
                 </h1>
                 {activeShift ? (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse">
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse">
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
                     <span>EN TURNO</span>
                   </span>
                 ) : (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-400 border border-slate-700">
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-800 text-slate-400 border border-slate-700">
                     <span className="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
                     <span>Descanso</span>
                   </span>
@@ -488,7 +488,7 @@ export default function WorkerView({
               ) : (
                 <button
                   onClick={onOpenAdminDashboard}
-                  className="text-[10px] text-slate-600 hover:text-slate-400 transition-colors shrink-0 px-2 py-1"
+                  className="text-[11px] text-slate-600 hover:text-slate-400 transition-colors shrink-0 px-2 py-1"
                   title="Acceso Admin (Oculto)"
                 >
                   Admin
@@ -546,7 +546,7 @@ export default function WorkerView({
                   <span className="whitespace-nowrap font-mono text-base font-extrabold tabular-nums text-emerald-300">
                     ≈ <EnVivo>{(ahora) => formatearEuros(costeEnCurso({ entrada: activeShift, ahora, tarifa: activeShift.rate || currentWorkerObj.rate || 10 }).coste)}</EnVivo>
                   </span>
-                  <span className="w-full text-[10px] text-slate-400">A {formatearEuros(activeShift.rate || currentWorkerObj.rate || 10)}/h. Aproximado: el importe final se ajusta al fichar la salida.</span>
+                  <span className="w-full text-[11px] text-slate-400">A {formatearEuros(activeShift.rate || currentWorkerObj.rate || 10)}/h. Aproximado: el importe final se ajusta al fichar la salida.</span>
                 </div>
               )}
 
@@ -729,7 +729,7 @@ export default function WorkerView({
             >
               <Plus className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />O fichar otra tarea libre
             </button>
-            <span className="whitespace-nowrap text-[10px] text-slate-500">
+            <span className="whitespace-nowrap text-[11px] text-slate-500">
               <Lock className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Registro seguro
             </span>
           </div>
@@ -756,7 +756,7 @@ export default function WorkerView({
                 <span className="text-base shrink-0">{profile?.avatar || '👤'}</span>
                 <div className="min-w-0">
                   <span className="text-xs font-bold text-white block truncate">{name}</span>
-                  <span className={`text-[10px] block truncate ${isClockedIn ? 'text-emerald-400 font-semibold' : 'text-slate-500'}`}>
+                  <span className={`text-[11px] block truncate ${isClockedIn ? 'text-emerald-400 font-semibold' : 'text-slate-500'}`}>
                     {isClockedIn ? '🟢 Ya ha fichado' : 'Aún no ha fichado'}
                   </span>
                 </div>
@@ -800,7 +800,7 @@ export default function WorkerView({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
           <div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <span className="whitespace-nowrap text-[9px] font-extrabold bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">
+              <span className="whitespace-nowrap text-[10px] font-extrabold bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">
                 Planificación
               </span>
               <span className="whitespace-nowrap text-[11px] text-slate-400">{activeWeekData?.meta?.dateRange}</span>
@@ -889,12 +889,12 @@ export default function WorkerView({
                   >
                     <span>{day.label} {day.date}</span>
                     {isToday && (
-                      <span className="text-[9px] px-1 py-0.2 rounded bg-blue-500/20 text-blue-300 font-extrabold">
+                      <span className="text-[10px] px-1 py-0.2 rounded bg-blue-500/20 text-blue-300 font-extrabold">
                         HOY
                       </span>
                     )}
                     {day.totalCount > 0 && (
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
                         isSelected ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-amber-300'
                       }`}>
                         {day.totalCount}
@@ -943,7 +943,7 @@ export default function WorkerView({
                           <span className="text-[11px] text-slate-400 block mt-0.5">{dayGroup.badge}</span>
                         </div>
 
-                        <span className="whitespace-nowrap text-[10px] bg-slate-900 text-slate-300 font-bold px-2 py-0.5 rounded-lg border border-slate-800 shrink-0">
+                        <span className="whitespace-nowrap text-[11px] bg-slate-900 text-slate-300 font-bold px-2 py-0.5 rounded-lg border border-slate-800 shrink-0">
                           {dayGroup.totalCount} {dayGroup.totalCount === 1 ? 'tarea' : 'tareas'}
                         </span>
                       </div>
@@ -1049,14 +1049,14 @@ export default function WorkerView({
                 <div key={entry.id} className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-mono text-xs font-bold text-white">
-                      {horaDeFichaje(entry)} <span className="text-[10px] text-slate-400 font-normal">({fechaDeFichaje(entry)})</span>
+                      {horaDeFichaje(entry)} <span className="text-[11px] text-slate-400 font-normal">({fechaDeFichaje(entry)})</span>
                     </span>
                     {entry.type === 'entrada' ? (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">
+                      <span className="px-2 py-0.5 rounded-full text-[11px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">
                         🟢 ENTRADA
                       </span>
                     ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold">
+                      <span className="px-2 py-0.5 rounded-full text-[11px] bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold">
                         🔴 SALIDA
                       </span>
                     )}
@@ -1065,10 +1065,10 @@ export default function WorkerView({
                     <Pin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{entry.taskName || entry.note || 'Turno General'}
                   </p>
                   <div className="flex items-center justify-between pt-2 border-t border-slate-800/60 mt-1">
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[11px] text-slate-400">
                       {duracionDeSalida.has(entry.id) ? `Duración: ${formatearHoras(duracionDeSalida.get(entry.id))}` : 'Turno registrado'}
                     </span>
-                    <span className="text-[10px] font-bold text-amber-300 flex items-center gap-1">
+                    <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
                       <Lock className="w-3 h-3 text-amber-400" /> Bloqueado
                     </span>
                   </div>
@@ -1080,7 +1080,7 @@ export default function WorkerView({
             <div className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[10px]">
+                  <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[11px]">
                     <th className="py-3 px-3">Fecha & Hora</th>
                     <th className="py-3 px-3">Tipo</th>
                     <th className="py-3 px-3">Tarea / Concepto</th>
@@ -1093,15 +1093,15 @@ export default function WorkerView({
                     <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
                       <td className="py-3 px-3 font-mono text-slate-200">
                         <div className="font-bold text-white">{horaDeFichaje(entry)}</div>
-                        <div className="text-[10px] text-slate-500">{fechaDeFichaje(entry)}</div>
+                        <div className="text-[11px] text-slate-500">{fechaDeFichaje(entry)}</div>
                       </td>
                       <td className="py-3 px-3">
                         {entry.type === 'entrada' ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">
                             🟢 ENTRADA
                           </span>
                         ) : (
-                          <span className="px-2.5 py-0.5 rounded-full text-[10px] bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold">
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold">
                             🔴 SALIDA
                           </span>
                         )}
@@ -1110,12 +1110,12 @@ export default function WorkerView({
                         {entry.taskName || entry.note || '—'}
                       </td>
                       <td className="py-3 px-3">
-                        <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 inline-flex items-center space-x-1">
+                        <span className="text-[11px] font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 inline-flex items-center space-x-1">
                           <Lock className="w-3 h-3 text-amber-400" />
                           <span>Guardado</span>
                         </span>
                       </td>
-                      <td className="py-3 px-3 text-right text-[10px] font-bold text-amber-300">
+                      <td className="py-3 px-3 text-right text-[11px] font-bold text-amber-300">
                         Solo Admin
                       </td>
                     </tr>

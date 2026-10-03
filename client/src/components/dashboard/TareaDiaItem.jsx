@@ -41,13 +41,13 @@ export default function TareaDiaItem({ task, hecha, filtro = null, alPulsar = nu
         {(typeof task === 'object' && (task.timeFrame || (task.completedAt && hecha))) && (
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             {task.timeFrame && (
-              <span className="text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1">
+              <span className="text-[11px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {task.timeFrame}
               </span>
             )}
             {task.completedAt && hecha && (
-              <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded inline-flex items-center gap-1 border border-emerald-500/30" title="Hora de finalización real">
+              <span className="text-[11px] font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded inline-flex items-center gap-1 border border-emerald-500/30" title="Hora de finalización real">
                 <Check className="w-3 h-3" />
                 Fin: {new Date(task.completedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
               </span>

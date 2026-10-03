@@ -92,6 +92,54 @@ html, body {
   50% { filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.75)); }
 }
 @keyframes girar { to { transform: rotate(360deg); } }
+/* Fondos animados de cada página (BackgroundAnimation.jsx): cada una se mueve a su
+   manera. Solo transform y opacity, que mueve la GPU sin repintar la página. */
+.fondo-latir, .fondo-barrer, .fondo-orbitar, .fondo-derivar, .fondo-flotar, .fondo-subir, .fondo-pendulo {
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+.fondo-latir { animation-name: fondoLatir; }
+.fondo-barrer { animation-name: fondoBarrer; }
+.fondo-orbitar { animation-name: fondoOrbitar; animation-timing-function: linear; }
+.fondo-derivar { animation-name: fondoDerivar; }
+.fondo-flotar { animation-name: fondoFlotar; }
+.fondo-subir { animation-name: fondoSubir; }
+.fondo-pendulo { animation-name: fondoPendulo; transform-origin: 50% 0; }
+@keyframes fondoLatir { /* En vivo: respira, como un pulso */
+  0%, 100% { transform: scale(0.92); opacity: 0.6; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+@keyframes fondoBarrer { /* Cuadrante: barre en diagonal, como pasar de un día a otro */
+  0%, 100% { transform: translate3d(-4%, 4%, 0) rotate(0deg); }
+  50% { transform: translate3d(4%, -4%, 0) rotate(6deg); }
+}
+@keyframes fondoOrbitar { /* Grafo: gira en órbita, como los nodos conectados */
+  from { transform: rotate(0deg) translate3d(3vw, 0, 0) rotate(0deg); }
+  to { transform: rotate(360deg) translate3d(3vw, 0, 0) rotate(-360deg); }
+}
+@keyframes fondoDerivar { /* Flota: avanza y vuelve en horizontal, como en carretera */
+  0%, 100% { transform: translate3d(-6%, 0, 0); }
+  50% { transform: translate3d(6%, 0, 0); }
+}
+@keyframes fondoFlotar { /* Saldos y el trabajador: flota arriba y abajo */
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(0, -24px, 0) scale(1.05); }
+}
+@keyframes fondoSubir { /* Resumen: sube y crece, como una gráfica */
+  0%, 100% { transform: translate3d(0, 6%, 0) scale(0.96); opacity: 0.7; }
+  50% { transform: translate3d(0, -6%, 0) scale(1.04); opacity: 1; }
+}
+@keyframes fondoPendulo { /* Fichajes: va y viene, como el péndulo de un reloj */
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(5deg); }
+}
+
+/* Una ventana (Modal) entra con un leve acercamiento mientras el fondo se funde. */
+@keyframes entrarVentana {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
 
 /* Micro-interacciones de los iconos de TODA la app. Los iconos (lucide) dentro
    de un botón, enlace o pestaña crecen y se inclinan al pasar el ratón y se
@@ -144,6 +192,9 @@ input:focus-visible {
 
 /* Quien tiene activado "reducir movimiento" no ve nada de esto. */
 @media (prefers-reduced-motion: reduce) {
+  .fondo-animado * {
+    animation: none !important;
+  }
   svg.lucide {
     transition: none !important;
     scale: none !important;

@@ -5,7 +5,7 @@ import TaskTextWithEvent from '../TaskTextWithEvent';
 // Componente para avisos de tareas bloqueadas
 function AvisoBloqueado({ children, className = '' }) {
   return (
-    <span className={`inline-block px-2 py-1 rounded bg-slate-800/80 text-[10px] text-slate-400 font-medium ${className}`}>
+    <span className={`inline-block px-2 py-1 rounded bg-slate-800/80 text-[11px] text-slate-400 font-medium ${className}`}>
       🔒 {children}
     </span>
   );
@@ -60,7 +60,7 @@ export default function WorkerViewTaskItem({
           <TaskTextWithEvent text={taskText} event={typeof task === 'object' ? task.event : undefined} />{timeFrame && <> <span className="whitespace-nowrap">({timeFrame})</span></>}
         </span>
         {typeof task === 'object' && task.targetDay && (
-          <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md whitespace-nowrap shrink-0 border ${
+          <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-md whitespace-nowrap shrink-0 border ${
             task.targetDay === 'Domingo'
               ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
               : 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
@@ -78,13 +78,13 @@ export default function WorkerViewTaskItem({
               href={task.mapsUrl} 
               target="_blank" 
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-[10px] font-bold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 px-2.5 py-1 rounded-lg transition-colors"
+              className="inline-flex items-center gap-1 text-[11px] font-bold bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30 px-2.5 py-1 rounded-lg transition-colors"
             >
               <MapPin className="w-3 h-3" />
               {task.location || 'Abrir en Maps'}
             </a>
           ) : (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-slate-800 text-slate-400 px-2.5 py-1 rounded-lg">
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-slate-800 text-slate-400 px-2.5 py-1 rounded-lg">
               <MapPin className="w-3 h-3" />
               {task.location}
             </span>
@@ -100,7 +100,7 @@ export default function WorkerViewTaskItem({
         ) : (
           <button
             onClick={handleClockIn}
-            className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95"
+            className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95"
           >
             <Play className="w-3 h-3" />
             <span>Fichar Esta Tarea</span>

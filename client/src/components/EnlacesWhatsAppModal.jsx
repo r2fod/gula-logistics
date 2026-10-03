@@ -62,9 +62,9 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
                 <div className="flex items-center space-x-2">
                   <h4 className="font-bold text-white text-sm truncate">{w.name}</h4>
                   {w.isPayroll ? (
-                    <span className="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30 shrink-0">Nómina</span>
+                    <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30 shrink-0">Nómina</span>
                   ) : (
-                    <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 shrink-0">10€/h</span>
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 shrink-0">10€/h</span>
                   )}
                 </div>
                 <p className="text-xs text-slate-400 truncate" title={w.role}>{w.role}</p>
@@ -140,7 +140,7 @@ function EnlaceSocias() {
           <ShieldCheck className="w-4 h-4 shrink-0" />
           <span className="truncate">Enlace para Socias (solo lectura)</span>
         </span>
-        <span className="text-[10px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full shrink-0">SOCIAS</span>
+        <span className="text-[11px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full shrink-0">SOCIAS</span>
       </div>
 
       <div className="flex items-center bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 min-w-0">

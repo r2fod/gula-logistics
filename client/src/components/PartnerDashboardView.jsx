@@ -20,6 +20,7 @@ import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminSettingsModal from './AdminSettingsModal';
 import AdminAiMemoryModal from './AdminAiMemoryModal';
 import AvisoDeshacerIa from './panel/AvisoDeshacerIa';
+import BackgroundAnimation from './BackgroundAnimation';
 import AvisoTurnosLargos from './dashboard/fichajes/AvisoTurnosLargos';
 import SemanaBorradorBanner from './SemanaBorradorBanner';
 import DisponibilidadSemana from './planning/DisponibilidadSemana';
@@ -211,6 +212,9 @@ export default function PartnerDashboardView({
   );
 
   return (
+    <>
+    {/* Fuera del contenedor: dentro, su `space-y` le daría margen a la cabecera. */}
+    <BackgroundAnimation viewMode={activeTab} />
     <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-2.5 sm:p-4 md:p-5 font-sans space-y-3 w-full max-w-full overflow-x-hidden pb-32 lg:pb-16">
       <CabeceraPanel
         adminUnlocked={adminUnlocked}
@@ -258,6 +262,8 @@ export default function PartnerDashboardView({
 
       <BarraPestanas activa={activeTab} onSeleccionar={handleTabClick} contadorFichajes={clockEntries.length} />
 
+      {/* Cada pestaña entra igual (sube y aparece); `key` la reanima al cambiar. */}
+      <div key={activeTab} className="space-y-3 animate-aparecer motion-reduce:animate-none">
       {activeTab === 'balances' && (
         <TeamBalancesTab
           balancesData={mergedBalancesData}
@@ -289,18 +295,16 @@ export default function PartnerDashboardView({
       )}
 
       {activeTab === 'live' && (
-        <div className="animate-fadeIn">
-          <LiveMonitorPanel
-            workersList={workersList}
-            clockEntries={clockEntries}
-            activeWeekData={activeWeekData}
-            semanas={allWeeks}
-            onClockEntryCreated={onClockEntryCreated}
-            onOpenClockModal={onOpenClockIn}
-            mostrarDinero
-            saldos={mergedBalancesData.workers}
-          />
-        </div>
+        <LiveMonitorPanel
+          workersList={workersList}
+          clockEntries={clockEntries}
+          activeWeekData={activeWeekData}
+          semanas={allWeeks}
+          onClockEntryCreated={onClockEntryCreated}
+          onOpenClockModal={onOpenClockIn}
+          mostrarDinero
+          saldos={mergedBalancesData.workers}
+        />
       )}
 
       {activeTab === 'financial' && (
@@ -345,6 +349,7 @@ export default function PartnerDashboardView({
       {activeTab === 'graph' && (
         <TaskFlowGraphView activeWeekData={activeWeekData} workersList={workersList} />
       )}
+      </div>
 
       <AdminClockEditModal
         isOpen={isAdminEditOpen}
@@ -389,5 +394,6 @@ export default function PartnerDashboardView({
         onEnviar={aviso.enviar}
       />
     </div>
+    </>
   );
 }

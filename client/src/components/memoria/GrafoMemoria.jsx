@@ -153,7 +153,7 @@ export default function GrafoMemoria({ grafo }) {
           <div className="space-y-2 animate-fadeIn">
             <p className="font-bold text-white">
               {nodoElegido.tipo === 'regla' ? `Regla ${nodoElegido.etiqueta}` : nodoElegido.etiqueta}
-              <span className="ml-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">{TIPOS_NODO[nodoElegido.tipo].singular}</span>
+              <span className="ml-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">{TIPOS_NODO[nodoElegido.tipo].singular}</span>
             </p>
             {nodoElegido.texto && <p className="text-xs text-slate-300">«{nodoElegido.texto}»{nodoElegido.propuesta ? ' — propuesta, aún no la usa Gemini' : ''}</p>}
             {nodoElegido.detalle && (

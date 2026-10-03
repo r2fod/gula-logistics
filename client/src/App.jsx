@@ -9,6 +9,7 @@ import ClockInModal from './components/ClockInModal';
 import WorkerView from './components/WorkerView';
 import PublicView from './components/PublicView';
 import BackgroundAnimation from './components/BackgroundAnimation';
+import { pestanaDesdeUrl } from './components/panel/pestanas';
 import AdminLoginModal from './components/AdminLoginModal';
 // El panel de admin/socias y sus editores se descargan solo cuando hacen falta: un
 // trabajador en su móvil no los usa (antes todo iba en un único archivo de ~1 MB).
@@ -19,8 +20,11 @@ const AdminWorkerEditorModal = lazy(() => import('./components/AdminWorkerEditor
 const AdminTaskEditorModal = lazy(() => import('./components/AdminTaskEditorModal'));
 const EnlacesWhatsAppModal = lazy(() => import('./components/EnlacesWhatsAppModal'));
 
+// Mientras llega el panel, ya con el fondo de la pestaña que se va a abrir (luego lo
+// pinta el propio panel, que es quien sabe en qué pestaña está).
 const CargandoPanel = () => (
   <div role="status" className="flex min-h-[60vh] items-center justify-center gap-3 text-sm text-slate-400">
+    <BackgroundAnimation viewMode={pestanaDesdeUrl(window.location.search)} />
     <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-700 border-t-amber-400 motion-reduce:animate-none" aria-hidden="true" />
     Cargando el panel…
   </div>
@@ -654,7 +658,6 @@ export default function App() {
 
   return (
     <div className="bg-slate-950 min-h-screen text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950 relative">
-      <BackgroundAnimation viewMode="partner_planning" />
       <Suspense fallback={<CargandoPanel />}>
       <PartnerDashboardView
         activeWeekData={activeWeek}

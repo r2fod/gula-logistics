@@ -23,12 +23,12 @@ export default function GrupoDia({ grupo, etiqueta = null, abierto, onAlternar, 
       >
         <span className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
           <span className="text-sm font-extrabold text-amber-300">{titulo}</span>
-          {etiqueta && <span className="rounded-full bg-amber-500 px-2 py-px text-[10px] font-extrabold uppercase text-slate-950">{etiqueta}</span>}
-          <span className="rounded-full border border-slate-700 bg-slate-950 px-2 py-px text-[10px] font-semibold text-slate-400">
+          {etiqueta && <span className="rounded-full bg-amber-500 px-2 py-px text-[11px] font-extrabold uppercase text-slate-950">{etiqueta}</span>}
+          <span className="rounded-full border border-slate-700 bg-slate-950 px-2 py-px text-[11px] font-semibold text-slate-400">
             {grupo.entradas.length} {grupo.entradas.length === 1 ? 'fichaje' : 'fichajes'}
           </span>
           {grupo.turnos > 0 && (
-            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-px text-[10px] font-semibold tabular-nums text-emerald-300">
+            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-px text-[11px] font-semibold tabular-nums text-emerald-300">
               {formatearHoras(grupo.horas)} en {grupo.turnos} {grupo.turnos === 1 ? 'turno' : 'turnos'}
             </span>
           )}

@@ -46,14 +46,14 @@ export default function CabeceraPanel({
               </h1>
               {adminUnlocked ? (
                 <>
-                  <span className="px-2 py-0.5 text-[9px] font-extrabold rounded-full bg-amber-500 text-slate-950 flex items-center gap-1 shrink-0">
+                  <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-500 text-slate-950 flex items-center gap-1 shrink-0">
                     <ShieldCheck className="w-2.5 h-2.5" />
                     <span>ADMIN</span>
                   </span>
                   {claves && <BotonAccion accion={claves} variante="cabecera" />}
                   <button
                     onClick={onSalir}
-                    className="px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1 transition-colors shrink-0"
+                    className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1 transition-colors shrink-0"
                   >
                     <span>Salir</span>
                   </button>
@@ -61,14 +61,14 @@ export default function CabeceraPanel({
               ) : (
                 <button
                   onClick={onDesbloquear}
-                  className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center gap-1 transition-colors shrink-0"
+                  className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center gap-1 transition-colors shrink-0"
                 >
                   <KeyRound className="w-2.5 h-2.5 text-blue-400" />
                   <span>Admin Login</span>
                 </button>
               )}
             </div>
-            <p className="text-[10px] text-slate-500 truncate">
+            <p className="text-[11px] text-slate-500">
               {activeWeekData?.meta?.week || 'Semana 3'} · {activeWeekData?.meta?.dateRange}
             </p>
           </div>

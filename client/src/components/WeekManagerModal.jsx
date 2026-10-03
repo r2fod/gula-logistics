@@ -248,7 +248,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
         
         <div className="relative flex items-center py-3">
             <div className="flex-grow border-t border-slate-800/80 shadow-[0_1px_0_0_rgba(255,255,255,0.02)]"></div>
-            <span className="shrink-0 mx-4 text-[10px] font-extrabold uppercase tracking-widest text-slate-500 bg-slate-900/50 px-3 py-1 rounded-full backdrop-blur-sm border border-slate-800/50">O crea una con el Asistente AI</span>
+            <span className="shrink-0 mx-4 text-[11px] font-extrabold uppercase tracking-widest text-slate-500 bg-slate-900/50 px-3 py-1 rounded-full backdrop-blur-sm border border-slate-800/50">O crea una con el Asistente AI</span>
             <div className="flex-grow border-t border-slate-800/80 shadow-[0_1px_0_0_rgba(255,255,255,0.02)]"></div>
         </div>
 

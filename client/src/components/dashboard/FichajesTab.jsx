@@ -67,7 +67,7 @@ export default function FichajesTab({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fadeIn">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-amber-500/20 bg-amber-500/10 text-amber-400">
@@ -77,9 +77,9 @@ export default function FichajesTab({
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-lg font-extrabold text-white sm:text-xl">Historial de fichajes</h3>
               {adminUnlocked ? (
-                <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-extrabold text-slate-950">CONTROL ADMINISTRATIVO</span>
+                <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-[11px] font-extrabold text-slate-950">CONTROL ADMINISTRATIVO</span>
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/20 px-2.5 py-0.5 text-[10px] font-extrabold text-blue-300">
+                <span className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/20 px-2.5 py-0.5 text-[11px] font-extrabold text-blue-300">
                   <Eye className="h-3 w-3" aria-hidden="true" /> SOLO LECTURA
                 </span>
               )}
@@ -173,7 +173,7 @@ export default function FichajesTab({
             </div>
           ) : (
             <div className="space-y-3">
-              <div className={`hidden gap-x-3 px-5 text-[10px] font-bold uppercase tracking-wider text-slate-500 md:grid ${adminUnlocked ? PLANTILLA_FILA.admin : PLANTILLA_FILA.lectura}`} aria-hidden="true">
+              <div className={`hidden gap-x-3 px-5 text-[11px] font-bold uppercase tracking-wider text-slate-500 md:grid ${adminUnlocked ? PLANTILLA_FILA.admin : PLANTILLA_FILA.lectura}`} aria-hidden="true">
                 <span>Hora</span><span>Tipo</span><span>Trabajador</span><span>Tarea / concepto</span><span>Tarifa</span>{adminUnlocked && <span className="text-right">Acciones</span>}
               </div>
               {grupos.map((g, i) => (

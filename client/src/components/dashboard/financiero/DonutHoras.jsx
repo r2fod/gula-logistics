@@ -25,7 +25,7 @@ export default function DonutHoras({ datos, totalHoras }) {
         </ResponsiveContainer>
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
           <div className="text-center">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Total</p>
             <p className="text-lg sm:text-xl font-extrabold text-slate-100 tabular-nums">{formatearHoras(totalHoras)}</p>
           </div>
         </div>
