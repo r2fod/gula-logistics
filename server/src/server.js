@@ -48,17 +48,25 @@ if (process.env.MONGODB_URI) {
       try {
         const { WorkerBalance } = await import('./models/WorkerBalance.model.js');
         const { TeamRoster } = await import('./models/TeamRoster.model.js');
-        const workersToFix = await WorkerBalance.find({ name: /Jefferson/i });
+        const workersToFix = await WorkerBalance.find({ $or: [{ name: /Jefferson/i }, { id: /jefferson/i }] });
         for (const w of workersToFix) {
           w.name = w.name.replace(/Jefferson/i, 'Jeferson');
+          w.id = w.id.replace(/jefferson/i, 'jeferson');
           await w.save();
         }
-        const rosterToFix = await TeamRoster.find({ name: /Jefferson/i });
-        for (const r of rosterToFix) {
-          r.name = r.name.replace(/Jefferson/i, 'Jeferson');
-          await r.save();
+
+        const rosterDoc = await TeamRoster.findOne({ key: 'roster' });
+        if (rosterDoc) {
+          let changed = false;
+          rosterDoc.workers.forEach(w => {
+            if (/Jefferson/i.test(w.name)) {
+              w.name = w.name.replace(/Jefferson/i, 'Jeferson');
+              changed = true;
+            }
+          });
+          if (changed) await rosterDoc.save();
         }
-        console.log('Migración de nombres Jeferson Gula completada');
+        console.log('Migración completa (WorkerBalance + TeamRoster array) para Jeferson');
       } catch (err) {
         console.error('Error migrando nombres Jeferson:', err);
       }
