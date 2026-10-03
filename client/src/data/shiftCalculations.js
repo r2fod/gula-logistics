@@ -6,6 +6,7 @@
 // dejarlo indefinidamente como "en turno" con un cronómetro absurdo.
 import { parseEventAndTask } from './eventNaming';
 import { fechaDeFichaje, horaDeFichaje } from './fichajes';
+import { coincideNombre } from './nombresTrabajadores';
 
 export const ZOMBIE_SHIFT_HOURS = 16;
 
@@ -56,16 +57,21 @@ export function pairShiftsFromEntries(entries = []) {
 
   sortEntriesByTimestamp(entries).forEach(entry => {
     const { workerName, type, timestamp, isPayroll, rate, note, taskName } = entry;
+    if (!workerName) return;
+
+    // Normalizar la búsqueda por nombre ignorando mayúsculas y acentos
+    const matchedKey = Object.keys(activeWorkerShifts).find(k => coincideNombre(k, workerName));
+    const activeKey = matchedKey || workerName;
 
     if (type === 'entrada') {
-      activeWorkerShifts[workerName] = {
+      activeWorkerShifts[activeKey] = {
         startEntry: entry,
         tasks: [],
         lastTime: new Date(timestamp).getTime()
       };
-    } else if (type === 'fichaje' && activeWorkerShifts[workerName]) {
+    } else if (type === 'fichaje' && activeWorkerShifts[activeKey]) {
       // Subtask completed in V2
-      const active = activeWorkerShifts[workerName];
+      const active = activeWorkerShifts[activeKey];
       const currentTime = new Date(timestamp).getTime();
       const diffMs = currentTime - active.lastTime;
       const durationHours = diffMs / (1000 * 60 * 60);
@@ -77,10 +83,10 @@ export function pairShiftsFromEntries(entries = []) {
       });
       active.lastTime = currentTime;
       
-    } else if (type === 'salida' && activeWorkerShifts[workerName]) {
-      const active = activeWorkerShifts[workerName];
+    } else if (type === 'salida' && activeWorkerShifts[activeKey]) {
+      const active = activeWorkerShifts[activeKey];
       const startEntry = active.startEntry;
-      delete activeWorkerShifts[workerName];
+      delete activeWorkerShifts[activeKey];
 
       const startDate = new Date(startEntry.timestamp);
       const endDate = new Date(timestamp);
@@ -219,7 +225,10 @@ export function aggregateShiftsByWorker(shifts, workersList = []) {
   });
 
   shifts.forEach(shift => {
-    let bucket = workerBalances[shift.workerName];
+    // Buscar la clave correcta en workerBalances (ignora mayúsculas y acentos)
+    let matchedKey = Object.keys(workerBalances).find(key => coincideNombre(key, shift.workerName));
+    let bucket = matchedKey ? workerBalances[matchedKey] : null;
+
     if (!bucket) {
       // Alguien que ya no está en el roster actual (quitado, o un fichaje
       // con el nombre mal escrito) pero tiene fichajes reales — antes esto
