@@ -10,7 +10,8 @@ export function textoResumenWhatsApp({ etiqueta, personas = [], totalExtras = 0,
     '📋 *Gula Logística — Resumen de personal*',
     `📅 ${etiqueta}`,
     '',
-    `💶 *Extras a pagar:* ${formatearEuros(totalExtras - (conceptos?.total || 0))}`,
+    // `totalExtras` ya lleva lo apuntado a mano (como el "Coste de personal" del Resumen).
+    `💶 *Extras fichados:* ${formatearEuros(totalExtras - (conceptos?.total || 0))}`,
     `⭐ *Valoración nóminas (interna):* ${formatearEuros(totalNomina)}`,
     `⏱️ *Horas (incl. a mano):* ${formatearHoras(totalHoras)}`,
   ];

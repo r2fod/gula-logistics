@@ -79,7 +79,7 @@ export default function ConceptosAMano({ conceptos, extrasFichados, todo, retras
       )}
       {!todo && conceptos.sinFechaFuera > 0 && (
         <p className="border-t border-slate-800 px-3.5 sm:px-5 py-2.5 text-[11px] text-slate-500">
-          {conceptos.sinFechaFuera} {conceptos.sinFechaFuera === 1 ? 'concepto antiguo no lleva' : 'conceptos antiguos no llevan'} fecha (horas de bolsa, roturas, pagos…): solo se suman en «Todo». Los nuevos ya la guardan.
+          {conceptos.sinFechaFuera} {conceptos.sinFechaFuera === 1 ? 'concepto antiguo no lleva' : 'conceptos antiguos no llevan'} fecha (roturas, pagos, la bolsa acumulada…): no son de ninguna semana concreta; cuentan en septiembre de 2026, en ese año y en «Todo» (la bolsa acumulada, solo en «Todo»). Los nuevos ya la guardan.
         </p>
       )}
     </Seccion>

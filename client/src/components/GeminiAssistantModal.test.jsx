@@ -43,7 +43,7 @@ const pedir = async () => {
   await waitFor(() => expect(api.getAiMemories).toHaveBeenCalled());
   await act(async () => {}); // que llegue la lista de reglas antes de pedir
   fireEvent.change(screen.getByPlaceholderText(/Escribe tu solicitud/), { target: { value: 'A partir de ahora…' } });
-  fireEvent.click(screen.getByRole('button', { name: /Generar Planificación/ }));
+  fireEvent.click(screen.getByRole('button', { name: /Enviar a Gemini/ }));
 };
 
 describe('GeminiAssistantModal — memoria', () => {
@@ -85,7 +85,7 @@ describe('GeminiAssistantModal — revisar antes de aplicar', () => {
     render(<GeminiAssistantModal isOpen onClose={() => {}} onApplyGeneratedSchedule={() => {}} activeWeekData={actual} workersList={[{ name: 'Ana' }]} aprendizaje={aprendizaje} />);
     await waitFor(() => expect(api.getAiMemories).toHaveBeenCalled());
     fireEvent.change(screen.getByPlaceholderText(/Escribe tu solicitud/), { target: { value: 'x' } });
-    fireEvent.click(screen.getByRole('button', { name: /Generar Planificación/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Enviar a Gemini/ }));
     expect(await screen.findByText('+1 nuevas')).toBeInTheDocument();
     expect(screen.getByText('1 cambiadas')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('Asigna a quien no está en el equipo: Inventado.');
@@ -104,7 +104,7 @@ describe('GeminiAssistantModal — revisar antes de aplicar', () => {
     render(<GeminiAssistantModal isOpen onClose={() => {}} onApplyGeneratedSchedule={() => {}} activeWeekData={actual} workersList={[{ name: 'Ana' }]} aprendizaje={aprendizaje} />);
     await waitFor(() => expect(api.getAiMemories).toHaveBeenCalled());
     fireEvent.change(screen.getByPlaceholderText(/Escribe tu solicitud/), { target: { value: 'x' } });
-    fireEvent.click(screen.getByRole('button', { name: /Generar Planificación/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Enviar a Gemini/ }));
     fireEvent.click(await screen.findByRole('button', { name: /Pedir a Gemini que lo corrija/ }));
     await waitFor(() => expect(corregir).toHaveBeenCalledTimes(1));
     const { peticion, semana } = corregir.mock.calls[0][0];
@@ -127,7 +127,7 @@ describe('GeminiAssistantModal — revisar antes de aplicar', () => {
     render(<GeminiAssistantModal isOpen onClose={() => {}} onApplyGeneratedSchedule={() => {}} activeWeekData={actual} workersList={[{ name: 'Ana' }, { name: 'Luis' }]} aprendizaje={aprendizaje} />);
     await waitFor(() => expect(api.getAiMemories).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('button', { name: /Ana no puede el jueves/ }));
-    fireEvent.click(screen.getByRole('button', { name: /Generar Planificación/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Enviar a Gemini/ }));
     expect(await screen.findByText(/^0 tokens · Entendido sin gastar Gemini/)).toBeInTheDocument();
     expect(screen.getByText(/entra Luis/)).toBeInTheDocument();
     expect(extraer).not.toHaveBeenCalled();
@@ -138,7 +138,7 @@ describe('GeminiAssistantModal — revisar antes de aplicar', () => {
     render(<GeminiAssistantModal isOpen onClose={() => {}} onApplyGeneratedSchedule={() => {}} activeWeekData={{}} workersList={[]} aprendizaje={aprendizaje} />);
     await waitFor(() => expect(api.getAiMemories).toHaveBeenCalled());
     fireEvent.change(screen.getByPlaceholderText(/Escribe tu solicitud/), { target: { value: '¿Qué puedes hacer?' } });
-    fireEvent.click(screen.getByRole('button', { name: /Generar Planificación/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Enviar a Gemini/ }));
     expect(await screen.findByText('Trabajo sobre la semana abierta…')).toBeInTheDocument();
     expect(screen.getByText(/0 tokens: contestado sin Gemini/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Aplicar esta Planificación/ })).toBeNull();

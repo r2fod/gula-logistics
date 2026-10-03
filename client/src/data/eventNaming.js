@@ -51,8 +51,10 @@ export function parseEventAndTask(taskName) {
   }
 
   // "Inicio de Jornada Operativa" y "Cierre de Jornada" son los textos por defecto de
-  // ClockInModal y AdminClockEditModal: antes salían como un evento más.
-  if (/^(inicio de jornada( operativa)?|cierre de jornada|jornada( laboral)?|sin asignar.*)$/i.test(text)) {
+  // ClockInModal y AdminClockEditModal: antes salían como un evento más. Igual la opción
+  // fija "📋 Asignado en Operativa Activa" del aviso de fichar: es jornada general (lo
+  // que diga el planning), no un evento; salía en el Resumen como si lo fuera.
+  if (/^(?:📋\s*)?(inicio de jornada( operativa)?|cierre de jornada|jornada( laboral)?|sin asignar.*|asignado en operativa activa)$/i.test(text)) {
     return { eventName: GENERAL_EVENT, specificTaskName: text, explicit: false };
   }
 

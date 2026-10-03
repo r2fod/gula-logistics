@@ -224,6 +224,21 @@ describe('FinancialSummaryTab — Saldos & Acuerdos y planning', () => {
     expect(within(pie).getByText('40,00 €')).toBeTruthy(); // queda por pagar
   });
 
+  it('BUG evitado: el desglose por evento cierra con el mismo total que «Coste por trabajador» (lo a mano va en su fila) y sale quien solo tiene un ajuste', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 18, 0));
+    const saldos = [
+      { name: 'Eva', breakdown: [{ concept: '🕒 16/09 (17:00 a 20:30 - 3.5h a 10€/h)', amount: 35, date: '2026-09-16', tipo: 'turno' }] },
+      { name: 'Pau', breakdown: [{ concept: 'Rotura de copas', amount: -10, date: '2026-09-17', tipo: 'ajuste' }] },
+    ];
+    pintar({ saldos });
+    const eventos = screen.getByText('Desglose por evento').closest('section');
+    const personas = screen.getByText('Coste por trabajador').closest('section');
+    const pieDe = (seccion) => seccion.querySelector('footer').textContent;
+    expect(pieDe(eventos)).toBe(pieDe(personas));
+    expect(within(eventos).getByText('✍️ Apuntado a mano (sin evento)')).toBeTruthy();
+    expect(within(personas).getByText('Pau')).toBeTruthy(); // sin horas, pero con -10 € que sí suman en el total
+  });
+
   it('en una semana, lo previsto por el planning frente a lo fichado', () => {
     vi.setSystemTime(new Date(2026, 8, 21, 18, 0));
     pintar();

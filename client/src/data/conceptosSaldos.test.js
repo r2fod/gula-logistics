@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { tipoDeConcepto, fechaDeConcepto, conceptosDelPeriodo } from './conceptosSaldos';
+import { tipoDeConcepto, fechaDeConcepto, conceptosDelPeriodo, horasDeConcepto } from './conceptosSaldos';
+import { rangoDePeriodo } from './periodosFinancieros';
 
 const ahora = new Date(2026, 8, 28, 12, 0);
 const fichas = [
@@ -79,5 +80,42 @@ describe('pagos (lo ya entregado al trabajador)', () => {
     const r = conceptosDelPeriodo(fichasConFecha, semana(22), { ahora });
     expect(r.pagado).toBe(60);
     expect(r.sinFechaFuera).toBe(0);
+  });
+});
+
+describe('BUG evitado: la fecha 30/09 que puso la migración del servidor no es real', () => {
+  const ref = new Date(2026, 9, 3, 12, 0);
+  const iso = (f) => f && `${f.getDate()}/${f.getMonth() + 1}`;
+
+  it('un apunte antiguo (sin tipo) vuelve a la fecha de su texto; uno apuntado de verdad el 30/09 se queda', () => {
+    expect(iso(fechaDeConcepto({ concept: '🕒 16/09 (17:00 a 20:30 - 3.5h a 10€/h)', amount: 35, date: '2026-09-30' }, ref))).toBe('16/9');
+    expect(fechaDeConcepto({ concept: 'Rotura de copas', amount: -10, date: '2026-09-30' }, ref)).toBeNull();
+    expect(iso(fechaDeConcepto({ concept: 'Bizum', amount: -50, date: '2026-09-30', tipo: 'pago' }, ref))).toBe('30/9');
+    expect(fechaDeConcepto({ concept: 'Valor Acumulado Horas Bolsa (40h a 8€/h)', amount: 320, date: '2026-09-30', tipo: 'bolsa' }, ref)).toBeNull();
+  });
+
+  it('sin fecha cuentan en septiembre de 2026 y en su año, nunca en una semana; la bolsa acumulada solo en «Todo»', () => {
+    const fichas = [{ name: 'Ana', statusType: 'success', breakdown: [
+      { concept: 'Saldo inicial', amount: 100, date: '2026-09-30' }, // antiguo, fecha de la migración
+      { concept: 'Valor Acumulado Horas Bolsa (40h a 8€/h)', amount: 320, tipo: 'bolsa' },
+      { concept: 'Bizum', amount: -50, date: '2026-09-30', tipo: 'pago' },
+    ] }];
+    const total = (modo, ancla) => conceptosDelPeriodo(fichas, rangoDePeriodo(modo, ancla), { incluirSinFecha: modo === 'todo', ahora: ref }).total;
+    expect(total('semana', new Date(2026, 8, 30))).toBe(0); // antes: 420, todo en la semana del 29/09
+    expect(total('mes', new Date(2026, 8, 30))).toBe(100);
+    expect(total('mes', new Date(2026, 9, 2))).toBe(0);
+    expect(total('anio', new Date(2026, 8, 30))).toBe(100);
+    expect(total('todo', ref)).toBe(420);
+    expect(conceptosDelPeriodo(fichas, rangoDePeriodo('semana', new Date(2026, 8, 30)), { ahora: ref }).pagado).toBe(50); // el pago es de verdad del 30/09
+  });
+});
+
+describe('horasDeConcepto', () => {
+  it('lee las horas de un turno o de la bolsa a mano, también con coma decimal; 0 en lo demás', () => {
+    expect(horasDeConcepto({ concept: '🕒 16/09 (17:00 a 20:30 - 3.5h a 10€/h)', amount: 35 })).toBe(3.5);
+    expect(horasDeConcepto({ concept: '🕒 16/09 (17:00 a 20:30 - 3,5h a 10€/h)', amount: 35 })).toBe(3.5); // antes: 5
+    expect(horasDeConcepto({ concept: 'Valor Acumulado Horas Bolsa (42h a 8€/h)', amount: 336 })).toBe(42);
+    expect(horasDeConcepto({ concept: '🕒 23/09 — 10€ ayuda transporte', amount: 10 })).toBe(0);
+    expect(horasDeConcepto({ concept: 'Rotura de 3 copas', amount: -12 })).toBe(0);
   });
 });

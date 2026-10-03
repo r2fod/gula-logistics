@@ -167,7 +167,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
             rows={3}
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            placeholder="Escribe tu solicitud (ej.: reorganiza las cargas de mañana, o añade un camión a Gonzalo el jueves)..."
+            placeholder="Escribe tu solicitud (ej.: reorganiza las cargas de mañana, o añade un camión más el jueves)..."
             tamano="xl"
             redondeo="2xl"
             acento="amber-suave"

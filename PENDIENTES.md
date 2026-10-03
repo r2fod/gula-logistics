@@ -24,7 +24,9 @@ _Solo lo que sigue abierto (actualizado el 28/09/2026). Lo resuelto se borra de 
 - [ ] **Rellenar en la ficha del equipo** (lo hace el admin, datos reales fuera del repo): quien solo puede a partir de las 15:00 y quien ayuda "solo si hace falta" cuando no está en cocina. El campo `team` antiguo de las semanas ya no se usa (queda en Mongo, sin efecto).
 
 ## Saldos y Resumen Financiero (28/09)
-- [ ] Los conceptos a mano ANTERIORES al 28/09 no llevan fecha ni tipo (los nuevos sí): los pagos antiguos se reconocen por el texto ("pago", "efectivo", "Bizum", "adelanto"…) y los que no tienen fecha (bolsa, roturas, pagos) solo se suman en «Todo».
+- [ ] **Apuntes antiguos con la fecha falsa 30/09** (migración del servidor del 03/10, ya quitada): la app la ignora en los que no llevan `tipo` (`conceptosSaldos.js`). Con permiso del usuario, borrar ese `date` en Atlas (47 apuntes sin `tipo` y la bolsa acumulada) y quitar la excepción del código.
+- [ ] **2 turnos abiertos desde el domingo 20/09 a las 04:00** (salida olvidada): salen como «REVISAR» y no suman. Corregirlos a mano en Fichajes.
+- [ ] **`client/api_data.json` en la copia de `main`**: volcado de fichajes reales sin subir (ya en `.gitignore`). Borrarlo si no hace falta.
 - [ ] Revisar en producción con sesión de admin: Saldos (dos grupos y el saldo subiendo con alguien en turno), "Ver sus horas por evento", el Resumen con lo apuntado a mano y lo previsto, copiar para WhatsApp y la papelera del Historial.
 
 ## Auditoría 28/09 — lo que queda
