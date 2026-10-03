@@ -177,7 +177,7 @@ export default function LiveMonitorPanel({
 
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <h3 className="text-base sm:text-2xl font-extrabold font-['Outfit'] text-white truncate">
+                <h3 className="text-base sm:text-2xl font-extrabold font-['Outfit'] text-white text-balance">
                   Monitor de Actividad en Tiempo Real
                 </h3>
                 <span className="px-2 py-0.5 text-[9px] sm:text-[10px] font-extrabold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1 shrink-0">
@@ -185,7 +185,7 @@ export default function LiveMonitorPanel({
                   <span>EN VIVO</span>
                 </span>
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 truncate">
+              <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
                 Seguimiento en directo de estado de jornada y avance por trabajador.
               </p>
             </div>
