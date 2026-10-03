@@ -48,17 +48,25 @@ if (process.env.MONGODB_URI) {
       try {
         const { WorkerBalance } = await import('./models/WorkerBalance.model.js');
         const { TeamRoster } = await import('./models/TeamRoster.model.js');
-        const workersToFix = await WorkerBalance.find({ name: /Persona5/i });
+        const workersToFix = await WorkerBalance.find({ $or: [{ name: /Persona5/i }, { id: /Persona5/i }] });
         for (const w of workersToFix) {
           w.name = w.name.replace(/Persona5/i, 'Persona5');
+          w.id = w.id.replace(/Persona5/i, 'Persona5');
           await w.save();
         }
-        const rosterToFix = await TeamRoster.find({ name: /Persona5/i });
-        for (const r of rosterToFix) {
-          r.name = r.name.replace(/Persona5/i, 'Persona5');
-          await r.save();
+
+        const rosterDoc = await TeamRoster.findOne({ key: 'roster' });
+        if (rosterDoc) {
+          let changed = false;
+          rosterDoc.workers.forEach(w => {
+            if (/Persona5/i.test(w.name)) {
+              w.name = w.name.replace(/Persona5/i, 'Persona5');
+              changed = true;
+            }
+          });
+          if (changed) await rosterDoc.save();
         }
-        console.log('Migración de nombres Persona5 Gula completada');
+        console.log('Migración completa (WorkerBalance + TeamRoster array) para Persona5');
       } catch (err) {
         console.error('Error migrando nombres Persona5:', err);
       }
