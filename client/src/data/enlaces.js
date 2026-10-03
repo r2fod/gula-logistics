@@ -38,8 +38,23 @@ export const enlaceSocias = (tokenSocias) => `${urlBase()}?socias${tokenSocias ?
 // Vista pública (sin saldos ni nóminas).
 export const enlaceVistaPublica = () => `${urlBase()}?view=public`;
 
-// Abre WhatsApp con el texto ya escrito.
-export const enlaceWhatsApp = (texto) => `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+// Teléfono listo para wa.me: solo cifras y con prefijo de país (uno español de 9
+// cifras sin prefijo se entiende como +34). null si no parece un teléfono.
+export function telefonoWhatsApp(telefono) {
+  let cifras = String(telefono || '').replace(/\D/g, '');
+  if (cifras.startsWith('00')) cifras = cifras.slice(2);
+  if (/^[6789]\d{8}$/.test(cifras)) cifras = `34${cifras}`;
+  return cifras.length >= 10 && cifras.length <= 15 ? cifras : null;
+}
+
+// Abre WhatsApp con el texto ya escrito: en el chat de ese `telefono` si lo hay (y es
+// válido) o, sin él, eligiendo el contacto en WhatsApp.
+export const enlaceWhatsApp = (texto, telefono = null) => {
+  const numero = telefonoWhatsApp(telefono);
+  return numero
+    ? `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`
+    : `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+};
 
 // Abre un enlace en otra pestaña sin darle acceso a la de la app (`window.opener`):
 // la página abierta no puede redirigir la app a otra dirección. Es lo que hace

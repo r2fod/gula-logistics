@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Clock, Wallet } from 'lucide-react';
 import EnVivo from '../ui/EnVivo';
 import { formatearHoras, formatearEurosConSigno } from '../../data/formatoFinanciero';
-import { rangoDePeriodo, turnosDelPeriodo } from '../../data/periodosFinancieros';
+import { rangoDePeriodo, horasDelPeriodo } from '../../data/periodosFinancieros';
 import { formatMonthName } from '../../utils/dateUtils';
 import { useAhora } from '../../hooks/useAhora';
 import { costeEnCurso } from '../../data/costeEnVivo';
@@ -58,7 +58,7 @@ export default function ResumenHorasSaldo({ nombre, enNomina = false, turnoAbier
   const suyos = turnos.filter(t => String(t.workerName || '').trim().toLowerCase() === String(nombre || '').trim().toLowerCase());
   const periodo = (modo) => {
     const rango = rangoDePeriodo(modo, ahora);
-    const cerradas = turnosDelPeriodo(suyos, rango).reduce((suma, t) => suma + (t.durationHours || 0), 0);
+    const cerradas = horasDelPeriodo(suyos, rango);
     const inicioAbierto = turnoAbierto ? new Date(turnoAbierto.timestamp).getTime() : NaN;
     const abiertoDentro = inicioAbierto >= rango.desde.getTime() && inicioAbierto < rango.hasta.getTime();
     return { rango, cerradas, abiertoDentro };
