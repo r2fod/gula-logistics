@@ -57,19 +57,19 @@ describe('PUT /api/balances/:id (actualización parcial de saldo)', () => {
     // purseInfo...). Sin $set, findOneAndUpdate lo habría pasado tal cual a
     // MongoDB, que interpreta un objeto sin operadores como documento de
     // REEMPLAZO — borrando todos los campos no incluidos.
-    WorkerBalance.findOneAndUpdate.mockResolvedValue({ id: 'Persona6', breakdown: [], currentBalance: 70 });
+    WorkerBalance.findOneAndUpdate.mockResolvedValue({ id: 'eva', breakdown: [], currentBalance: 70 });
     const app = buildApp();
     const res = await request(app)
-      .put('/api/balances/Persona6')
+      .put('/api/balances/eva')
       .set('Authorization', adminAuthHeader())
       .send({ breakdown: [{ concept: 'x', amount: 70, isPositive: true }], currentBalance: 70 });
 
     expect(res.status).toBe(200);
     expect(WorkerBalance.findOneAndUpdate).toHaveBeenCalledWith(
-      { id: 'Persona6' },
+      { id: 'eva' },
       expect.objectContaining({
         $set: { breakdown: [{ concept: 'x', amount: 70, isPositive: true }], currentBalance: 70 },
-        $setOnInsert: { id: 'Persona6' }
+        $setOnInsert: { id: 'eva' }
       }),
       expect.objectContaining({ upsert: true })
     );
@@ -80,22 +80,22 @@ describe('PUT /api/balances/:id (actualización parcial de saldo)', () => {
   });
 
   it('si el payload trae un "id" propio, se descarta (nunca debe competir con el id de la URL)', async () => {
-    WorkerBalance.findOneAndUpdate.mockResolvedValue({ id: 'Persona6' });
+    WorkerBalance.findOneAndUpdate.mockResolvedValue({ id: 'eva' });
     const app = buildApp();
     const res = await request(app)
-      .put('/api/balances/Persona6')
+      .put('/api/balances/eva')
       .set('Authorization', adminAuthHeader())
       .send({ id: 'otro-id-cualquiera', currentBalance: 10 });
 
     expect(res.status).toBe(200);
     const [, updateArg] = WorkerBalance.findOneAndUpdate.mock.calls[0];
     expect(updateArg.$set.id).toBeUndefined();
-    expect(updateArg.$setOnInsert).toEqual({ id: 'Persona6' });
+    expect(updateArg.$setOnInsert).toEqual({ id: 'eva' });
   });
 
   it('rechaza sin token de admin', async () => {
     const app = buildApp();
-    const res = await request(app).put('/api/balances/Persona6').send({ currentBalance: 10 });
+    const res = await request(app).put('/api/balances/eva').send({ currentBalance: 10 });
 
     expect(res.status).toBe(401);
     expect(WorkerBalance.findOneAndUpdate).not.toHaveBeenCalled();

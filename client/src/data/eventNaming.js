@@ -219,7 +219,7 @@ export function normalizeGeneratedEvents(json, knownEventNames = []) {
 }
 
 // Eventos ya usados en las tareas de una semana + las categorías generales,
-// para sugerirlos al editar (evita variantes como "Boda soto" / "Boda Lugar1").
+// para sugerirlos al editar (evita variantes como "Boda ana" / "Boda Ana").
 export function collectEventNames(weekData) {
   const names = new Set();
   const add = (list) => (list || []).forEach(t => {

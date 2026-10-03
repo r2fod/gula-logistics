@@ -50,8 +50,8 @@ export default function LogisticsTab({ activeWeekData, adminUnlocked, onUpdateWe
             j1/j2/j3... (convención de CLAUDE.md: id corta manual por día).
             Antes la lista de ids a mostrar estaba fijada a mano (['j1','j2'])
             y se desincronizaba cada vez que se añadía una nueva desde el
-            editor — encontrado en producción con 'j3' (Recogida Evento
-            Empresa4) ya añadida pero nunca mostrada aquí. Con el patrón /^j\d+$/
+            editor — encontrado en producción con una 'j3' (una recogida de
+            evento) ya añadida pero nunca mostrada aquí. Con el patrón /^j\d+$/
             se recoge cualquier tarea con ese id sin volver a tocar este
             archivo. */}
         {(activeWeekData?.schedule?.jueves?.tasks || [])

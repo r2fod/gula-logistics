@@ -124,7 +124,7 @@ describe('quienFichaConEnlace', () => {
       f('Luis', '10-02', false),
       f('Eva', '10-02', undefined), // de antes de la marca
       f('Pau', '10-02', false, { deleted: true }),
-      f('Cliente13', '09-01', false), // hace más de 14 días
+      f('Sara', '09-01', false), // hace más de 14 días
     ], ahora);
     expect(r).toEqual({ conEnlace: ['Ana'], sinEnlace: ['Luis'] });
   });

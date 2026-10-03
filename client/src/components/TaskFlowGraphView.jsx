@@ -12,7 +12,7 @@ import BarraProgreso from './ui/BarraProgreso';
 // substring, así que se comprueba primero.
 const TASK_CATEGORY_RULES = [
   { test: (s) => s.includes('💒'), icon: PartyPopper, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-l-rose-500/70' },
-  { test: (s) => /jornada eventos|catering|evento (Empresa2|Empresa1)/i.test(s), icon: PartyPopper, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-l-pink-500/70' },
+  { test: (s) => /jornada eventos|catering/i.test(s), icon: PartyPopper, color: 'text-pink-400', bg: 'bg-pink-500/10', border: 'border-l-pink-500/70' },
   { test: (s) => /limpieza|vajilla/i.test(s), icon: Sparkles, color: 'text-teal-400', bg: 'bg-teal-500/10', border: 'border-l-teal-500/70' },
   { test: (s) => /devoluci[oó]n/i.test(s), icon: Undo2, color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-l-slate-500/70' },
   { test: (s) => /preparaci[oó]n|organizaci[oó]n|checklist/i.test(s), icon: ClipboardList, color: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-l-indigo-500/70' },

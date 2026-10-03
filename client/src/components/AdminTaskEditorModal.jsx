@@ -586,7 +586,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                           return (
                             <div className="flex flex-col gap-2">
                               <div>
-                                <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Evento (Ej: Boda Lugar1) — si es de varios, sepáralos con +</label>
+                                <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Evento (Ej: Boda Ana y Luis) — si es de varios, sepáralos con +</label>
                                 <div className="relative">
                                   <div className="flex flex-nowrap overflow-x-auto gap-2 mb-2 w-full pb-2 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x">
                                     {eventChips.map(name => {
