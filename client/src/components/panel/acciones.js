@@ -28,28 +28,28 @@ export const SECCIONES_MENU = [
 export function crearAcciones({ admin = false, avisando = false, enlaceSociasCopiado = false, enlaceSociasCargando = false } = {}, alHacer = {}) {
   const todas = [
     {
-      id: 'fichar', etiqueta: 'Fichar', etiquetaMenu: 'Registrar fichaje', icono: Clock, claseIcono: 'icono-reloj', tono: 'fichar',
+      id: 'fichar', etiqueta: 'Fichar', etiquetaMenu: 'Registrar fichaje', icono: Clock, claseIcono: 'icono-reloj', colorIcono: 'text-emerald-950', tono: 'fichar',
       lugares: ['barra', 'movil', 'menu'], seccion: 'operaciones', onClick: alHacer.fichar,
     },
     {
       id: 'avisar', etiqueta: avisando ? 'Avisando...' : 'Avisar Cambios', etiquetaMenu: avisando ? 'Avisando...' : 'Avisar cambios',
-      icono: Bell, claseIcono: 'icono-campana', tono: 'aviso', cargando: avisando,
+      icono: Bell, claseIcono: 'icono-campana', colorIcono: 'text-indigo-400', tono: 'aviso', cargando: avisando,
       lugares: ['barra', 'menu'], seccion: 'operaciones', visible: admin, onClick: alHacer.avisar,
     },
     {
-      id: 'planning', etiqueta: 'Planning', etiquetaMenu: 'Editor de planning semanal', icono: Edit3, tono: 'planning',
+      id: 'planning', etiqueta: 'Planning', etiquetaMenu: 'Editor de planning semanal', icono: Edit3, claseIcono: 'icono-bamboleo', colorIcono: 'text-orange-400', tono: 'planning',
       lugares: ['barra', 'menu'], seccion: 'operaciones', visible: admin && !!alHacer.editarPlanning, onClick: alHacer.editarPlanning,
     },
     {
-      id: 'trabajador', etiqueta: 'Trabajador', etiquetaMenu: 'Gestión de trabajadores', icono: Users, tono: 'equipo',
+      id: 'trabajador', etiqueta: 'Trabajador', etiquetaMenu: 'Gestión de trabajadores', icono: Users, claseIcono: 'icono-flotar', colorIcono: 'text-indigo-400', tono: 'equipo',
       lugares: ['barra', 'menu'], seccion: 'operaciones', visible: admin && !!alHacer.editarEquipo, onClick: alHacer.editarEquipo,
     },
     {
-      id: 'nominas', etiqueta: 'Nóminas', etiquetaMenu: 'Nóminas y horas extra', icono: DollarSign, colorIcono: 'text-amber-400', tono: 'neutro',
+      id: 'nominas', etiqueta: 'Nóminas', etiquetaMenu: 'Nóminas y horas extra', icono: DollarSign, claseIcono: 'icono-pop', colorIcono: 'text-amber-400', tono: 'neutro',
       lugares: ['barra', 'menu'], seccion: 'operaciones', visible: admin, onClick: alHacer.nominas,
     },
     {
-      id: 'gemini', etiqueta: 'Gemini AI', etiquetaMenu: 'Asistente IA Gemini', icono: Wand2, colorIcono: 'text-amber-400', claseIcono: 'icono-destello', tono: 'gemini',
+      id: 'gemini', etiqueta: 'Gemini AI', etiquetaMenu: 'Asistente IA Gemini', icono: Wand2, colorIcono: 'text-amber-950', claseIcono: 'icono-destello', tono: 'gemini',
       lugares: ['barra', 'menu'], seccion: 'operaciones', visible: admin, onClick: alHacer.gemini,
     },
     {
@@ -60,30 +60,30 @@ export function crearAcciones({ admin = false, avisando = false, enlaceSociasCop
     {
       id: 'enlaceSocias', etiqueta: enlaceSociasCopiado ? '¡Copiado!' : 'Link Socias',
       etiquetaMenu: enlaceSociasCopiado ? '¡Enlace copiado!' : 'Copiar link de socias',
-      icono: enlaceSociasCopiado ? Check : Copy, colorIcono: enlaceSociasCopiado ? 'text-emerald-400' : 'text-amber-400', tono: 'enlace',
+      icono: enlaceSociasCopiado ? Check : Copy, claseIcono: 'icono-pop', colorIcono: enlaceSociasCopiado ? 'text-emerald-400' : 'text-amber-400', tono: 'enlace',
       titulo: 'Copiar el enlace de solo lectura del Panel de Socias', cargando: enlaceSociasCargando,
       // Solo el admin: el enlace lo genera el servidor con su sesión.
       lugares: ['barra', 'menu'], seccion: 'compartir', visible: admin, onClick: alHacer.copiarEnlaceSocias,
     },
     {
-      id: 'vistaPublica', etiqueta: 'Vista Pública', etiquetaMenu: 'Vista pública de operativa', icono: Eye, colorIcono: 'text-amber-400', tono: 'publica',
+      id: 'vistaPublica', etiqueta: 'Vista Pública', etiquetaMenu: 'Vista pública de operativa', icono: Eye, claseIcono: 'icono-latido', colorIcono: 'text-amber-400', tono: 'publica',
       titulo: 'Vista Pública',
       lugares: ['barra', 'menu'], seccion: 'compartir', visible: !!alHacer.vistaPublica, onClick: alHacer.vistaPublica,
     },
     {
-      id: 'claves', etiqueta: 'Clave', etiquetaMenu: 'Claves y configuración', icono: KeyRound, colorIcono: 'text-slate-400', tono: 'claves',
+      id: 'claves', etiqueta: 'Clave', etiquetaMenu: 'Claves y configuración', icono: KeyRound, claseIcono: 'icono-girar', colorIcono: 'text-slate-400', tono: 'claves',
       lugares: ['cabecera', 'menu'], seccion: 'configuracion', visible: admin, onClick: alHacer.claves,
     },
     {
-      id: 'memoriaIa', etiqueta: 'Memoria IA', etiquetaMenu: 'Grafo de Conocimiento IA', icono: BrainCircuit, colorIcono: 'text-indigo-400', tono: 'neutro',
+      id: 'memoriaIa', etiqueta: 'Memoria IA', etiquetaMenu: 'Grafo de Conocimiento IA', icono: BrainCircuit, claseIcono: 'icono-bamboleo', colorIcono: 'text-indigo-400', tono: 'neutro',
       lugares: ['cabecera', 'menu'], seccion: 'configuracion', visible: admin && !!alHacer.memoriaIa, onClick: alHacer.memoriaIa,
     },
     {
-      id: 'nuevaSemana', etiqueta: 'Semana', etiquetaMenu: 'Añadir nueva semana', icono: Plus, colorIcono: 'text-amber-400', tono: 'semana',
+      id: 'nuevaSemana', etiqueta: 'Semana', etiquetaMenu: 'Añadir nueva semana', icono: Plus, claseIcono: 'icono-pop', colorIcono: 'text-amber-400', tono: 'semana',
       lugares: ['cabecera', 'menu'], seccion: 'configuracion', visible: admin, onClick: alHacer.nuevaSemana,
     },
     {
-      id: 'generarBorrador', etiqueta: 'Borrador Manual', etiquetaMenu: 'Generar borrador de semana manual', icono: RefreshCw, colorIcono: 'text-emerald-400', tono: 'aviso',
+      id: 'generarBorrador', etiqueta: 'Borrador Manual', etiquetaMenu: 'Generar borrador de semana manual', icono: RefreshCw, claseIcono: 'icono-girar', colorIcono: 'text-emerald-400', tono: 'aviso',
       lugares: ['cabecera', 'menu'], seccion: 'configuracion', visible: admin && !!alHacer.generarBorrador, onClick: alHacer.generarBorrador,
     },
   ];

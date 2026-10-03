@@ -105,11 +105,13 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
   // esa tarea en markTaskCompleted): nada las marca solas al pasar su hora. El
   // clic invierte lo que se VE (isTaskEffectivelyDone) y, al marcar, guarda la
   // hora real (`completedAt`).
-  const toggleTask = (dayKey, taskIdx) => {
-    const list = [...getTaskListForDay(activeWeek, dayKey)];
+  const toggleTask = (dayKey, taskIdx, targetWeekId = activeWeekId) => {
+    const semana = allWeeks[targetWeekId] || activeWeek;
+    if (!semana) return;
+    const list = [...getTaskListForDay(semana, dayKey)];
     const taskItem = list[taskIdx];
     if (taskItem === undefined) return;
-    const newCompleted = !isTaskEffectivelyDone(activeWeek, dayKey, taskItem, new Date());
+    const newCompleted = !isTaskEffectivelyDone(semana, dayKey, taskItem, new Date());
     const reopened = !newCompleted;
     const completedAt = newCompleted ? new Date().toISOString() : null;
     if (typeof taskItem === 'object') {
@@ -117,9 +119,9 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
     } else {
       list[taskIdx] = { text: taskItem, completed: newCompleted, reopened, completedAt };
     }
-    applyLocalWeeksState({ ...allWeeks, [activeWeekId]: { ...activeWeek, ...buildTaskListPatch(activeWeek, dayKey, list) } });
+    applyLocalWeeksState({ ...allWeeks, [targetWeekId]: { ...semana, ...buildTaskListPatch(semana, dayKey, list) } });
     lastLocalEditRef.current = Date.now();
-    patchTaskCompletionInAPI(activeWeekId, dayKey, taskIdx, newCompleted, reopened, completedAt);
+    patchTaskCompletionInAPI(targetWeekId, dayKey, taskIdx, newCompleted, reopened, completedAt);
   };
 
   // `taskRef`: la del fichaje de entrada (refDeTareaFichada). Se marca en SU semana (el

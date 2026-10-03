@@ -20,25 +20,28 @@ export function useClockings(markTaskCompleted) {
   });
 
   const handleClockEntryCreated = (newEntry) => {
-    const updated = [...clockEntries, newEntry];
-    setClockEntries(updated);
-    try {
-      localStorage.setItem('gula_clock_entries_v1', JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
-    saveClockEntryToAPI(newEntry);
-
-    // Al fichar salida de una tarea concreta (fichada con taskRef desde
-    // "Fichar Esta Tarea" / "Fichar Entrada Ahora"), marcarla como hecha
-    // sola en el planning — se busca en los fichajes previos a este (el
-    // array `clockEntries` de este cierre, sin el `newEntry` todavía).
-    if (newEntry.type === 'salida' && markTaskCompleted) {
-      const closingShift = getActiveShiftForWorker(clockEntries, newEntry.workerName);
-      if (closingShift?.taskRef) {
-        markTaskCompleted(closingShift.taskRef);
+    setClockEntries(prev => {
+      const updated = [...prev, newEntry];
+      try {
+        localStorage.setItem('gula_clock_entries_v1', JSON.stringify(updated));
+      } catch (e) {
+        console.error(e);
       }
-    }
+      
+      // Al fichar salida de una tarea concreta (fichada con taskRef desde
+      // "Fichar Esta Tarea" / "Fichar Entrada Ahora"), marcarla como hecha
+      // sola en el planning — se busca en los fichajes previos a este (el
+      // array `prev` de este cierre, sin el `newEntry` todavía).
+      if (newEntry.type === 'salida' && markTaskCompleted) {
+        const closingShift = getActiveShiftForWorker(prev, newEntry.workerName);
+        if (closingShift?.taskRef) {
+          markTaskCompleted(closingShift.taskRef);
+        }
+      }
+      return updated;
+    });
+    
+    saveClockEntryToAPI(newEntry);
   };
 
   const handleUpdateClockEntry = async (updatedEntry) => {

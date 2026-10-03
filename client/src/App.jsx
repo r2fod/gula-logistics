@@ -506,7 +506,7 @@ export default function App() {
           clockEntries={currentWeekClockEntries}
           fichajesDeTodo={activeClockEntries}
           isAdmin={isAdmin}
-          onToggleTask={(dayKey, taskIdx) => toggleTask(dayKey, taskIdx)}
+          onToggleTask={(dayKey, taskIdx, weekId) => toggleTask(dayKey, taskIdx, weekId)}
           onClockEntryCreated={handleClockEntryCreated}
           onUpdateClockEntry={handleUpdateClockEntry}
           onDeleteClockEntry={handleDeleteClockEntry}
@@ -583,6 +583,7 @@ export default function App() {
           initialWorkerName={trabajadorActivo}
           clockEntries={currentWeekClockEntries}
           onClockEntryCreated={handleClockEntryCreated}
+          isAdmin={isAdmin}
         />
       </div>
     );
@@ -627,6 +628,7 @@ export default function App() {
           initialWorkerName={trabajadorActivo}
           clockEntries={currentWeekClockEntries}
           onClockEntryCreated={handleClockEntryCreated}
+          isAdmin={isAdmin}
         />
 
         <AdminLoginModal
@@ -678,7 +680,7 @@ export default function App() {
         onOpenShareModal={() => setIsShareModalOpen(true)}
         onOpenAddWeek={() => setIsWeekModalOpen(true)}
         onTogglePublicView={() => setIsPublicPreviewMode(true)}
-        onToggleTask={(dayKey, taskIdx) => toggleTask(dayKey, taskIdx)}
+        onToggleTask={(dayKey, taskIdx, weekId) => toggleTask(dayKey, taskIdx, weekId)}
         onUpdateClockEntry={handleUpdateClockEntry}
         onDeleteClockEntry={handleDeleteClockEntry}
         onRestoreClockEntry={handleRestoreClockEntry}
@@ -693,6 +695,7 @@ export default function App() {
         initialWorkerName={trabajadorActivo}
         clockEntries={currentWeekClockEntries}
         onClockEntryCreated={handleClockEntryCreated}
+        isAdmin={isAdmin}
       />
 
       <WeekManagerModal

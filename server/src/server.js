@@ -43,7 +43,56 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Conexión a MongoDB Atlas mediante variable de entorno MONGODB_URI
 if (process.env.MONGODB_URI) {
   mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('MongoDB Atlas conectado correctamente (Saldos y Fichajes sincronizados)'))
+    .then(async () => {
+      console.log('MongoDB Atlas conectado correctamente (Saldos y Fichajes sincronizados)');
+      try {
+        const { WorkerBalance } = await import('./models/WorkerBalance.model.js');
+        const { TeamRoster } = await import('./models/TeamRoster.model.js');
+        // Usamos updateMany porque el campo 'id' colisiona con el getter virtual de Mongoose
+        await WorkerBalance.updateMany(
+          { id: /Persona5/i },
+          { $set: { id: 'Persona5' } }
+        );
+
+        const workersToFix = await WorkerBalance.find({ name: /Persona5/i });
+        for (const w of workersToFix) {
+          w.name = w.name.replace(/Persona5/i, 'Persona5');
+          await w.save();
+        }
+
+        const rosterDoc = await TeamRoster.findOne({ key: 'roster' });
+        if (rosterDoc) {
+          let changed = false;
+          rosterDoc.workers.forEach(w => {
+            if (/Persona5/i.test(w.name)) {
+              w.name = w.name.replace(/Persona5/i, 'Persona5');
+              changed = true;
+            }
+          });
+          if (changed) await rosterDoc.save();
+        }
+        
+        // MIGRACIÓN: Asignar fecha a conceptos heredados (anteriores a Octubre)
+        const allWorkers = await WorkerBalance.find({});
+        for (const w of allWorkers) {
+          let wChanged = false;
+          if (w.breakdown && w.breakdown.length > 0) {
+            w.breakdown.forEach(item => {
+              if (!item.date) {
+                // Si no tiene fecha, es de la operativa inicial de septiembre
+                item.date = '2026-09-30';
+                wChanged = true;
+              }
+            });
+          }
+          if (wChanged) await w.save();
+        }
+        
+        console.log('Migración completa (WorkerBalance + TeamRoster array + fechas de septiembre)');
+      } catch (err) {
+        console.error('Error migrando nombres Persona5:', err);
+      }
+    })
     .catch((err) => console.error('Error al conectar con MongoDB Atlas:', err.message));
 } else {
   console.log('Modo backend local sin MONGODB_URI (Respaldo en memoria local activo)');

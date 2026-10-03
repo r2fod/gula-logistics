@@ -45,7 +45,7 @@ export function BarraPestanas({ activa, onSeleccionar, contadorFichajes = 0 }) {
           style={{ left: marca.left, width: marca.width }}
         />
       )}
-      {PESTANAS.map(({ id, etiqueta, icono: Icono, vivo, hover, contador }) => {
+      {PESTANAS.map(({ id, etiqueta, icono: Icono, vivo, hover, contador, colorIcono }) => {
         const esActiva = activa === id;
         return (
           <button
@@ -61,7 +61,7 @@ export function BarraPestanas({ activa, onSeleccionar, contadorFichajes = 0 }) {
           >
             <Icono
               key={esActiva ? 'activa' : 'inactiva'}
-              className={`w-3.5 h-3.5 ${vivo ? `animate-pulse ${esActiva ? '' : 'text-rose-400'}` : esActiva ? 'animate-pop' : ''}`}
+              className={`w-3.5 h-3.5 ${vivo ? `animate-pulse ${esActiva ? '' : 'text-rose-400'}` : esActiva ? 'animate-pop' : (colorIcono || '')}`}
               aria-hidden="true"
             />
             <span>{etiqueta}</span>
@@ -86,7 +86,7 @@ export function BarraInferior({ activa, onSeleccionar, onAbrirMenu }) {
       className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-950/95 backdrop-blur-xl border-t border-slate-800 px-3 py-1.5 flex items-center justify-around shadow-2xl safe-bottom"
     >
       {ORDEN_MOVIL.map(id => {
-        const { corta, icono: Icono, vivo } = PESTANAS.find(p => p.id === id);
+        const { corta, icono: Icono, vivo, hover, colorIcono } = PESTANAS.find(p => p.id === id);
         const esActiva = activa === id;
         return (
           <button
@@ -94,14 +94,14 @@ export function BarraInferior({ activa, onSeleccionar, onAbrirMenu }) {
             type="button"
             onClick={() => onSeleccionar(id)}
             aria-current={esActiva ? 'page' : undefined}
-            className={`relative flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all duration-300 ${
+            className={`relative flex flex-col items-center justify-center py-1 px-2 rounded-xl transition-all duration-300 ${hover || ''} ${
               esActiva ? `${vivo ? 'text-emerald-400' : 'text-amber-400'} font-extrabold scale-105` : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             {esActiva && <span aria-hidden="true" className={`absolute -top-1.5 h-0.5 w-8 rounded-full animate-aparecer ${vivo ? 'bg-emerald-400' : 'bg-amber-400'}`} />}
             <Icono
               key={esActiva ? 'activa' : 'inactiva'}
-              className={`w-5 h-5 mb-0.5 ${vivo ? `animate-pulse ${esActiva ? '' : 'text-rose-400'}` : esActiva ? 'animate-pop' : ''}`}
+              className={`w-5 h-5 mb-0.5 ${vivo ? `animate-pulse ${esActiva ? '' : 'text-rose-400'}` : esActiva ? 'animate-pop' : (colorIcono || '')}`}
               aria-hidden="true"
             />
             <span className="text-[10px]">{corta}</span>

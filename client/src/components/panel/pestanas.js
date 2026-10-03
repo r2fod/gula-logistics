@@ -12,13 +12,13 @@ import { Radio, Calendar, Zap, Truck, TrendingUp, Wallet, ClipboardList } from '
 // - hover: clase de la animación propia del icono al pasar el ratón (index.css).
 // - contador: la etiqueta lleva el número de fichajes.
 export const PESTANAS = [
-  { id: 'live', alias: ['directo'], etiqueta: 'Actividad en tiempo real', corta: 'En vivo', icono: Radio, vivo: true },
-  { id: 'schedule', alias: ['planning', 'cuadrante'], etiqueta: 'Cuadrante semanal', corta: 'Cuadrante', icono: Calendar },
-  { id: 'graph', alias: ['grafo'], etiqueta: 'Grafo y flujo', corta: 'Grafo', icono: Zap, hover: 'icono-destello' },
-  { id: 'logistics', alias: ['flota', 'bodas'], etiqueta: 'Flota y bodas', icono: Truck, hover: 'icono-camion' },
-  { id: 'balances', alias: ['saldos', 'acuerdos'], etiqueta: 'Saldos y acuerdos', corta: 'Saldos', icono: TrendingUp },
-  { id: 'financial', alias: ['financiero', 'resumen'], etiqueta: 'Resumen financiero', icono: Wallet },
-  { id: 'fichajes', alias: ['fichaje'], etiqueta: 'Historial de fichajes', icono: ClipboardList, contador: true },
+  { id: 'live', alias: ['directo'], etiqueta: 'Actividad en tiempo real', corta: 'En vivo', icono: Radio, vivo: true, hover: 'icono-latido', colorIcono: 'text-emerald-400' },
+  { id: 'schedule', alias: ['planning', 'cuadrante'], etiqueta: 'Cuadrante semanal', corta: 'Cuadrante', icono: Calendar, hover: 'icono-pop', colorIcono: 'text-sky-400' },
+  { id: 'graph', alias: ['grafo'], etiqueta: 'Grafo y flujo', corta: 'Grafo', icono: Zap, hover: 'icono-destello', colorIcono: 'text-amber-400' },
+  { id: 'logistics', alias: ['flota', 'bodas'], etiqueta: 'Flota y bodas', icono: Truck, hover: 'icono-camion', colorIcono: 'text-blue-400' },
+  { id: 'balances', alias: ['saldos', 'acuerdos'], etiqueta: 'Saldos y acuerdos', corta: 'Saldos', icono: TrendingUp, hover: 'icono-pop', colorIcono: 'text-emerald-400' },
+  { id: 'financial', alias: ['financiero', 'resumen'], etiqueta: 'Resumen financiero', icono: Wallet, hover: 'icono-bamboleo', colorIcono: 'text-amber-500' },
+  { id: 'fichajes', alias: ['fichaje'], etiqueta: 'Historial de fichajes', icono: ClipboardList, hover: 'icono-bamboleo', colorIcono: 'text-indigo-400', contador: true },
 ];
 
 // Atajos de la barra inferior del móvil, en su orden.
