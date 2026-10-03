@@ -80,7 +80,36 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
   const rango = useMemo(() => rangoDePeriodo(modo, ancla, allWeeks), [modo, ancla, allWeeks]);
   const turnos = useMemo(() => turnosDelPeriodo(turnosConTarifa, rango), [turnosConTarifa, rango]);
 
-  const balancesList = useMemo(() => Object.values(aggregateShiftsByWorker(turnos, workersList)), [turnos, workersList]);
+  // Lo apuntado a mano en Saldos en este periodo.
+  const conceptos = useMemo(() => conceptosDelPeriodo(saldos, rango, { incluirSinFecha: modo === 'todo' }), [saldos, rango, modo]);
+
+  const balancesList = useMemo(() => {
+    const list = Object.values(aggregateShiftsByWorker(turnos, workersList));
+    const copy = list.map(w => ({ ...w, shifts: [...w.shifts] }));
+
+    if (conceptos && conceptos.items) {
+      conceptos.items.forEach(it => {
+        if (it.tipo === 'pago') return; // pagos do not add to cost
+
+        let worker = copy.find(w => coincideNombre(w.name, it.persona));
+        if (!worker) {
+          worker = { id: it.persona.toLowerCase().replace(/\s+/g, '-'), name: it.persona, isPayroll: false, totalHours: 0, totalCost: 0, shifts: [] };
+          copy.push(worker);
+        }
+
+        worker.totalCost = (worker.totalCost || 0) + it.importe;
+
+        // Extract hours if it's a manual shift or bolsa
+        if (it.tipo === 'bolsa' || it.tipo === 'turno') {
+          const match = it.concepto.match(/(\d+(?:\.\d+)?)\s*h\b/i);
+          if (match) {
+            worker.totalHours = (worker.totalHours || 0) + parseFloat(match[1]);
+          }
+        }
+      });
+    }
+    return copy;
+  }, [turnos, workersList, conceptos]);
   const conHoras = useMemo(() => balancesList.filter(w => w.totalHours > 0).sort((a, b) => b.totalCost - a.totalCost), [balancesList]);
   const totalExtraExpense = balancesList.reduce((acc, w) => acc + (w.isPayroll ? 0 : w.totalCost), 0);
   const totalPayrollValuation = balancesList.reduce((acc, w) => acc + (w.isPayroll ? w.totalCost : 0), 0);
@@ -110,7 +139,6 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
 
   // Lo apuntado a mano en Saldos en este periodo, y lo previsto por el planning
   // de la semana (solo en la vista de una semana).
-  const conceptos = useMemo(() => conceptosDelPeriodo(saldos, rango, { incluirSinFecha: modo === 'todo' }), [saldos, rango, modo]);
   const estimado = useMemo(() => {
     if (modo !== 'semana') return null;
     const semana = Object.values(semanasDelPeriodo(allWeeks, rango)).find(w => w && !esBorradorSemana(w));
@@ -319,7 +347,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
       )}
 
       <div className={`grid grid-cols-1 gap-4 sm:gap-6 items-stretch ${estimado ? 'lg:grid-cols-2' : ''}`}>
-        <ConceptosAMano conceptos={conceptos} extrasFichados={totalExtraExpense} todo={modo === 'todo'} retraso={560} />
+        <ConceptosAMano conceptos={conceptos} extrasFichados={totalExtraExpense - conceptos.total} todo={modo === 'todo'} retraso={560} />
         {estimado && (
           <PrevistoPlanning
             estimado={estimado}

@@ -10,9 +10,9 @@ export function textoResumenWhatsApp({ etiqueta, personas = [], totalExtras = 0,
     '📋 *Gula Logística — Resumen de personal*',
     `📅 ${etiqueta}`,
     '',
-    `💶 *Extras a pagar:* ${formatearEuros(totalExtras)}`,
+    `💶 *Extras a pagar:* ${formatearEuros(totalExtras - (conceptos?.total || 0))}`,
     `⭐ *Valoración nóminas (interna):* ${formatearEuros(totalNomina)}`,
-    `⏱️ *Horas fichadas:* ${formatearHoras(totalHoras)}`,
+    `⏱️ *Horas (incl. a mano):* ${formatearHoras(totalHoras)}`,
   ];
 
   if (personas.length) {
@@ -23,7 +23,7 @@ export function textoResumenWhatsApp({ etiqueta, personas = [], totalExtras = 0,
     lineas.push('', '✍️ *Apuntado a mano en Saldos & Acuerdos:*');
     Object.entries(conceptos.porTipo).filter(([tipo]) => tipo !== 'pago')
       .forEach(([tipo, { importe }]) => lineas.push(`• ${TIPOS_CONCEPTO[tipo]}: ${formatearEurosConSigno(importe)}`));
-    lineas.push(`💰 *Coste (extras + a mano):* ${formatearEuros(totalExtras + conceptos.total)}`);
+    lineas.push(`💰 *Coste (extras fichados + a mano):* ${formatearEuros(totalExtras)}`);
     // Lo ya entregado resta del saldo de cada persona, pero no es coste.
     if (conceptos.pagado) lineas.push(`💵 *Ya pagado (efectivo, Bizum, adelantos):* ${formatearEuros(conceptos.pagado)}`);
   }
