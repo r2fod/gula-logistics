@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { construirEnlaceTrabajador, semanaPedidaEnEnlace, urlBase, enlaceTrabajador, enlaceSocias, enlaceVistaPublica, enlaceWhatsApp, abrirEnPestanaNueva } from './enlaces';
+import { construirEnlaceTrabajador, semanaPedidaEnEnlace, urlBase, enlaceTrabajador, enlaceSocias, enlaceVistaPublica, enlaceWhatsApp, abrirEnPestanaNueva, telefonoWhatsApp } from './enlaces';
 
 const semana = (dateRange, status = 'Operativa Activa') => ({ meta: { dateRange, status } });
 const semanas = {
@@ -89,5 +89,21 @@ describe('abrirEnPestanaNueva', () => {
     const abrir = vi.spyOn(window, 'open').mockReturnValue(null);
     expect(() => abrirEnPestanaNueva('https://ejemplo.test')).not.toThrow();
     abrir.mockRestore();
+  });
+});
+
+describe('WhatsApp a un teléfono', () => {
+  it('normaliza el teléfono (un móvil español sin prefijo va con +34) y descarta lo que no lo es', () => {
+    expect(telefonoWhatsApp('600 11 22 33')).toBe('34600112233');
+    expect(telefonoWhatsApp('+34 600-11-22-33')).toBe('34600112233');
+    expect(telefonoWhatsApp('0034600112233')).toBe('34600112233');
+    expect(telefonoWhatsApp('1234')).toBeNull();
+    expect(telefonoWhatsApp('')).toBeNull();
+  });
+
+  it('con teléfono abre su chat (wa.me); sin él, se elige el contacto en WhatsApp', () => {
+    expect(enlaceWhatsApp('Hola', '600112233')).toBe('https://wa.me/34600112233?text=Hola');
+    expect(enlaceWhatsApp('Hola')).toBe('https://api.whatsapp.com/send?text=Hola');
+    expect(enlaceWhatsApp('Hola', 'no es un teléfono')).toBe('https://api.whatsapp.com/send?text=Hola');
   });
 });
