@@ -74,6 +74,9 @@ export function turnosDelPeriodo(shifts = [], rango) {
   });
 }
 
+// Horas de los turnos que empiezan dentro del periodo (a la media hora, como se pagan).
+export const horasDelPeriodo = (shifts = [], rango) => turnosDelPeriodo(shifts, rango).reduce((suma, s) => suma + (s.durationHours || 0), 0);
+
 // Semanas del planning que empiezan dentro del periodo (todas si es "todo"). Sirven
 // para los pax del desglose por evento: en la vista de una semana, "Evento X" trae
 // los pax de ESA semana, no los de otra donde el mismo evento se repite.
