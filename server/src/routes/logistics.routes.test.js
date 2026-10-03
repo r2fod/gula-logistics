@@ -6,6 +6,9 @@ import mongoose from 'mongoose';
 vi.mock('../models/LogisticsWeek.model.js', () => ({
   LogisticsWeek: { find: vi.fn(), findOne: vi.fn(), findOneAndUpdate: vi.fn(), create: vi.fn(), deleteOne: vi.fn() },
 }));
+vi.mock('../models/ClockEntry.model.js', () => ({
+  ClockEntry: { deleteMany: vi.fn() },
+}));
 vi.mock('../models/Logistics.model.js', () => ({
   Logistics: { findOne: vi.fn(), create: vi.fn() },
 }));
@@ -17,6 +20,7 @@ vi.mock('../models/AdminConfig.model.js', () => ({
 }));
 
 const { LogisticsWeek } = await import('../models/LogisticsWeek.model.js');
+const { ClockEntry } = await import('../models/ClockEntry.model.js');
 const logisticsRoutes = (await import('./logistics.routes.js')).default;
 const { signToken } = await import('../utils/authToken.js');
 
@@ -444,5 +448,26 @@ describe('POST /api/logistics/weeks/draft (borradores automáticos: nunca pisan 
     expect((await enviar({ weekId: 'week_ok', week: { name: 'X', meta: { status: 'Operativa Activa' } } })).status).toBe(400);
     expect((await enviar({ weekId: 'week_ok' })).status).toBe(400);
     expect(LogisticsWeek.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /api/logistics/optimize (vaciar la papelera de fichajes)', () => {
+  it('borra solo los fichajes de la papelera y dice cuántos', async () => {
+    ClockEntry.deleteMany.mockResolvedValue({ deletedCount: 3 });
+    const res = await request(buildApp()).post('/api/logistics/optimize').set('Authorization', adminAuthHeader());
+    expect(ClockEntry.deleteMany).toHaveBeenCalledWith({ deleted: true });
+    expect(res.body).toMatchObject({ success: true, borrados: 3 });
+  });
+
+  it('BUG evitado: sin Mongo ya no dice que ha vaciado nada (503)', async () => {
+    mongoose.connection.readyState = 0;
+    const res = await request(buildApp()).post('/api/logistics/optimize').set('Authorization', adminAuthHeader());
+    expect(res.status).toBe(503);
+    expect(ClockEntry.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it('sin sesión de admin, 401', async () => {
+    const res = await request(buildApp()).post('/api/logistics/optimize');
+    expect(res.status).toBe(401);
   });
 });

@@ -10,6 +10,11 @@ import { coincideNombre } from './nombresTrabajadores';
 
 export const ZOMBIE_SHIFT_HOURS = 16;
 
+// Turno largo: se paga entero (hay jornadas así de verdad), pero el admin recibe un
+// aviso para revisarlo por si fue un olvido de fichar la salida (revisionFichajes.js).
+// Antes se cortaba aquí sin avisar y esas horas se perdían.
+export const HORAS_TURNO_LARGO = 14;
+
 // `activeEntry` es el fichaje de entrada abierto (lo que devuelve
 // getActiveShiftForWorker, o activeShifts[worker] de pairShiftsFromEntries).
 export function isZombieShift(activeEntry, now = new Date()) {
@@ -91,13 +96,8 @@ export function pairShiftsFromEntries(entries = []) {
       const startDate = new Date(startEntry.timestamp);
       const endDate = new Date(timestamp);
       const totalDiffMs = endDate - startDate;
-      let rawDuration = Math.max(0, totalDiffMs / (1000 * 60 * 60));
-      let isAnomalous = false;
-
-      if (rawDuration > 14) {
-        rawDuration = 14;
-        isAnomalous = true;
-      }
+      const rawDuration = Math.max(0, totalDiffMs / (1000 * 60 * 60));
+      const isAnomalous = rawDuration > HORAS_TURNO_LARGO;
 
       // Se paga a la media hora más cercana (para cerrar en billetes de 5€
       // o 10€ a la tarifa base, no en céntimos): *2 desplaza cada media
@@ -123,7 +123,7 @@ export function pairShiftsFromEntries(entries = []) {
       if (startEntry.taskName === 'JORNADA') {
         // V2 Shift
         active.tasks.forEach(t => {
-          // Normalize subtask duration so it doesn't exceed total (in case of anomalous cap)
+          // Cada tramo, en proporción a lo que duró dentro del turno ya redondeado.
           const ratio = rawDuration > 0 ? (t.durationHours / (totalDiffMs / (1000 * 60 * 60))) : 0;
           const adjustedDuration = durationHours * ratio;
           

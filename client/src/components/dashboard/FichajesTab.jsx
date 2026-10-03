@@ -5,6 +5,8 @@ import BarraFiltros from './fichajes/BarraFiltros';
 import GrupoDia from './fichajes/GrupoDia';
 import FilaFichaje, { PLANTILLA_FILA } from './fichajes/FilaFichaje';
 import Papelera from './fichajes/Papelera';
+import RevisionFichajes from './fichajes/RevisionFichajes';
+import { revisarFichajes } from '../../data/revisionFichajes';
 import { pairShiftsFromEntries, isZombieShift } from '../../data/shiftCalculations';
 import { filtrarFichajes, agruparPorDia, turnosPorSalida, contarPorTipo, personasDe, hayFiltros, claveDia } from '../../data/fichajesAgrupados';
 import { formatearHoras, formatearNumero } from '../../data/formatoFinanciero';
@@ -26,7 +28,10 @@ export default function FichajesTab({
   handleOpenEditEntry,
   onDeleteClockEntry,
   fichajesBorrados = [],
-  onRestoreClockEntry = null
+  onRestoreClockEntry = null,
+  onDeleteClockEntries = null,
+  onVaciarPapelera = null,
+  onMarcarRevisado = null
 }) {
   const ahora = useAhora();
   const { confirm } = useDialog();
@@ -42,6 +47,7 @@ export default function FichajesTab({
   const grupos = useMemo(() => agruparPorDia(visibles, shifts), [visibles, shifts]);
   const cuentas = useMemo(() => contarPorTipo(clockEntries), [clockEntries]);
   const personas = useMemo(() => personasDe(clockEntries), [clockEntries]);
+  const revision = useMemo(() => revisarFichajes(clockEntries, ahora), [clockEntries, ahora]);
 
   const enTurno = Object.values(activeShifts);
   const idsEnCurso = new Set(enTurno.map(e => e.id));
@@ -136,6 +142,10 @@ export default function FichajesTab({
         </div>
       )}
 
+      {adminUnlocked && onDeleteClockEntries && onMarcarRevisado && (
+        <RevisionFichajes revision={revision} onEditar={handleOpenEditEntry} onMarcarRevisado={onMarcarRevisado} onMoverAPapelera={onDeleteClockEntries} />
+      )}
+
       {clockEntries.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900 px-4 py-14 text-center">
           <ClipboardList className="mx-auto h-9 w-9 animate-flotar text-slate-600" aria-hidden="true" />
@@ -197,7 +207,7 @@ export default function FichajesTab({
         </>
       )}
 
-      {adminUnlocked && onRestoreClockEntry && <Papelera borrados={fichajesBorrados} onRestaurar={onRestoreClockEntry} />}
+      {adminUnlocked && onRestoreClockEntry && <Papelera borrados={fichajesBorrados} onRestaurar={onRestoreClockEntry} onVaciar={onVaciarPapelera} />}
     </div>
   );
 }

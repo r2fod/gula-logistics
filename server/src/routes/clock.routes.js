@@ -64,6 +64,8 @@ router.post('/', async (req, res) => {
     // siempre, vengan o no en la petición.
     delete newEntryData.earnings;
     delete newEntryData.durationHours;
+    // Dar por bueno un turno largo es cosa del admin (PUT): fichando no se puede.
+    delete newEntryData.revisado;
     // rate SÍ es legítimo que lo mande el cliente (algunos fichajes usan
     // una tarifa distinta a la de por defecto, ver AdminClockEditModal),
     // pero acotado a un rango razonable — nunca 0, negativo, ni una

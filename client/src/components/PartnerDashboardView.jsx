@@ -20,6 +20,7 @@ import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminSettingsModal from './AdminSettingsModal';
 import AdminAiMemoryModal from './AdminAiMemoryModal';
 import AvisoDeshacerIa from './panel/AvisoDeshacerIa';
+import AvisoTurnosLargos from './dashboard/fichajes/AvisoTurnosLargos';
 import SemanaBorradorBanner from './SemanaBorradorBanner';
 import DisponibilidadSemana from './planning/DisponibilidadSemana';
 import RevisionIaBorrador from './panel/RevisionIaBorrador';
@@ -64,6 +65,9 @@ export default function PartnerDashboardView({
   onUpdateClockEntry,
   onDeleteClockEntry,
   onRestoreClockEntry,
+  onDeleteClockEntries,
+  onVaciarPapelera,
+  onMarcarRevisado,
   deletedClockEntries = [],
   onClockEntryCreated,
   onOpenWorkerEditor,
@@ -228,6 +232,10 @@ export default function PartnerDashboardView({
         </div>
       )}
 
+      {adminUnlocked && activeTab !== 'fichajes' && (
+        <AvisoTurnosLargos fichajes={clockEntries} onRevisar={() => handleTabClick('fichajes')} />
+      )}
+
       {adminUnlocked && (
         <AvisoDeshacerIa aviso={deshacerIa} cambiada={cambiadaTrasIa} onDeshacer={onDeshacerIa} onCerrar={onOlvidarDeshacerIa} />
       )}
@@ -274,6 +282,9 @@ export default function PartnerDashboardView({
           onDeleteClockEntry={onDeleteClockEntry}
           fichajesBorrados={deletedClockEntries}
           onRestoreClockEntry={onRestoreClockEntry}
+          onDeleteClockEntries={onDeleteClockEntries}
+          onVaciarPapelera={onVaciarPapelera}
+          onMarcarRevisado={onMarcarRevisado}
         />
       )}
 
@@ -348,6 +359,7 @@ export default function PartnerDashboardView({
       <AdminSettingsModal
         isOpen={isAdminSettingsOpen}
         onClose={() => setIsAdminSettingsOpen(false)}
+        onIrAFichajes={() => { setIsAdminSettingsOpen(false); handleTabClick('fichajes'); }}
       />
 
       <AdminAiMemoryModal

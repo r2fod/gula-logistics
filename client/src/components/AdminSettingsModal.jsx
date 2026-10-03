@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Lock, KeyRound, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Settings, Lock, KeyRound, CheckCircle2, AlertCircle, RefreshCw, ClipboardCheck } from 'lucide-react';
 import { changeAdminPassword } from '../data/apiService';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input } from './ui/Campo';
-import { useDialog } from '../contexts/DialogContext';
 
-export default function AdminSettingsModal({ isOpen, onClose }) {
-  const { alert, confirm } = useDialog();
+// Cambiar la clave de admin, y el acceso a la revisión y limpieza de fichajes (que
+// vive en Fichajes: antes aquí había un «Optimizar y Limpiar Base de Datos» que
+// vaciaba la papelera sin decir qué ni cuántos borraba).
+export default function AdminSettingsModal({ isOpen, onClose, onIrAFichajes = null }) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -98,28 +99,6 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
           </div>
         )}
 
-        <div className="pt-2 border-t border-slate-800">
-          <h4 className="text-xs font-bold text-amber-500 mb-3">Mantenimiento de Sistema</h4>
-          <button
-            type="button"
-            onClick={async () => {
-              if (await confirm("¿Seguro que quieres optimizar la Base de Datos? Se purgarán los fichajes borrados.", { type: 'warning' })) {
-                try {
-                  const { optimizeDatabase } = await import('../data/apiService');
-                  const res = await optimizeDatabase();
-                  await alert(res.message || 'Optimizado con éxito', { type: 'success' });
-                } catch(e) {
-                  await alert('Error: ' + e.message, { type: 'error' });
-                }
-              }
-            }}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 text-xs font-bold transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Optimizar y Limpiar Base de Datos
-          </button>
-        </div>
-
         <div className="flex items-center space-x-3 pt-2">
           <button
             type="button"
@@ -147,6 +126,21 @@ export default function AdminSettingsModal({ isOpen, onClose }) {
           </button>
         </div>
       </form>
+
+      {onIrAFichajes && (
+        <div className="border-t border-slate-800 pt-5">
+          <h4 className="text-xs font-bold text-amber-500">Mantenimiento</h4>
+          <p className="mt-1 text-[11px] text-slate-400">En Fichajes: turnos muy largos para revisar, fichajes que sobran y la papelera.</p>
+          <button
+            type="button"
+            onClick={onIrAFichajes}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 py-3 text-xs font-bold text-amber-400 transition-colors hover:bg-amber-500/20"
+          >
+            <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
+            Revisar y limpiar fichajes
+          </button>
+        </div>
+      )}
     </Modal>
   );
 }

@@ -29,6 +29,8 @@ const ClockEntrySchema = new mongoose.Schema({
   earnings: { type: Number, default: 0 },
   status: { type: String, default: 'completado' },
   deleted: { type: Boolean, default: false },
+  // Turno largo que un admin ya revisó y dio por bueno: deja de avisar.
+  revisado: { type: Boolean },
   taskRef: TaskRefSchema
 }, {
   timestamps: true

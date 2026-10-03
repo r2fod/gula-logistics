@@ -93,6 +93,15 @@ describe('POST /api/clock', () => {
     );
   });
 
+  it('descarta `revisado` (dar por bueno un turno largo es solo del admin)', async () => {
+    ClockEntry.create.mockImplementation(async (data) => data);
+    const res = await request(buildApp())
+      .post('/api/clock')
+      .send({ id: '790', workerName: 'Carlos', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z', revisado: true });
+    expect(res.status).toBe(201);
+    expect(ClockEntry.create).toHaveBeenCalledWith(expect.not.objectContaining({ revisado: expect.anything() }));
+  });
+
   it('rechaza un rate fuera de rango razonable (ej. inventado por alguien sin pasar por la UI)', async () => {
     const app = buildApp();
     const res = await request(app)

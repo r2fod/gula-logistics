@@ -16,8 +16,8 @@ describe('costeEnCurso', () => {
     expect(costeEnCurso({ entrada, ahora: a(11), ficha, horasPrevias: 3 }).coste).toBe(20);
   });
 
-  it('tope de 14 h (un olvido de fichar la salida no sube sin fin) y entrada rara = 0', () => {
-    expect(costeEnCurso({ entrada, ahora: new Date(2026, 8, 29, 12), tarifa: 10 })).toEqual({ horas: 14, coste: 140 });
+  it('BUG evitado: sin tope de 14 h (como al cerrar; antes se perdían horas reales); entrada rara = 0', () => {
+    expect(costeEnCurso({ entrada, ahora: a(23, 30), tarifa: 10 })).toEqual({ horas: 14.5, coste: 145 });
     expect(costeEnCurso({ entrada: { timestamp: 'x' } })).toEqual({ horas: 0, coste: 0 });
   });
 });

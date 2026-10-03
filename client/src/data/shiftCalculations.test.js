@@ -96,6 +96,15 @@ describe('pairShiftsFromEntries', () => {
     expect(activeShifts).toEqual({});
   });
 
+  it('BUG evitado: un turno de 19 h se paga entero (antes se cortaba a 14 h sin avisar) y queda marcado como largo', () => {
+    const entries = [
+      entry({ id: '1', workerName: 'Eva', type: 'entrada', timestamp: '2026-09-26T02:30:00.000Z' }),
+      entry({ id: '2', workerName: 'Eva', type: 'salida', timestamp: '2026-09-26T21:30:00.000Z' }),
+    ];
+    const { shifts } = pairShiftsFromEntries(entries);
+    expect(shifts[0]).toMatchObject({ durationHours: 19, cost: 190, isAnomalous: true });
+  });
+
   it('redondea a la media hora más cercana, NO a la hora completa', () => {
     // 2h31m está a 1min de 2.5h y a 29min de 3h -> debe quedarse en 2.5h.
     // Es el caso que distingue "redondeo a la hora" (bug) de "redondeo a la
