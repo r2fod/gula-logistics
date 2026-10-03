@@ -25,8 +25,7 @@ _Solo lo que sigue abierto (actualizado el 28/09/2026). Lo resuelto se borra de 
 
 ## Saldos y Resumen Financiero (28/09)
 - [ ] **Apuntes antiguos con la fecha falsa 30/09** (migración del servidor del 03/10, ya quitada): la app la ignora en los que no llevan `tipo` (`conceptosSaldos.js`). Con permiso del usuario, borrar ese `date` en Atlas (47 apuntes sin `tipo` y la bolsa acumulada) y quitar la excepción del código.
-- [ ] **2 turnos abiertos desde el domingo 20/09 a las 04:00** (salida olvidada): salen como «REVISAR» y no suman. Corregirlos a mano en Fichajes.
-- [ ] **`client/api_data.json` en la copia de `main`**: volcado de fichajes reales sin subir (ya en `.gitignore`). Borrarlo si no hace falta.
+- [ ] **`client/api_data.json` en la copia de `main`**: volcado de fichajes reales del 03/10 (ya en `.gitignore`, nunca al repo). Es la única copia de los 38 fichajes que había en la papelera: alguien la vació ese día fuera de la app (no hay código que lo haga). Guardarlo hasta decidir si hace falta recuperar alguno; luego borrarlo.
 - [ ] Revisar en producción con sesión de admin: Saldos (dos grupos y el saldo subiendo con alguien en turno), "Ver sus horas por evento", el Resumen con lo apuntado a mano y lo previsto, copiar para WhatsApp y la papelera del Historial.
 
 ## Auditoría 28/09 — lo que queda
