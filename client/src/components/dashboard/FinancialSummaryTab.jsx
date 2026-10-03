@@ -98,19 +98,14 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
         }
 
         worker.totalCost = (worker.totalCost || 0) + it.importe;
-
-        // Extract hours if it's a manual shift or bolsa
-        if (it.tipo === 'bolsa' || it.tipo === 'turno') {
-          const match = it.concepto.match(/(\d+(?:\.\d+)?)\s*h\b/i);
-          if (match) {
-            worker.totalHours = (worker.totalHours || 0) + parseFloat(match[1]);
-          }
-        }
+        worker.totalHours = (worker.totalHours || 0) + (it.horas || 0); // turnos y bolsa a mano (horasDeConcepto)
       });
     }
     return copy;
   }, [turnos, workersList, conceptos]);
-  const conHoras = useMemo(() => balancesList.filter(w => w.totalHours > 0).sort((a, b) => b.totalCost - a.totalCost), [balancesList]);
+  // Quien tiene horas o dinero en el periodo (alguien con solo un ajuste a mano, sin horas,
+  // también suma en el total: si no saliera en la lista, la lista no cuadraría con él).
+  const conHoras = useMemo(() => balancesList.filter(w => w.totalHours > 0 || Math.abs(w.totalCost || 0) > 0.005).sort((a, b) => b.totalCost - a.totalCost), [balancesList]);
   const totalExtraExpense = balancesList.reduce((acc, w) => acc + (w.isPayroll ? 0 : w.totalCost), 0);
   const totalPayrollValuation = balancesList.reduce((acc, w) => acc + (w.isPayroll ? w.totalCost : 0), 0);
   const totalHoras = balancesList.reduce((acc, w) => acc + w.totalHours, 0);
@@ -126,16 +121,25 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
     [turnos, allWeeks, workersList, paxByEvent, resolveEvent]
   );
   const horasEstimadas = eventsList.reduce((acc, e) => acc + (e.horasEstimadas || 0), 0);
-  const costeEventos = eventsList.reduce((acc, e) => acc + e.totalCost, 0);
+  // Lo apuntado a mano no es de ningún evento: va en su propia fila, para que el total
+  // del desglose por evento sea el mismo que el de "Coste por trabajador".
+  const aManoSinEvento = useMemo(() => {
+    const items = (conceptos?.items || []).filter(it => it.tipo !== 'pago');
+    return items.length ? { coste: conceptos.total, horas: items.reduce((suma, it) => suma + (it.horas || 0), 0), items } : null;
+  }, [conceptos]);
+  const costeEventos = eventsList.reduce((acc, e) => acc + e.totalCost, 0) + (aManoSinEvento?.coste || 0);
+  const horasEventos = eventsList.reduce((acc, e) => acc + e.totalHours, 0) + (aManoSinEvento?.horas || 0);
 
   const serie = useMemo(() => serieDelPeriodo(turnos, rango), [turnos, rango]);
 
   // Comparación con el periodo anterior (no tiene sentido en "todo").
   const variacion = useMemo(() => {
     if (modo === 'todo') return null;
+    // Con lo apuntado a mano, como el "Coste de personal" que se compara.
     const anterior = rangoDePeriodo(modo, moverPeriodo(modo, ancla, -1), allWeeks);
-    return variacionPorcentual(costeTotal(turnos), costeTotal(turnosDelPeriodo(turnosConTarifa, anterior)));
-  }, [modo, ancla, allWeeks, turnosConTarifa, turnos]);
+    const aManoAnterior = conceptosDelPeriodo(saldos, anterior).total;
+    return variacionPorcentual(costeTotal(turnos) + conceptos.total, costeTotal(turnosDelPeriodo(turnosConTarifa, anterior)) + aManoAnterior);
+  }, [modo, ancla, allWeeks, turnosConTarifa, turnos, conceptos, saldos]);
 
   // Lo apuntado a mano en Saldos en este periodo, y lo previsto por el planning
   // de la semana (solo en la vista de una semana).
@@ -293,7 +297,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-stretch">
-            <Seccion titulo="Desglose por evento" subtitulo="Pulsa un evento para ver quién trabajó en él" icono={Layers} color="text-indigo-300" retraso={420} pie={<TotalPie horas={eventsList.reduce((a, e) => a + e.totalHours, 0)} coste={costeEventos} />}>
+            <Seccion titulo="Desglose por evento" subtitulo="Pulsa un evento para ver quién trabajó en él" icono={Layers} color="text-indigo-300" retraso={420} pie={<TotalPie horas={horasEventos} coste={costeEventos} />}>
               {horasEstimadas > 0.05 && (
                 <p className="flex items-start gap-2 border-b border-slate-800 bg-slate-950/50 px-3.5 sm:px-5 py-2.5 text-[11px] leading-snug text-slate-400">
                   <Info className="mt-px h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden="true" />
@@ -317,6 +321,17 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
                     retraso={460 + i * PASO_FILA}
                   />
                 ))}
+                {aManoSinEvento && (
+                  <FilaDesglose
+                    titulo="✍️ Apuntado a mano (sin evento)"
+                    nota="Turnos a mano, bolsa, transporte y ajustes de Saldos"
+                    horas={aManoSinEvento.horas}
+                    coste={aManoSinEvento.coste}
+                    porcentaje={costeEventos > 0 ? (aManoSinEvento.coste / costeEventos) * 100 : 0}
+                    detalle={aManoSinEvento.items.map(it => ({ nombre: `${it.persona}: ${it.concepto}`, horas: it.horas, coste: it.importe }))}
+                    retraso={460 + eventsList.length * PASO_FILA}
+                  />
+                )}
               </ul>
             </Seccion>
 
@@ -340,13 +355,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
                       const manualesDelTrabajador = (conceptos?.items || []).filter(it => it.tipo !== 'pago' && coincideNombre(w.name, it.persona));
                       if (manualesDelTrabajador.length > 0) {
                         const costeManual = manualesDelTrabajador.reduce((suma, it) => suma + it.importe, 0);
-                        const horasManual = manualesDelTrabajador.reduce((suma, it) => {
-                          if (it.tipo === 'bolsa' || it.tipo === 'turno') {
-                            const match = it.concepto.match(/(\d+(?:\.\d+)?)\s*h\b/i);
-                            if (match) return suma + parseFloat(match[1]);
-                          }
-                          return suma;
-                        }, 0);
+                        const horasManual = manualesDelTrabajador.reduce((suma, it) => suma + (it.horas || 0), 0);
                         eventos.push({
                           nombre: 'Apuntado a mano (bolsa, ajustes...)',
                           icono: '✍️',

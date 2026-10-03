@@ -238,4 +238,9 @@ describe('parseEventAndTask — jornada sin tarea', () => {
     }
     expect(parseEventAndTask('Jornada Eventos: Catering Norte').eventName).not.toBe(GENERAL_EVENT);
   });
+
+  it('BUG evitado: la opción fija "📋 Asignado en Operativa Activa" del aviso de fichar es jornada general, no un evento del Resumen', () => {
+    expect(parseEventAndTask('📋 Asignado en Operativa Activa').eventName).toBe(GENERAL_EVENT);
+    expect(parseEventAndTask('Asignado en Operativa Activa').eventName).toBe(GENERAL_EVENT);
+  });
 });
