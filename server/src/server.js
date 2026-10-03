@@ -48,9 +48,17 @@ if (process.env.MONGODB_URI) {
       try {
         const { WorkerBalance } = await import('./models/WorkerBalance.model.js');
         const { TeamRoster } = await import('./models/TeamRoster.model.js');
-        await WorkerBalance.updateMany({ name: 'Jefferson' }, { $set: { name: 'Jeferson' } });
-        await TeamRoster.updateMany({ name: 'Jefferson' }, { $set: { name: 'Jeferson' } });
-        console.log('Migración de nombres Jeferson completada');
+        const workersToFix = await WorkerBalance.find({ name: /Jefferson/i });
+        for (const w of workersToFix) {
+          w.name = w.name.replace(/Jefferson/i, 'Jeferson');
+          await w.save();
+        }
+        const rosterToFix = await TeamRoster.find({ name: /Jefferson/i });
+        for (const r of rosterToFix) {
+          r.name = r.name.replace(/Jefferson/i, 'Jeferson');
+          await r.save();
+        }
+        console.log('Migración de nombres Jeferson Gula completada');
       } catch (err) {
         console.error('Error migrando nombres Jeferson:', err);
       }
