@@ -15,7 +15,10 @@ const AdminConfigSchema = new mongoose.Schema({
   // Versión de los enlaces firmados de los trabajadores (ven su propio saldo):
   // subirla los anula todos. NO depende de la contraseña de admin: cambiarla no
   // obliga a reenviar el enlace a todo el equipo.
-  trabajadoresVersion: { type: Number, default: 1 }
+  trabajadoresVersion: { type: Number, default: 1 },
+  // Con esto activado, para fichar hace falta el enlace personal de esa persona (o la
+  // sesión de admin): nadie puede fichar por otro con solo la URL de la API.
+  exigirEnlaceAlFichar: { type: Boolean, default: false }
 }, {
   timestamps: true
 });

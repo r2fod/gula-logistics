@@ -22,6 +22,19 @@ export function useClockings(markTaskCompleted) {
     }
   });
 
+  // Cambia los fichajes a partir de lo que hay AHORA (no de los del render) y guarda
+  // la copia local. Antes partía de los del render: al borrar varios seguidos, en
+  // pantalla solo quedaba en la papelera el último.
+  const actualizarLocal = (cambiar) => setClockEntries(prev => {
+    const updated = cambiar(prev);
+    try {
+      localStorage.setItem(CLAVE_LOCAL, JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
+    return updated;
+  });
+
   const handleClockEntryCreated = (newEntry) => {
     setClockEntries(prev => {
       const updated = [...prev, newEntry];
@@ -44,21 +57,13 @@ export function useClockings(markTaskCompleted) {
       return updated;
     });
     
-    saveClockEntryToAPI(newEntry);
+    Promise.resolve(saveClockEntryToAPI(newEntry)).then(async (r) => {
+      if (!r?.rechazado) return;
+      // El admin exige el enlace personal y este móvil no lo tiene: no se ha fichado.
+      actualizarLocal(prev => prev.filter(e => e.id !== newEntry.id));
+      await alert(`⚠️ No se ha fichado. ${r.rechazado}`, { type: 'warning' });
+    });
   };
-
-  // Cambia los fichajes a partir de lo que hay AHORA (no de los del render) y guarda
-  // la copia local. Antes partía de los del render: al borrar varios seguidos, en
-  // pantalla solo quedaba en la papelera el último.
-  const actualizarLocal = (cambiar) => setClockEntries(prev => {
-    const updated = cambiar(prev);
-    try {
-      localStorage.setItem(CLAVE_LOCAL, JSON.stringify(updated));
-    } catch (e) {
-      console.error(e);
-    }
-    return updated;
-  });
 
   const handleUpdateClockEntry = async (updatedEntry) => {
     actualizarLocal(prev => prev.map(e => e.id === updatedEntry.id ? updatedEntry : e));

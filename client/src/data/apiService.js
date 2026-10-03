@@ -278,6 +278,46 @@ export async function changeAdminPassword(currentPassword, newPassword) {
   }
 }
 
+// Cierra todas las sesiones de admin y deja sin efecto todos los enlaces de socias
+// enviados (también los antiguos con la sesión de admin dentro) SIN cambiar la clave.
+// Esta sesión sigue: el servidor devuelve una nueva. { ok, error }
+export async function cerrarSesionesEnAPI() {
+  try {
+    const res = await fetchConLimite(`${API_BASE}/auth/cerrar-sesiones`, {
+      method: 'POST',
+      headers: { ...authHeaders() }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.token) return { ok: false, error: data.error || 'No se pudieron cerrar las sesiones' };
+    setStoredAdminToken(data.token, data.expiresAt);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: 'No se pudo contactar con el servidor. Inténtalo de nuevo.' };
+  }
+}
+
+// Ajustes del admin (GET/PUT /api/auth/ajustes): { exigirEnlaceAlFichar }, o null si no se pudo.
+export async function fetchAjustesAdmin() {
+  try {
+    const res = await fetchConLimite(`${API_BASE}/auth/ajustes`, { headers: { ...authHeaders() } });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+export async function guardarAjustesAdmin(ajustes) {
+  try {
+    const res = await fetchConLimite(`${API_BASE}/auth/ajustes`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(ajustes)
+    });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 export function logoutAdmin() {
   cerrarAccesosGuardados();
 }
@@ -380,17 +420,28 @@ export function getPendingClockEntriesSnapshot() {
 
 /**
  * Create new clock entry in MongoDB / Backend API. Devuelve el documento
- * guardado si funciona, o `null` si no (el fichaje queda en la cola de
- * pendientes para reintentarlo más tarde, no se pierde).
+ * guardado si funciona, `{ rechazado: motivo }` si el servidor exige el enlace
+ * personal y no lo trae (no se reintenta: no serviría), o `null` si no se pudo
+ * (el fichaje queda en la cola de pendientes para reintentarlo, no se pierde).
  */
+// Cabeceras de un fichaje: la sesión de admin (deja apuntar fechas antiguas) y el
+// enlace personal de esa persona si este móvil lo tiene (el fichaje va firmado).
+function cabecerasDeFichaje(entry) {
+  const enlace = tokenTrabajador(entry.workerName);
+  return { 'Content-Type': 'application/json', ...authHeaders(), ...(enlace ? { 'X-Enlace': enlace } : {}) };
+}
+
 export async function saveClockEntryToAPI(entry) {
   try {
     const res = await fetchConLimite(`${API_BASE}/clock`, {
       method: 'POST',
-      // Con sesión de admin, el servidor deja apuntar fechas antiguas (sin ella, no).
-      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      headers: cabecerasDeFichaje(entry),
       body: JSON.stringify(entry)
     });
+    if (res.status === 401) {
+      const datos = await res.json().catch(() => ({}));
+      if (datos.codigo === 'ENLACE_REQUERIDO') return { rechazado: datos.error };
+    }
     if (res.ok) {
       // Por si este fichaje ya estaba en la cola de una sesión/pestaña
       // anterior y ahora se guarda por la vía normal.
@@ -424,7 +475,7 @@ export async function retryPendingClockEntries() {
     try {
       const res = await fetchConLimite(`${API_BASE}/clock`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        headers: cabecerasDeFichaje(entry),
         body: JSON.stringify(entry)
       });
       if (res.ok) {

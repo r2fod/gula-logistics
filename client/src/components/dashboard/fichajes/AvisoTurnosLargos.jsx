@@ -3,8 +3,8 @@ import { TriangleAlert } from 'lucide-react';
 import { revisarFichajes } from '../../../data/revisionFichajes';
 import { useAhora } from '../../../hooks/useAhora';
 
-// Aviso al admin, en cualquier pestaña, de los turnos de más de 14 h (cerrados o aún
-// abiertos) que nadie ha revisado. «Revisar» lleva a Fichajes, donde se corrigen o se
+// Aviso al admin, en cualquier pestaña, de los turnos de más de 14 h (o abiertos hace
+// más de 12 h) que nadie ha revisado. «Revisar» lleva a Fichajes, donde se corrigen o se
 // dan por buenos. Lleva su propio reloj para no repintar el panel entero.
 export default function AvisoTurnosLargos({ fichajes, onRevisar }) {
   const ahora = useAhora(60000);

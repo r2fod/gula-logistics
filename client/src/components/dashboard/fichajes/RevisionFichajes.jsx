@@ -13,7 +13,7 @@ const cuando = (fichajes) => {
 const botonFila = 'flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-bold';
 
 // Lo que encuentra revisarFichajes (solo admin). Sin nada que enseñar, no se pinta.
-// - Para revisar: turnos de más de 14 h, que cuentan enteros: se corrigen con «Editar»
+// - Para revisar: turnos de más de 14 h (o abiertos hace más de 12 h), que cuentan enteros: se corrigen con «Editar»
 //   o se dan por buenos con «Está bien» (y dejan de avisar).
 // - Sobran: no cuentan horas ni dinero: «A la papelera», uno a uno o todos.
 export default function RevisionFichajes({ revision, onEditar, onMarcarRevisado, onMoverAPapelera }) {

@@ -4,6 +4,7 @@ import { fetchBalancesFromAPI, saveWorkerBalanceToAPI } from '../data/apiService
 import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../data/shiftCalculations';
 import { fusionarSaldosConEquipo, buscarPorNombreDeSaldo } from '../data/saldosEquipo';
 import { esBorrador } from '../data/anticipacion';
+import { comprobarSemana } from '../data/checklistSemana';
 import { tareasDeLaVispera, fichadosDelDia } from '../data/vispera';
 import { useCopiado } from '../hooks/useCopiado';
 import { useEnlaceSocias } from '../hooks/useEnlaceSocias';
@@ -250,7 +251,12 @@ export default function PartnerDashboardView({
           week={activeWeekData}
           adminUnlocked={adminUnlocked}
           onAceptar={async () => {
-            if (!(await confirm('¿Aceptar esta semana y activarla? Dejará de ser un borrador.', { type: 'warning' }))) return;
+            // Antes de activarla, lo que conviene mirar (comprobarSemana): se puede aceptar igual.
+            const pendientes = comprobarSemana(activeWeekData, workersList);
+            const mensaje = pendientes.length
+              ? `Tiene ${pendientes.length === 1 ? '1 cosa' : `${pendientes.length} cosas`} que conviene mirar:\n\n${pendientes.slice(0, 8).map(a => `• ${a}`).join('\n')}${pendientes.length > 8 ? `\n• …y ${pendientes.length - 8} más` : ''}\n\nPuedes aceptarla igual y corregirlo después.`
+              : 'Comprobada: todas las tareas tienen gente y horario, los eventos tienen pax y se cumplen disponibilidad, horas y descansos. Dejará de ser un borrador y la verá el equipo.';
+            if (!(await confirm(mensaje, { type: 'warning', title: pendientes.length ? 'Antes de aceptar la semana' : '¿Aceptar y activar la semana?', confirmText: pendientes.length ? 'Aceptar igualmente' : 'Aceptar y activar' }))) return;
             const { avisos, ...metaSinAvisos } = activeWeekData.meta || {};
             if (onUpdateWeek) onUpdateWeek({ ...activeWeekData, meta: { ...metaSinAvisos, status: 'Operativa Activa', aceptadaEl: new Date().toISOString() } });
           }}
@@ -365,6 +371,8 @@ export default function PartnerDashboardView({
         isOpen={isAdminSettingsOpen}
         onClose={() => setIsAdminSettingsOpen(false)}
         onIrAFichajes={() => { setIsAdminSettingsOpen(false); handleTabClick('fichajes'); }}
+        onSesionesCerradas={() => enlaceSocias.generar()}
+        fichajes={clockEntries}
       />
 
       <AdminAiMemoryModal

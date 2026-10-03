@@ -91,3 +91,17 @@ export function fusionarCambiosFichajes(actuales = [], cambios = []) {
   const anadidos = reales.filter(c => !porId.has(c.id));
   return [...anadidos, ...sustituidos];
 }
+
+// Quién ficha ya con su enlace personal y quién no, según su último fichaje con esa
+// marca (`firmado`, que pone el servidor) de los últimos `dias`. Los fichajes de antes
+// de existir la marca no cuentan. { conEnlace: [nombres], sinEnlace: [nombres] }
+export function quienFichaConEnlace(fichajes = [], ahora = new Date(), dias = 14) {
+  const desde = ahora.getTime() - dias * 24 * 60 * 60 * 1000;
+  const ultimo = new Map();
+  fichajes
+    .filter(e => !e.deleted && typeof e.firmado === 'boolean' && new Date(e.timestamp).getTime() >= desde)
+    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+    .forEach(e => ultimo.set(e.workerName, e.firmado));
+  const nombres = [...ultimo.keys()].sort((a, b) => a.localeCompare(b, 'es'));
+  return { conEnlace: nombres.filter(n => ultimo.get(n)), sinEnlace: nombres.filter(n => !ultimo.get(n)) };
+}

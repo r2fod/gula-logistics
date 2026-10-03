@@ -157,6 +157,53 @@ router.post('/change-password', requireAdmin, async (req, res) => {
   }
 });
 
+// POST /api/auth/cerrar-sesiones — anula TODAS las sesiones de admin y todos los
+// enlaces de socias ya enviados (también los antiguos que llevaban la sesión de admin
+// dentro) sin cambiar la contraseña. Quien lo pide sigue dentro con una sesión nueva.
+// Los enlaces de los trabajadores no se tocan: van con su propia versión.
+router.post('/cerrar-sesiones', requireAdmin, async (req, res) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ error: 'Se necesita conexión con la base de datos' });
+    }
+    const config = await AdminConfig.findOne({ configKey: 'admin' });
+    if (!config) return res.status(404).json({ error: 'No hay configuración de administrador' });
+    config.tokenVersion = (config.tokenVersion || 1) + 1;
+    await config.save();
+    const token = signToken({ role: 'admin', v: config.tokenVersion }, TOKEN_TTL_SECONDS);
+    return res.json({ token, expiresAt: Date.now() + TOKEN_TTL_SECONDS * 1000 });
+  } catch (error) {
+    console.error('Error al cerrar las sesiones:', error);
+    return res.status(500).json({ error: 'No se pudieron cerrar las sesiones' });
+  }
+});
+
+// GET/PUT /api/auth/ajustes — ajustes del admin: de momento, si para fichar hace falta
+// el enlace personal de cada uno (exigirEnlaceAlFichar).
+router.get('/ajustes', requireAdmin, async (req, res) => {
+  try {
+    const config = mongoose.connection.readyState === 1 ? await AdminConfig.findOne({ configKey: 'admin' }) : null;
+    return res.json({ exigirEnlaceAlFichar: !!config?.exigirEnlaceAlFichar });
+  } catch (error) {
+    console.error('Error al leer los ajustes:', error);
+    return res.status(500).json({ error: 'No se pudieron leer los ajustes' });
+  }
+});
+router.put('/ajustes', requireAdmin, async (req, res) => {
+  try {
+    if (typeof req.body?.exigirEnlaceAlFichar !== 'boolean') return res.status(400).json({ error: 'exigirEnlaceAlFichar debe ser true o false' });
+    if (mongoose.connection.readyState !== 1) return res.status(503).json({ error: 'Se necesita conexión con la base de datos' });
+    const config = await AdminConfig.findOne({ configKey: 'admin' });
+    if (!config) return res.status(404).json({ error: 'No hay configuración de administrador' });
+    config.exigirEnlaceAlFichar = req.body.exigirEnlaceAlFichar;
+    await config.save();
+    return res.json({ exigirEnlaceAlFichar: config.exigirEnlaceAlFichar });
+  } catch (error) {
+    console.error('Error al guardar los ajustes:', error);
+    return res.status(500).json({ error: 'No se pudieron guardar los ajustes' });
+  }
+});
+
 // POST /api/auth/socias-token — el admin genera el enlace de socias: un token
 // firmado de SOLO LECTURA (rol `socias`), nunca su propia sesión. Con
 // `anularAnteriores: true` sube `sociasVersion` y los enlaces ya enviados dejan

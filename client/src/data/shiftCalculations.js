@@ -14,6 +14,9 @@ export const ZOMBIE_SHIFT_HOURS = 16;
 // aviso para revisarlo por si fue un olvido de fichar la salida (revisionFichajes.js).
 // Antes se cortaba aquí sin avisar y esas horas se perdían.
 export const HORAS_TURNO_LARGO = 14;
+// Un turno AÚN ABIERTO avisa antes: si es un olvido de fichar la salida, cuanto antes
+// se corrija, mejor (y si sigue trabajando, «Está bien» lo calla).
+export const HORAS_ABIERTO_AVISO = 12;
 
 // `activeEntry` es el fichaje de entrada abierto (lo que devuelve
 // getActiveShiftForWorker, o activeShifts[worker] de pairShiftsFromEntries).

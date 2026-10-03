@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Award, BarChart3, Bell, Calendar, Car, CheckCircle2, CheckSquare, Clock, ListTodo, Lock, MapPin, Pin, Play, Plus, Settings, Square, Target, Users, Zap } from 'lucide-react';
+import { Award, BarChart3, Bell, Calendar, Car, CheckSquare, Clock, ListTodo, Lock, Pin, Play, Plus, Settings, Square, Target, Users, Zap } from 'lucide-react';
 import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
@@ -7,14 +7,13 @@ import WorkerViewTaskItem from './dashboard/WorkerViewTaskItem';
 import WorkerViewWeddingCard from './dashboard/WorkerViewWeddingCard';
 import ResumenHorasSaldo from './dashboard/ResumenHorasSaldo';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
-import TaskTextWithEvent from './TaskTextWithEvent';
 import { getTaskListForDay, resolveTaskIndexByText, isTaskEffectivelyDone, isTaskAssignedTo, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart, esTareaActiva, refDeTareaFichada } from '../data/taskPlanning';
 import { subscribeToPush } from '../data/pushService';
-import { crearFichaje, horaDeFichaje, fechaDeFichaje } from '../data/fichajes';
+import { crearFichaje } from '../data/fichajes';
 import { getWeddingTaskName } from '../data/eventNaming';
 import { formatTimeShort, formatWeekdayDay } from '../utils/dateUtils';
-import { formatearHoras, formatearEuros } from '../data/formatoFinanciero';
-import EstadoVacio from './ui/EstadoVacio';
+import { formatearEuros } from '../data/formatoFinanciero';
+import HistorialFichajes from './trabajador/HistorialFichajes';
 import { useDialog } from '../contexts/DialogContext';
 import EnVivo from './ui/EnVivo';
 import { useAhora } from '../hooks/useAhora';
@@ -34,17 +33,6 @@ const START_JORNADA_LABELS = [
   '¡A LA CARRETERA! INICIAR JORNADA',
   '¡CON GANAS! INICIAR JORNADA',
 ];
-
-// Aviso gris con candado: la acción todavía no se puede hacer (el día no ha llegado o aún
-// falta para la hora de la tarea). `className` pone su posición y `flex` si va suelto.
-function AvisoBloqueado({ className = '', children }) {
-  return (
-    <span className={`${className || 'inline-flex'} items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold bg-slate-800/60 text-slate-500 border border-slate-700 cursor-not-allowed`}>
-      <Lock className="w-3 h-3" />
-      <span>{children}</span>
-    </span>
-  );
-}
 
 export default function WorkerView({
   workerName,
@@ -216,10 +204,6 @@ export default function WorkerView({
 
   // Calculate total assigned tasks & completion stats across week
   const totalAssignedTasks = daysWithActivitiesForTotals.reduce((acc, d) => acc + d.totalCount, 0);
-  const completedTasksCount = daysWithActivitiesForTotals.reduce((acc, d) => {
-    const completed = d.tasks.filter(t => typeof t === 'object' && t.completed).length;
-    return acc + completed;
-  }, 0);
 
   // Auto-detect immediate / first pending task for ZERO-SCROLL instant clock-in
   // Se recalcula cada minuto (no cada segundo) para que una tarea que ya
@@ -332,11 +316,6 @@ export default function WorkerView({
       isClockedIn: Object.keys(clockedInNow).some(n => n.toLowerCase() === name.toLowerCase())
     }));
 
-  // Saturday special check
-  const saturdayWeddings = (activeWeekData.saturdaySpecial?.weddings || []).filter(w => 
-    w.details.toLowerCase().includes(currentWorkerObj.name.toLowerCase()) ||
-    w.truck.toLowerCase().includes(currentWorkerObj.name.toLowerCase())
-  );
 
   const todayIndex = new Date().getDay();
   const todayKey = dayNames[todayIndex];
@@ -1018,114 +997,8 @@ export default function WorkerView({
       </div>
       )}
 
-      {/* SECTION: REGISTERED CLOCK ENTRIES HISTORY */}
       {workerTab === 'history' && (
-      <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-          <h3 className="text-lg sm:text-xl font-extrabold text-white font-['Outfit'] flex items-center space-x-2">
-            <Clock className="w-5 h-5 text-emerald-400 shrink-0" />
-            <span>Mi Historial de Fichajes Registrados</span>
-          </h3>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-semibold bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 hidden sm:inline-block">
-              {myEntries.length} fichajes enviados
-            </span>
-            <button
-              onClick={() => setIsEditModalOpen(true)}
-              className="py-1.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-[11px] flex items-center space-x-1 shadow-md shadow-amber-500/20 transition-all active:scale-95"
-            >
-              <span>+ Añadir Manual</span>
-            </button>
-          </div>
-        </div>
-
-        {myEntries.length === 0 ? (
-          <EstadoVacio icono={Clock} titulo="Aún no has registrado ningún fichaje de entrada o salida esta semana." className="py-8 bg-slate-950/60" />
-        ) : (
-          <>
-            {/* Mobile Card Layout (sm:hidden) */}
-            <div className="block sm:hidden space-y-2.5">
-              {myEntries.map((entry) => (
-                <div key={entry.id} className="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-white">
-                      {horaDeFichaje(entry)} <span className="text-[11px] text-slate-400 font-normal">({fechaDeFichaje(entry)})</span>
-                    </span>
-                    {entry.type === 'entrada' ? (
-                      <span className="px-2 py-0.5 rounded-full text-[11px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-bold">
-                        🟢 ENTRADA
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-[11px] bg-rose-500/15 text-rose-400 border border-rose-500/30 font-bold">
-                        🔴 SALIDA
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-300 font-medium">
-                    <Pin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{entry.taskName || entry.note || 'Turno General'}
-                  </p>
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/60 mt-1">
-                    <span className="text-[11px] text-slate-400">
-                      {duracionDeSalida.has(entry.id) ? `Duración: ${formatearHoras(duracionDeSalida.get(entry.id))}` : 'Turno registrado'}
-                    </span>
-                    <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-amber-400" /> Bloqueado
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Desktop Table View (hidden sm:block) */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[11px]">
-                    <th className="py-3 px-3">Fecha & Hora</th>
-                    <th className="py-3 px-3">Tipo</th>
-                    <th className="py-3 px-3">Tarea / Concepto</th>
-                    <th className="py-3 px-3">Estado</th>
-                    <th className="py-3 px-3 text-right">Acción</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {myEntries.map((entry) => (
-                    <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
-                      <td className="py-3 px-3 font-mono text-slate-200">
-                        <div className="font-bold text-white">{horaDeFichaje(entry)}</div>
-                        <div className="text-[11px] text-slate-500">{fechaDeFichaje(entry)}</div>
-                      </td>
-                      <td className="py-3 px-3">
-                        {entry.type === 'entrada' ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">
-                            🟢 ENTRADA
-                          </span>
-                        ) : (
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] bg-rose-500/10 text-rose-400 border border-rose-500/30 font-bold">
-                            🔴 SALIDA
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-slate-300 font-medium">
-                        {entry.taskName || entry.note || '—'}
-                      </td>
-                      <td className="py-3 px-3">
-                        <span className="text-[11px] font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 inline-flex items-center space-x-1">
-                          <Lock className="w-3 h-3 text-amber-400" />
-                          <span>Guardado</span>
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right text-[11px] font-bold text-amber-300">
-                        Solo Admin
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </div>
+        <HistorialFichajes fichajes={myEntries} duracionDeSalida={duracionDeSalida} onAnadir={() => setIsEditModalOpen(true)} />
       )}
 
       {/* Clock In Modal for worker */}

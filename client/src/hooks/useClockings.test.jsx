@@ -10,7 +10,7 @@ vi.mock('../data/apiService', () => ({
 }));
 
 import { useClockings } from './useClockings';
-import { deleteClockEntryInAPI, updateClockEntryInAPI } from '../data/apiService';
+import { deleteClockEntryInAPI, updateClockEntryInAPI, saveClockEntryToAPI } from '../data/apiService';
 
 const f = (id, extra = {}) => ({ id, workerName: 'Ana', type: 'entrada', timestamp: '2026-09-20T08:00:00.000Z', ...extra });
 const montar = (fichajes) => {
@@ -48,5 +48,13 @@ describe('useClockings', () => {
     await act(async () => { await result.current.handleMarcarRevisado(result.current.clockEntries[0]); });
     expect(updateClockEntryInAPI).toHaveBeenCalledWith(expect.objectContaining({ id: 'a', revisado: true }));
     expect(result.current.clockEntries[0].revisado).toBe(true);
+  });
+
+  it('si el servidor exige el enlace personal y este móvil no lo tiene, el fichaje se quita y se avisa', async () => {
+    saveClockEntryToAPI.mockResolvedValueOnce({ rechazado: 'Para fichar usa tu enlace personal: pídeselo al administrador.' });
+    const { result } = montar([]);
+    act(() => { result.current.handleClockEntryCreated(f('nuevo')); });
+    expect(await screen.findByText(/No se ha fichado\. Para fichar usa tu enlace personal/)).toBeTruthy();
+    expect(result.current.clockEntries).toEqual([]);
   });
 });

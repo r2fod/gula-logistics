@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Lock, KeyRound, CheckCircle2, AlertCircle, RefreshCw, ClipboardCheck } from 'lucide-react';
-import { changeAdminPassword } from '../data/apiService';
+import { Settings, Lock, KeyRound, CheckCircle2, AlertCircle, RefreshCw, ClipboardCheck, ShieldOff } from 'lucide-react';
+import { changeAdminPassword, cerrarSesionesEnAPI } from '../data/apiService';
+import { useDialog } from '../contexts/DialogContext';
+import FicharConEnlace from './ajustes/FicharConEnlace';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input } from './ui/Campo';
@@ -8,7 +10,9 @@ import { Campo, Input } from './ui/Campo';
 // Cambiar la clave de admin, y el acceso a la revisión y limpieza de fichajes (que
 // vive en Fichajes: antes aquí había un «Optimizar y Limpiar Base de Datos» que
 // vaciaba la papelera sin decir qué ni cuántos borraba).
-export default function AdminSettingsModal({ isOpen, onClose, onIrAFichajes = null }) {
+export default function AdminSettingsModal({ isOpen, onClose, onIrAFichajes = null, onSesionesCerradas = null, fichajes = [] }) {
+  const { alert, confirm } = useDialog();
+  const [cerrando, setCerrando] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -58,6 +62,19 @@ export default function AdminSettingsModal({ isOpen, onClose, onIrAFichajes = nu
     } else {
       setError(result.error || 'No se pudo actualizar la contraseña.');
     }
+  };
+
+  // Anula todo lo enviado antes (sesiones de admin y enlaces de socias, también los
+  // viejos con la sesión de admin dentro) sin cambiar la clave. Los trabajadores, no.
+  const cerrarSesiones = async () => {
+    const ok = await confirm('Se cerrará la sesión de admin en los demás dispositivos y dejarán de valer TODOS los enlaces de socias enviados, también los antiguos. Tú sigues dentro y la clave no cambia. Los enlaces de los trabajadores siguen valiendo. Después, reenvía el enlace de socias nuevo.', { type: 'warning', title: 'Cerrar todas las sesiones', confirmText: 'Cerrar sesiones' });
+    if (!ok) return;
+    setCerrando(true);
+    const r = await cerrarSesionesEnAPI();
+    setCerrando(false);
+    if (!r.ok) return alert(r.error, { type: 'error' });
+    onSesionesCerradas?.();
+    await alert('Hecho: sesiones y enlaces de socias anteriores anulados. Copia el enlace de socias nuevo («Link Socias») y reenvíalo.', { type: 'success' });
   };
 
   const campos = [
@@ -126,6 +143,22 @@ export default function AdminSettingsModal({ isOpen, onClose, onIrAFichajes = nu
           </button>
         </div>
       </form>
+
+      <FicharConEnlace fichajes={fichajes} />
+
+      <div className="border-t border-slate-800 pt-5">
+        <h4 className="text-xs font-bold text-amber-500">Seguridad</h4>
+        <p className="mt-1 text-[11px] text-slate-400">Si un enlace de socias ha llegado a quien no debía, o hay una sesión abierta en un móvil perdido: lo anula todo sin cambiar la clave.</p>
+        <button
+          type="button"
+          onClick={cerrarSesiones}
+          disabled={cerrando}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-500/30 bg-rose-500/10 py-3 text-xs font-bold text-rose-300 transition-colors hover:bg-rose-500/20 disabled:opacity-60"
+        >
+          {cerrando ? <RefreshCw className="h-4 w-4 animate-spin" aria-hidden="true" /> : <ShieldOff className="h-4 w-4" aria-hidden="true" />}
+          Cerrar todas las sesiones y enlaces de socias
+        </button>
+      </div>
 
       {onIrAFichajes && (
         <div className="border-t border-slate-800 pt-5">

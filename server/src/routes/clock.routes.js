@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import crypto from 'crypto';
 import { ClockEntry } from '../models/ClockEntry.model.js';
 import { TeamRoster } from '../models/TeamRoster.model.js';
+import { AdminConfig } from '../models/AdminConfig.model.js';
 import { requireAdmin } from '../middleware/requireAdmin.js';
 import { limitePorIp } from '../middleware/limitePorIp.js';
 import { verifyToken } from '../utils/authToken.js';
@@ -23,6 +24,19 @@ const esAdmin = (req) => {
   return verifyToken(auth.startsWith('Bearer ') ? auth.slice(7) : null)?.role === 'admin';
 };
 const plano = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+// ¿Llega con el enlace personal de esa persona? (cabecera X-Enlace: el token del enlace
+// ?worker=…&t=…, cuyo `w` es el id de su ficha de Saldos: "Persona10 Gula" → persona10-gula; las
+// fichas antiguas van sin el "-gula"). `exigido`: el admin ha activado que sea obligatorio.
+async function firmaDelFichaje(req, workerName) {
+  const payload = verifyToken(req.headers['x-enlace'] || null);
+  const config = mongoose.connection.readyState === 1 ? await AdminConfig.findOne({ configKey: 'admin' }) : null;
+  const id = plano(workerName).replace(/\s+/g, '-');
+  const esSuyo = payload?.role === 'trabajador'
+    && [id, id.replace(/-gula$/, ''), `${id}-gula`].includes(payload.w)
+    && (!config || payload.tv === (config.trabajadoresVersion || 1));
+  return { firmado: !!esSuyo, exigido: !!config?.exigirEnlaceAlFichar };
+}
 
 // Por qué no vale un fichaje que llega sin sesión, o null si vale. Sin equipo guardado
 // (o sin base) no se comprueba el nombre: mejor guardar que perder un fichaje.
@@ -102,6 +116,12 @@ router.post('/', limiteFichar, async (req, res) => {
     delete newEntryData.durationHours;
     // Dar por bueno un turno largo es cosa del admin (PUT): fichando no se puede.
     delete newEntryData.revisado;
+    // Si va firmado con su enlace lo decide el servidor, no lo que diga la petición.
+    const firma = await firmaDelFichaje(req, newEntryData.workerName);
+    if (firma.exigido && !firma.firmado && !esAdmin(req)) {
+      return res.status(401).json({ error: 'Para fichar usa tu enlace personal: pídeselo al administrador.', codigo: 'ENLACE_REQUERIDO' });
+    }
+    newEntryData.firmado = firma.firmado;
     // rate SÍ es legítimo que lo mande el cliente (algunos fichajes usan
     // una tarifa distinta a la de por defecto, ver AdminClockEditModal),
     // pero acotado a un rango razonable — nunca 0, negativo, ni una

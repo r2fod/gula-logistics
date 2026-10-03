@@ -18,6 +18,7 @@ vi.mock('../models/AdminConfig.model.js', () => ({
 
 const { ClockEntry } = await import('../models/ClockEntry.model.js');
 const { TeamRoster } = await import('../models/TeamRoster.model.js');
+const { AdminConfig } = await import('../models/AdminConfig.model.js');
 const { signToken } = await import('../utils/authToken.js');
 const clockRoutes = (await import('./clock.routes.js')).default;
 
@@ -177,6 +178,38 @@ describe('POST /api/clock — lo que no vale sin sesión de admin', () => {
     TeamRoster.findOne.mockResolvedValue(null);
     ClockEntry.create.mockImplementation(async (d) => d);
     expect((await fichar({ workerName: 'Cualquiera', timestamp: '2026-09-19T08:00:00.000Z' })).status).toBe(201);
+  });
+});
+
+describe('POST /api/clock — fichar con el enlace personal', () => {
+  const enlace = (w, tv = 1) => signToken({ role: 'trabajador', w, tv });
+  const fichar = (workerName, cabeceras = {}) => {
+    const r = request(buildApp()).post('/api/clock');
+    Object.entries(cabeceras).forEach(([k, v]) => r.set(k, v));
+    return r.send({ id: `f-${Math.random()}`, workerName, type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z', firmado: true });
+  };
+  beforeEach(() => ClockEntry.create.mockImplementation(async (d) => d));
+  afterEach(() => AdminConfig.findOne.mockResolvedValue(null));
+
+  it('con su enlace queda firmado; sin él (o con el de otra persona), no; lo que diga la petición no cuenta', async () => {
+    expect((await fichar('Carlos', { 'X-Enlace': enlace('carlos') })).body.firmado).toBe(true);
+    expect((await fichar('Carlos')).body.firmado).toBe(false);
+    expect((await fichar('Carlos', { 'X-Enlace': enlace('Persona7') })).body.firmado).toBe(false);
+  });
+
+  it('un enlace anulado (versión vieja) no firma', async () => {
+    AdminConfig.findOne.mockResolvedValue({ trabajadoresVersion: 2 });
+    expect((await fichar('Carlos', { 'X-Enlace': enlace('carlos', 1) })).body.firmado).toBe(false);
+  });
+
+  it('si el admin lo exige: sin enlace, 401 y no se guarda; con enlace o con sesión de admin, sí', async () => {
+    AdminConfig.findOne.mockResolvedValue({ exigirEnlaceAlFichar: true, trabajadoresVersion: 1 });
+    const sin = await fichar('Carlos');
+    expect(sin.status).toBe(401);
+    expect(sin.body.codigo).toBe('ENLACE_REQUERIDO');
+    expect(ClockEntry.create).not.toHaveBeenCalled();
+    expect((await fichar('Carlos', { 'X-Enlace': enlace('carlos') })).status).toBe(201);
+    expect((await fichar('Carlos', { Authorization: `Bearer ${signToken({ role: 'admin', v: 1 })}` })).status).toBe(201);
   });
 });
 

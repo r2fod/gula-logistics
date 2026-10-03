@@ -195,3 +195,41 @@ describe('POST /api/auth/enlaces-trabajadores (cada trabajador ve solo su saldo)
     AdminConfig.findOne.mockResolvedValue(null);
   });
 });
+
+describe('POST /api/auth/cerrar-sesiones (anula sesiones y enlaces de socias sin cambiar la clave)', () => {
+  const admin = (v = 1) => `Bearer ${signToken({ role: 'admin', v })}`;
+
+  it('sube tokenVersion y devuelve una sesión nueva con esa versión; la clave no se toca', async () => {
+    mongoose.connection.readyState = 1;
+    const config = { tokenVersion: 3, passwordHash: 'hash-sin-tocar', save: vi.fn().mockResolvedValue() };
+    AdminConfig.findOne.mockResolvedValue(config);
+    const r = await request(buildApp()).post('/api/auth/cerrar-sesiones').set('Authorization', admin(3));
+    expect(r.status).toBe(200);
+    expect(config.tokenVersion).toBe(4);
+    expect(config.passwordHash).toBe('hash-sin-tocar');
+    expect(verifyToken(r.body.token)).toMatchObject({ role: 'admin', v: 4 });
+    AdminConfig.findOne.mockResolvedValue(null);
+  });
+
+  it('un enlace de socias no puede cerrar sesiones', async () => {
+    const socias = `Bearer ${signToken({ role: 'socias', v: 1, sv: 1 })}`;
+    expect((await request(buildApp()).post('/api/auth/cerrar-sesiones').set('Authorization', socias)).status).toBe(401);
+  });
+});
+
+describe('GET/PUT /api/auth/ajustes (exigir el enlace personal para fichar)', () => {
+  it('el admin lo lee y lo cambia; un enlace de socias no puede', async () => {
+    const admin = `Bearer ${signToken({ role: 'admin', v: 1 })}`;
+    mongoose.connection.readyState = 1;
+    const config = { tokenVersion: 1, exigirEnlaceAlFichar: false, save: vi.fn().mockResolvedValue() };
+    AdminConfig.findOne.mockResolvedValue(config);
+    expect((await request(buildApp()).get('/api/auth/ajustes').set('Authorization', admin)).body).toEqual({ exigirEnlaceAlFichar: false });
+    const r = await request(buildApp()).put('/api/auth/ajustes').set('Authorization', admin).send({ exigirEnlaceAlFichar: true });
+    expect(r.body).toEqual({ exigirEnlaceAlFichar: true });
+    expect(config.save).toHaveBeenCalled();
+    expect((await request(buildApp()).put('/api/auth/ajustes').set('Authorization', admin).send({ exigirEnlaceAlFichar: 'si' })).status).toBe(400);
+    const socias = `Bearer ${signToken({ role: 'socias', v: 1, sv: 1 })}`;
+    expect((await request(buildApp()).put('/api/auth/ajustes').set('Authorization', socias).send({ exigirEnlaceAlFichar: false })).status).toBe(401);
+    AdminConfig.findOne.mockResolvedValue(null);
+  });
+});

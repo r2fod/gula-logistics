@@ -3,8 +3,8 @@
 _Solo lo que sigue abierto (actualizado el 28/09/2026). Lo resuelto se borra de aquí: queda en `git log` y, si deja una lección, en `MEJORAS.md`. La versión larga anterior: `git show 19e5547:PENDIENTES.md`._
 
 ## 🔴 Seguridad y datos
-- [ ] **Enlaces de socias VIEJOS con la sesión de admin dentro** (`?token=`, del modal de WhatsApp anterior al 27/09): siguen dando acceso de ADMIN hasta que se cambie la clave de admin (eso los anula). Cambiar la clave y reenviar a las socias el enlace nuevo de solo lectura.
-- [ ] **Otros endpoints públicos sin datos de acceso** (por diseño: el trabajador no tiene sesión): `GET /api/clock` (todos los fichajes, con tarifa), `GET /api/roster` (tarifa y nómina de cada persona), `POST /api/clock` (fichar) y `DELETE /api/clock/:id` (mandar a la papelera un fichaje de menos de 15 min). Desde el 03/10 llevan límite por IP y fichar exige que la persona esté en el equipo y una fecha de hasta 45 días atrás y 12 h adelante (el admin, sin límite de fecha); aun así, quien tenga la URL puede fichar por alguien del equipo. Se cerraría exigiendo el enlace firmado de cada trabajador (ya existe, ver abajo), cuando todos lo tengan.
+- [ ] **Enlaces de socias VIEJOS con la sesión de admin dentro** (`?token=`, del modal de WhatsApp anterior al 27/09): siguen dando acceso de ADMIN hasta que se anulen: **Configuración → «Cerrar todas las sesiones y enlaces de socias»** (no cambia la clave; luego reenviar a las socias el enlace nuevo de solo lectura).
+- [ ] **Otros endpoints públicos sin datos de acceso** (por diseño: el trabajador no tiene sesión): `GET /api/clock` (todos los fichajes, con tarifa), `GET /api/roster` (tarifa y nómina de cada persona), `POST /api/clock` (fichar) y `DELETE /api/clock/:id` (mandar a la papelera un fichaje de menos de 15 min). Desde el 03/10 llevan límite por IP y fichar exige que la persona esté en el equipo y una fecha de hasta 45 días atrás y 12 h adelante (el admin, sin límite de fecha); aun así, quien tenga la URL puede fichar por alguien del equipo. Se cierra con **Configuración → «Fichar solo con el enlace personal»** (03/10): cada fichaje dice si llegó con el enlace de esa persona y el interruptor enseña quién ficha aún sin él; activarlo cuando todos lo usen.
 - [ ] **El historial público de git conserva datos sensibles** (saldos reales de 14–15/09, una clave VAPID privada ya sin uso, contraseñas de componentes antiguos). Opciones: purgar el historial (`git filter-repo` + force-push, destructivo) o repo privado (Pages privado es de pago). Mientras tanto: **cambiar la clave de admin** desde "Clave".
 - [ ] **Variables del calendario en Render** (`CALENDARIO_PROJECT_ID`, `CALENDARIO_API_KEY`, `CALENDARIO_CODIGO`; mejor el código de solo lectura). Sin ellas no hay borradores automáticos. Comprobar con `GET /api/calendario/estado` (admin).
 
@@ -31,7 +31,7 @@ _Solo lo que sigue abierto (actualizado el 28/09/2026). Lo resuelto se borra de 
 
 ## 🟢 Código
 - [ ] ESLint del cliente: 21 errores (reglas nuevas de React: `setState` dentro de efectos en varios modales) y ~140 avisos, todos anteriores. No añadir nuevos.
-- [ ] Archivos grandes: `AdminTaskEditorModal` (~1050 líneas), `WorkerView` (~1090), `TeamBalancesTab` (~840). Siguientes piezas: fila de tarea/tarjeta de boda de `WorkerView`, `Boton`, `Chip` seleccionable, `PuntoEstado`.
+- [ ] Archivos grandes: `AdminTaskEditorModal` (~1050 líneas), `WorkerView` (~1030; su historial ya va en `trabajador/HistorialFichajes`), `TeamBalancesTab` (~810). Siguientes piezas: la tarjeta de la tarea inmediata de `WorkerView`, `Boton`, `Chip` seleccionable, `PuntoEstado`.
 - [ ] Normalizar las tareas a objeto al cargar la semana y quitar los `typeof task === 'object' ? task.text : task` repartidos.
 - [ ] `npm audit` del cliente: `vite`/`esbuild` (solo afectan a `npm run dev`); arreglarlo es subir `vite` de versión mayor, en rama aparte.
 

@@ -8,6 +8,7 @@ vi.mock('../data/apiService', () => ({
   getStoredAdminToken: () => null,
   crearTokenSociasEnAPI: vi.fn().mockResolvedValue({ ok: true, token: 'solo.lectura', expiresAt: Date.now() + 1000 }),
   getAiMemories: vi.fn().mockResolvedValue([]),
+  fetchAjustesAdmin: vi.fn().mockResolvedValue({ exigirEnlaceAlFichar: false }),
 }));
 vi.mock('../data/pushService', () => ({ sendPushNotification: vi.fn().mockResolvedValue({}) }));
 
@@ -154,5 +155,19 @@ describe('PartnerDashboardView', () => {
     expect(screen.getByRole('button', { name: /Aceptar y activar/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Revisar con Gemini/ })).toBeInTheDocument();
     expect(screen.getByText('Gemini aún no lo ha revisado.')).toBeInTheDocument();
+  });
+
+  it('antes de aceptar un borrador enseña lo que conviene mirar (y se puede aceptar igual)', async () => {
+    const borrador = {
+      ...semana,
+      meta: { ...semana.meta, status: 'Borrador' },
+      schedule: { martes: { tasks: [{ id: 'm1', text: 'Boda Uno - Carga', timeFrame: '09:00 - 11:00', assigned: [] }] } },
+    };
+    const props = pintar({ activeWeekData: borrador, allWeeks: { week_3: borrador }, onUpdateWeek: vi.fn() });
+    fireEvent.click(screen.getByRole('button', { name: /Aceptar y activar/ }));
+    const dialogo = await screen.findByRole('dialog', { name: 'Antes de aceptar la semana' });
+    expect(within(dialogo).getByText(/Martes: Boda Uno - Carga — sin nadie asignado/)).toBeInTheDocument();
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Aceptar igualmente' }));
+    await waitFor(() => expect(props.onUpdateWeek).toHaveBeenCalledWith(expect.objectContaining({ meta: expect.objectContaining({ status: 'Operativa Activa' }) })));
   });
 });

@@ -44,8 +44,9 @@ describe('revisarFichajes', () => {
     expect(r).toEqual({ sobran: [], revisar: [] });
   });
 
-  it('una entrada abierta de menos de 14 h no avisa (está trabajando)', () => {
-    expect(revisarFichajes([f('Ana', 'entrada', '10:00:00')], AHORA)).toEqual({ sobran: [], revisar: [] });
+  it('una entrada abierta avisa a partir de 12 h (antes, no: está trabajando)', () => {
+    expect(revisarFichajes([f('Ana', 'entrada', '11:30:00')], AHORA)).toEqual({ sobran: [], revisar: [] }); // 11,5 h
+    expect(revisarFichajes([f('Ana', 'entrada', '10:30:00')], AHORA).revisar.map(g => g.motivo)).toEqual(['abierto-largo']); // 12,5 h
   });
 
   it('empareja como pairShiftsFromEntries (sin mirar mayúsculas) e ignora la papelera', () => {

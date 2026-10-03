@@ -31,6 +31,8 @@ const ClockEntrySchema = new mongoose.Schema({
   deleted: { type: Boolean, default: false },
   // Turno largo que un admin ya revisó y dio por bueno: deja de avisar.
   revisado: { type: Boolean },
+  // Llegó con el enlace personal de esa persona (cabecera X-Enlace). Lo pone el servidor.
+  firmado: { type: Boolean },
   taskRef: TaskRefSchema
 }, {
   timestamps: true

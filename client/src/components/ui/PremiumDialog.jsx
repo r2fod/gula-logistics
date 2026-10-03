@@ -107,7 +107,7 @@ export default function PremiumDialog({
           </h3>
           
           <div className="mt-1">
-            <p className="text-sm text-slate-300">
+            <p className="whitespace-pre-line text-sm text-slate-300">
               {message}
             </p>
           </div>

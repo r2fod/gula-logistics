@@ -1,4 +1,4 @@
-import { sortEntriesByTimestamp, HORAS_TURNO_LARGO } from './shiftCalculations';
+import { sortEntriesByTimestamp, HORAS_TURNO_LARGO, HORAS_ABIERTO_AVISO } from './shiftCalculations';
 import { coincideNombre } from './nombresTrabajadores';
 import { plano } from '../utils/texto';
 import { formatTimeShort, formatDuration } from '../utils/dateUtils';
@@ -14,7 +14,7 @@ const duracionTexto = (milis) => (milis < 60 * 1000 ? 'menos de 1 min' : formatD
 // Revisa los fichajes con la MISMA lógica de emparejar que pairShiftsFromEntries.
 // - sobran: no cuentan horas ni dinero (la app ya los ignora): se pueden mandar a la
 //   papelera sin que cambie ninguna cuenta.
-// - revisar: turnos de más de HORAS_TURNO_LARGO (cerrados o aún abiertos): cuentan
+// - revisar: turnos de más de HORAS_TURNO_LARGO, o abiertos hace más de HORAS_ABIERTO_AVISO: cuentan
 //   enteros, pero puede ser un olvido de fichar la salida. Se corrigen editándolos, o
 //   se marcan como buenos (`revisado` en su entrada) y dejan de avisar.
 // Cada grupo: { motivo, persona, fichajes, detalle }; en `revisar`, fichajes[0] es la entrada.
@@ -60,7 +60,7 @@ export function revisarFichajes(fichajes = [], ahora = new Date()) {
 
   Object.values(abiertos).forEach(({ entrada }) => {
     const abierta = ahora - new Date(entrada.timestamp);
-    if (abierta > HORAS_TURNO_LARGO * 3600 * 1000 && !entrada.revisado) {
+    if (abierta > HORAS_ABIERTO_AVISO * 3600 * 1000 && !entrada.revisado) {
       revisar.push({ motivo: 'abierto-largo', persona: entrada.workerName, fichajes: [entrada], detalle: `Lleva ${formatDuration(abierta)} fichado: ¿sigue trabajando o se olvidó de fichar la salida?` });
     }
   });

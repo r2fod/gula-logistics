@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { crearFichaje, horaDeFichaje, fechaDeFichaje, fichajesDeLaSemana, ultimaModificacion, fusionarCambiosFichajes } from './fichajes';
+import { crearFichaje, horaDeFichaje, fechaDeFichaje, fichajesDeLaSemana, ultimaModificacion, fusionarCambiosFichajes, quienFichaConEnlace } from './fichajes';
 
 const trabajador = { name: 'Ana', role: 'Conductora', isPayroll: false, rate: 12 };
 const fecha = new Date(2026, 8, 21, 9, 5, 7);
@@ -111,5 +111,21 @@ describe('sincronización por cambios', () => {
     const r = fusionarCambiosFichajes([local], [f('x', '2026-09-28T10:00:01.000Z')]);
     expect(r).toHaveLength(1);
     expect(r[0].updatedAt).toBe('2026-09-28T10:00:01.000Z');
+  });
+});
+
+describe('quienFichaConEnlace', () => {
+  const ahora = new Date('2026-10-03T12:00:00Z');
+  const f = (workerName, dia, firmado, extra = {}) => ({ workerName, timestamp: `2026-${dia}T08:00:00Z`, firmado, ...extra });
+
+  it('manda el último fichaje marcado de cada uno; los antiguos sin marca y la papelera no cuentan', () => {
+    const r = quienFichaConEnlace([
+      f('Ana', '10-01', false), f('Ana', '10-02', true), // ya usa su enlace
+      f('Luis', '10-02', false),
+      f('Eva', '10-02', undefined), // de antes de la marca
+      f('Pau', '10-02', false, { deleted: true }),
+      f('Cliente13', '09-01', false), // hace más de 14 días
+    ], ahora);
+    expect(r).toEqual({ conEnlace: ['Ana'], sinEnlace: ['Luis'] });
   });
 });
