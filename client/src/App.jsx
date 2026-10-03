@@ -439,7 +439,7 @@ export default function App() {
     const handleOnline = () => { retryPendingClockEntries(); };
     window.addEventListener('online', handleOnline);
 
-    const interval = setInterval(() => {
+    const actualizar = () => {
       // Reintentar fichajes que se crearon sin cobertura o con el servidor
       // caído (para todos, no solo admin — cualquier trabajador puede
       // tener fichajes pendientes en su propio móvil).
@@ -453,10 +453,16 @@ export default function App() {
           if (remoteWeeks) setAllWeeks(remoteWeeks);
         });
       }
-    }, 20000);
+    };
+    // Con la app en segundo plano (otra app, pantalla bloqueada) no se pregunta al
+    // servidor: gastaba batería y datos del móvil cada 20 s. Al volver, se pone al día.
+    const interval = setInterval(() => { if (!document.hidden) actualizar(); }, 20000);
+    const alVolver = () => { if (!document.hidden) actualizar(); };
+    document.addEventListener('visibilitychange', alVolver);
     return () => {
       clearInterval(interval);
       window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', alVolver);
     };
   }, []);
 

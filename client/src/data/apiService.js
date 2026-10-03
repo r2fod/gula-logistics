@@ -387,7 +387,8 @@ export async function saveClockEntryToAPI(entry) {
   try {
     const res = await fetchConLimite(`${API_BASE}/clock`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      // Con sesión de admin, el servidor deja apuntar fechas antiguas (sin ella, no).
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify(entry)
     });
     if (res.ok) {
@@ -423,7 +424,7 @@ export async function retryPendingClockEntries() {
     try {
       const res = await fetchConLimite(`${API_BASE}/clock`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify(entry)
       });
       if (res.ok) {

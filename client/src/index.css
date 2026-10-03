@@ -6,6 +6,19 @@
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', sans-serif;
   }
+
+  /* La app es oscura: los controles del propio navegador (icono del calendario y del
+     reloj, flechas de los números, casillas, la lista de un desplegable, el botón de
+     elegir archivo) en su versión oscura; si no, salían negros sobre negro. */
+  input,
+  select,
+  textarea {
+    color-scheme: dark;
+  }
+  ::-webkit-calendar-picker-indicator {
+    opacity: 0.85;
+    cursor: pointer;
+  }
 }
 
 /* Custom scrollbars */

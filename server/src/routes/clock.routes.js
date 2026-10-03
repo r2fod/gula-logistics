@@ -2,9 +2,43 @@ import express from 'express';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
 import { ClockEntry } from '../models/ClockEntry.model.js';
+import { TeamRoster } from '../models/TeamRoster.model.js';
 import { requireAdmin } from '../middleware/requireAdmin.js';
+import { limitePorIp } from '../middleware/limitePorIp.js';
+import { verifyToken } from '../utils/authToken.js';
 
 const router = express.Router();
+
+const DIEZ_MIN = 10 * 60 * 1000;
+const limiteFichar = limitePorIp({ max: 120, ventanaMs: DIEZ_MIN });
+const limiteBorrar = limitePorIp({ max: 200, ventanaMs: DIEZ_MIN });
+
+// Un fichaje sin sesión de admin solo puede ser de hasta 45 días atrás (la cola sin
+// conexión llega a tardar días, no meses) y de no más de 12 h en el futuro (un móvil
+// con la hora mal). El admin sí puede apuntar fechas antiguas a mano.
+const DIAS_ATRAS_MAX = 45;
+const HORAS_FUTURO_MAX = 12;
+const esAdmin = (req) => {
+  const auth = req.headers.authorization || '';
+  return verifyToken(auth.startsWith('Bearer ') ? auth.slice(7) : null)?.role === 'admin';
+};
+const plano = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+// Por qué no vale un fichaje que llega sin sesión, o null si vale. Sin equipo guardado
+// (o sin base) no se comprueba el nombre: mejor guardar que perder un fichaje.
+async function motivoParaRechazar(datos, req) {
+  const momento = new Date(datos.timestamp).getTime();
+  if (!datos.timestamp || Number.isNaN(momento)) return 'timestamp no es una fecha válida';
+  if (esAdmin(req)) return null;
+  const ahora = Date.now();
+  if (momento > ahora + HORAS_FUTURO_MAX * 3600 * 1000) return 'La fecha del fichaje está en el futuro';
+  if (momento < ahora - DIAS_ATRAS_MAX * 24 * 3600 * 1000) return 'Fichaje demasiado antiguo: lo tiene que apuntar el administrador';
+  if (mongoose.connection.readyState === 1) {
+    const equipo = (await TeamRoster.findOne({ key: 'roster' }))?.workers || [];
+    if (equipo.length && !equipo.some(w => plano(w.name) === plano(datos.workerName))) return 'Esa persona no está en el equipo';
+  }
+  return null;
+}
 
 // Fallback in-memory storage when Mongo is offline
 let memoryClockEntries = [];
@@ -48,9 +82,11 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/clock - Add new clock entry
-router.post('/', async (req, res) => {
+router.post('/', limiteFichar, async (req, res) => {
   try {
     const newEntryData = { ...req.body };
+    const motivo = await motivoParaRechazar(newEntryData, req);
+    if (motivo) return res.status(400).json({ error: motivo });
     if (!newEntryData.id) {
       newEntryData.id = crypto.randomUUID();
     }
@@ -130,7 +166,7 @@ router.put('/:id', requireAdmin, async (req, res) => {
 });
 
 // DELETE /api/clock/:id - Soft Delete (Admin OR Worker if < 15 mins)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', limiteBorrar, async (req, res) => {
   try {
     const { id } = req.params;
     const authHeader = req.headers.authorization || '';

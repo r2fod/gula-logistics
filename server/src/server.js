@@ -34,6 +34,14 @@ const PORT = process.env.PORT || 5000;
 // cliente no controla.
 app.set('trust proxy', 1);
 
+// No decir con qué está hecho el servidor, y cabeceras de protección: la API solo
+// devuelve JSON (y los PDF de /uploads, que así no se pueden hacer pasar por una web).
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.set({ 'X-Content-Type-Options': 'nosniff', 'X-Frame-Options': 'DENY', 'Referrer-Policy': 'no-referrer' });
+  next();
+});
+
 app.use(cors());
 // 2 MB: el prompt de Gemini lleva la semana entera y, aunque la app ya solo envía
 // las semanas que cambian, el límite por defecto (100 KB) se quedaba corto.

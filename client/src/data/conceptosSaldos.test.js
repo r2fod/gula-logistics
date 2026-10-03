@@ -94,7 +94,7 @@ describe('BUG evitado: la fecha 30/09 que puso la migración del servidor no es 
     expect(fechaDeConcepto({ concept: 'Valor Acumulado Horas Bolsa (40h a 8€/h)', amount: 320, date: '2026-09-30', tipo: 'bolsa' }, ref)).toBeNull();
   });
 
-  it('sin fecha cuentan en septiembre de 2026 y en su año, nunca en una semana; la bolsa acumulada solo en «Todo»', () => {
+  it('BUG evitado: sin fecha (también la bolsa, acuerdo de septiembre) cuentan en septiembre de 2026 y en su año, nunca en una semana; antes la bolsa solo salía en «Todo»', () => {
     const fichas = [{ name: 'Ana', statusType: 'success', breakdown: [
       { concept: 'Saldo inicial', amount: 100, date: '2026-09-30' }, // antiguo, fecha de la migración
       { concept: 'Valor Acumulado Horas Bolsa (40h a 8€/h)', amount: 320, tipo: 'bolsa' },
@@ -102,9 +102,9 @@ describe('BUG evitado: la fecha 30/09 que puso la migración del servidor no es 
     ] }];
     const total = (modo, ancla) => conceptosDelPeriodo(fichas, rangoDePeriodo(modo, ancla), { incluirSinFecha: modo === 'todo', ahora: ref }).total;
     expect(total('semana', new Date(2026, 8, 30))).toBe(0); // antes: 420, todo en la semana del 29/09
-    expect(total('mes', new Date(2026, 8, 30))).toBe(100);
+    expect(total('mes', new Date(2026, 8, 30))).toBe(420);
     expect(total('mes', new Date(2026, 9, 2))).toBe(0);
-    expect(total('anio', new Date(2026, 8, 30))).toBe(100);
+    expect(total('anio', new Date(2026, 8, 30))).toBe(420);
     expect(total('todo', ref)).toBe(420);
     expect(conceptosDelPeriodo(fichas, rangoDePeriodo('semana', new Date(2026, 8, 30)), { ahora: ref }).pagado).toBe(50); // el pago es de verdad del 30/09
   });

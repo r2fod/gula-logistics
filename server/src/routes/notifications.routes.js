@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { requireAdmin } from '../middleware/requireAdmin.js';
+import { limitePorIp } from '../middleware/limitePorIp.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,11 +28,15 @@ try {
 }
 
 // POST /api/notifications/subscribe - Save a push subscription
-router.post('/subscribe', async (req, res) => {
+router.post('/subscribe', limitePorIp({ max: 30, ventanaMs: 10 * 60 * 1000 }), async (req, res) => {
   try {
     const { workerName, subscription } = req.body;
     if (!workerName || !subscription) {
       return res.status(400).json({ error: 'Faltan datos de suscripción' });
+    }
+    // Es público: solo una suscripción de verdad (un https del navegador) y un nombre corto.
+    if (typeof workerName !== 'string' || workerName.length > 80 || !/^https:\/\//.test(String(subscription.endpoint || ''))) {
+      return res.status(400).json({ error: 'Suscripción no válida' });
     }
 
     // Upsert based on endpoint (in case they subscribe again from same browser)

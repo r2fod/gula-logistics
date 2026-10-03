@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import mongoose from 'mongoose';
@@ -9,11 +9,16 @@ vi.mock('../models/ClockEntry.model.js', () => ({
 // requireAdmin consulta AdminConfig para la revocación por cambio de
 // contraseña; la simulamos "sin config" para que ese chequeo no interfiera
 // con estos tests (ver requireAdmin.test.js para su cobertura dedicada).
+vi.mock('../models/TeamRoster.model.js', () => ({
+  TeamRoster: { findOne: vi.fn() },
+}));
 vi.mock('../models/AdminConfig.model.js', () => ({
   AdminConfig: { findOne: vi.fn().mockResolvedValue(null) },
 }));
 
 const { ClockEntry } = await import('../models/ClockEntry.model.js');
+const { TeamRoster } = await import('../models/TeamRoster.model.js');
+const { signToken } = await import('../utils/authToken.js');
 const clockRoutes = (await import('./clock.routes.js')).default;
 
 function buildApp() {
@@ -27,7 +32,12 @@ beforeEach(() => {
   process.env.AUTH_TOKEN_SECRET = 'secreto-de-test-no-real';
   vi.clearAllMocks();
   mongoose.connection.readyState = 1;
+  // Los fichajes de prueba son del 19/09/2026: "hoy" es ese día.
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-09-19T10:00:00.000Z'));
+  TeamRoster.findOne.mockResolvedValue({ workers: [{ name: 'Carlos' }, { name: 'José' }, { name: 'Elena' }] });
 });
+afterEach(() => vi.useRealTimers());
 
 describe('POST /api/clock', () => {
   it('crea un fichaje nuevo normal', async () => {
@@ -129,6 +139,44 @@ describe('POST /api/clock', () => {
 
     expect(res.status).toBe(201);
     expect(res.body.rate).toBe(14);
+  });
+});
+
+describe('POST /api/clock — lo que no vale sin sesión de admin', () => {
+  const fichar = (datos, auth) => {
+    const r = request(buildApp()).post('/api/clock');
+    if (auth) r.set('Authorization', auth);
+    return r.send({ id: 'n1', type: 'entrada', ...datos });
+  };
+
+  it('alguien que no está en el equipo: 400 y no se guarda', async () => {
+    const res = await fichar({ workerName: 'Intruso', timestamp: '2026-09-19T08:00:00.000Z' });
+    expect(res.status).toBe(400);
+    expect(ClockEntry.create).not.toHaveBeenCalled();
+  });
+
+  it('el nombre se compara sin mayúsculas ni acentos', async () => {
+    ClockEntry.create.mockImplementation(async (d) => d);
+    expect((await fichar({ workerName: 'Persona7', timestamp: '2026-09-19T08:00:00.000Z' })).status).toBe(201);
+  });
+
+  it('fecha en el futuro, muy antigua o que no es fecha: 400', async () => {
+    expect((await fichar({ workerName: 'Carlos', timestamp: '2026-09-20T08:00:00.000Z' })).status).toBe(400);
+    expect((await fichar({ workerName: 'Carlos', timestamp: '2026-07-01T08:00:00.000Z' })).status).toBe(400);
+    expect((await fichar({ workerName: 'Carlos', timestamp: 'ayer' })).status).toBe(400);
+    expect(ClockEntry.create).not.toHaveBeenCalled();
+  });
+
+  it('el admin sí puede apuntar una fecha antigua', async () => {
+    ClockEntry.create.mockImplementation(async (d) => d);
+    const res = await fichar({ workerName: 'Carlos', timestamp: '2026-07-01T08:00:00.000Z' }, `Bearer ${signToken({ role: 'admin', v: 1 })}`);
+    expect(res.status).toBe(201);
+  });
+
+  it('sin equipo guardado no se bloquea a nadie (mejor guardar que perder un fichaje)', async () => {
+    TeamRoster.findOne.mockResolvedValue(null);
+    ClockEntry.create.mockImplementation(async (d) => d);
+    expect((await fichar({ workerName: 'Cualquiera', timestamp: '2026-09-19T08:00:00.000Z' })).status).toBe(201);
   });
 });
 
