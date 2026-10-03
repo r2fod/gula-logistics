@@ -10,7 +10,7 @@ import EnVivo from '../ui/EnVivo';
 import { duracionEnCurso } from '../../data/costeEnVivo';
 import { saldoDeTrabajador } from '../../data/saldoTrabajador';
 import { coincideNombre } from '../../data/nombresTrabajadores';
-import { abrirEnPestanaNueva, enlaceWhatsApp } from '../../data/enlaces';
+import EnviarSaldoModal from './saldos/EnviarSaldoModal';
 
 // Horas tal como se escriben DENTRO del texto de un concepto ("4,5" → "4.5", sin ceros de
 // sobra). Ese texto se guarda en Mongo: no cambiar el formato, o los conceptos nuevos
@@ -25,9 +25,11 @@ export default function TeamBalancesTab({
   persistWorkerBalance,
   findWorkerHours,
   onVerEnResumen = null,
-  turnosAbiertos = {}
+  turnosAbiertos = {},
+  equipo = []
 }) {
   const { confirm } = useDialog();
+  const [enviandoSaldo, setEnviandoSaldo] = useState(null); // { ficha, saldo, turnos, turnosHoras } del WhatsApp
   const [expandedWorkerId, setExpandedWorkerId] = useState(null);
   const [addingConceptFor, setAddingConceptFor] = useState(null);
   const [newConceptMode, setNewConceptMode] = useState('turno');
@@ -284,36 +286,6 @@ export default function TeamBalancesTab({
     }
   };
 
-  const handleSendWhatsApp = (worker) => {
-    let message = `🚚 *Gula Logística — Estado de Saldo & Acuerdos*\n\n`;
-    message += `👤 *Trabajador:* ${worker.name}\n`;
-    message += `📋 *Rol:* ${worker.role}\n`;
-
-    if (worker.statusType === 'payroll') {
-      message += `📌 *Estado:* Nómina Fija (Control interno a 14,00 €/h)\n`;
-    } else {
-      message += `💰 *Saldo Actual:* ${formatearEurosConSigno(worker.currentBalance)}\n\n`;
-
-      if (worker.isSpecialPurse && worker.purseInfo) {
-        const p = worker.purseInfo;
-        message += `📦 *Bolsa Mensual (80h):*\n`;
-        message += `• Base: ${formatearEuros(p.grossBase)} - Alojamiento ${formatearEuros(p.housingDeduction)} = ${formatearEuros(p.netFixedAt80h)} Neto al cumplir 80h\n`;
-        message += `• Horas consumidas hasta hoy: ${formatearHoras(p.consumedHours)} (Valor: ${formatearEuros(p.consumedValue)})\n`;
-        message += `• Horas pendientes para extra a 10€/h: ${formatearHoras(p.remainingHoursForExtra)}\n\n`;
-      }
-
-      message += `📝 *Desglose de Turnos & Conceptos:*\n`;
-      worker.breakdown.forEach(item => {
-        message += `• ${item.concept}: *${formatearEurosConSigno(item.amount)}*\n`;
-      });
-    }
-
-    if (worker.notes) {
-      message += `\n💡 *Notas:* ${worker.notes}`;
-    }
-
-    abrirEnPestanaNueva(enlaceWhatsApp(message));
-  };
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -816,17 +788,20 @@ export default function TeamBalancesTab({
 
                   <div className="pt-3 border-t border-slate-800 flex items-center justify-end">
                     <button
-                      onClick={() => handleSendWhatsApp(worker)}
+                      onClick={() => setEnviandoSaldo({ ficha: worker, saldo, turnos: [...dynamicShifts].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)), turnosHoras: hours?.shifts || [] })}
                       className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center justify-center space-x-2 shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
                     >
                       <MessageCircle className="w-4 h-4" />
-                      <span>Redactar WhatsApp</span>
+                      <span>Enviar por WhatsApp</span>
                     </button>
                   </div>
                 </div>
               );
             })}
           </div>
+          {enviandoSaldo && (
+            <EnviarSaldoModal key={enviandoSaldo.ficha.id} datos={enviandoSaldo} admin={adminUnlocked} equipo={equipo} onCerrar={() => setEnviandoSaldo(null)} />
+          )}
         </div>
       
   );

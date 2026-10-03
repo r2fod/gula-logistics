@@ -260,6 +260,7 @@ export default function PartnerDashboardView({
           findWorkerHours={findWorkerHours}
           onVerEnResumen={verEnResumen}
           turnosAbiertos={turnosAbiertos}
+          equipo={workersList}
         />
       )}
 
