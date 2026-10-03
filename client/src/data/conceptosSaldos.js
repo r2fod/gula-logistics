@@ -43,7 +43,11 @@ export function fechaDeConcepto(item = '', referencia = new Date()) {
   if (guardada) return new Date(Number(guardada[1]), Number(guardada[2]) - 1, Number(guardada[3]));
   const concepto = typeof item === 'object' ? item?.concept : item;
   const m = /^🕒\s*(\d{1,2})\/(\d{1,2})(?!\/\d)/.exec(String(concepto).trim());
-  if (!m) return null;
+  if (!m) {
+    // Conceptos heredados (antes del 28/09) sin fecha se asignan a septiembre de 2026
+    // para que aparezcan en el desglose mensual (bolsa mensual, ajustes, etc.)
+    return new Date(2026, 8, 30, 12, 0, 0);
+  }
   const dia = Number(m[1]);
   const mes = Number(m[2]) - 1;
   if (mes < 0 || mes > 11 || dia < 1 || dia > 31) return null;
