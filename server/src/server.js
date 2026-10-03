@@ -48,10 +48,15 @@ if (process.env.MONGODB_URI) {
       try {
         const { WorkerBalance } = await import('./models/WorkerBalance.model.js');
         const { TeamRoster } = await import('./models/TeamRoster.model.js');
-        const workersToFix = await WorkerBalance.find({ $or: [{ name: /Persona5/i }, { id: /Persona5/i }] });
+        // Usamos updateMany porque el campo 'id' colisiona con el getter virtual de Mongoose
+        await WorkerBalance.updateMany(
+          { id: /Persona5/i },
+          { $set: { id: 'Persona5' } }
+        );
+
+        const workersToFix = await WorkerBalance.find({ name: /Persona5/i });
         for (const w of workersToFix) {
           w.name = w.name.replace(/Persona5/i, 'Persona5');
-          w.id = w.id.replace(/Persona5/i, 'Persona5');
           await w.save();
         }
 
