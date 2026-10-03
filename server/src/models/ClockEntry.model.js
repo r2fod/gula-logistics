@@ -5,7 +5,12 @@ import mongoose from 'mongoose';
 // el cliente la usa para marcar esa tarea como completada sola.
 const TaskRefSchema = new mongoose.Schema({
   dayKey: { type: String, required: true },
-  taskIndex: { type: Number, required: true }
+  taskIndex: { type: Number, required: true },
+  // Para encontrar la tarea aunque el día se reordene (refDeTareaFichada en el
+  // cliente). Sin declararlos, Mongo los tiraba al guardar.
+  weekId: { type: String },
+  taskId: { type: String },
+  taskText: { type: String }
 }, { _id: false });
 
 const ClockEntrySchema = new mongoose.Schema({
