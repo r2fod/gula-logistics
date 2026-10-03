@@ -727,18 +727,21 @@ export async function uploadRentalPdf(file) {
   return await res.json();
 }
 
-export async function optimizeDatabase() {
-  const res = await fetchConLimite(`${API_BASE}/logistics/optimize`, {
-    method: 'POST',
-    headers: {
-      ...authHeaders()
-    }
-  });
-  
-  if (!res.ok) {
-    throw new Error('Error al optimizar la base de datos');
+// Vacía la papelera de fichajes: los borra de la base PARA SIEMPRE (ya no se pueden
+// restaurar). { ok, borrados } — borrados null si el servidor aún no lo dice.
+export async function vaciarPapeleraEnAPI() {
+  try {
+    const res = await fetchConLimite(`${API_BASE}/logistics/optimize`, {
+      method: 'POST',
+      headers: { ...authHeaders() }
+    });
+    if (!res.ok) return { ok: false };
+    const datos = await res.json().catch(() => ({}));
+    return { ok: true, borrados: Number.isFinite(datos.borrados) ? datos.borrados : null };
+  } catch (err) {
+    console.warn('No se pudo vaciar la papelera:', err.message);
+    return { ok: false };
   }
-  return await res.json();
 }
 
 export async function fetchRosterFromAPI() {

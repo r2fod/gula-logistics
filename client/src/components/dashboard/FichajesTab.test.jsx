@@ -148,8 +148,48 @@ describe('FichajesTab — papelera', () => {
     expect(restaurar).toHaveBeenCalledWith('b1');
   });
 
+  it('vaciar la papelera pide confirmación avisando de que es para siempre', async () => {
+    const vaciar = vi.fn();
+    renderTab({ adminUnlocked: true, fichajesBorrados: [borrado], onRestoreClockEntry: vi.fn(), onVaciarPapelera: vaciar });
+    fireEvent.click(screen.getByRole('button', { name: /Papelera/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Vaciar papelera/ }));
+    const dialogo = await screen.findByRole('dialog', { name: 'Vaciar papelera' });
+    expect(within(dialogo).getByText(/ya no se podrán restaurar/)).toBeTruthy();
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Borrar para siempre' }));
+    await waitFor(() => expect(vaciar).toHaveBeenCalled());
+  });
+
   it('sin admin no hay papelera', () => {
     renderTab({ fichajesBorrados: [borrado], onRestoreClockEntry: vi.fn() });
     expect(screen.queryByRole('button', { name: /Papelera/ })).toBeNull();
+  });
+});
+
+describe('FichajesTab — revisión de fichajes', () => {
+  const g = (id, workerName, type, iso) => ({ id, workerName, type, timestamp: iso, taskName: 'JORNADA' });
+  const vacio = [g('v1', 'Ana', 'entrada', '2026-09-25T13:29:54Z'), g('v2', 'Ana', 'salida', '2026-09-25T13:30:00Z')];
+  const largo = [g('l1', 'Luis', 'entrada', '2026-09-26T02:30:00Z'), g('l2', 'Luis', 'salida', '2026-09-26T21:38:00Z')];
+  const props = (extra = {}) => ({ clockEntries: [...vacio, ...largo], adminUnlocked: true, onDeleteClockEntries: vi.fn(), onMarcarRevisado: vi.fn(), handleOpenEditEntry: vi.fn(), ...extra });
+
+  it('turno largo: se puede editar su salida o darlo por bueno', () => {
+    const p = props();
+    renderTab(p);
+    fireEvent.click(screen.getByRole('button', { name: /Editar salida/ }));
+    expect(p.handleOpenEditEntry).toHaveBeenCalledWith(largo[1]);
+    fireEvent.click(screen.getByRole('button', { name: /Está bien/ }));
+    expect(p.onMarcarRevisado).toHaveBeenCalledWith(largo[0]);
+  });
+
+  it('lo que sobra va a la papelera tras confirmar, todo junto', async () => {
+    const p = props();
+    renderTab(p);
+    fireEvent.click(screen.getByRole('button', { name: /Mover los 2 a la papelera/ }));
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Limpiar fichajes' })).getByRole('button', { name: 'Mover a la papelera' }));
+    await waitFor(() => expect(p.onDeleteClockEntries).toHaveBeenCalledWith(['v1', 'v2']));
+  });
+
+  it('sin admin no hay revisión', () => {
+    renderTab(props({ adminUnlocked: false }));
+    expect(screen.queryByText('Revisión de fichajes')).toBeNull();
   });
 });

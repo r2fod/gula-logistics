@@ -119,7 +119,10 @@ export default function App() {
     handleClockEntryCreated,
     handleUpdateClockEntry,
     handleDeleteClockEntry,
-    handleRestoreClockEntry
+    handleDeleteClockEntries,
+    handleRestoreClockEntry,
+    handleVaciarPapelera,
+    handleMarcarRevisado
   } = useClockings(markTaskCompleted);
 
   // Fichajes SOLO de la semana activa para las vistas de los trabajadores y
@@ -684,6 +687,9 @@ export default function App() {
         onUpdateClockEntry={handleUpdateClockEntry}
         onDeleteClockEntry={handleDeleteClockEntry}
         onRestoreClockEntry={handleRestoreClockEntry}
+        onDeleteClockEntries={handleDeleteClockEntries}
+        onVaciarPapelera={handleVaciarPapelera}
+        onMarcarRevisado={handleMarcarRevisado}
         deletedClockEntries={deletedClockEntries}
         onClockEntryCreated={handleClockEntryCreated}
       />

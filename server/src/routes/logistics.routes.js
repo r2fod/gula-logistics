@@ -358,33 +358,20 @@ router.post('/upload-rental', requireAdmin, (req, res, next) => {
   res.json({ success: true, url: fileUrl });
 });
 
-// POST /api/logistics/optimize
+// POST /api/logistics/optimize — vacía la papelera de fichajes: borra PARA SIEMPRE los
+// marcados como borrados (no cuentan en horas ni saldos). En la app es «Vaciar papelera»
+// (antes «Optimizar y Limpiar Base de Datos», que no decía qué borraba). La ruta guarda
+// su nombre para no romper clientes que aún no se hayan actualizado.
 router.post('/optimize', requireAdmin, async (req, res) => {
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({ success: false, message: 'Sin conexión con la base: no se ha borrado nada.' });
+  }
   try {
-    let deletedCount = 0;
-    
-    // Solo optimizamos si estamos conectados a MongoDB
-    if (mongoose.connection.readyState === 1) {
-      // Importar modelo de fichajes
-      const { ClockEntry } = await import('../models/ClockEntry.model.js');
-      // Borrar fichajes marcados como borrados (papelera) — el campo real
-      // en el schema es `deleted`, no `isDeleted` (ver clock.routes.js).
-      const result = await ClockEntry.deleteMany({ deleted: true });
-      deletedCount = result.deletedCount;
-      
-      // Opcional: borrar semanas viejas si hay más de 10
-      const weeksCount = await LogisticsWeek.countDocuments();
-      if (weeksCount > 10) {
-        // ... en el futuro
-      }
-    }
-    
-    res.json({ 
-      success: true, 
-      message: `Base de datos optimizada. Se han purgado ${deletedCount} registros antiguos o eliminados permanentemente.` 
-    });
+    const { ClockEntry } = await import('../models/ClockEntry.model.js');
+    const { deletedCount: borrados = 0 } = await ClockEntry.deleteMany({ deleted: true });
+    res.json({ success: true, borrados, message: `Papelera vaciada: ${borrados} ${borrados === 1 ? 'fichaje borrado' : 'fichajes borrados'} para siempre.` });
   } catch (error) {
-    console.error('Error optimizando DB:', error);
+    console.error('Error vaciando la papelera de fichajes:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

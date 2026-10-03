@@ -22,6 +22,7 @@ describe('revisarFichajes', () => {
       ['salida-suelta', [suelta.id]],
       ['turno-vacio', vacia.map(x => x.id)],
     ]);
+    expect(r.sobran[2].detalle).toBe('Turno de menos de 1 min: cuenta 0 h y 0 €.');
     expect(r.revisar).toEqual([]);
   });
 
@@ -32,10 +33,19 @@ describe('revisarFichajes', () => {
     expect(r.sobran[0].fichajes[0].id).toBe(dobles[1].id);
   });
 
-  it('turno de más de 14 h y entrada olvidada se revisan (cuentan, no se borran)', () => {
+  it('turno de más de 14 h y entrada abierta más de 14 h se revisan (cuentan, no se borran)', () => {
     const r = revisarFichajes([f('Ana', 'entrada', '04:30:00'), f('Ana', 'salida', '23:30:00'), { ...f('Luis', 'entrada', '00:00:00'), timestamp: new Date('2026-09-19T05:00:00').toISOString() }], AHORA);
     expect(r.sobran).toEqual([]);
-    expect(motivos(r)).toEqual(['turno-largo', 'olvidado']);
+    expect(motivos(r)).toEqual(['turno-largo', 'abierto-largo']);
+  });
+
+  it('un turno largo marcado como bueno (revisado) deja de avisar', () => {
+    const r = revisarFichajes([f('Ana', 'entrada', '04:30:00', { revisado: true }), f('Ana', 'salida', '23:30:00'), { ...f('Luis', 'entrada', '00:00:00', { revisado: true }), timestamp: new Date('2026-09-19T05:00:00').toISOString() }], AHORA);
+    expect(r).toEqual({ sobran: [], revisar: [] });
+  });
+
+  it('una entrada abierta de menos de 14 h no avisa (está trabajando)', () => {
+    expect(revisarFichajes([f('Ana', 'entrada', '10:00:00')], AHORA)).toEqual({ sobran: [], revisar: [] });
   });
 
   it('empareja como pairShiftsFromEntries (sin mirar mayúsculas) e ignora la papelera', () => {
