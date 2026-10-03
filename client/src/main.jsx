@@ -4,12 +4,15 @@ import App from './App.jsx';
 import './index.css';
 
 import { DialogProvider } from './contexts/DialogContext';
+import RedDeSeguridad from './components/ui/RedDeSeguridad';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <DialogProvider>
-      <App />
-    </DialogProvider>
+    <RedDeSeguridad>
+      <DialogProvider>
+        <App />
+      </DialogProvider>
+    </RedDeSeguridad>
   </React.StrictMode>
 );
 

@@ -25,7 +25,7 @@ const DEGRADADOS = {
 // - insignia: nodo que se pinta a la derecha del título (p. ej. "ADMIN ONLY").
 // - acciones: nodo pegado al extremo derecho de la cabecera.
 // - compacta: caja y textos más pequeños en móvil.
-// - className: márgenes del bloque (p. ej. "mb-6").
+// - className: márgenes del bloque (p. ej. "mb-6"). Sin `acciones`, ya deja sitio a la X.
 export default function CabeceraModal({
   icono: Icono,
   titulo,
@@ -66,7 +66,9 @@ export default function CabeceraModal({
     </div>
   );
 
-  if (!acciones) return <div className={className}>{bloque}</div>;
+  // Sin acciones propias, la X de Modal va en la esquina: se le deja sitio para que
+  // un título largo no quede debajo de ella en móvil.
+  if (!acciones) return <div className={`pr-10 ${className}`}>{bloque}</div>;
 
   return (
     <div className={`flex items-center justify-between gap-3 ${className}`}>

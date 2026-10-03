@@ -24,6 +24,10 @@ export default function ClockInModal({
   
   const [isEditingTime, setIsEditingTime] = useState(false);
   const [manualTimeStr, setManualTimeStr] = useState('');
+  // Contra el doble toque. Va con los demás hooks, ANTES del `return null`: después
+  // de él, abrir la ventana tenía un hook más que cerrada y React tumbaba la app
+  // entera (pantalla oscura al pulsar «Fichar»).
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const getDatetimeLocalString = (date) => {
     const tzoffset = date.getTimezoneOffset() * 60000;
@@ -61,8 +65,6 @@ export default function ClockInModal({
 
   // Quien ficha: el elegido en el selector (con el rol y la tarifa de su ficha).
   const trabajadorElegido = { ...currentWorkerObj, name: selectedWorker };
-  
-  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleClockIn = async () => {
     if (isProcessing) return;
@@ -146,7 +148,7 @@ export default function ClockInModal({
             <span className="text-3xl font-extrabold font-mono text-emerald-400 tracking-wider">
               {formatTime(currentTime)}
             </span>
-            <p className="text-xs text-slate-400 mt-1 capitalize">
+            <p className="text-xs text-slate-400 mt-1 first-letter:uppercase">
               {formatDateLong(currentTime)}
             </p>
             {isAdmin && (

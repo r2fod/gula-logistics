@@ -50,7 +50,7 @@ export default function EnviarSaldoModal({ datos, admin = false, equipo = [], on
 
   return (
     <Modal onCerrar={onCerrar} ancho="lg" etiqueta={`Enviar el saldo de ${nombre} por WhatsApp`}>
-      <CabeceraModal icono={MessageCircle} tono="emerald" titulo="Enviar saldo por WhatsApp" subtitulo={nombre} className="mb-5 pr-10" />
+      <CabeceraModal icono={MessageCircle} tono="emerald" titulo="Enviar saldo por WhatsApp" subtitulo={nombre} className="mb-5" />
 
       <fieldset className="mb-4">
         <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Qué lleva el mensaje</legend>
