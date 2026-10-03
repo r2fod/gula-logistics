@@ -78,6 +78,17 @@ export default function WorkerView({
   // para editar/borrar uno ya enviado: eso está bloqueado y solo puede
   // hacerlo Administración (el servidor lo exige en clock.routes.js).
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isProcessingAction, setIsProcessingAction] = useState(false);
+
+  const safeClockEntry = async (entryFn) => {
+    if (isProcessingAction) return;
+    setIsProcessingAction(true);
+    try {
+      await onClockEntryCreated(entryFn());
+    } finally {
+      setTimeout(() => setIsProcessingAction(false), 500);
+    }
+  };
 
   const [pushStatus, setPushStatus] = useState(() => {
     if (!('Notification' in window)) return 'unsupported';
@@ -562,15 +573,15 @@ export default function WorkerView({
                                 ? { dayKey: immediateTask.dayKey, taskIndex: immediateTask.taskIndex }
                                 : null;
 
-                              onClockEntryCreated(crearFichaje({
-                                trabajador: currentWorkerObj,
-                                tipo: 'fichaje',
-                                taskName: immediateTask.taskName.trim(),
-                                note: '',
-                                taskRef: refDeTareaFichada(activeWeekData, tRef)
-                              }));
-                            }}
-                            disabled={isLocked}
+                                safeClockEntry(() => crearFichaje({
+                                  trabajador: currentWorkerObj,
+                                  tipo: 'fichaje',
+                                  taskName: immediateTask.taskName.trim(),
+                                  note: '',
+                                  taskRef: refDeTareaFichada(activeWeekData, tRef)
+                                }));
+                              }}
+                              disabled={isLocked || isProcessingAction}
                             className={`w-full py-2.5 px-3 rounded-lg text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
                               isLocked
                                 ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none'
@@ -603,10 +614,13 @@ export default function WorkerView({
               )}
 
               <button
+                disabled={isProcessingAction}
                 onClick={() => { 
-                  onClockEntryCreated(crearFichaje({ trabajador: currentWorkerObj, tipo: 'salida', note: '' }));
+                  safeClockEntry(() => crearFichaje({ trabajador: currentWorkerObj, tipo: 'salida', note: '' }));
                 }}
-                className="w-full py-3.5 px-3 rounded-xl text-xs min-[360px]:text-sm font-extrabold bg-rose-600 hover:bg-rose-500 text-white flex items-center justify-center space-x-2 transition-all shadow-xl shadow-rose-600/30 active:scale-95"
+                className={`w-full py-3.5 px-3 rounded-xl text-xs min-[360px]:text-sm font-extrabold flex items-center justify-center space-x-2 transition-all shadow-xl active:scale-95 ${
+                  isProcessingAction ? 'bg-rose-900/50 text-rose-500 cursor-not-allowed shadow-none' : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30'
+                }`}
               >
                 <Square className="w-4 h-4 shrink-0" />
                 <span className="whitespace-nowrap">{activeShift.taskName === 'JORNADA' ? 'FINALIZAR JORNADA' : 'Fichar salida'}</span>
@@ -658,9 +672,9 @@ export default function WorkerView({
                 return (
                   <>
                   <button
-                    disabled={!isReady}
+                    disabled={!isReady || isProcessingAction}
                     onClick={() => {
-                      onClockEntryCreated(crearFichaje({
+                      safeClockEntry(() => crearFichaje({
                         trabajador: currentWorkerObj,
                         tipo: 'entrada',
                         taskName: 'JORNADA',
@@ -669,7 +683,7 @@ export default function WorkerView({
                       }));
                     }}
                     className={`w-full py-3.5 px-3 sm:px-4 rounded-xl text-[13px] min-[360px]:text-sm font-extrabold flex items-center justify-center gap-2 transition-all ${
-                      isReady 
+                      isReady && !isProcessingAction
                         ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 shadow-xl shadow-emerald-500/25 active:scale-95' 
                         : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
                     }`}

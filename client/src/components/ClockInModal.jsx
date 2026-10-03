@@ -61,33 +61,47 @@ export default function ClockInModal({
 
   // Quien ficha: el elegido en el selector (con el rol y la tarifa de su ficha).
   const trabajadorElegido = { ...currentWorkerObj, name: selectedWorker };
+  
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleClockIn = () => {
-    onClockEntryCreated(crearFichaje({
-      trabajador: trabajadorElegido,
-      tipo: 'entrada',
-      taskName: note.trim() || 'Inicio de Jornada Operativa',
-      note: note.trim(),
-      fecha: isEditingTime ? currentTime : new Date(),
-      // Referencia a la tarea real del planning (día + índice) para poder
-      // marcarla como hecha sola cuando se fiche la salida de este turno.
-      taskRef: taskRef || null
-    }));
-    setNote('');
-    setIsEditingTime(false);
-    onClose();
+  const handleClockIn = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      await onClockEntryCreated(crearFichaje({
+        trabajador: trabajadorElegido,
+        tipo: 'entrada',
+        taskName: note.trim() || 'Inicio de Jornada Operativa',
+        note: note.trim(),
+        fecha: isEditingTime ? currentTime : new Date(),
+        // Referencia a la tarea real del planning (día + índice) para poder
+        // marcarla como hecha sola cuando se fiche la salida de este turno.
+        taskRef: taskRef || null
+      }));
+      setNote('');
+      setIsEditingTime(false);
+      onClose();
+    } finally {
+      setTimeout(() => setIsProcessing(false), 300);
+    }
   };
 
-  const handleClockOut = () => {
-    onClockEntryCreated(crearFichaje({ 
-      trabajador: trabajadorElegido, 
-      tipo: 'salida', 
-      note: note.trim(),
-      fecha: isEditingTime ? currentTime : new Date() 
-    }));
-    setNote('');
-    setIsEditingTime(false);
-    onClose();
+  const handleClockOut = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+    try {
+      await onClockEntryCreated(crearFichaje({ 
+        trabajador: trabajadorElegido, 
+        tipo: 'salida', 
+        note: note.trim(),
+        fecha: isEditingTime ? currentTime : new Date() 
+      }));
+      setNote('');
+      setIsEditingTime(false);
+      onClose();
+    } finally {
+      setTimeout(() => setIsProcessing(false), 300);
+    }
   };
 
   return (
@@ -232,9 +246,9 @@ export default function ClockInModal({
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={handleClockIn}
-          disabled={!!activeShift}
+          disabled={!!activeShift || isProcessing}
           className={`py-3.5 px-4 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
-            activeShift 
+            (activeShift || isProcessing)
               ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
               : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20'
           }`}
@@ -245,9 +259,9 @@ export default function ClockInModal({
 
         <button
           onClick={handleClockOut}
-          disabled={!activeShift}
+          disabled={!activeShift || isProcessing}
           className={`py-3.5 px-4 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
-            !activeShift 
+            (!activeShift || isProcessing)
               ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
               : 'bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 text-white shadow-lg shadow-rose-500/20'
           }`}
