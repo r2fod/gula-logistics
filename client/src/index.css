@@ -115,6 +115,9 @@ a:active svg.lucide,
 .icono-reloj:hover svg.lucide, .icono-reloj:focus-visible svg.lucide { animation: girar 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
 .icono-latido:hover svg.lucide, .icono-latido:focus-visible svg.lucide { animation: latido 1.1s ease-in-out infinite; }
 .icono-destello:hover svg.lucide, .icono-destello:focus-visible svg.lucide { animation: destello 1.2s ease-in-out infinite; }
+.icono-pop:hover svg.lucide, .icono-pop:focus-visible svg.lucide { animation: pop 0.5s ease-out; }
+.icono-flotar:hover svg.lucide, .icono-flotar:focus-visible svg.lucide { animation: flotar 1.5s ease-in-out infinite; }
+.icono-bamboleo:hover svg.lucide, .icono-bamboleo:focus-visible svg.lucide { animation: bamboleo 1s ease-in-out infinite; }
 
 /* Foco visible para quien navega con teclado (donde un componente no pone el suyo). */
 button:focus-visible,
@@ -134,7 +137,9 @@ input:focus-visible {
     rotate: none !important;
   }
   .icono-campana svg.lucide, .icono-camion svg.lucide, .icono-reloj svg.lucide,
-  .icono-latido svg.lucide, .icono-destello svg.lucide {
+  .icono-latido svg.lucide, .icono-destello svg.lucide, .icono-pop svg.lucide,
+  .icono-flotar svg.lucide, .icono-bamboleo svg.lucide {
     animation: none !important;
   }
 }
+

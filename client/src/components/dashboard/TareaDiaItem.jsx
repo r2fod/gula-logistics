@@ -34,18 +34,25 @@ export default function TareaDiaItem({ task, hecha, filtro = null, alPulsar = nu
         )}
       </div>
       <div className="flex-1 leading-relaxed">
-        <span className={hecha ? 'line-through' : ''}><TaskTextWithEvent text={texto} event={typeof task === 'object' ? task.event : undefined} /></span>
-        {typeof task === 'object' && task.timeFrame && (
-          <span className="ml-2 text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1 align-middle whitespace-nowrap">
-            <Clock className="w-3 h-3" />
-            {task.timeFrame}
-          </span>
-        )}
-        {typeof task === 'object' && task.completedAt && hecha && (
-          <span className="ml-2 text-[10px] font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded inline-flex items-center gap-1 align-middle whitespace-nowrap border border-emerald-500/30" title="Hora de finalización real">
-            <Check className="w-3 h-3" />
-            Fin: {new Date(task.completedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-          </span>
+        <div className={hecha ? 'line-through' : ''}>
+          <TaskTextWithEvent text={texto} event={typeof task === 'object' ? task.event : undefined} />
+        </div>
+        
+        {(typeof task === 'object' && (task.timeFrame || (task.completedAt && hecha))) && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            {task.timeFrame && (
+              <span className="text-[10px] font-bold bg-slate-800/80 text-slate-300 px-2 py-0.5 rounded inline-flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {task.timeFrame}
+              </span>
+            )}
+            {task.completedAt && hecha && (
+              <span className="text-[10px] font-bold bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded inline-flex items-center gap-1 border border-emerald-500/30" title="Hora de finalización real">
+                <Check className="w-3 h-3" />
+                Fin: {new Date(task.completedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
         )}
       </div>
     </li>

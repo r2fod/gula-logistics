@@ -23,22 +23,8 @@ function entry(overrides) {
   return { id: 'e1', workerName: 'Carlos', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z', ...overrides };
 }
 
-// El entorno jsdom de este proyecto no expone un localStorage real (queda
-// como un objeto vacío sin .clear/.getItem/.setItem) — se sustituye por un
-// stub mínimo en memoria en vez de intentar arreglar esa infraestructura
-// de test como parte de este cambio.
-function createLocalStorageMock() {
-  let store = {};
-  return {
-    getItem: (key) => (key in store ? store[key] : null),
-    setItem: (key, value) => { store[key] = String(value); },
-    removeItem: (key) => { delete store[key]; },
-    clear: () => { store = {}; },
-  };
-}
-
 beforeEach(() => {
-  vi.stubGlobal('localStorage', createLocalStorageMock());
+  localStorage.clear();
   vi.restoreAllMocks();
 });
 

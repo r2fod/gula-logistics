@@ -78,12 +78,38 @@ export function setStoredSociasToken(token) {
 export function guardarTokenTrabajador(nombre, token) {
   try {
     const expiresAt = caducidadDeToken(token, Date.now() + 365 * 24 * 60 * 60 * 1000);
-    localStorage.setItem(TRABAJADOR_TOKEN_STORAGE_KEY, JSON.stringify({ nombre, token, expiresAt }));
+    const key = String(nombre).trim().toLowerCase();
+    const raw = localStorage.getItem(TRABAJADOR_TOKEN_STORAGE_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    
+    // Migración transparente si había un solo token viejo
+    if (map.token && typeof map.token === 'string') {
+      const oldMap = {};
+      if (map.nombre) oldMap[String(map.nombre).trim().toLowerCase()] = map;
+      localStorage.setItem(TRABAJADOR_TOKEN_STORAGE_KEY, JSON.stringify({ ...oldMap, [key]: { token, expiresAt, nombre } }));
+    } else {
+      map[key] = { token, expiresAt, nombre };
+      localStorage.setItem(TRABAJADOR_TOKEN_STORAGE_KEY, JSON.stringify(map));
+    }
   } catch { /* sin almacenamiento: vale mientras esté abierta, con el ?t= de la URL */ }
 }
 
-export function olvidarTokenTrabajador() {
-  try { localStorage.removeItem(TRABAJADOR_TOKEN_STORAGE_KEY); } catch { /* nada que borrar */ }
+export function olvidarTokenTrabajador(nombre) {
+  try {
+    const raw = localStorage.getItem(TRABAJADOR_TOKEN_STORAGE_KEY);
+    if (!raw) return;
+    const map = JSON.parse(raw);
+    
+    if (map.token && typeof map.token === 'string') {
+      if (!nombre || mismoNombre(map.nombre, nombre)) localStorage.removeItem(TRABAJADOR_TOKEN_STORAGE_KEY);
+    } else if (nombre) {
+      const key = String(nombre).trim().toLowerCase();
+      delete map[key];
+      localStorage.setItem(TRABAJADOR_TOKEN_STORAGE_KEY, JSON.stringify(map));
+    } else {
+      localStorage.removeItem(TRABAJADOR_TOKEN_STORAGE_KEY);
+    }
+  } catch { /* nada que borrar */ }
 }
 
 const mismoNombre = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
@@ -93,9 +119,24 @@ const mismoNombre = (a, b) => String(a || '').trim().toLowerCase() === String(b 
 export function tokenTrabajador(nombre) {
   try {
     const raw = localStorage.getItem(TRABAJADOR_TOKEN_STORAGE_KEY);
-    if (raw && mismoNombre(JSON.parse(raw).nombre, nombre)) {
-      const guardado = leerTokenGuardado(TRABAJADOR_TOKEN_STORAGE_KEY);
-      if (guardado) return guardado;
+    if (raw) {
+      const map = JSON.parse(raw);
+      const key = String(nombre).trim().toLowerCase();
+      let guardado = null;
+      
+      if (map.token && typeof map.token === 'string') {
+        if (mismoNombre(map.nombre, nombre)) guardado = map;
+      } else if (map[key]) {
+        guardado = map[key];
+      }
+      
+      if (guardado) {
+        if (!guardado.token || !guardado.expiresAt || Date.now() > guardado.expiresAt) {
+          olvidarTokenTrabajador(nombre);
+        } else {
+          return guardado.token;
+        }
+      }
     }
   } catch { /* sin almacenamiento: se mira la URL */ }
   const params = new URLSearchParams(window.location.search);
@@ -108,6 +149,7 @@ export function cerrarAccesosGuardados() {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
   localStorage.removeItem(SOCIAS_TOKEN_STORAGE_KEY);
   localStorage.removeItem(BALANCES_CACHE_KEY);
+  localStorage.removeItem('gula_mi_saldo_v1');
 }
 
 // La sesión de admin manda; si no la hay, el enlace de socias (solo sirve para
