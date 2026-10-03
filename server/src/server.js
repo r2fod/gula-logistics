@@ -71,7 +71,24 @@ if (process.env.MONGODB_URI) {
           });
           if (changed) await rosterDoc.save();
         }
-        console.log('Migración completa (WorkerBalance + TeamRoster array) para Persona5');
+        
+        // MIGRACIÓN: Asignar fecha a conceptos heredados (anteriores a Octubre)
+        const allWorkers = await WorkerBalance.find({});
+        for (const w of allWorkers) {
+          let wChanged = false;
+          if (w.breakdown && w.breakdown.length > 0) {
+            w.breakdown.forEach(item => {
+              if (!item.date) {
+                // Si no tiene fecha, es de la operativa inicial de septiembre
+                item.date = '2026-09-30';
+                wChanged = true;
+              }
+            });
+          }
+          if (wChanged) await w.save();
+        }
+        
+        console.log('Migración completa (WorkerBalance + TeamRoster array + fechas de septiembre)');
       } catch (err) {
         console.error('Error migrando nombres Persona5:', err);
       }
