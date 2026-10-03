@@ -332,10 +332,30 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
                     horas={w.totalHours}
                     coste={w.totalCost}
                     porcentaje={totalCoste > 0 ? (w.totalCost / totalCoste) * 100 : 0}
-                    detalle={eventsList
-                      .filter(evt => evt.workers[w.name])
-                      .map(evt => ({ nombre: evt.eventName, horas: evt.workers[w.name].hours, coste: evt.workers[w.name].cost }))
-                      .sort((a, b) => b.coste - a.coste)}
+                    detalle={(() => {
+                      const eventos = eventsList
+                        .filter(evt => evt.workers[w.name])
+                        .map(evt => ({ nombre: evt.eventName, horas: evt.workers[w.name].hours, coste: evt.workers[w.name].cost }));
+
+                      const manualesDelTrabajador = (conceptos?.items || []).filter(it => it.tipo !== 'pago' && coincideNombre(it.persona, w.name));
+                      if (manualesDelTrabajador.length > 0) {
+                        const costeManual = manualesDelTrabajador.reduce((suma, it) => suma + it.importe, 0);
+                        const horasManual = manualesDelTrabajador.reduce((suma, it) => {
+                          if (it.tipo === 'bolsa' || it.tipo === 'turno') {
+                            const match = it.concepto.match(/(\d+(?:\.\d+)?)\s*h\b/i);
+                            if (match) return suma + parseFloat(match[1]);
+                          }
+                          return suma;
+                        }, 0);
+                        eventos.push({
+                          nombre: 'Apuntado a mano (bolsa, ajustes...)',
+                          icono: '✍️',
+                          horas: horasManual,
+                          coste: costeManual
+                        });
+                      }
+                      return eventos.sort((a, b) => b.coste - a.coste);
+                    })()}
                     retraso={520 + i * PASO_FILA}
                     destacada={w.name === personaEnfocada}
                   />
