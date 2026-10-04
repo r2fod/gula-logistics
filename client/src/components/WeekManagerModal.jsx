@@ -281,7 +281,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
             {/* El marcado automático de tareas (y los números de día) salen de este texto. */}
             {dateRange.trim() && !parseWeekRange(dateRange) && (
               <p className="mt-1.5 text-[11px] text-amber-400">
-                No entiendo estas fechas: sin ellas las tareas no se marcarán solas por horario. Usa el formato "Del 22 al 27 de Septiembre".
+                No entiendo estas fechas: sin ellas no se sabe qué día es cada tarea. Usa el formato «Del 22 al 27 de Septiembre».
               </p>
             )}
           </div>

@@ -14,7 +14,7 @@ export function useMiSaldo(nombre) {
     try {
       const saved = localStorage.getItem(cacheKey);
       if (saved) fichaCache = JSON.parse(saved);
-    } catch {}
+    } catch { /* sin almacenamiento o copia ilegible: se pide al servidor */ }
     
     return { 
       ficha: fichaCache && coincideNombre(nombre, fichaCache.name) ? fichaCache : null, 

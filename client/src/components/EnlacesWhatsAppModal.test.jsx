@@ -135,4 +135,36 @@ describe('enlaces firmados de los trabajadores (ven su saldo)', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /Abrir/ })[0]);
     expect(abrir).toHaveBeenLastCalledWith(expect.stringMatching(/\?worker=Ana$/), '_blank');
   });
+
+  it('"Anular enlaces de trabajador enviados" pide confirmación, anula y los enlaces salen con la firma nueva', async () => {
+    crearToken.mockResolvedValue({ ok: true, token: 's.s', expiresAt: Date.now() + 1000 });
+    crearEnlaces.mockResolvedValueOnce({ ok: true, enlaces: [{ id: 'ana', name: 'Ana', token: 'firma.vieja' }] })
+      .mockResolvedValueOnce({ ok: true, enlaces: [{ id: 'ana', name: 'Ana', token: 'firma.nueva' }] });
+    const abrir = vi.spyOn(window, 'open').mockImplementation(() => null);
+    pintar({ admin: true });
+    await screen.findByText(/Cada enlace es personal/);
+    expect(crearEnlaces).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: /Anular enlaces de trabajador/ }));
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Confirmación' })).getByRole('button', { name: 'Anular y generar' }));
+    await waitFor(() => expect(crearEnlaces).toHaveBeenLastCalledWith({ anularAnteriores: true }));
+    await screen.findByText(/Reenvía a cada persona su enlace nuevo/);
+    fireEvent.click(screen.getAllByRole('button', { name: /Abrir/ })[0]);
+    expect(abrir).toHaveBeenLastCalledWith(expect.stringMatching(/\?worker=Ana&t=firma\.nueva$/), '_blank');
+  });
+
+  it('si se cancela la confirmación no anula nada', async () => {
+    crearToken.mockResolvedValue({ ok: true, token: 's.s', expiresAt: Date.now() + 1000 });
+    pintar({ admin: true });
+    await screen.findByText(/Cada enlace es personal/);
+    fireEvent.click(screen.getByRole('button', { name: /Anular enlaces de trabajador/ }));
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Confirmación' })).getByRole('button', { name: 'Cancelar' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Confirmación' })).toBeNull());
+    expect(crearEnlaces).toHaveBeenCalledTimes(1);
+    expect(crearEnlaces).not.toHaveBeenCalledWith({ anularAnteriores: true });
+  });
+
+  it('sin sesión de admin no hay botón de anular', () => {
+    pintar();
+    expect(screen.queryByRole('button', { name: /Anular enlaces de trabajador/ })).toBeNull();
+  });
 });

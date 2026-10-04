@@ -66,7 +66,9 @@ export function useClockings(markTaskCompleted) {
   };
 
   const handleUpdateClockEntry = async (updatedEntry) => {
-    actualizarLocal(prev => prev.map(e => e.id === updatedEntry.id ? updatedEntry : e));
+    // Se mezcla, como hace el servidor (PUT = $set): la ventana de edición rehace el
+    // fichaje sin taskRef/firmado/revisado y reemplazarlo los perdía aquí.
+    actualizarLocal(prev => prev.map(e => e.id === updatedEntry.id ? { ...e, ...updatedEntry } : e));
     const saved = await updateClockEntryInAPI(updatedEntry);
     if (!saved) {
       // Editar un fichaje (hora, tarifa, tarea...) es una acción deliberada

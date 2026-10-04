@@ -1,6 +1,6 @@
 # Pendientes
 
-_Solo lo que sigue abierto (actualizado el 28/09/2026). Lo resuelto se borra de aquí: queda en `git log` y, si deja una lección, en `MEJORAS.md`. La versión larga anterior: `git show 19e5547:PENDIENTES.md`._
+_Solo lo que sigue abierto (actualizado el 04/10/2026). Lo resuelto se borra de aquí: queda en `git log` y, si deja una lección, en `MEJORAS.md`. La versión larga anterior: `git show 19e5547:PENDIENTES.md`._
 
 ## 🔴 Seguridad y datos
 - [ ] **Enlaces de socias VIEJOS con la sesión de admin dentro** (`?token=`, del modal de WhatsApp anterior al 27/09): siguen dando acceso de ADMIN hasta que se anulen: **Configuración → «Cerrar todas las sesiones y enlaces de socias»** (no cambia la clave; luego reenviar a las socias el enlace nuevo de solo lectura).
@@ -11,7 +11,7 @@ _Solo lo que sigue abierto (actualizado el 28/09/2026). Lo resuelto se borra de 
 ## 🟡 Funcional
 - [ ] **Regla "base/checklist y jefe de logística no cargan":** el usuario quitó ese texto de las tarjetas de equipo (21/09) pero sigue en el generador y en el prompt de Gemini. ¿Sigue vigente?
 - [ ] **Semana 3:** 62,5 h de jornada sin tarea van repartidas por estimación; si el usuario dice qué se hizo el domingo por la noche, se ajustan asignaciones/horas y el reparto cambia solo. Anotar los **pax** de cada evento (sin pax, reparto a partes iguales).
-- [ ] **Enlaces de trabajador firmados** (30/09): ya existen (`&t=`, desde «Enlaces de WhatsApp» con sesión de admin) y con ellos cada uno ve sus horas y lo que tiene por cobrar. **El admin tiene que reenviar a cada persona su enlace nuevo** (los antiguos siguen valiendo, sin saldo). Falta: botón para anularlos todos (el servidor ya lo admite: `anularAnteriores`) y, cuando todos tengan el nuevo, exigirlo para fichar y cerrar los endpoints públicos de arriba.
+- [ ] **Enlaces de trabajador firmados** (30/09): ya existen (`&t=`, desde «Enlaces de WhatsApp» con sesión de admin) y con ellos cada uno ve sus horas y lo que tiene por cobrar. **El admin tiene que reenviar a cada persona su enlace nuevo** (los antiguos siguen valiendo, sin saldo). Si uno se filtra: «Enlaces de WhatsApp» → «Anular enlaces de trabajador enviados» (04/10; luego reenviarlos todos). Falta, cuando todos tengan el nuevo, exigirlo para fichar y cerrar los endpoints públicos de arriba.
 - [ ] Revisión responsive sistemática 320–1920 px del resto de vistas.
 
 ## Asistente IA (27/09)
@@ -26,14 +26,11 @@ _Solo lo que sigue abierto (actualizado el 28/09/2026). Lo resuelto se borra de 
 - [ ] **`client/api_data.json` en la copia de `main`**: volcado de fichajes reales del 03/10 (ya en `.gitignore`, nunca al repo). Es la única copia de los 38 fichajes de la papelera vaciada ese día y de los 22 borrados para siempre esa noche (los 12 que sobraban, 6 que ya estaban en la papelera y 4 de dos jornadas de nómina del 15 y 16/09, borradas a propósito: de momento la nómina no se cuenta). Si no hace falta recuperar ninguno, borrarlo.
 - [ ] Revisar en producción con sesión de admin: Saldos (dos grupos y el saldo subiendo con alguien en turno), "Ver sus horas por evento", el Resumen con lo apuntado a mano y lo previsto, copiar para WhatsApp y la papelera del Historial.
 
-## Auditoría 28/09 — lo que queda
-- [ ] **Tests** de `AdminClockEditModal` y del flujo completo de fichar en `ClockInModal` (abrir ya está cubierto, y `useClockings` en lo de la papelera).
-
 ## 🟢 Código
-- [ ] ESLint del cliente: 21 errores (reglas nuevas de React: `setState` dentro de efectos en varios modales) y ~140 avisos, todos anteriores. No añadir nuevos.
+- [ ] ESLint del cliente: 11 errores, todos anteriores: `setState` dentro de efectos (`App`, `PartnerDashboardView`, `AdminTaskEditorModal`, `FinancialSummaryTab`, `AvisarCambiosModal`, `useCountUp`), refs leídos al pintar (`App`, `useCerrarConEscape`: el patrón «último callback»), una variable usada antes de declararla (`App`) y `Date.now()` al pintar (`TaskFlowGraphView`); ~150 avisos. No añadir nuevos.
 - [ ] Archivos grandes: `AdminTaskEditorModal` (~1050 líneas), `WorkerView` (~1030; su historial ya va en `trabajador/HistorialFichajes`), `TeamBalancesTab` (~810). Siguientes piezas: la tarjeta de la tarea inmediata de `WorkerView`, `Boton`, `Chip` seleccionable, `PuntoEstado`.
 - [ ] Normalizar las tareas a objeto al cargar la semana y quitar los `typeof task === 'object' ? task.text : task` repartidos.
-- [ ] `npm audit` del cliente: `vite`/`esbuild` (solo afectan a `npm run dev`); arreglarlo es subir `vite` de versión mayor, en rama aparte.
+- [ ] `npm audit` del cliente: 7 avisos, todos de herramientas de build (nada llega al navegador): `vite`/`esbuild` (solo `npm run dev`) y `tailwindcss` 3 (`braces`/`micromatch`, de su vigilante de archivos). Arreglarlo es subir `vite` y `tailwindcss` de versión mayor, en rama aparte. `--legacy-peer-deps` sigue haciendo falta: `eslint-plugin-react` aún no admite ESLint 10.
 
 ## Visto una vez, sin reproducir
 - Salto espontáneo de pestaña en el panel (probablemente un clic accidental).

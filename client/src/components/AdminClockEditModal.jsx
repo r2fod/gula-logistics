@@ -1,13 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { AlertTriangle, Check, Lock, ShieldCheck, Trash2, User } from 'lucide-react';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input, Selector, AreaTexto } from './ui/Campo';
 import { crearFichaje } from '../data/fichajes';
+import { valorDatetimeLocal } from '../utils/dateUtils';
 
+// Se monta de nuevo al abrir y con cada fichaje (`key`): el formulario sale de las
+// props de ese momento. Antes un efecto lo rehacía cada vez que cambiaba
+// `workersList`, y WorkerView pasa uno nuevo en cada repintado (cada 15 s): se
+// borraba lo que el trabajador estaba escribiendo.
+export default function AdminClockEditModal(props) {
+  if (!props.isOpen) return null;
+  return <FormularioFichaje key={props.entry?.id ?? 'nuevo'} {...props} />;
+}
 
-export default function AdminClockEditModal({
-  isOpen,
+function FormularioFichaje({
   onClose,
   entry = null, // null if creating a new manual entry
   workersList = [],
@@ -17,44 +25,12 @@ export default function AdminClockEditModal({
   isAdmin = true,
   pairedEntry = null
 }) {
-  const [workerName, setWorkerName] = useState('');
-  const [type, setType] = useState('entrada');
-  const [dateTimeLocal, setDateTimeLocal] = useState('');
-  const [rate, setRate] = useState(10);
-  const [note, setNote] = useState('');
+  const [workerName, setWorkerName] = useState(() => entry?.workerName || workersList[0]?.name || '');
+  const [type, setType] = useState(() => entry?.type || 'entrada');
+  const [dateTimeLocal, setDateTimeLocal] = useState(() => valorDatetimeLocal(entry?.timestamp || new Date()));
+  const [rate, setRate] = useState(() => entry?.rate || 10);
+  const [note, setNote] = useState(() => entry?.note || entry?.taskName || '');
   const [confirmDelete, setConfirmDelete] = useState(false);
-
-  useEffect(() => {
-    if (entry) {
-      setWorkerName(entry.workerName || workersList[0]?.name || '');
-      setType(entry.type || 'entrada');
-      setNote(entry.note || entry.taskName || '');
-      setRate(entry.rate || 10);
-      setConfirmDelete(false);
-
-      if (entry.timestamp) {
-        const d = new Date(entry.timestamp);
-        const pad = (n) => String(n).padStart(2, '0');
-        const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        setDateTimeLocal(formatted);
-      } else {
-        const now = new Date();
-        const pad = (n) => String(n).padStart(2, '0');
-        setDateTimeLocal(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`);
-      }
-    } else {
-      setWorkerName(workersList[0]?.name || '');
-      setType('entrada');
-      setNote('');
-      setRate(10);
-      setConfirmDelete(false);
-      const now = new Date();
-      const pad = (n) => String(n).padStart(2, '0');
-      setDateTimeLocal(`${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`);
-    }
-  }, [entry, isOpen, workersList]);
-
-  if (!isOpen) return null;
 
   const handleWorkerChange = (e) => {
     const selectedName = e.target.value;

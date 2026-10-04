@@ -2,13 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { Briefcase, Clock, Euro, Lock, Pin, Play, Square } from 'lucide-react';
 import { getActiveShiftForWorker } from '../data/shiftCalculations';
 import { crearFichaje } from '../data/fichajes';
-import { formatTime, formatDateLong } from '../utils/dateUtils';
+import { formatTime, formatDateLong, valorDatetimeLocal } from '../utils/dateUtils';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input, Selector } from './ui/Campo';
 
-export default function ClockInModal({
-  isOpen,
+// Se monta de nuevo cada vez que se abre: el trabajador y la tarea salen de las
+// props de ese momento. Antes se fijaban al montar la ventana CERRADA (con el
+// equipo aún sin cargar en un móvil nuevo: fichaba con el nombre vacío) y un
+// efecto copiaba la tarea al abrir.
+export default function ClockInModal(props) {
+  if (!props.isOpen) return null;
+  return <VentanaFichar {...props} />;
+}
+
+function VentanaFichar({
   onClose,
   workersList,
   initialWorkerName,
@@ -24,15 +32,8 @@ export default function ClockInModal({
   
   const [isEditingTime, setIsEditingTime] = useState(false);
   const [manualTimeStr, setManualTimeStr] = useState('');
-  // Contra el doble toque. Va con los demás hooks, ANTES del `return null`: después
-  // de él, abrir la ventana tenía un hook más que cerrada y React tumbaba la app
-  // entera (pantalla oscura al pulsar «Fichar»).
+  // Contra el doble toque.
   const [isProcessing, setIsProcessing] = useState(false);
-
-  const getDatetimeLocalString = (date) => {
-    const tzoffset = date.getTimezoneOffset() * 60000;
-    return (new Date(date - tzoffset)).toISOString().slice(0, 16);
-  };
 
   // Live timer
   useEffect(() => {
@@ -40,15 +41,6 @@ export default function ClockInModal({
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, [isEditingTime]);
-
-  // Sync note when initialTaskName changes (task-level clock-in)
-  useEffect(() => {
-    if (isOpen && initialTaskName) {
-      setNote(initialTaskName);
-    } else if (isOpen && !initialTaskName) {
-      setNote('');
-    }
-  }, [isOpen, initialTaskName]);
 
   // Si el trabajador está actualmente en turno, igual que en WorkerView —
   // se calcula de los fichajes reales (API/Mongo) en orden cronológico, no
@@ -58,8 +50,6 @@ export default function ClockInModal({
   // devuelve los más recientes primero, así que "el último del array" no
   // es "el más reciente" — ver getActiveShiftForWorker).
   const activeShift = getActiveShiftForWorker(clockEntries, selectedWorker);
-
-  if (!isOpen) return null;
 
   const currentWorkerObj = workersList.find(w => w.name === selectedWorker) || workersList[0];
 
@@ -139,7 +129,7 @@ export default function ClockInModal({
             onClick={() => {
               if (isAdmin) {
                 setIsEditingTime(true);
-                setManualTimeStr(getDatetimeLocalString(currentTime));
+                setManualTimeStr(valorDatetimeLocal(currentTime));
               }
             }}
             className={isAdmin ? "cursor-pointer hover:opacity-80" : ""}
