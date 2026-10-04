@@ -4,7 +4,7 @@
 ## CORE
 - Idioma: SOLO español (código, comentarios, UI, commits). Hay comentarios viejos en inglés (auth): no reescribirlos solo por eso.
 - Salida: código directo, sin relleno.
-- Privacidad: el repo es PÚBLICO. Nunca nombres reales, teléfonos, tarifas, saldos en €, contraseñas ni tokens en código, tests, docs ni commits (en tests: Ana, Luis, Eva…). Ya pasó con `balancesData.js` y con claves de admin; el historial se limpió el 04/10 (ver `MEJORAS.md`). Comprobarlo con `git grep -nIw -iE 'nombre1|nombre2'` (con `-w`: `\b` no funciona en `git grep` y da «limpio» en falso).
+- Privacidad: el repo es PÚBLICO. Nunca nombres reales, teléfonos, tarifas, saldos en €, contraseñas ni tokens en código, tests, docs ni commits (en tests: Ana, Luis, Eva…). Lo vigila `scripts/privacidad.mjs` en cada commit (`.githooks`; si una copia no lo tiene: `git config core.hooksPath .githooks`) y en GitHub Actions: si para, cambiar el dato, nunca `--no-verify`. Normas para cualquier IA: `AGENTS.md`. Ya pasó con `balancesData.js` y con claves de admin; el historial se limpió el 04/10 (ver `MEJORAS.md`). Comprobarlo con `git grep -nIw -iE 'nombre1|nombre2'` (con `-w`: `\b` no funciona en `git grep` y da «limpio» en falso).
 - Docs: actualizar `CONTEXTO.md`/`PENDIENTES.md` en el mismo commit si el cambio afecta al negocio o deja algo a medias. Cortos: lo resuelto sale de `PENDIENTES.md` (queda en git), sin narrativas largas.
 
 ## DATA SCHEMA
@@ -30,13 +30,14 @@
 
 ## WORKFLOW
 - El planning vive en Mongo: `logisticsData.js` (cliente/servidor) es solo semilla. Cambiar una semana = `POST /api/logistics/weeks` con el objeto COMPLETO (reemplaza el documento; control por `updatedAt`, 409 si alguien guardó antes).
-- Dos checkouts: el worktree (rama de trabajo) y `/Users/raul/Desktop/projects/gula-logistics` (`main`, solo para merge + push). Antes de fusionar, traer `origin/main` a la rama (otras sesiones trabajan en paralelo).
+- Dos checkouts: el worktree (rama de trabajo) y la copia principal (`main`, solo para merge + push; su ruta: `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`). Antes de fusionar, traer `origin/main` a la rama (otras sesiones trabajan en paralelo).
 - Deploy cliente: automático en cada push a `main` (GitHub Action, ~1 min; comprobar `gh run list` y el hash del bundle en la URL pública). Servidor: Render auto-despliega (de 5 a 30 min y no avisa): `curl …onrender.com/api/health` dice el commit desplegado (`version`).
 
 ```bash
 git add -A && git commit -m "..."                                        # en el worktree
-git -C /Users/raul/Desktop/projects/gula-logistics merge <rama-worktree>
-git -C /Users/raul/Desktop/projects/gula-logistics push origin main
+PRINCIPAL="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"   # la copia principal
+git -C "$PRINCIPAL" merge <rama-worktree>
+git -C "$PRINCIPAL" push origin main
 gh run list --limit 1
 ```
 

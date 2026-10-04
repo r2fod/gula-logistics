@@ -1,0 +1,3 @@
+#!/bin/sh
+# El mensaje del commit también es público: mismo filtro (scripts/privacidad.mjs).
+exec node scripts/privacidad.mjs --mensaje "$1"

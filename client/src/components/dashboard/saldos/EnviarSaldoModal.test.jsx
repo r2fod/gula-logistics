@@ -8,7 +8,7 @@ vi.mock('../../../data/apiService', () => ({
 const { default: EnviarSaldoModal } = await import('./EnviarSaldoModal');
 const { saldoDeTrabajador } = await import('../../../data/saldoTrabajador');
 
-const ficha = { id: 'ana', name: 'Ana', currentBalance: 20, phone: '600112233', breakdown: [{ concept: 'Bizum', amount: -10, tipo: 'pago', date: '2026-09-30' }, { concept: 'Transporte', amount: 30, tipo: 'transporte', date: '2026-09-29' }] };
+const ficha = { id: 'ana', name: 'Ana', currentBalance: 20, phone: '600000000', breakdown: [{ concept: 'Bizum', amount: -10, tipo: 'pago', date: '2026-09-30' }, { concept: 'Transporte', amount: 30, tipo: 'transporte', date: '2026-09-29' }] };
 const datos = { ficha, saldo: saldoDeTrabajador({ ficha }), turnos: [], turnosHoras: [] };
 const pintar = (props = {}) => render(<EnviarSaldoModal datos={datos} admin equipo={[{ name: 'Ana' }]} onCerrar={vi.fn()} {...props} />);
 const mensaje = () => screen.getByRole('textbox').value;
@@ -33,7 +33,7 @@ describe('EnviarSaldoModal', () => {
     const abrir = vi.spyOn(window, 'open').mockImplementation(() => null);
     pintar();
     fireEvent.click(screen.getByRole('button', { name: /Enviar a Ana/ }));
-    expect(abrir).toHaveBeenLastCalledWith(expect.stringMatching(/^https:\/\/wa\.me\/34600112233\?text=/), '_blank');
+    expect(abrir).toHaveBeenLastCalledWith(expect.stringMatching(/^https:\/\/wa\.me\/34600000000\?text=/), '_blank');
     fireEvent.click(screen.getByRole('button', { name: /Mandarlo a otro contacto/ }));
     expect(abrir).toHaveBeenLastCalledWith(expect.stringMatching(/^https:\/\/api\.whatsapp\.com\/send\?text=/), '_blank');
   });
