@@ -18,10 +18,12 @@ const ANCHOS = {
 const CAPAS = { 50: 'z-50', 60: 'z-[60]', 100: 'z-[100]' };
 
 const DISPOSICIONES = {
-  // Todo el contenido hace scroll dentro del panel.
+  // El contenido hace scroll dentro del panel; la X, fuera de ese scroll, se queda
+  // siempre a la vista (antes subía con el contenido y había que volver arriba).
   pagina: {
     fondo: 'p-3 sm:p-4',
-    panel: 'rounded-2xl sm:rounded-3xl p-4 sm:p-7 max-h-[92vh] overflow-y-auto',
+    panel: 'rounded-2xl sm:rounded-3xl max-h-[92vh] flex flex-col overflow-hidden',
+    cuerpo: 'min-h-0 flex-1 overflow-y-auto p-4 sm:p-7',
   },
   // Cabecera fija + cuerpo con scroll propio: los monta el llamador.
   columna: {
@@ -63,7 +65,7 @@ export default function Modal({
 
   if (!abierto) return null;
 
-  const { fondo, panel } = DISPOSICIONES[disposicion] || DISPOSICIONES.pagina;
+  const { fondo, panel, cuerpo = null } = DISPOSICIONES[disposicion] || DISPOSICIONES.pagina;
 
   return (
     <div className={`fixed inset-0 ${CAPAS[capa] || CAPAS[50]} flex items-center justify-center ${fondo} bg-slate-950/80 backdrop-blur-md animate-fadeIn`}>
@@ -71,10 +73,10 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={etiqueta}
-        className={`relative w-full ${ANCHOS[ancho] || ANCHOS.md} bg-slate-900 border border-slate-800 shadow-2xl text-white animate-entrarVentana motion-reduce:animate-none ${panel} ${className}`}
+        className={`relative w-full ${ANCHOS[ancho] || ANCHOS.md} bg-slate-900 border border-slate-800 shadow-2xl text-white animate-entrarVentana motion-reduce:animate-none ${panel} ${cuerpo ? '' : className}`}
       >
-        {botonCerrar && <BotonCerrar onClick={onCerrar} className="absolute top-5 right-5" />}
-        {children}
+        {botonCerrar && <BotonCerrar onClick={onCerrar} className="absolute top-4 right-4 z-10 bg-slate-900/90 backdrop-blur-sm sm:top-5 sm:right-5" />}
+        {cuerpo ? <div className={`${cuerpo} ${className}`}>{children}</div> : children}
       </div>
     </div>
   );

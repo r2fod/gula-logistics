@@ -9,6 +9,7 @@ import { useMemoriaIa } from '../hooks/useMemoriaIa';
 import { diffSemana, avisosDePropuesta } from '../data/diffSemana';
 import CambiosPropuestos from './asistente/CambiosPropuestos';
 import AsignarNuevas from './asistente/AsignarNuevas';
+import { preferenciasDeCorrecciones } from '../data/comprobarTareas';
 import GastoGemini from './asistente/GastoGemini';
 import EstadoClaveIa from './asistente/EstadoClaveIa';
 import { useClaveIaServidor } from '../hooks/useClaveIaServidor';
@@ -25,6 +26,8 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [loading, setLoading] = useState(false);
   const [generatedJson, setGeneratedJson] = useState(null);
+  // La propuesta tal como llegó de Gemini, para saber qué corrigió el admin al aplicar.
+  const [deGemini, setDeGemini] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
   // Por dónde fue la última petición (sin Gemini, solo cambios o semana entera) y qué gastó.
   const [resultado, setResultado] = useState(null);
@@ -69,6 +72,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
       pareceRegla(prompt) ? extraerMemoriaDelPrompt({ prompt, apiKey }) : Promise.resolve(null),
     ]);
     setGeneratedJson(r.generatedJson);
+    setDeGemini(r.generatedJson);
     setResultado(r);
     if (r.errorMsg) setErrorMsg(r.errorMsg);
 
@@ -92,6 +96,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
     });
     if (r.generatedJson) {
       setGeneratedJson(disponibilidad ? { ...r.generatedJson, disponibilidad } : r.generatedJson);
+      setDeGemini(r.generatedJson);
       setResultado({ ...r, via: 'cambios' });
     }
     if (r.errorMsg) setErrorMsg(r.errorMsg);
@@ -105,6 +110,9 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
 
   const handleApply = () => {
     if (generatedJson) {
+      // Auto-aprendizaje: lo que el admin corrigió en «¿Quién va?» se propone como regla
+      // (queda pendiente en Memoria IA y solo cuenta si la aprueba).
+      preferenciasDeCorrecciones(activeWeekData, deGemini, generatedJson).slice(0, 3).forEach(texto => { memoria.proponer(texto); });
       onApplyGeneratedSchedule(generatedJson);
       onClose();
     }

@@ -373,6 +373,12 @@ export default function PartnerDashboardView({
         onIrAFichajes={() => { setIsAdminSettingsOpen(false); handleTabClick('fichajes'); }}
         onSesionesCerradas={() => enlaceSocias.generar()}
         fichajes={clockEntries}
+        borrados={deletedClockEntries}
+        equipo={workersList}
+        semanas={allWeeks}
+        fichas={balancesData?.workers || []}
+        onVaciarPapelera={onVaciarPapelera}
+        onMoverAPapelera={onDeleteClockEntries}
       />
 
       <AdminAiMemoryModal

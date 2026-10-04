@@ -25,7 +25,8 @@ export default function MenuLateral({ abierto, onCerrar, acciones, adminUnlocked
 
       <div className="relative w-full max-w-xs bg-slate-900 border-l border-slate-800 h-full p-5 flex flex-col justify-between shadow-2xl overflow-y-auto z-10">
         <div className="space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          {/* Cabecera pegada arriba: la X de cerrar no se va al bajar por el menú. */}
+          <div className="sticky -top-5 z-10 -mx-5 -mt-5 flex items-center justify-between border-b border-slate-800 bg-slate-900 px-5 pb-3 pt-5">
             <div className="flex items-center space-x-2">
               <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
                 <Truck className="w-4 h-4" />

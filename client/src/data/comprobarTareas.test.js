@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { pideComprobarTareas, buscarEnSemana, quienSueleHacerla, textoComprobacion, tareasNuevas, asignarEnPropuesta } from './comprobarTareas';
+import { pideComprobarTareas, buscarEnSemana, quienSueleHacerla, textoComprobacion, tareasNuevas, asignarEnPropuesta, respuestaDeConocimiento, preferenciasDeCorrecciones } from './comprobarTareas';
 
 // La frase tal cual la escribió el admin.
 const FRASE = 'Consulta si hay en el planning algo como recoger furgo albacar y recoger generador 7k y si no esta agregalo asignando alguien preguntandote a quien quieres asignar usando siempre el aprendizaje de los trabajadores que hacen esas tareas';
@@ -59,5 +59,28 @@ describe('comprobar tareas en el planning', () => {
     const cambiada = asignarEnPropuesta(propuesta, 'mi2', ['Ana']);
     expect(cambiada.schedule.miercoles.tasks[1].assigned).toEqual(['Ana']);
     expect(cambiada.schedule.miercoles.tasks[0]).toBe(propuesta.schedule.miercoles.tasks[0]);
+  });
+});
+
+describe('el asistente sabe sin Gemini y aprende de las correcciones', () => {
+  const aprendizaje = {
+    porPersona: { Ana: { Carga: 12 }, Luis: { Carga: 4, Limpieza: 6 } },
+    planning: { camiones: [{ camion: 'Camión Norte', personas: [{ nombre: 'Luis', veces: 5 }, { nombre: 'Ana', veces: 2 }] }], recurrentes: [] },
+  };
+
+  it('«¿quién suele…?»: el camión (del grafo), una tarea (otras semanas) o un tipo (fichajes)', () => {
+    expect(respuestaDeConocimiento('¿Quién suele llevar el camión Norte?', { aprendizaje, equipo }))
+      .toBe('Con el Camión Norte suelen ir: Luis (5 veces), Ana (2 veces) (veces juntos en el planning).');
+    expect(respuestaDeConocimiento('¿Quién suele recoger el generador 7k?', { aprendizaje, semanas: pasadas, equipo }))
+      .toBe('«recoger el generador 7k»: Ana (2 veces), Eva (1 vez) (otras semanas).');
+    expect(respuestaDeConocimiento('¿Quién hace mejor las cargas?', { aprendizaje, equipo })).toBe('Carga: Ana (12 h), Luis (4 h) (horas fichadas).');
+    expect(respuestaDeConocimiento('Pon a Luis en la carga del jueves', { aprendizaje, equipo })).toBeNull();
+  });
+
+  it('lo que el admin corrige en «¿Quién va?» se convierte en una regla propuesta; si no corrige nada, no', () => {
+    const antes = semana([]);
+    const deGemini = semana([{ id: 'mi2', text: 'Recoger generador 7k', timeFrame: '10:00 - 10:30', assigned: ['Eva'] }]);
+    expect(preferenciasDeCorrecciones(antes, deGemini, asignarEnPropuesta(deGemini, 'mi2', ['Ana']))).toEqual(['Para «Recoger generador 7k» prefiero a Ana.']);
+    expect(preferenciasDeCorrecciones(antes, deGemini, deGemini)).toEqual([]);
   });
 });

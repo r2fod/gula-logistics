@@ -11,7 +11,7 @@ import { useDialog } from '../../contexts/DialogContext';
 export default function FicharConEnlace({ fichajes = [] }) {
   const { alert, confirm } = useDialog();
   const [exigido, setExigido] = useState(null); // null = cargando
-  const [sinLeer, setSinLeer] = useState(false); // el servidor no contestó
+  const [sinLeer, setSinLeer] = useState(null); // por qué no se pudo leer: 'sesion' | 'conexion'
   const [guardando, setGuardando] = useState(false);
   const { conEnlace, sinEnlace } = useMemo(() => quienFichaConEnlace(fichajes), [fichajes]);
 
@@ -19,8 +19,9 @@ export default function FicharConEnlace({ fichajes = [] }) {
     let vigente = true;
     fetchAjustesAdmin().then(a => {
       if (!vigente) return;
-      if (a) setExigido(!!a.exigirEnlaceAlFichar);
-      else setSinLeer(true);
+      if (a?.sinSesion) setSinLeer('sesion');
+      else if (a) setExigido(!!a.exigirEnlaceAlFichar);
+      else setSinLeer('conexion');
     });
     return () => { vigente = false; };
   }, []);
@@ -60,7 +61,7 @@ export default function FicharConEnlace({ fichajes = [] }) {
         </button>
       </div>
       <div className="mt-2 space-y-1 text-[11px]">
-        {exigido === null && <p className="text-slate-500">{sinLeer ? 'No se pudo leer este ajuste (sin conexión con el servidor). Cierra y vuelve a abrir Configuración.' : 'Cargando…'}</p>}
+        {exigido === null && <p className="text-slate-500">{sinLeer === 'sesion' ? 'Tu sesión de admin ya no vale (se cerraron las sesiones o cambió la clave): sal y vuelve a entrar.' : sinLeer ? 'No se pudo leer este ajuste (sin conexión con el servidor). Cierra y vuelve a abrir Configuración.' : 'Cargando…'}</p>}
         {conEnlace.length > 0 && <p className="text-emerald-300">Ya fichan con su enlace: {conEnlace.join(', ')}.</p>}
         {sinEnlace.length > 0 && <p className="text-amber-300">Aún fichan sin él: {sinEnlace.join(', ')}. Mándales su enlace desde «Enlaces de WhatsApp».</p>}
         {!conEnlace.length && !sinEnlace.length && <p className="text-slate-500">Aún no hay fichajes nuevos para saber quién usa ya su enlace.</p>}

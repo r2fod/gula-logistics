@@ -103,6 +103,16 @@ describe('textoAprendizajeParaPrompt', () => {
     expect(texto).toContain('- Carga: Ana (12 h), Luis (6 h).');
   });
 
+  it('también lo aprendido del planning y del grafo: con quién va cada camión y quién hace las tareas que se repiten', () => {
+    const texto = textoAprendizajeParaPrompt({ porTipo: [], porPersona: {}, planning: {
+      camiones: [{ camion: 'Camión Norte', personas: [{ nombre: 'Luis', veces: 5 }, { nombre: 'Ana', veces: 2 }] }],
+      recurrentes: [{ tarea: 'Recoger generador 7k', semanas: 3, personas: [{ nombre: 'Ana', veces: 3 }] }],
+    } });
+    expect(texto).toContain('- Camión Norte: Luis (5), Ana (2).');
+    expect(texto).toContain('- «Recoger generador 7k» (3 semanas): Ana (3).');
+    expect(texto).toContain('prefiere a quien suele hacerla');
+  });
+
   it('sin nada que merezca la pena, no añade nada al prompt', () => {
     expect(textoAprendizajeParaPrompt({ porTipo: [], porPersona: {} })).toBe('');
     expect(textoAprendizajeParaPrompt(null)).toBe('');

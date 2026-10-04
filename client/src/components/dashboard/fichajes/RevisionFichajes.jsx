@@ -3,6 +3,7 @@ import { Check, ChevronDown, ClipboardCheck, Pencil, Trash2 } from 'lucide-react
 import Desplegable from '../../ui/Desplegable';
 import { fechaDeFichaje, horaDeFichaje } from '../../../data/fichajes';
 import { useDialog } from '../../../contexts/DialogContext';
+import { confirmarMoverAPapelera } from './confirmaciones';
 
 const cuando = (fichajes) => {
   const [primero] = fichajes;
@@ -24,10 +25,7 @@ export default function RevisionFichajes({ revision, onEditar, onMarcarRevisado,
 
   const idsQueSobran = sobran.flatMap(g => g.fichajes.map(e => e.id));
   const moverTodos = async () => {
-    const n = idsQueSobran.length;
-    if (await confirm(`Se moverán a la papelera ${n === 1 ? '1 fichaje que no cuenta' : `${n} fichajes que no cuentan`} en horas ni en saldos. Podrás restaurarlos desde la Papelera hasta que la vacíes.`, { type: 'warning', title: 'Limpiar fichajes', confirmText: 'Mover a la papelera' })) {
-      onMoverAPapelera(idsQueSobran);
-    }
+    if (await confirmarMoverAPapelera(confirm, idsQueSobran.length)) onMoverAPapelera(idsQueSobran);
   };
 
   return (

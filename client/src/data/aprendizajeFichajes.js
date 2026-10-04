@@ -132,9 +132,16 @@ export function textoAprendizajeParaPrompt(aprendizaje, cabecera = '\n10. APREND
     .map(t => `- ${t.tipo}: planificadas ${formatearMinutos(t.planificadoMin)} de media, reales ${formatearMinutos(t.realMin)} (${t.desvioMin > 0 ? '+' : ''}${formatearMinutos(t.desvioMin)}, ${t.tareas} tareas).`);
   const quien = Object.entries(personasPorTipo(aprendizaje.porPersona))
     .map(([tipo, lista]) => `- ${tipo}: ${lista.slice(0, 3).map(p => `${p.nombre} (${p.horas} h)`).join(', ')}.`);
-  if (!duraciones.length && !quien.length) return '';
+  // Del planning de las semanas aceptadas y del grafo (conocimientoPlanning.js): pocas
+  // líneas, lo que más se repite, para no gastar tokens de más.
+  const veces = (lista) => lista.slice(0, 3).map(p => `${p.nombre} (${p.veces})`).join(', ');
+  const camiones = (aprendizaje.planning?.camiones || []).slice(0, 6).map(c => `- ${c.camion}: ${veces(c.personas)}.`);
+  const recurrentes = (aprendizaje.planning?.recurrentes || []).slice(0, 10).map(r => `- «${r.tarea}» (${r.semanas} semanas): ${veces(r.personas)}.`);
+  if (!duraciones.length && !quien.length && !camiones.length && !recurrentes.length) return '';
   const partes = [cabecera];
   if (duraciones.length) partes.push('Duración real frente a la planificada por tipo de tarea:', ...duraciones, 'Usa estas duraciones reales al poner los horarios (timeFrame) de las tareas de ese tipo.');
   if (quien.length) partes.push('Quién suele hacer cada tipo de tarea (horas fichadas):', ...quien, 'Tenlo en cuenta al asignar, siempre que no contradiga las reglas anteriores.');
+  if (camiones.length) partes.push('Quién va con cada camión (veces juntos en el planning):', ...camiones, 'Si una tarea lleva un camión, prefiere a quien suele ir con él.');
+  if (recurrentes.length) partes.push('Tareas que se repiten cada semana y quién las hace:', ...recurrentes, 'Si añades o reasignas una de estas, prefiere a quien suele hacerla.');
   return partes.join('\n');
 }

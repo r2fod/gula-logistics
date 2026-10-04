@@ -30,6 +30,15 @@ describe('Modal', () => {
     expect(onCerrar).toHaveBeenCalledTimes(1);
   });
 
+  it('BUG evitado: la X queda fuera de la parte que hace scroll (antes subía con el contenido)', () => {
+    render(<Modal onCerrar={() => {}} className="space-y-6">Contenido</Modal>);
+    const cerrar = screen.getByRole('button', { name: 'Cerrar' });
+    const cuerpo = screen.getByText('Contenido');
+    expect(cuerpo.className).toMatch(/overflow-y-auto/);
+    expect(cuerpo.className).toMatch(/space-y-6/); // las clases del llamador van al contenido
+    expect(cuerpo.contains(cerrar)).toBe(false);
+  });
+
   it('botonCerrar={false} no pinta el botón (el modal pone el suyo en la cabecera)', () => {
     render(<Modal onCerrar={() => {}} botonCerrar={false}>Contenido</Modal>);
     expect(screen.queryByRole('button', { name: 'Cerrar' })).toBeNull();

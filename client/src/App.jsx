@@ -52,6 +52,7 @@ import {
 import { pairShiftsFromEntries } from './data/shiftCalculations';
 import { fichajesDeLaSemana, ultimaModificacion, fusionarCambiosFichajes } from './data/fichajes';
 import { aprenderDeFichajes } from './data/aprendizajeFichajes';
+import { aprenderDelPlanning } from './data/conocimientoPlanning';
 import { semanaDeLaVispera } from './data/vispera';
 import { getWeekRange } from './data/taskPlanning';
 import { semanaPedidaEnEnlace } from './data/enlaces';
@@ -144,7 +145,12 @@ export default function App() {
 
   // Lo que el asistente aprende de los fichajes reales (duraciones y quién hace
   // qué): lo reciben Gemini (asistente y nueva semana) y el panel Memoria IA.
-  const aprendizaje = useMemo(() => aprenderDeFichajes(turnosFichados.shifts, allWeeks), [turnosFichados, allWeeks]);
+  // Lo que el asistente aprende solo: de los fichajes (duraciones, quién hace cada tipo) y
+  // del planning de las semanas aceptadas (camiones y tareas que se repiten, del grafo).
+  const aprendizaje = useMemo(
+    () => ({ ...aprenderDeFichajes(turnosFichados.shifts, allWeeks), planning: aprenderDelPlanning(allWeeks, workersList) }),
+    [turnosFichados, allWeeks, workersList]
+  );
 
   // Anticipación automática de semanas (desde el calendario, como BORRADOR).
   // Solo con sesión de admin; como mucho cada 6 h por navegador; idempotente

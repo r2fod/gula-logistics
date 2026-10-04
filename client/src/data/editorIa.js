@@ -20,7 +20,7 @@ import { descripcionParaIa } from './equipoRoles';
 import { interpretarDisponibilidad } from './interpretarPeticion';
 import { reajustarSemana } from './optimizadorPlanning';
 import { plano } from '../utils/texto';
-import { buscarEnSemana, pideComprobarTareas, quienSueleHacerla, textoComprobacion } from './comprobarTareas';
+import { buscarEnSemana, pideComprobarTareas, quienSueleHacerla, respuestaDeConocimiento, textoComprobacion } from './comprobarTareas';
 
 const DIAS = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'];
 const ABREV = { martes: 'mar', miercoles: 'mie', jueves: 'jue', viernes: 'vie', sabado: 'sab', domingo: 'dom', lunes: 'lun' };
@@ -224,6 +224,9 @@ export function textoDeAyuda(equipo = []) {
 // para guardarlo en la semana al aplicar.
 export async function resolverPeticion({ peticion, apiKey, semana, equipo = [], memorias = [], aprendizaje = null, semanas = {}, ahora = new Date() }) {
   if (esPreguntaDeAyuda(peticion)) return { generatedJson: null, errorMsg: '', via: 'local', uso: null, resumen: textoDeAyuda(equipo) };
+  // «¿Quién suele…?»: lo sabe la app (planning, grafo y fichajes), sin gastar Gemini.
+  const sabe = respuestaDeConocimiento(peticion, { aprendizaje, semanas, equipo });
+  if (sabe) return { generatedJson: null, errorMsg: '', via: 'local', uso: null, resumen: sabe };
 
   const restricciones = restriccionesEfectivas(semana, equipo);
   const limites = limitesDe(semana);

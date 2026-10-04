@@ -233,3 +233,15 @@ describe('«¿hay … en el planning? si no, añádelo» — comprobar antes de 
     expect(prompt).not.toContain('recoger furgo albacar»'); // la que ya está no se le pide
   });
 });
+
+describe('el asistente contesta lo que ya sabe sin gastar Gemini', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it('«¿quién suele llevar el camión Norte?» sale del grafo, 0 tokens', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const aprendizaje = { porTipo: [], porPersona: {}, planning: { camiones: [{ camion: 'Camión Norte', personas: [{ nombre: 'Luis', veces: 4 }] }], recurrentes: [] } };
+    const r = await resolverPeticion({ peticion: '¿Quién suele llevar el camión Norte?', apiKey: 'k', semana: semana(), equipo, aprendizaje });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(r).toMatchObject({ via: 'local', generatedJson: null, resumen: 'Con el Camión Norte suelen ir: Luis (4 veces) (veces juntos en el planning).' });
+  });
+});

@@ -296,10 +296,12 @@ export async function cerrarSesionesEnAPI() {
   }
 }
 
-// Ajustes del admin (GET/PUT /api/auth/ajustes): { exigirEnlaceAlFichar }, o null si no se pudo.
+// Ajustes del admin (GET/PUT /api/auth/ajustes): { exigirEnlaceAlFichar }, { sinSesion: true }
+// si la sesión ya no vale (se cerraron las sesiones o cambió la clave), o null si no se pudo.
 export async function fetchAjustesAdmin() {
   try {
     const res = await fetchConLimite(`${API_BASE}/auth/ajustes`, { headers: { ...authHeaders() } });
+    if (res.status === 401) return { sinSesion: true };
     return res.ok ? await res.json() : null;
   } catch {
     return null;

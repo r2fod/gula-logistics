@@ -4,6 +4,7 @@ import Desplegable from '../../ui/Desplegable';
 import InsigniaTipo from './InsigniaTipo';
 import { fechaDeFichaje, horaDeFichaje } from '../../../data/fichajes';
 import { useDialog } from '../../../contexts/DialogContext';
+import { confirmarVaciarPapelera } from './confirmaciones';
 
 // Fichajes borrados (siguen en la base, marcados como borrados) con su botón de
 // restaurar, y «Vaciar papelera» para borrarlos para siempre (onVaciar). Solo admin.
@@ -16,11 +17,7 @@ export default function Papelera({ borrados = [], onRestaurar, onVaciar = null }
   const n = borrados.length;
 
   const vaciar = async () => {
-    const ok = await confirm(
-      `Se ${n === 1 ? 'borrará para siempre el fichaje' : `borrarán para siempre los ${n} fichajes`} de la papelera: ya no se podrán restaurar. No cambia ninguna hora ni ningún saldo (lo de la papelera ya no contaba).`,
-      { type: 'delete', title: 'Vaciar papelera', confirmText: 'Borrar para siempre' }
-    );
-    if (ok) onVaciar();
+    if (await confirmarVaciarPapelera(confirm, n)) onVaciar();
   };
 
   return (

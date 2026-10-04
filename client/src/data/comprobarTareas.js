@@ -20,12 +20,9 @@ const GENERICAS = new Set(['el', 'la', 'los', 'las', 'de', 'del', 'un', 'una', '
 const CORTE = new Set(['y', 'e', 'si', 'para', 'asignando', 'preguntandote', 'usando', 'a', 'que', 'con', 'en', 'por', 'sin', 'o']);
 const raiz = (palabra) => (palabra.length > 5 ? palabra.slice(0, -2) : palabra); // generadores ⊃ generad
 
-// ¿Pide comprobar si hay ciertas tareas? → { items: [{ texto, verbo, claves }], anadir } o null.
-export function pideComprobarTareas(peticion) {
-  const p = plano(peticion);
-  const comprueba = /\b(hay|existe|existen|esta|estan|consulta|comprueba|mira|revisa|busca)\b/.test(p)
-    && /\b(planning|planificacion|semana|cuadrante)\b|\bsi no (esta|estan|hay|existe)/.test(p);
-  if (!comprueba) return null;
+// Las tareas que nombra un texto ya pasado por `plano`: «recoger furgo albacar y recoger
+// generador 7k» → [{ texto, verbo, claves }].
+function itemsDeTexto(p) {
   const palabras = p.split(/[^a-z0-9]+/).filter(Boolean);
   const items = [];
   palabras.forEach((palabra, i) => {
@@ -35,6 +32,16 @@ export function pideComprobarTareas(peticion) {
     const claves = objeto.filter(x => !GENERICAS.has(x));
     if (claves.length) items.push({ texto: `${palabra} ${objeto.join(' ')}`, verbo: palabra, claves });
   });
+  return items;
+}
+
+// ¿Pide comprobar si hay ciertas tareas? → { items: [{ texto, verbo, claves }], anadir } o null.
+export function pideComprobarTareas(peticion) {
+  const p = plano(peticion);
+  const comprueba = /\b(hay|existe|existen|esta|estan|consulta|comprueba|mira|revisa|busca)\b/.test(p)
+    && /\b(planning|planificacion|semana|cuadrante)\b|\bsi no (esta|estan|hay|existe)/.test(p);
+  if (!comprueba) return null;
+  const items = itemsDeTexto(p);
   if (!items.length) return null;
   return { items, anadir: /\b(si no|anade|anadelo|anadela|anadelas|agrega|agregalo|agregala|agregalas|pon|ponlo|ponla|crea|crealo|incluye|incluyelo)\b/.test(p) };
 }
@@ -98,4 +105,51 @@ export function asignarEnPropuesta(propuesta, clave, personas) {
     saturdaySpecial: { ...propuesta.saturdaySpecial, weddings: (propuesta.saturdaySpecial?.weddings || []).map(cambiar) },
     sundayMonday: { ...propuesta.sundayMonday, tasks: (propuesta.sundayMonday?.tasks || []).map(cambiar) },
   };
+}
+
+// Tipos de tarea por cómo se nombran en una pregunta («¿quién suele hacer las cargas?»).
+const TIPOS_EN_PREGUNTA = [
+  [/\bdescarg|\bmontaj|\bmontar/, 'Descarga y montaje'], [/\bcarg/, 'Carga'], [/\blimpi|\bvajilla/, 'Limpieza'],
+  [/\brecog|\bdevol/, 'Recogida y devolución'], [/\bprepar|\bchecklist/, 'Preparación'], [/\bservicio|\bbodas?\b/, 'Servicio de boda'],
+];
+
+// «¿Quién suele llevar el camión Norte / recoger el generador / hacer las cargas?»: se
+// contesta con lo aprendido (planning, grafo y fichajes), sin gastar Gemini. null si no
+// es una pregunta así o no hay datos para contestarla.
+export function respuestaDeConocimiento(peticion, { aprendizaje = null, semanas = {}, equipo = [] } = {}) {
+  const p = plano(peticion);
+  if (!/\bquien(es)?\b/.test(p) || !/\b(suele|suelen|lleva|llevan|hace|hacen|va|van|conduce|conducen|mejor|normalmente)\b/.test(p)) return null;
+  const lista = (personas, unidad) => personas.slice(0, 4).map(x => `${x.nombre} (${x[unidad]}${unidad === 'horas' ? ' h' : x[unidad] === 1 ? ' vez' : ' veces'})`).join(', ');
+
+  const camion = (aprendizaje?.planning?.camiones || []).find(c => {
+    const clave = plano(c.camion).replace(/^camion\s+/, '').trim();
+    return clave && new RegExp(`\\b${clave.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(p);
+  });
+  if (camion) return `Con el ${camion.camion} suelen ir: ${lista(camion.personas, 'veces')} (veces juntos en el planning).`;
+
+  const items = itemsDeTexto(p);
+  if (items.length) {
+    const lineas = items.map(item => {
+      const { lista: personas, fuente } = quienSueleHacerla(item, { semanas, aprendizaje, equipo });
+      return personas.length ? `«${item.texto}»: ${lista(personas, fuente === 'planning' ? 'veces' : 'horas')}${fuente === 'planning' ? ' (otras semanas)' : ' (horas de ese tipo en los fichajes)'}.` : `«${item.texto}»: nadie la ha hecho aún.`;
+    });
+    return lineas.join('\n');
+  }
+
+  const tipo = TIPOS_EN_PREGUNTA.find(([re]) => re.test(p))?.[1];
+  const porTipo = tipo && personasPorTipo(aprendizaje?.porPersona)[tipo];
+  if (porTipo?.length) return `${tipo}: ${lista(porTipo, 'horas')} (horas fichadas).`;
+  return null;
+}
+
+// Lo que el admin corrigió en «¿Quién va?» frente a lo que propuso Gemini, como reglas
+// para proponer a la memoria (se aplican solo si el admin las aprueba): así el asistente
+// aprende de cada corrección. → ['Para «Recoger generador 7k» prefiero a Ana.', …]
+export function preferenciasDeCorrecciones(original, deGemini, final) {
+  if (!original || !deGemini || !final) return [];
+  const propuestas = new Map(tareasNuevas(original, deGemini).map(t => [t.clave, t.personas]));
+  return tareasNuevas(original, final)
+    .filter(t => t.personas.length && propuestas.has(t.clave))
+    .filter(t => plano(t.personas.slice().sort().join(',')) !== plano(propuestas.get(t.clave).slice().sort().join(',')))
+    .map(t => `Para «${t.texto}» prefiero a ${t.personas.join(' y ')}.`);
 }

@@ -53,6 +53,7 @@ export default function AsignarNuevas({ original, propuesta, equipo = [], sugere
         );
       })}
       {nuevas.length > MAX_TAREAS && <p className="text-[11px] text-slate-500">…y {nuevas.length - MAX_TAREAS} tareas nuevas más (cámbialas después en el Cuadrante).</p>}
+      <p className="text-[11px] text-slate-500">Si cambias a alguien, lo propondré como regla en Memoria IA para la próxima vez (solo cuenta si la apruebas).</p>
     </div>
   );
 }
