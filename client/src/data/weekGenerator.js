@@ -270,11 +270,22 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
   }
 
   // ── Alquileres: recogidas y devoluciones (una persona, por la mañana salvo hora) ──
+  // Las del mismo día y hora van JUNTAS en una tarea de una sola persona (recoge la furgo
+  // y con ella el generador), con media hora más por parada. Antes salía una tarea por
+  // cosa a la vez y cada una se llevaba a alguien distinto.
+  const grupos = new Map();
   alquileres.forEach(r => {
+    const clave = `${r.fecha}|${r.hora ?? ''}|${r.esDevolucion ? 'devolver' : 'recoger'}`;
+    if (!grupos.has(clave)) grupos.set(clave, []);
+    grupos.get(clave).push(r);
+  });
+  grupos.forEach(lista => {
+    const [r] = lista;
     const dia = diaDeFecha(r.fecha);
     const ini = r.hora ?? 9 * 60;
+    const accion = lista.map(x => x.titulo).filter(Boolean).join(' y ') || (r.esDevolucion ? 'Devolución de alquiler' : 'Recogida de alquiler');
     nueva({
-      dia, ini, fin: ini + (r.hora ? 60 : 60), evento: CAT_PREP, accion: r.titulo || (r.esDevolucion ? 'Devolución de alquiler' : 'Recogida de alquiler'),
+      dia, ini, fin: ini + 60 + 30 * (lista.length - 1), evento: CAT_PREP, accion,
       n: 1, pool: 'conductores', lugar: 'Por confirmar', extra: dia === 'lunes' ? { targetDay: 'Lunes' } : dia === 'domingo' ? { targetDay: 'Domingo' } : {},
     });
   });

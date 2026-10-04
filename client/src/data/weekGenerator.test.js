@@ -264,3 +264,29 @@ describe('generarBorrador — disponibilidad y límites de horas', () => {
     });
   });
 });
+
+describe('generarBorrador — recogidas de alquiler del mismo día', () => {
+  const APUNTES_RECOGIDAS = [
+    { id: 'r1', fecha: '2026-09-23', tipo: 'recogida', titulo: 'recoger furgo albacar' },
+    { id: 'r2', fecha: '2026-09-23', tipo: 'recogida', titulo: 'recoger generador 7k' },
+  ];
+  // Un conductor que solo puede desde las 15:30 entre semana (su ficha del equipo).
+  const tarde = ['martes', 'miercoles', 'jueves', 'viernes'].map(dia => ({ dia, tipo: 'solo', desde: '15:30', hasta: '23:59' }));
+  const ROSTER_TARDE = [{ name: 'Tomás', role: 'Conductor Extra', disponibilidad: tarde }, ...ROSTER];
+
+  it('BUG evitado: dos recogidas a la vez van en UNA tarea con UNA persona (antes, dos tareas y dos personas)', () => {
+    const { week } = generar(APUNTES_RECOGIDAS);
+    const recogidas = week.schedule.miercoles.tasks.filter(t => /recoger/i.test(t.text));
+    expect(recogidas).toHaveLength(1);
+    expect(recogidas[0].text).toBe('Logística Preparación - recoger furgo albacar y recoger generador 7k');
+    expect(recogidas[0].timeFrame).toBe('09:00 - 10:30');
+    expect(recogidas[0].assigned).toHaveLength(1);
+  });
+
+  it('quien solo puede desde las 15:30 entre semana no va a una recogida de las 09:00', () => {
+    const { week } = generar(APUNTES_RECOGIDAS, ROSTER_TARDE);
+    const [recogida] = week.schedule.miercoles.tasks.filter(t => /recoger/i.test(t.text));
+    expect(recogida.assigned).not.toContain('Tomás');
+    expect(recogida.assigned).toHaveLength(1);
+  });
+});
