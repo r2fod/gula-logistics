@@ -12,7 +12,9 @@ import {
 // Rendimiento: solo se anima `transform` y `opacity` (los mueve la GPU, sin repintar);
 // el difuminado se calcula una vez. Con "reducir movimiento" se queda quieto, y con la
 // app en segundo plano el navegador no anima nada. Los movimientos (`fondo-*`) están en
-// index.css.
+// index.css y solo mueven y escalan: si animaran la opacidad pisarían la tenue de cada
+// pieza (los iconos salían casi opacos). Va con z negativo, DEBAJO del contenido: el
+// contenedor de cada vista en App lleva `isolate` y el color de fondo.
 const TEMAS = {
   live: { movimiento: 'latir', iconos: [Radio, UserCheck, Clock, MapPin, Truck], orbes: ['bg-emerald-500/10', 'bg-teal-500/10', 'bg-cyan-500/10'], color: 'text-emerald-400' },
   schedule: { movimiento: 'barrer', iconos: [Calendar, ListChecks, Clock, Truck, Boxes], orbes: ['bg-sky-500/10', 'bg-indigo-500/10', 'bg-blue-500/10'], color: 'text-sky-400' },
@@ -45,7 +47,7 @@ export default function BackgroundAnimation({ viewMode = 'worker' }) {
   const mover = `fondo-${tema.movimiento}`;
 
   return (
-    <div className="fondo-animado fixed inset-0 z-0 overflow-hidden pointer-events-none" aria-hidden="true">
+    <div className="fondo-animado fixed inset-0 -z-10 overflow-hidden pointer-events-none" aria-hidden="true">
       {ORBES.map((o, i) => (
         <div
           key={i}

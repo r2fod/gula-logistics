@@ -93,7 +93,8 @@ html, body {
 }
 @keyframes girar { to { transform: rotate(360deg); } }
 /* Fondos animados de cada página (BackgroundAnimation.jsx): cada una se mueve a su
-   manera. Solo transform y opacity, que mueve la GPU sin repintar la página. */
+   manera. Solo transform (nunca opacity: pisaría la tenue de cada pieza), que mueve
+   la GPU sin repintar la página. */
 .fondo-latir, .fondo-barrer, .fondo-orbitar, .fondo-derivar, .fondo-flotar, .fondo-subir, .fondo-pendulo {
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
@@ -107,8 +108,8 @@ html, body {
 .fondo-subir { animation-name: fondoSubir; }
 .fondo-pendulo { animation-name: fondoPendulo; transform-origin: 50% 0; }
 @keyframes fondoLatir { /* En vivo: respira, como un pulso */
-  0%, 100% { transform: scale(0.92); opacity: 0.6; }
-  50% { transform: scale(1.1); opacity: 1; }
+  0%, 100% { transform: scale(0.9); }
+  50% { transform: scale(1.12); }
 }
 @keyframes fondoBarrer { /* Cuadrante: barre en diagonal, como pasar de un día a otro */
   0%, 100% { transform: translate3d(-4%, 4%, 0) rotate(0deg); }
@@ -127,8 +128,8 @@ html, body {
   50% { transform: translate3d(0, -24px, 0) scale(1.05); }
 }
 @keyframes fondoSubir { /* Resumen: sube y crece, como una gráfica */
-  0%, 100% { transform: translate3d(0, 6%, 0) scale(0.96); opacity: 0.7; }
-  50% { transform: translate3d(0, -6%, 0) scale(1.04); opacity: 1; }
+  0%, 100% { transform: translate3d(0, 6%, 0) scale(0.96); }
+  50% { transform: translate3d(0, -6%, 0) scale(1.04); }
 }
 @keyframes fondoPendulo { /* Fichajes: va y viene, como el péndulo de un reloj */
   0%, 100% { transform: rotate(-5deg); }

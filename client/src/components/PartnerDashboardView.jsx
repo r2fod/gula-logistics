@@ -216,7 +216,7 @@ export default function PartnerDashboardView({
     <>
     {/* Fuera del contenedor: dentro, su `space-y` le daría margen a la cabecera. */}
     <BackgroundAnimation viewMode={activeTab} />
-    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-2.5 sm:p-4 md:p-5 font-sans space-y-3 w-full max-w-full overflow-x-hidden pb-32 lg:pb-16">
+    <div className="min-h-screen text-slate-100 antialiased p-2.5 sm:p-4 md:p-5 font-sans space-y-3 w-full max-w-full overflow-x-hidden pb-32 lg:pb-16">
       <CabeceraPanel
         adminUnlocked={adminUnlocked}
         activeWeekData={activeWeekData}

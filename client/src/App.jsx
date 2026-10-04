@@ -510,7 +510,7 @@ export default function App() {
 
   if (trabajadorActivo) {
     return (
-      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans selection:bg-amber-500 selection:text-slate-950 relative">
+      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans selection:bg-amber-500 selection:text-slate-950 relative isolate">
         <BackgroundAnimation viewMode="worker" />
         <WorkerView
           workerName={trabajadorActivo}
@@ -566,7 +566,7 @@ export default function App() {
   // controls, regardless of whether this browser also has an admin session.
   if (isPublicPreviewMode && !trabajadorActivo) {
     return (
-      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans relative">
+      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans relative isolate">
         <BackgroundAnimation viewMode="public" />
         <div className="w-full space-y-4 relative z-10">
           <button
@@ -611,7 +611,7 @@ export default function App() {
   // abrirse) veía igualmente el Cuadrante/Saldos completos sin login.
   if (!isPartnerMode && !isAdmin) {
     return (
-      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans relative">
+      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans relative isolate">
         <BackgroundAnimation viewMode="public" />
         <div className="w-full space-y-4 relative z-10">
           {avisoAcceso && (
@@ -657,7 +657,7 @@ export default function App() {
   }
 
   return (
-    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950 relative">
+    <div className="bg-slate-950 min-h-screen text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950 relative isolate">
       <Suspense fallback={<CargandoPanel />}>
       <PartnerDashboardView
         activeWeekData={activeWeek}
