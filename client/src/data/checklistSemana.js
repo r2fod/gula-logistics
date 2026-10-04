@@ -5,7 +5,7 @@ import { tareasDelPlanning, revisarPlanning } from './optimizadorPlanning';
 import { limitesDe, NOMBRE_DIA, restriccionesEfectivas } from './disponibilidad';
 
 // Todas las tareas activas de la semana (con o sin horario): { dia, texto, tarea }.
-function tareasActivas(semana) {
+export function tareasActivas(semana) {
   const out = [];
   ['martes', 'miercoles', 'jueves', 'viernes'].forEach(dia => (semana?.schedule?.[dia]?.tasks || []).forEach(t => out.push({ dia, texto: t?.text, tarea: t })));
   (semana?.saturdaySpecial?.weddings || []).forEach(b => out.push({ dia: 'sabado', texto: getWeddingTaskName(b), tarea: b }));

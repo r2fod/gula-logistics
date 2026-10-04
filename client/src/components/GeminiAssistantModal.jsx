@@ -8,6 +8,7 @@ import { limitesDe, restriccionesDe, restriccionesDelEquipo } from '../data/disp
 import { useMemoriaIa } from '../hooks/useMemoriaIa';
 import { diffSemana, avisosDePropuesta } from '../data/diffSemana';
 import CambiosPropuestos from './asistente/CambiosPropuestos';
+import AsignarNuevas from './asistente/AsignarNuevas';
 import GastoGemini from './asistente/GastoGemini';
 import EstadoClaveIa from './asistente/EstadoClaveIa';
 import { useClaveIaServidor } from '../hooks/useClaveIaServidor';
@@ -16,8 +17,9 @@ import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input, AreaTexto } from './ui/Campo';
 
 // `aprendizaje` (App, aprenderDeFichajes): lo que se sabe de los fichajes reales,
-// que Gemini recibe junto con las reglas activas de la memoria.
-export default function GeminiAssistantModal({ isOpen, onClose, onApplyGeneratedSchedule, activeWeekData, workersList = [], aprendizaje = null }) {
+// que Gemini recibe junto con las reglas activas de la memoria. `semanas`: todas, para
+// saber quién hizo cada tarea otras semanas (al proponer quién va a una nueva).
+export default function GeminiAssistantModal({ isOpen, onClose, onApplyGeneratedSchedule, activeWeekData, workersList = [], aprendizaje = null, semanas = {} }) {
   const [prompt, setPrompt] = useState('');
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
@@ -63,7 +65,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
     // Gemini, cambios concretos en modo compacto, la semana entera solo si hace falta.
     // La regla para la memoria solo se busca si la frase suena a regla, y a la vez.
     const [r, recuerdo] = await Promise.all([
-      resolverPeticion({ peticion: prompt, apiKey, semana: activeWeekData, equipo: workersList, memorias: memoria.activas, aprendizaje }),
+      resolverPeticion({ peticion: prompt, apiKey, semana: activeWeekData, equipo: workersList, memorias: memoria.activas, aprendizaje, semanas }),
       pareceRegla(prompt) ? extraerMemoriaDelPrompt({ prompt, apiKey }) : Promise.resolve(null),
     ]);
     setGeneratedJson(r.generatedJson);
@@ -219,11 +221,11 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
         </div>
       )}
 
-      {/* Lo que la app contesta sin Gemini y sin propuesta (p. ej. "¿qué puedes hacer?") */}
-      {resultado?.via === 'local' && !generatedJson && resultado.resumen && (
+      {/* Lo que la app ha mirado o contesta por su cuenta (qué tareas ya están, «¿qué puedes hacer?»…) */}
+      {resultado?.resumen && (resultado.via === 'local' ? !generatedJson : true) && (
         <div role="status" className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-3 text-xs text-slate-300">
           <p className="whitespace-pre-line leading-relaxed">{resultado.resumen}</p>
-          <p className="mt-2 text-[11px] text-slate-500">0 tokens: contestado sin Gemini.</p>
+          {resultado.via === 'local' && <p className="mt-2 text-[11px] text-slate-500">0 tokens: contestado sin Gemini.</p>}
         </div>
       )}
 
@@ -261,6 +263,8 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
           <GastoGemini resultado={resultado} />
 
           <CambiosPropuestos diff={diffSemana(activeWeekData, generatedJson)} avisos={avisos} />
+
+          <AsignarNuevas original={activeWeekData} propuesta={generatedJson} equipo={workersList} sugerencias={resultado?.sugerencias || []} aprendizaje={aprendizaje} onCambiar={setGeneratedJson} />
 
           {avisos.length > 0 && (
             <button

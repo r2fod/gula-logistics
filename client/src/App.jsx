@@ -731,6 +731,7 @@ export default function App() {
         activeWeekData={activeWeek}
         workersList={workersList}
         aprendizaje={aprendizaje}
+        semanas={allWeeks}
       />
 
       <EnlacesWhatsAppModal

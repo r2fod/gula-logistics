@@ -187,3 +187,49 @@ describe('revisarBorradorConGemini — el calendario crea, Gemini mejora, el adm
     expect(texto).toMatch(/Petición: Revisa este borrador/);
   });
 });
+
+describe('«¿hay … en el planning? si no, añádelo» — comprobar antes de tocar', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const FRASE = 'Consulta si hay en el planning algo como recoger furgo albacar y recoger generador 7k y si no esta agregalo asignando alguien preguntandote a quien quieres asignar';
+  const conRecogidas = (extra = []) => {
+    const s = semana();
+    s.schedule.miercoles.tasks = [{ id: 'mi1', text: 'Logística - recoger furgo albacar', timeFrame: '09:00 - 10:00', assigned: ['Luis'] }, ...extra];
+    return s;
+  };
+
+  it('BUG evitado: «generador» ya no cuenta como «genera la semana» (rehacía la semana entera)', () => {
+    expect(elegirModo('Añade recoger generador 7k el miércoles', semana())).toBe('cambios');
+    expect(elegirModo('Genera la semana', semana())).toBe('completo');
+  });
+
+  it('si ya está todo, lo dice (dónde y con quién) sin gastar Gemini ni tocar nada', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const s = conRecogidas([{ id: 'mi2', text: 'Logística - recoger generadores 7k', timeFrame: '09:00 - 10:00', assigned: ['Ana'] }]);
+    const r = await resolverPeticion({ peticion: FRASE, apiKey: 'k', semana: s, equipo });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(r).toMatchObject({ via: 'local', generatedJson: null });
+    expect(r.resumen).toMatch(/✅ «recoger furgo albacar» ya está: .*\(Luis\)/);
+    expect(r.resumen).toMatch(/✅ «recoger generador 7k» ya está: .*\(Ana\)/);
+  });
+
+  it('si falta una, Gemini SOLO la añade: lo demás que proponga se descarta; y dice quién la suele hacer', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(respuesta({ cambios: [
+      { op: 'nueva', dia: 'mie', horario: '10:00-10:30', texto: 'Logística - Recoger generador 7k', personas: ['Ana'] },
+      { op: 'horario', t: 'T2', horario: '07:00-14:35' }, // como las bodas que movió: fuera
+    ] }));
+    vi.stubGlobal('fetch', fetchMock);
+    const semanas = { vieja: { ...semana(), schedule: { ...semana().schedule, viernes: { tasks: [{ id: 'v1', text: 'Recoger generadores 7K', timeFrame: '12:30 - 13:00', assigned: ['Ana'] }] } } } };
+    const s = conRecogidas();
+    const r = await resolverPeticion({ peticion: FRASE, apiKey: 'k', semana: s, equipo, semanas });
+    expect(r.via).toBe('cambios');
+    expect(r.ignorados).toBe(1);
+    expect(r.generatedJson.schedule.miercoles.tasks.map(t => t.text)).toContain('Logística - Recoger generador 7k');
+    expect(r.generatedJson.schedule.martes.tasks[1].timeFrame).toBe(s.schedule.martes.tasks[1].timeFrame); // no se movió nada más
+    expect(r.resumen).toContain('➕ «recoger generador 7k» no está en esta semana; suelen hacerla Ana (1 vez).');
+    expect(r.sugerencias.map(x => x.item.texto)).toEqual(['recoger generador 7k']);
+    const prompt = JSON.parse(fetchMock.mock.calls[0][1].body).contents[0].parts[0].text;
+    expect(prompt).toContain('Añade SOLO estas tareas');
+    expect(prompt).not.toContain('recoger furgo albacar»'); // la que ya está no se le pide
+  });
+});
