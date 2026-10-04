@@ -1,0 +1,4 @@
+#!/bin/sh
+# Filtro de privacidad antes de cada commit (scripts/privacidad.mjs). Lo activa
+# `git config core.hooksPath .githooks` (una vez por copia del repo).
+exec node scripts/privacidad.mjs

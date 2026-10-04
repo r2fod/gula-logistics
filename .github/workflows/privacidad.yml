@@ -1,0 +1,24 @@
+# Filtro de privacidad en cada subida: el repo es PÚBLICO. Si algo lleva nombres reales,
+# teléfonos, correos o claves, esta comprobación sale en rojo (y GitHub avisa por correo).
+# Los nombres vienen del secreto PRIVACIDAD_NOMBRES (Settings → Secrets → Actions); sin
+# él solo se buscan teléfonos, correos y claves. El registro nunca enseña lo encontrado.
+name: Privacidad
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  privacidad:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Tests del filtro
+        run: node --test scripts/
+      - name: Revisar todo el repo
+        run: node scripts/privacidad.mjs --todo
+        env:
+          PRIVACIDAD_NOMBRES: ${{ secrets.PRIVACIDAD_NOMBRES }}

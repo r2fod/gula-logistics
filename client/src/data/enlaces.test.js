@@ -16,7 +16,7 @@ describe('construirEnlaceTrabajador', () => {
   });
 
   it('codifica nombres con espacios o acentos', () => {
-    expect(construirEnlaceTrabajador('https://x.test', '/', 'José Luis')).toBe('https://x.test/?worker=Jos%C3%A9%20Luis');
+    expect(construirEnlaceTrabajador('https://x.test', '/', 'José Luis')).toBe('https://x.test/?worker=Jos%C3%A9%20Luis'); // privacidad-ok: nombre inventado (comprueba la é)
   });
 });
 
@@ -94,15 +94,15 @@ describe('abrirEnPestanaNueva', () => {
 
 describe('WhatsApp a un teléfono', () => {
   it('normaliza el teléfono (un móvil español sin prefijo va con +34) y descarta lo que no lo es', () => {
-    expect(telefonoWhatsApp('600 11 22 33')).toBe('34600112233');
-    expect(telefonoWhatsApp('+34 600-11-22-33')).toBe('34600112233');
-    expect(telefonoWhatsApp('0034600112233')).toBe('34600112233');
+    expect(telefonoWhatsApp('600 00 00 00')).toBe('34600000000');
+    expect(telefonoWhatsApp('+34 600-00-00-00')).toBe('34600000000');
+    expect(telefonoWhatsApp('0034600000000')).toBe('34600000000');
     expect(telefonoWhatsApp('1234')).toBeNull();
     expect(telefonoWhatsApp('')).toBeNull();
   });
 
   it('con teléfono abre su chat (wa.me); sin él, se elige el contacto en WhatsApp', () => {
-    expect(enlaceWhatsApp('Hola', '600112233')).toBe('https://wa.me/34600112233?text=Hola');
+    expect(enlaceWhatsApp('Hola', '600000000')).toBe('https://wa.me/34600000000?text=Hola');
     expect(enlaceWhatsApp('Hola')).toBe('https://api.whatsapp.com/send?text=Hola');
     expect(enlaceWhatsApp('Hola', 'no es un teléfono')).toBe('https://api.whatsapp.com/send?text=Hola');
   });
