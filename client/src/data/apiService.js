@@ -579,7 +579,7 @@ export async function fetchBalancesFromAPI() {
       if (hasRealBalancesData(data)) {
         try {
           localStorage.setItem(BALANCES_CACHE_KEY, JSON.stringify(data));
-        } catch (e) {}
+        } catch { /* sin almacenamiento (modo privado): se sigue sin él */ }
         return data;
       }
     }

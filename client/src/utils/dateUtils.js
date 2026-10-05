@@ -31,6 +31,13 @@ export const formatTimeShort = (dateObj) => {
   });
 };
 
+// Valor de un <input type="datetime-local">: 2026-09-20T08:30, en hora local.
+export const valorDatetimeLocal = (dateObj) => {
+  const d = new Date(dateObj);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+
 export const parseDateString = (dateString) => {
   if (!dateString) return null;
   return new Date(dateString);

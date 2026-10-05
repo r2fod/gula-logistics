@@ -1,6 +1,6 @@
 import { formatearEuros, formatearEurosConSigno, formatearHoras } from './formatoFinanciero';
 import { tipoDeConcepto } from './conceptosSaldos';
-import { tieneBolsa } from './bolsaHoras';
+import { estadoBolsa, tieneBolsa } from './bolsaHoras';
 import { horasDelPeriodo, rangoDePeriodo } from './periodosFinancieros';
 import { formatMonthName, formatTimeShort, formatWeekdayDayMonth } from '../utils/dateUtils';
 
@@ -59,7 +59,11 @@ export function mensajeDeSaldo({ ficha, saldo, turnos = [], turnosHoras = [], ah
 
     if (tieneBolsa(ficha)) {
       const p = ficha.purseInfo;
-      partes.push('', `📦 *Bolsa:* ${formatearHoras(p.consumedHours || 0)} de ${formatearHoras(p.totalHours || 0)} gastadas; las siguientes, a ${formatearEuros(p.extraRateAfter80h || 0)}/h.`);
+      const extra = formatearEuros(p.extraRateAfter80h || 0);
+      const bolsa = estadoBolsa(ficha, turnosHoras, ahora);
+      if (!bolsa.porMeses) partes.push('', `📦 *Bolsa:* ${formatearHoras(p.consumedHours || 0)} de ${formatearHoras(p.totalHours || 0)} gastadas; las siguientes, a ${extra}/h.`);
+      else if (bolsa.cubierto) partes.push('', `📦 *Bolsa de ${formatMonthName(mes.desde)}:* ${formatearHoras(bolsa.gastadas)} de ${formatearHoras(bolsa.total)} gastadas; las siguientes, a ${extra}/h.`);
+      else partes.push('', `📦 *Bolsa:* ${formatMonthName(mes.desde)} queda fuera del acuerdo; todas las horas, a ${extra}/h.`);
     }
   }
 

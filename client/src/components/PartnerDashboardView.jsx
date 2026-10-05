@@ -148,6 +148,7 @@ export default function PartnerDashboardView({
       // sin que nadie supiera por qué.
       await alert('⚠️ No se pudo guardar este cambio de saldo en el servidor (posible sesión de administrador caducada o sin conexión). Se ve aquí pero puede desaparecer solo en unos segundos — vuelve a iniciar sesión de Admin y repite el cambio.', { type: 'warning' });
     }
+    return saved;
   };
 
   const handleSalir = () => {

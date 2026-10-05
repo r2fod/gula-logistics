@@ -329,7 +329,7 @@ export default function App() {
       if (matched) {
         setActiveWorker(matched.name);
         if (!hasAdminSession) {
-          try { localStorage.setItem('gula_last_worker_v1', matched.name); } catch (e) {}
+          try { localStorage.setItem('gula_last_worker_v1', matched.name); } catch { /* sin almacenamiento (modo privado): se sigue sin él */ }
         }
       }
     } else if (!hasAdminSession) {
@@ -342,7 +342,7 @@ export default function App() {
           // sin equipo guardado) no se sabe si esa persona sigue.
           else if (workersList.length) localStorage.removeItem('gula_last_worker_v1');
         }
-      } catch (e) {}
+      } catch { /* sin almacenamiento (modo privado): se sigue sin él */ }
     }
     // ?view=saldos/acuerdos ya lo entiende PartnerDashboardView directamente
     // (lee ?tab=/?view= al montar y abre la pestaña 'balances' con datos
@@ -539,7 +539,7 @@ export default function App() {
               // que hay que reactivarlo a mano para no caer en la vista
               // pública en vez de en el panel.
               setActiveWorker(null);
-              try { localStorage.removeItem('gula_last_worker_v1'); } catch (e) {}
+              try { localStorage.removeItem('gula_last_worker_v1'); } catch { /* sin almacenamiento (modo privado): se sigue sin él */ }
               clearUrlParams();
               setIsPartnerMode(true);
             } else {
@@ -559,7 +559,7 @@ export default function App() {
             setIsAdminUnlocked(true);
             setIsPartnerMode(true);
             setActiveWorker(null);
-            try { localStorage.removeItem('gula_last_worker_v1'); } catch (e) {}
+            try { localStorage.removeItem('gula_last_worker_v1'); } catch { /* sin almacenamiento (modo privado): se sigue sin él */ }
             clearUrlParams();
             setIsAdminLoginOpen(false);
           }}

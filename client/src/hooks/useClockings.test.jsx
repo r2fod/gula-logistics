@@ -57,4 +57,14 @@ describe('useClockings', () => {
     expect(await screen.findByText(/No se ha fichado\. Para fichar usa tu enlace personal/)).toBeTruthy();
     expect(result.current.clockEntries).toEqual([]);
   });
+
+  it('BUG evitado: editar un fichaje no le quita lo que la ventana de edición no toca (taskRef, firmado, revisado)', async () => {
+    const taskRef = { day: 'tuesday', index: 0, weekId: 'week_1', taskId: 'm1', taskText: 'Boda A - Carga' };
+    const { result } = montar([f('a', { taskRef, firmado: true, revisado: true })]);
+    // Lo que manda AdminClockEditModal: el fichaje rehecho con crearFichaje, sin esos campos.
+    const editado = { id: 'a', workerName: 'Ana', type: 'entrada', timestamp: '2026-09-20T09:00:00.000Z', editedByAdmin: true };
+    await act(async () => { await result.current.handleUpdateClockEntry(editado); });
+    expect(result.current.clockEntries[0]).toMatchObject({ timestamp: '2026-09-20T09:00:00.000Z', editedByAdmin: true, taskRef, firmado: true, revisado: true });
+  });
 });
+

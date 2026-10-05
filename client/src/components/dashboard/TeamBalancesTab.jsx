@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Banknote, BarChart3, Bus, ChevronDown, ChevronUp, Clock, Edit3, Lightbulb, MessageCircle, Plus, ScrollText, Share2, Trash2, TrendingUp } from 'lucide-react';
-import { formatearEuros, formatearEurosConSigno, formatearHoras, formatearNumero } from '../../data/formatoFinanciero';
+import { AlertTriangle, Banknote, BarChart3, Bus, Clock, Edit3, Lightbulb, MessageCircle, Plus, ScrollText, Share2, Trash2, TrendingUp } from 'lucide-react';
+import { formatearEuros, formatearEurosConSigno, formatearHoras } from '../../data/formatoFinanciero';
 import { Input } from '../ui/Campo';
-import BarraProgreso from '../ui/BarraProgreso';
 import { useDialog } from '../../contexts/DialogContext';
-import { tieneBolsa } from '../../data/bolsaHoras';
+import { estadoBolsa, tieneBolsa } from '../../data/bolsaHoras';
 import GrupoConceptos from './saldos/GrupoConceptos';
 import EnVivo from '../ui/EnVivo';
 import { duracionEnCurso } from '../../data/costeEnVivo';
 import { saldoDeTrabajador } from '../../data/saldoTrabajador';
 import { coincideNombre } from '../../data/nombresTrabajadores';
 import EnviarSaldoModal from './saldos/EnviarSaldoModal';
+import PanelBolsa from './saldos/PanelBolsa';
 
 // Horas tal como se escriben DENTRO del texto de un concepto ("4,5" → "4.5", sin ceros de
 // sobra). Ese texto se guarda en Mongo: no cambiar el formato, o los conceptos nuevos
@@ -28,7 +28,7 @@ export default function TeamBalancesTab({
   turnosAbiertos = {},
   equipo = []
 }) {
-  const { confirm } = useDialog();
+  const { alert, confirm } = useDialog();
   const [enviandoSaldo, setEnviandoSaldo] = useState(null); // { ficha, saldo, turnos, turnosHoras } del WhatsApp
   const [expandedWorkerId, setExpandedWorkerId] = useState(null);
   const [addingConceptFor, setAddingConceptFor] = useState(null);
@@ -107,7 +107,12 @@ export default function TeamBalancesTab({
 
     if (worker.isSpecialPurse && worker.purseInfo) {
       const p = worker.purseInfo;
-      const remaining = Math.max(0, p.totalHours - p.consumedHours);
+      // Lo que queda de bolsa en el mes del turno (con lo fichado). Con un acuerdo por
+      // meses, un turno de un mes que no es el primero va en su propio concepto con
+      // fecha y `horasBolsa`: las horas a mano de siempre (consumedHours) son del primero.
+      const bolsa = estadoBolsa(worker, findWorkerHours(worker.name)?.shifts || [], new Date(`${newShiftDate}T12:00:00`));
+      const remaining = bolsa.libres;
+      const otroMes = bolsa.porMeses && bolsa.mes !== p.desde;
       const purseHours = Math.min(hours, remaining);
       const extraHours = Math.max(0, hours - purseHours);
       const amount = purseHours * p.hourlyRate + extraHours * p.extraRateAfter80h + transportAmount;
@@ -121,7 +126,7 @@ export default function TeamBalancesTab({
         concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(purseHours)}h a ${p.hourlyRate}€/h + ${fmtHours(extraHours)}h a ${p.extraRateAfter80h}€/h${transportSuffix})`;
       }
 
-      return { hours, purseHours, extraHours, amount, concept, dateLabel, isPurse: true, includeTransport };
+      return { hours, purseHours, extraHours, amount, concept, dateLabel, isPurse: !otroMes, horasBolsa: otroMes ? purseHours : 0, includeTransport };
     }
 
     const rate = worker.hourlyRate || (worker.statusType === 'payroll' ? 14 : 10);
@@ -156,7 +161,7 @@ export default function TeamBalancesTab({
       // Cada concepto nuevo lleva su tipo y su fecha (el Resumen Financiero los
       // coloca en su semana; los antiguos se deducen del texto, ver conceptosSaldos.js).
       if (!preview.isPurse) {
-        const newItem = { concept: preview.concept, amount: preview.amount, isPositive: true, tipo: 'turno', date: newShiftDate };
+        const newItem = { concept: preview.concept, amount: preview.amount, isPositive: true, tipo: 'turno', date: newShiftDate, ...(preview.horasBolsa ? { horasBolsa: preview.horasBolsa } : {}) };
         const newBreakdown = [...(worker.breakdown || []), newItem];
         const newBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
 
@@ -222,6 +227,20 @@ export default function TeamBalancesTab({
 
       await persistWorkerBalance(worker.id, updates);
       resetAddConceptForm();
+    } finally {
+      setSavingBalanceId(null);
+    }
+  };
+
+  // Meses del acuerdo de bolsa (AAAA-MM). Si el servidor aún no los conoce (Render tarda
+  // en desplegar y Mongoose tira lo que el esquema no declara), lo dice.
+  const handleGuardarMesesBolsa = async (worker, { desde, hasta }) => {
+    setSavingBalanceId(worker.id);
+    try {
+      const guardado = await persistWorkerBalance(worker.id, { purseInfo: { ...worker.purseInfo, desde, hasta } });
+      if (guardado && (guardado.purseInfo?.desde || '') !== desde) {
+        await alert('El servidor todavía no guarda los meses de la bolsa (se está actualizando). Vuelve a guardarlos dentro de un rato.', { type: 'warning' });
+      }
     } finally {
       setSavingBalanceId(null);
     }
@@ -478,58 +497,17 @@ export default function TeamBalancesTab({
                       </div>
                     )}
 
-                    {/* Bolsa mensual de horas */}
+                    {/* Bolsa de horas */}
                     {worker.isSpecialPurse && worker.purseInfo && (
-                      <div className="mt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-extrabold text-amber-300 flex items-center space-x-1">
-                            <Clock className="w-4 h-4 text-amber-400" />
-                            <span>Bolsa Mensual (80h)</span>
-                          </span>
-                          <span className="text-[11px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded">
-                            {Math.round((worker.purseInfo.consumedHours / worker.purseInfo.totalHours) * 100)}% Consumido
-                          </span>
-                        </div>
-
-                        <BarraProgreso
-                          porcentaje={(worker.purseInfo.consumedHours / worker.purseInfo.totalHours) * 100}
-                          pista="h-2.5 bg-slate-950 border border-amber-500/20"
-                          relleno="bg-gradient-to-r from-amber-500 to-emerald-400"
-                          etiqueta="Horas de la bolsa consumidas"
-                        />
-
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                            <span className="text-slate-400 block text-[11px]">Condición Base:</span>
-                            <span className="font-semibold text-white">
-                              {formatearHoras(worker.purseInfo.totalHours)} ({formatearNumero(worker.purseInfo.grossBase, 0)}€ - {formatearNumero(worker.purseInfo.housingDeduction, 0)}€ Aloj.) = <b>{formatearNumero(worker.purseInfo.netFixedAt80h, 0)}€ Neto</b>
-                            </span>
-                          </div>
-                          <div className="bg-slate-950 p-2.5 rounded-xl border border-slate-800">
-                            <span className="text-slate-400 block text-[11px]">Acumulado en la bolsa:</span>
-                            <span className="font-bold text-emerald-400">{formatearHoras(worker.purseInfo.consumedHours)} ({formatearEuros(worker.purseInfo.consumedValue)})</span>
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() => setExpandedWorkerId(isExpanded ? null : worker.id)}
-                          className="w-full py-1 text-center text-xs text-amber-400 font-semibold flex items-center justify-center space-x-1"
-                        >
-                          <span>{isExpanded ? 'Ocultar turnos bolsa' : `Ver turnos consumidos (${worker.purseInfo.consumedHours}h)`}</span>
-                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                        </button>
-
-                        {isExpanded && (
-                          <div className="pt-2 border-t border-amber-500/20 space-y-1 text-xs text-slate-300">
-                            {worker.purseInfo.shifts.map((s, idx) => (
-                              <div key={idx} className="flex justify-between items-center bg-slate-950 p-2 rounded-lg">
-                                  <span className="break-words min-w-0 flex-1 pr-2">📅 <b>{s.date}</b> ({s.range})</span>
-                                  <span className="font-bold text-amber-400 shrink-0">{s.hours}h</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <PanelBolsa
+                        ficha={worker}
+                        turnos={hours?.shifts || []}
+                        admin={adminUnlocked}
+                        abierto={isExpanded}
+                        onAlternar={() => setExpandedWorkerId(isExpanded ? null : worker.id)}
+                        onGuardarMeses={(meses) => handleGuardarMesesBolsa(worker, meses)}
+                        guardando={savingBalanceId === worker.id}
+                      />
                     )}
 
                     {/* Agreements */}

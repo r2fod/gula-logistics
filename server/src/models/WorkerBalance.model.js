@@ -3,13 +3,16 @@ import mongoose from 'mongoose';
 // `date` (AAAA-MM-DD) y `tipo` ('turno' | 'transporte' | 'bolsa' | 'ajuste' | 'pago')
 // los pone la app al crear cada concepto (los antiguos no los tienen: se deducen del
 // texto). `pago` = dinero ya entregado al trabajador (efectivo, Bizum, adelanto).
+// `horasBolsa`: horas de bolsa de un turno apuntado a mano en un mes del acuerdo que
+// no es el primero (client/src/data/bolsaHoras.js).
 const BreakdownItemSchema = new mongoose.Schema({
   concept: { type: String, required: true },
   amount: { type: Number, required: true },
   isPositive: { type: Boolean, default: true },
   date: { type: String, default: '' },
   timestamp: { type: String, default: '' },
-  tipo: { type: String, default: '' }
+  tipo: { type: String, default: '' },
+  horasBolsa: { type: Number }
 }, { _id: false });
 
 const ShiftPurseSchema = new mongoose.Schema({
@@ -22,7 +25,8 @@ const ShiftPurseSchema = new mongoose.Schema({
 // (horas, tarifas, importes) son datos sensibles de cada trabajador y
 // viven solo en su documento de Mongo, nunca en el código. Un trabajador
 // nuevo con isSpecialPurse debe traer su propio purseInfo completo al
-// crearse (ver Saldos & Acuerdos → Admin).
+// crearse (ver Saldos & Acuerdos → Admin). `desde`/`hasta` (AAAA-MM): meses del
+// acuerdo; con ellos la bolsa se renueva cada mes (client/src/data/bolsaHoras.js).
 const PurseInfoSchema = new mongoose.Schema({
   totalHours: { type: Number, default: 0 },
   hourlyRate: { type: Number, default: 0 },
@@ -33,6 +37,8 @@ const PurseInfoSchema = new mongoose.Schema({
   consumedHours: { type: Number, default: 0 },
   consumedValue: { type: Number, default: 0 },
   remainingHoursForExtra: { type: Number, default: 0 },
+  desde: { type: String, default: '' },
+  hasta: { type: String, default: '' },
   shifts: [ShiftPurseSchema]
 }, { _id: false });
 

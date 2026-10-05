@@ -17,8 +17,9 @@ import CabeceraModal from './ui/CabeceraModal';
 //
 // Props: abierto, onCerrar, workersList y admin.
 export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = [], admin = false }) {
+  const { alert, confirm } = useDialog();
   const [copiadoTrabajador, copiarTrabajador] = useCopiado();
-  const { tokenDe, cargando: cargandoFirmas, error: errorFirmas } = useEnlacesTrabajadores(abierto && admin);
+  const { tokenDe, cargando: cargandoFirmas, error: errorFirmas, generar: generarFirmas } = useEnlacesTrabajadores(abierto && admin);
 
   if (!abierto) return null;
 
@@ -28,6 +29,12 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
     const conSaldo = admin && tokenDe(nombre);
     const texto = `🚚 Hola ${nombre}, aquí tienes tu planificación y fichaje de Gula Logística${conSaldo ? ' (y tus horas y lo que tienes pendiente de cobro)' : ''}: ${enlaceDe(nombre)}\n\nGuarda este enlace: es siempre el mismo y se actualiza solo cada semana.${conSaldo ? ' Es personal: no lo compartas.' : ''}`;
     abrirEnPestanaNueva(enlaceWhatsApp(texto));
+  };
+
+  const anularEnlacesTrabajadores = async () => {
+    const seguir = await confirm('Los enlaces personales que ya enviaste dejarán de enseñar el saldo (y de valer para fichar si lo exiges en Configuración). Tendrás que reenviar a cada persona su enlace nuevo. ¿Seguir?', { type: 'warning', confirmText: 'Anular y generar' });
+    if (!seguir) return;
+    if (await generarFirmas({ anularAnteriores: true })) await alert('Enlaces anteriores anulados. Reenvía a cada persona su enlace nuevo.', { type: 'success' });
   };
 
   return (
@@ -53,6 +60,12 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
                 ? `Los enlaces salen sin saldo: ${errorFirmas}`
                 : 'Cada enlace es personal: con él, esa persona ve también sus horas y lo que tiene pendiente de cobro (solo lo suyo). Reenvíalo una vez para que lo vea.'}
           </p>
+        )}
+        {admin && (
+          <button type="button" disabled={cargandoFirmas} onClick={anularEnlacesTrabajadores} className="w-full sm:w-auto py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap disabled:opacity-50 bg-slate-900 hover:bg-red-950/60 text-red-300 border border-red-900/50">
+            <RefreshCw className={`w-3.5 h-3.5 ${cargandoFirmas ? 'animate-spin' : ''}`} />
+            <span>Anular enlaces de trabajador enviados</span>
+          </button>
         )}
         {workersList.map((w, idx) => (
           <div key={idx} className="bg-slate-950/60 border border-slate-800 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 overflow-hidden">
