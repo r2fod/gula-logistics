@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generarBorrador, martesDeSemana, formatearRango, nombreDeEvento, weekIdParaInicio } from './weekGenerator';
+import { generarBorrador, martesDeSemana, formatearRango, nombreDeEvento, weekIdParaInicio, eventosDelCalendario } from './weekGenerator';
 import { parseWeekRange, getDayLabel } from './taskPlanning';
 import { parseEventAndTask, splitEventNames, EVENT_CATEGORIES } from './eventNaming';
 import { validateGeneratedSchedule } from './geminiScheduleService';
@@ -290,3 +290,47 @@ describe('generarBorrador — recogidas de alquiler del mismo día', () => {
     expect(recogida.assigned).toHaveLength(1);
   });
 });
+
+describe('generarBorrador — producciones (rodajes) y cumpleaños', () => {
+  it('BUG evitado: las producciones y los cumpleaños del calendario entran como eventos (antes se ignoraban)', () => {
+    const { week, resumen } = generar([
+      { id: 'p', fecha: '2026-09-23', tipo: 'produccion', titulo: 'Produ Faro 40 PAX', pax: 40, hora: '13:00' },
+      { id: 'c', fecha: '2026-09-24', tipo: 'cumpleanos', titulo: 'Cumple Leo', pax: 20, hora: '14:00' },
+    ]);
+    expect(resumen.eventos).toBe(2);
+    const textos = todas(week).map(t => t.text);
+    expect(textos).toContain('Produ Faro - Carga de material');
+    expect(textos).toContain('Cumple Leo - Recogida y vuelta a base');
+    expect(week.events).toEqual([{ name: 'Produ Faro', pax: 40 }, { name: 'Cumple Leo', pax: 20 }]);
+  });
+
+  it('una producción de varios días (con «hasta») se sirve cada día de la semana que dura; apuntada día a día no se fusiona', () => {
+    const conHasta = eventosDelCalendario([{ id: 'p', fecha: '2026-09-20', hasta: '2026-09-23', tipo: 'produccion', titulo: 'Rodaje Sur' }], INICIO, new Date(2026, 8, 27));
+    expect(conHasta.map(e => e.fecha)).toEqual(['2026-09-22', '2026-09-23']);
+    const diaADia = eventosDelCalendario([
+      { id: 'a', fecha: '2026-09-23', tipo: 'produccion', titulo: 'Produ Faro' },
+      { id: 'b', fecha: '2026-09-24', tipo: 'produccion', titulo: 'Produ Faro' },
+    ], INICIO, new Date(2026, 8, 27));
+    expect(diaADia.map(e => `${e.nombre} ${e.fecha}`)).toEqual(['Produ Faro 2026-09-23', 'Produ Faro 2026-09-24']);
+    const { week } = generar([
+      { id: 'a', fecha: '2026-09-24', tipo: 'produccion', titulo: 'Produ Faro', hora: '13:00' },
+      { id: 'b', fecha: '2026-09-25', tipo: 'produccion', titulo: 'Produ Faro', hora: '13:00' },
+    ]);
+    expect(week.schedule.miercoles.tasks.map(t => t.text)).toContain('Produ Faro - Preparación y organización de material (checklist)'); // no «Produ Faro + Produ Faro»
+  });
+
+  it('nombres: "Producción"/"Cumpleaños" delante salvo que el título ya empiece así', () => {
+    expect(nombreDeEvento({ tipo: 'produccion', titulo: 'NETFILM' })).toBe('Producción Netfilm');
+    expect(nombreDeEvento({ tipo: 'produccion', titulo: 'Rodaje Sur' })).toBe('Rodaje Sur');
+    expect(nombreDeEvento({ tipo: 'cumpleanos', titulo: 'Leo' })).toBe('Cumpleaños Leo');
+  });
+
+  it('con tareas ya fijas, el reparto no pone a nadie a la vez que en ellas', () => {
+    const fijas = ['Bruno', 'Carlos', 'Diego', 'Rafael'].map((p, i) => ({ clave: `f${i}`, dia: 'miercoles', ini: 6 * 60, fin: 23 * 60, personas: [p] }));
+    const { week } = generar([{ id: 'p', fecha: '2026-09-23', tipo: 'produccion', titulo: 'Produ Faro', pax: 40, hora: '13:00' }], ROSTER, { fijas });
+    const delMiercoles = todas(week).filter(t => t.dia === 'miercoles');
+    expect(delMiercoles.length).toBeGreaterThan(0);
+    delMiercoles.forEach(t => expect(t.assigned.some(p => ['Bruno', 'Carlos', 'Diego', 'Rafael'].includes(p))).toBe(false));
+  });
+});
+
