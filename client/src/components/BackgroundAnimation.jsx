@@ -29,9 +29,9 @@ const TEMAS = {
 
 // Posición, tamaño y ritmo fijos (no aleatorios: así no cambian al repintar).
 const ORBES = [
-  { clase: '-top-[20%] -left-[10%] w-[50vw] h-[50vw] blur-[100px] opacity-60', duracion: '20s', retraso: '0s' },
-  { clase: 'top-[40%] -right-[10%] w-[40vw] h-[40vw] blur-[100px] opacity-50', duracion: '25s', retraso: '-5s' },
-  { clase: '-bottom-[20%] left-[20%] w-[60vw] h-[60vw] blur-[120px] opacity-40', duracion: '22s', retraso: '-11s' },
+  { clase: '-top-[20%] -left-[10%] w-[50vw] h-[50vw] orbe-suave opacity-60', duracion: '20s', retraso: '0s' },
+  { clase: 'top-[40%] -right-[10%] w-[40vw] h-[40vw] orbe-suave opacity-50', duracion: '25s', retraso: '-5s' },
+  { clase: '-bottom-[20%] left-[20%] w-[60vw] h-[60vw] orbe-suave opacity-40', duracion: '22s', retraso: '-11s' },
 ];
 const ICONOS = [
   { left: '10%', top: '20%', tamano: 'w-16 h-16', duracion: '12s', retraso: '0s' },

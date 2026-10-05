@@ -16,6 +16,7 @@ export function useBodyScrollLock(isLocked) {
     if (lockCount === 0) {
       previousOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
+      document.body.classList.add('modal-abierto'); // el fondo animado se para (index.css)
     }
     lockCount += 1;
 
@@ -23,6 +24,7 @@ export function useBodyScrollLock(isLocked) {
       lockCount -= 1;
       if (lockCount === 0) {
         document.body.style.overflow = previousOverflow;
+        document.body.classList.remove('modal-abierto');
       }
     };
   }, [isLocked]);
