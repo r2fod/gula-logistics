@@ -1,10 +1,10 @@
 import { coincideNombre } from './nombresTrabajadores';
 
-// Bolsa de horas (ficha de Saldos con `isSpecialPurse` y `purseInfo`): las horas se
-// pagan a `hourlyRate` hasta agotar `totalHours` —contando las ya metidas a mano en
-// la bolsa, `consumedHours`— y las que pasan, a `extraRateAfter80h`. Es la regla de
-// Saldos & Acuerdos; el Resumen Financiero la usa también, para que los dos den el
-// mismo dinero (antes el Resumen cobraba esas horas a la tarifa del fichaje).
+// Bolsa mensual de horas (ficha de Saldos con `isSpecialPurse` y `purseInfo`): las
+// horas se pagan a `hourlyRate` hasta agotar `totalHours` —contando las ya metidas a
+// mano en la bolsa, `consumedHours`— y las que pasan, a `extraRateAfter80h`. Es la
+// regla de Saldos & Acuerdos; el Resumen Financiero la usa también, para que los dos
+// den el mismo dinero (antes el Resumen cobraba esas horas a la tarifa del fichaje).
 //
 // Acuerdo por meses (`purseInfo.desde` y `hasta`, AAAA-MM, desde el 05/10): la bolsa
 // se renueva cada mes natural de ese periodo y fuera de él todo va a la tarifa extra.
