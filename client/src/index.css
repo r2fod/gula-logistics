@@ -92,6 +92,19 @@ html, body {
   50% { filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.75)); }
 }
 @keyframes girar { to { transform: rotate(360deg); } }
+
+/* Orbes del fondo: el halo sale de una máscara radial, que se pinta una vez. Con
+   `filter: blur(100px)` el navegador lo recalculaba en cada fotograma (scroll de la
+   página y de las ventanas a trompicones: 130–180 ms por fotograma medidos). */
+.orbe-suave {
+  -webkit-mask-image: radial-gradient(closest-side, #000 0%, #000 35%, rgba(0, 0, 0, 0.8) 50%, rgba(0, 0, 0, 0.5) 65%, rgba(0, 0, 0, 0.25) 80%, rgba(0, 0, 0, 0.08) 92%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 0%, #000 35%, rgba(0, 0, 0, 0.8) 50%, rgba(0, 0, 0, 0.5) 65%, rgba(0, 0, 0, 0.25) 80%, rgba(0, 0, 0, 0.08) 92%, transparent 100%);
+}
+/* Con una ventana abierta el fondo no se ve (velo oscuro) y moverlo detrás solo gasta. */
+body.modal-abierto .fondo-animado {
+  visibility: hidden;
+}
+
 /* Fondos animados de cada página (BackgroundAnimation.jsx): cada una se mueve a su
    manera. Solo transform (nunca opacity: pisaría la tenue de cada pieza), que mueve
    la GPU sin repintar la página. */

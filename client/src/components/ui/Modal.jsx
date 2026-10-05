@@ -32,7 +32,8 @@ const DISPOSICIONES = {
   },
 };
 
-// Ventana modal base de la app: fondo con desenfoque, panel centrado, botón de
+// Ventana modal base de la app: velo oscuro (sin desenfoque: recalcularlo en cada
+// fotograma hacía el scroll de las ventanas a trompicones), panel centrado, botón de
 // cerrar, cierre con Escape (solo el modal de arriba) y bloqueo del scroll del
 // fondo. Cada modal aporta su contenido; aquí vive todo lo demás.
 //
@@ -68,14 +69,14 @@ export default function Modal({
   const { fondo, panel, cuerpo = null } = DISPOSICIONES[disposicion] || DISPOSICIONES.pagina;
 
   return (
-    <div className={`fixed inset-0 ${CAPAS[capa] || CAPAS[50]} flex items-center justify-center ${fondo} bg-slate-950/80 backdrop-blur-md animate-fadeIn`}>
+    <div className={`fixed inset-0 ${CAPAS[capa] || CAPAS[50]} flex items-center justify-center ${fondo} bg-slate-950/85 animate-fadeIn`}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label={etiqueta}
         className={`relative w-full ${ANCHOS[ancho] || ANCHOS.md} bg-slate-900 border border-slate-800 shadow-2xl text-white animate-entrarVentana motion-reduce:animate-none ${panel} ${cuerpo ? '' : className}`}
       >
-        {botonCerrar && <BotonCerrar onClick={onCerrar} className="absolute top-4 right-4 z-10 bg-slate-900/90 backdrop-blur-sm sm:top-5 sm:right-5" />}
+        {botonCerrar && <BotonCerrar onClick={onCerrar} className="absolute top-4 right-4 z-10 bg-slate-900/90 sm:top-5 sm:right-5" />}
         {cuerpo ? <div className={`${cuerpo} ${className}`}>{children}</div> : children}
       </div>
     </div>
