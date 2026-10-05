@@ -1,4 +1,4 @@
-import { repartirBolsa, tieneBolsa } from './bolsaHoras';
+import { bolsaDeFicha, mesDe, repartirBolsa, tieneBolsa } from './bolsaHoras';
 import { costeEnCurso } from './costeEnVivo';
 import { isZombieShift } from './shiftCalculations';
 
@@ -15,14 +15,16 @@ import { isZombieShift } from './shiftCalculations';
 //   fichado, cerrado, enNomina, olvidado, cobraEnDirecto, enCurso(ahora) }.
 export function saldoDeTrabajador({ ficha, horas = null, abierto = null }) {
   const turnos = horas?.shifts || [];
-  const reparto = tieneBolsa(ficha) ? repartirBolsa(turnos.map(s => s.durationHours), ficha.purseInfo) : null;
+  const reparto = tieneBolsa(ficha)
+    ? repartirBolsa(turnos.map(s => s.durationHours), bolsaDeFicha(ficha), turnos.map(s => mesDe(s.startEntry?.timestamp)))
+    : null;
   const costes = turnos.map((s, i) => (reparto ? reparto[i] : { coste: s.cost }));
   const fichado = costes.reduce((suma, c) => suma + (Number(c.coste) || 0), 0);
   const enNomina = ficha?.statusType === 'payroll';
   const olvidado = !!abierto && isZombieShift(abierto);
   const cobraEnDirecto = !!abierto && !olvidado && !enNomina;
   const enCurso = (ahora) => (cobraEnDirecto
-    ? costeEnCurso({ entrada: abierto, ahora, tarifa: abierto.rate || ficha?.hourlyRate || 10, ficha, horasPrevias: horas?.totalHours || 0 }).coste
+    ? costeEnCurso({ entrada: abierto, ahora, tarifa: abierto.rate || ficha?.hourlyRate || 10, ficha, turnosPrevios: turnos }).coste
     : 0);
   return { costes, fichado, cerrado: (Number(ficha?.currentBalance) || 0) + fichado, enNomina, olvidado, cobraEnDirecto, enCurso };
 }

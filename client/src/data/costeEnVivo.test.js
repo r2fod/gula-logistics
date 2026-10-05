@@ -13,7 +13,7 @@ describe('costeEnCurso', () => {
   it('con bolsa, como en Saldos: primero gasta lo que queda de bolsa (contando lo ya fichado) y luego a tarifa extra', () => {
     const ficha = { isSpecialPurse: true, purseInfo: { totalHours: 10, consumedHours: 6, hourlyRate: 8, extraRateAfter80h: 12 } };
     // quedan 10 - 6 - 3 (ya fichadas) = 1 h de bolsa: 1 h a 8 + 1 h a 12
-    expect(costeEnCurso({ entrada, ahora: a(11), ficha, horasPrevias: 3 }).coste).toBe(20);
+    expect(costeEnCurso({ entrada, ahora: a(11), ficha, turnosPrevios: [{ durationHours: 3, startEntry: { timestamp: new Date(2026, 8, 27, 9).toISOString() } }] }).coste).toBe(20);
   });
 
   it('BUG evitado: sin tope de 14 h (como al cerrar; antes se perdían horas reales); entrada rara = 0', () => {
@@ -61,3 +61,22 @@ describe('enCursoDelPeriodo', () => {
     expect(enCursoDelPeriodo([abierto('Ana', 9)], semana, { ahora: a(11), fichas, turnos }).extras).toBe(20);
   });
 });
+
+describe('costeEnCurso con la bolsa por meses', () => {
+  // Bolsa de 10 h a 8 €/h, luego 12 €/h; acuerdo de septiembre a octubre; 10 h a mano en septiembre.
+  const ficha = { isSpecialPurse: true, purseInfo: { totalHours: 10, consumedHours: 10, hourlyRate: 8, extraRateAfter80h: 12, desde: '2026-09', hasta: '2026-10' } };
+  const turnoDe = (mes, dia, horas) => ({ durationHours: horas, startEntry: { timestamp: new Date(2026, mes, dia, 9).toISOString() } });
+
+  it('en un mes nuevo del acuerdo vuelve a gastar bolsa, contando solo lo fichado ese mes', () => {
+    const enOctubre = { timestamp: new Date(2026, 9, 5, 9).toISOString() };
+    const previos = [turnoDe(8, 20, 30), turnoDe(9, 2, 8)]; // 30 h de septiembre no cuentan; 8 h de octubre sí
+    // quedan 10 - 8 = 2 h de bolsa: 2 h a 8 + 1 h a 12
+    expect(costeEnCurso({ entrada: enOctubre, ahora: new Date(2026, 9, 5, 12), ficha, turnosPrevios: previos }).coste).toBe(28);
+  });
+
+  it('pasado el acuerdo, todo a la tarifa extra', () => {
+    const enNoviembre = { timestamp: new Date(2026, 10, 3, 9).toISOString() };
+    expect(costeEnCurso({ entrada: enNoviembre, ahora: new Date(2026, 10, 3, 11), ficha }).coste).toBe(24);
+  });
+});
+

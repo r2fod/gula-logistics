@@ -1,4 +1,4 @@
-import { repartirBolsa, tieneBolsa } from './bolsaHoras';
+import { bolsaDeFicha, mesDe, repartirBolsa, tieneBolsa } from './bolsaHoras';
 import { isZombieShift } from './shiftCalculations';
 import { coincideNombre } from './nombresTrabajadores';
 
@@ -6,14 +6,20 @@ import { coincideNombre } from './nombresTrabajadores';
 // real. Sin redondear: al fichar la salida el turno se paga a la media hora más
 // cercana (pairShiftsFromEntries), así que es "lo que lleva", no lo que se pagará.
 // Sin tope, como al cerrar. Quien tiene bolsa de horas cobra como en Saldos:
-// `horasPrevias` son sus horas ya fichadas (gastan bolsa antes que este turno).
-export function costeEnCurso({ entrada, ahora = new Date(), tarifa = 10, ficha = null, horasPrevias = 0 } = {}) {
+// `turnosPrevios` son sus turnos ya cerrados (gastan bolsa antes que este; con un
+// acuerdo por meses, solo los del mismo mes).
+export function costeEnCurso({ entrada, ahora = new Date(), tarifa = 10, ficha = null, turnosPrevios = [] } = {}) {
   const inicio = new Date(entrada?.timestamp).getTime();
   if (Number.isNaN(inicio)) return { horas: 0, coste: 0 };
   const horas = Math.max(0, (ahora.getTime() - inicio) / 3600000);
   if (tieneBolsa(ficha)) {
-    const [r] = repartirBolsa([horas], { ...ficha.purseInfo, consumedHours: (ficha.purseInfo.consumedHours || 0) + horasPrevias });
-    return { horas, coste: r.coste };
+    const previos = turnosPrevios || [];
+    const reparto = repartirBolsa(
+      [...previos.map(t => t.durationHours || 0), horas],
+      bolsaDeFicha(ficha),
+      [...previos.map(t => mesDe(t.startEntry?.timestamp)), mesDe(inicio)]
+    );
+    return { horas, coste: reparto[reparto.length - 1].coste };
   }
   return { horas, coste: horas * (Number(tarifa) || 0) };
 }
@@ -36,7 +42,7 @@ export function enCursoDelPeriodo(abiertos = [], { desde = null, hasta = null } 
       ahora,
       tarifa: entrada.rate || (entrada.isPayroll ? 14 : 10),
       ficha: (fichas || []).find(f => esSuyo(f.name)) || null,
-      horasPrevias: turnos.filter(t => esSuyo(t.workerName)).reduce((s, t) => s + (t.durationHours || 0), 0),
+      turnosPrevios: turnos.filter(t => esSuyo(t.workerName)),
     });
     suma.turnos += 1;
     suma.horas += horas;

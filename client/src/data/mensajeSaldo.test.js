@@ -47,4 +47,14 @@ describe('mensajeDeSaldo (WhatsApp de Saldos)', () => {
     const conBolsa = { ...ficha, isSpecialPurse: true, purseInfo: { totalHours: 60, consumedHours: 20, hourlyRate: 8, extraRateAfter80h: 11 } };
     expect(mensajeDeSaldo({ ficha: conBolsa, saldo: saldoDeTrabajador({ ficha: conBolsa, horas }), ahora })).toMatch(/20\s?h de 60\s?h gastadas; las siguientes, a 11,00 €\/h/);
   });
+
+  it('con el acuerdo por meses, la bolsa del mes (a mano + fichado) y, fuera del acuerdo, todo a la tarifa extra', () => {
+    const purseInfo = { totalHours: 60, consumedHours: 60, hourlyRate: 8, extraRateAfter80h: 11, desde: '2026-09', hasta: '2026-10' };
+    const conBolsa = { ...ficha, isSpecialPurse: true, purseInfo };
+    const delMes = [{ workerName: 'Ana', durationHours: 4, startEntry: { timestamp: new Date(2026, 9, 1, 9).toISOString() } }];
+    const t = mensajeDeSaldo({ ficha: conBolsa, saldo: saldoDeTrabajador({ ficha: conBolsa, horas }), turnosHoras: delMes, ahora });
+    expect(t).toMatch(/Bolsa de octubre:\* 4\s?h de 60\s?h gastadas; las siguientes, a 11,00 €\/h/);
+    const fuera = { ...conBolsa, purseInfo: { ...purseInfo, desde: '2026-08', hasta: '2026-09' } };
+    expect(mensajeDeSaldo({ ficha: fuera, saldo: saldoDeTrabajador({ ficha: fuera, horas }), turnosHoras: delMes, ahora })).toContain('octubre queda fuera del acuerdo; todas las horas, a 11,00 €/h');
+  });
 });

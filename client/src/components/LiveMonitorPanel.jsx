@@ -34,9 +34,9 @@ export default function LiveMonitorPanel({
 
   // Turnos cerrados y abiertos por trabajador, solo cuando cambian los fichajes.
   const { activeShifts, shifts } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
-  const horasCerradas = useMemo(() => {
+  const turnosCerrados = useMemo(() => {
     const porPersona = {};
-    shifts.forEach(t => { porPersona[t.workerName] = (porPersona[t.workerName] || 0) + (t.durationHours || 0); });
+    shifts.forEach(t => { (porPersona[t.workerName] = porPersona[t.workerName] || []).push(t); });
     return porPersona;
   }, [shifts]);
   const tarifaDe = (worker) => worker.clockEntry?.rate || worker.rate || (worker.isPayroll ? 14 : 10);
@@ -371,7 +371,7 @@ export default function LiveMonitorPanel({
                           ahora,
                           tarifa: tarifaDe(worker),
                           ficha: saldos.find(f => coincideNombre(worker.name, f.name)),
-                          horasPrevias: horasCerradas[worker.name] || 0,
+                          turnosPrevios: turnosCerrados[worker.name] || [],
                         }).coste)}</EnVivo>
                       </span>
                     </div>

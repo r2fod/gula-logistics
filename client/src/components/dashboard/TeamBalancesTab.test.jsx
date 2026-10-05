@@ -108,3 +108,62 @@ describe('TeamBalancesTab — desglose separado', () => {
     vi.useRealTimers();
   });
 });
+
+describe('TeamBalancesTab — bolsa de horas por meses', () => {
+  // Bolsa de 10 h a 8 €/h y luego 12 €/h; acuerdo de septiembre a octubre; las 10 h de septiembre, a mano.
+  const conBolsa = {
+    id: 'luis', name: 'Luis', role: 'Apoyo', avatar: '👤', statusType: 'neutral', currentBalance: 80,
+    isSpecialPurse: true,
+    purseInfo: { totalHours: 10, consumedHours: 10, consumedValue: 80, hourlyRate: 8, extraRateAfter80h: 12, grossBase: 0, housingDeduction: 0, netFixedAt80h: 0, shifts: [], desde: '2026-09', hasta: '2026-10' },
+    breakdown: [{ concept: 'Valor Acumulado Horas Bolsa (10h a 8€/h)', amount: 80, tipo: 'bolsa' }],
+  };
+  const deOctubre = {
+    totalHours: 6, completedShifts: 1,
+    shifts: [{ startDate: '2/10/2026', startTime: '09:00', endTime: '15:00', durationHours: 6, cost: 72, rate: 12, entryIds: ['e1', 'e2'], startEntry: { timestamp: new Date(2026, 9, 2, 9).toISOString() } }],
+  };
+  const apuntarTurno = (fecha, entrada, salida) => {
+    fireEvent.click(screen.getByRole('button', { name: /Añadir concepto \/ horas manual/ }));
+    fireEvent.change(document.querySelector('input[type="date"]'), { target: { value: fecha } });
+    const [ini, fin] = document.querySelectorAll('input[type="time"]');
+    fireEvent.change(ini, { target: { value: entrada } });
+    fireEvent.change(fin, { target: { value: salida } });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+  };
+
+  it('los fichados de octubre gastan la bolsa de octubre (antes iban todos a la tarifa extra)', () => {
+    pintar({ balancesData: { workers: [conBolsa] }, findWorkerHours: () => deOctubre });
+    expect(screen.getByText(/2\/10\/2026 \[09:00 a 15:00\] - 6h a 8€\/h \(Bolsa\)/)).toBeInTheDocument();
+    expect(screen.getByText('+128,00 €')).toBeInTheDocument(); // 80 a mano + 6 h a 8
+  });
+
+  it('un turno a mano de octubre gasta lo que queda de la bolsa de octubre y va en su propio concepto con fecha (no toca las horas a mano de septiembre)', async () => {
+    const p = pintar({ balancesData: { workers: [conBolsa] }, findWorkerHours: () => deOctubre });
+    apuntarTurno('2026-10-10', '09:00', '15:00'); // 6 h: quedan 4 de bolsa → 4 a 8 + 2 a 12
+    await waitFor(() => expect(p.persistWorkerBalance).toHaveBeenCalled());
+    const [, cambios] = p.persistWorkerBalance.mock.calls[0];
+    expect(cambios.purseInfo).toBeUndefined();
+    expect(cambios.breakdown.at(-1)).toMatchObject({ amount: 4 * 8 + 2 * 12, tipo: 'turno', date: '2026-10-10', horasBolsa: 4 });
+    expect(cambios.breakdown.at(-1).concept).toBe('🕒 10/10 (09:00 a 15:00 - 4h a 8€/h + 2h a 12€/h)');
+    expect(cambios.currentBalance).toBe(80 + 56);
+  });
+
+  it('un turno a mano del primer mes sigue el camino de siempre (bolsa de septiembre llena: extra)', async () => {
+    const p = pintar({ balancesData: { workers: [conBolsa] }, findWorkerHours: () => deOctubre });
+    apuntarTurno('2026-09-25', '09:00', '11:00');
+    await waitFor(() => expect(p.persistWorkerBalance).toHaveBeenCalled());
+    const [, cambios] = p.persistWorkerBalance.mock.calls[0];
+    expect(cambios.breakdown.at(-1)).toMatchObject({ amount: 24, tipo: 'turno', date: '2026-09-25' });
+    expect(cambios.breakdown.at(-1).concept).toMatch(/Extra tras bolsa/);
+  });
+
+  it('guardar los meses del acuerdo manda el purseInfo completo con desde/hasta y avisa si el servidor aún no los guarda', async () => {
+    const sinMeses = { ...conBolsa, purseInfo: { ...conBolsa.purseInfo, desde: '', hasta: '' } };
+    const p = pintar({ balancesData: { workers: [sinMeses] }, findWorkerHours: () => deOctubre, persistWorkerBalance: vi.fn().mockResolvedValue({ purseInfo: { totalHours: 10 } }) });
+    fireEvent.change(screen.getByLabelText('Desde'), { target: { value: '2026-09' } });
+    fireEvent.change(screen.getByLabelText('Hasta (incluido)'), { target: { value: '2026-10' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar meses' }));
+    await waitFor(() => expect(p.persistWorkerBalance).toHaveBeenCalledWith('luis', { purseInfo: { ...sinMeses.purseInfo, desde: '2026-09', hasta: '2026-10' } }));
+    expect(await screen.findByText(/El servidor todavía no guarda los meses/)).toBeInTheDocument();
+  });
+});
+

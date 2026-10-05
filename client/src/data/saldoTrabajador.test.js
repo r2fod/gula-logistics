@@ -44,4 +44,22 @@ describe('saldoDeTrabajador (la misma cuenta en Saldos y en la vista del trabaja
     expect(s.enNomina).toBe(true);
     expect(s.enCurso(ahora)).toBe(0);
   });
+
+  it('con el acuerdo por meses, los turnos de un mes nuevo gastan su propia bolsa y el turno abierto sigue la misma cuenta', () => {
+    const dia = (mes, d) => ({ timestamp: new Date(2026, mes, d, 9).toISOString() });
+    const ficha = {
+      currentBalance: 0, isSpecialPurse: true,
+      purseInfo: { totalHours: 4, consumedHours: 4, hourlyRate: 8, extraRateAfter80h: 12, desde: '2026-09', hasta: '2026-10' },
+    };
+    const turnos = { totalHours: 8, shifts: [
+      { durationHours: 2, cost: 20, startEntry: dia(8, 25) }, // septiembre: bolsa llena a mano → extra
+      { durationHours: 3, cost: 30, startEntry: dia(9, 1) }, // octubre: 3 h de bolsa
+      { durationHours: 3, cost: 30, startEntry: dia(9, 2) }, // 1 h de bolsa + 2 h extra
+    ] };
+    const s = saldoDeTrabajador({ ficha, horas: turnos, abierto: { timestamp: new Date(2026, 9, 3, 9).toISOString(), rate: 10 } });
+    expect(s.costes.map(c => c.coste)).toEqual([24, 24, 8 + 24]);
+    // Abierto en octubre con la bolsa de octubre ya gastada: 2 h a 12.
+    expect(s.enCurso(new Date(2026, 9, 3, 11))).toBe(24);
+  });
 });
+
