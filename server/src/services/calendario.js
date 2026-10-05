@@ -9,9 +9,10 @@
 // Solo se devuelve lo que hace falta para planificar y NUNCA los datos de
 // personal ni los importes que algunos apuntes traen (`personal`, `notas`).
 
-// Tipos de apunte que interesan al planning. El resto (tarea/visita, cerrado,
-// producción...) se descarta aquí, en el origen.
-export const TIPOS_UTILES = ['boda', 'comunion', 'corporativo', 'recogida', 'vacaciones'];
+// Tipos de apunte que interesan al planning: los cinco que son evento en el calendario
+// (también cumpleaños y producciones —rodajes—, que antes se quedaban fuera), las
+// recogidas y las vacaciones. El resto (tarea/visita, cerrado) se descarta aquí.
+export const TIPOS_UTILES = ['boda', 'comunion', 'corporativo', 'cumpleanos', 'produccion', 'recogida', 'vacaciones'];
 
 export function calendarioConfigurado(env = process.env) {
   return Boolean(env.CALENDARIO_PROJECT_ID && env.CALENDARIO_API_KEY && env.CALENDARIO_CODIGO);

@@ -25,6 +25,7 @@ import BackgroundAnimation from './BackgroundAnimation';
 import AvisoTurnosLargos from './dashboard/fichajes/AvisoTurnosLargos';
 import SemanaBorradorBanner from './SemanaBorradorBanner';
 import DisponibilidadSemana from './planning/DisponibilidadSemana';
+import ActualizarDesdeCalendario from './planning/ActualizarDesdeCalendario';
 import RevisionIaBorrador from './panel/RevisionIaBorrador';
 import CabeceraPanel from './panel/CabeceraPanel';
 import MenuLateral from './panel/MenuLateral';
@@ -339,6 +340,15 @@ export default function PartnerDashboardView({
           semana={activeWeekData}
           equipo={workersList}
           esBorrador={esBorrador(activeWeekData)}
+          onGuardar={(parcial) => actualizarSemana(activeWeekId, parcial)}
+        />
+      )}
+
+      {activeTab === 'schedule' && adminUnlocked && (
+        <ActualizarDesdeCalendario
+          key={activeWeekId}
+          semana={activeWeekData}
+          equipo={workersList}
           onGuardar={(parcial) => actualizarSemana(activeWeekId, parcial)}
         />
       )}

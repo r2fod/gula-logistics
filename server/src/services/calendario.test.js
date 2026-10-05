@@ -22,6 +22,12 @@ describe('normalizarApunte', () => {
     expect(normalizarApunte(null)).toBeNull();
   });
 
+  it('BUG evitado: las producciones (rodajes, también de varios días) y los cumpleaños llegan al planning (antes se descartaban)', () => {
+    expect(normalizarApunte({ id: 'p', fecha: '2026-10-08', hasta: '2026-10-09', tipo: 'produccion', titulo: 'Produ X', pax: 73 }))
+      .toEqual({ id: 'p', fecha: '2026-10-08', hasta: '2026-10-09', tipo: 'produccion', titulo: 'Produ X', pax: 73 });
+    expect(normalizarApunte({ id: 'c', fecha: '2026-10-10', tipo: 'cumpleanos', titulo: 'Cumple Y' })).toMatchObject({ tipo: 'cumpleanos' });
+  });
+
   it('un pax absurdo ("10015" del calendario) se ignora en vez de creerlo', () => {
     expect(normalizarApunte({ id: '1', fecha: '2026-09-10', tipo: 'corporativo', titulo: 'X', pax: 10015 }).pax).toBeUndefined();
     expect(normalizarApunte({ id: '1', fecha: '2026-09-10', tipo: 'boda', titulo: 'X', pax: 0 }).pax).toBeUndefined();

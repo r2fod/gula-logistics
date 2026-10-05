@@ -54,16 +54,29 @@ export function nombreDeEvento(apunte) {
   let t = String(apunte.titulo || '').replace(/\([^)]*\?[^)]*\)/g, '').replace(/\b\d+\s*pax\b/gi, '').replace(/\s+/g, ' ').trim();
   if (t === t.toUpperCase() || t === t.toLowerCase()) t = capitalizar(t);
   t = t.replace(/\sY\s/g, ' y ');
-  const prefijo = apunte.tipo === 'boda' ? 'Boda' : apunte.tipo === 'comunion' ? 'Comunión' : 'Evento';
-  return /^(boda|evento|comuni[oó]n)\b/i.test(t) ? t : `${prefijo} ${t}`;
+  const prefijo = { boda: 'Boda', comunion: 'Comunión', cumpleanos: 'Cumpleaños', produccion: 'Producción' }[apunte.tipo] || 'Evento';
+  return /^(boda|evento|comuni[oó]n|cumple\w*|produ\w*|rodaje)\b/i.test(t) ? t : `${prefijo} ${t}`;
 }
 
 // ─── Lectura de los apuntes ────────────────────────────────────────────────
-const TIPOS_EVENTO = ['boda', 'comunion', 'corporativo'];
+// Los cinco tipos que son evento en el calendario. Una producción (rodaje) se sirve cada
+// día que dura: con `hasta`, un apunte por día; y apuntada día a día no se fusiona.
+const TIPOS_EVENTO = ['boda', 'comunion', 'corporativo', 'cumpleanos', 'produccion'];
+
+const porDias = (a) => {
+  if (a.tipo !== 'produccion' || !a.hasta || a.hasta <= a.fecha) return [a];
+  const dias = [];
+  for (let f = fechaLocal(a.fecha); aIso(f) <= a.hasta && dias.length < 31; f = sumarDias(f, 1)) dias.push({ ...a, fecha: aIso(f), hasta: undefined });
+  return dias;
+};
+
+// Eventos del calendario en [inicio, fin] (Date), fusionados como en el borrador:
+// [{ nombre, tipo, fecha, pax, sitio, hora }]. Lo usa también actualizarDesdeCalendario.js.
+export const eventosDelCalendario = (apuntes = [], inicio, fin) => extraerEventos(apuntes, inicio, fin).eventos;
 
 function extraerEventos(apuntes, inicio, fin) {
   const dentro = (a) => a.fecha >= aIso(inicio) && a.fecha <= aIso(fin);
-  const candidatos = apuntes.filter(a => TIPOS_EVENTO.includes(a.tipo) && dentro(a));
+  const candidatos = apuntes.filter(a => TIPOS_EVENTO.includes(a.tipo)).flatMap(porDias).filter(dentro);
 
   // "DESCARGA ..." apuntada como boda: es una descarga de logística, no un evento.
   const descargas = candidatos.filter(a => /^descarga\b/i.test(a.titulo.trim()));
@@ -89,7 +102,7 @@ function extraerEventos(apuntes, inicio, fin) {
   const unicos = [];
   fusionados.forEach(e => {
     const clave = plano(e.nombre);
-    const igual = unicos.find(u => plano(u.nombre) === clave && u.fecha !== e.fecha);
+    const igual = e.tipo !== 'produccion' && unicos.find(u => plano(u.nombre) === clave && u.fecha !== e.fecha);
     if (!igual) { unicos.push(e); return; }
     const gana = (e.sitio && !igual.sitio) ? e : (!e.sitio && igual.sitio) ? igual : e;
     const pierde = gana === e ? igual : e;
@@ -136,8 +149,9 @@ function extraerVacaciones(apuntes, roster) {
 
 // ─── Generador ─────────────────────────────────────────────────────────────
 // { inicio: Date (martes), apuntes, roster: [{name, role}], plantilla: {team, trucks}, nombre,
-//   restricciones (disponibilidad.js), limites }
-export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla = {}, nombre = 'Semana', ahora = new Date(), restricciones = [], limites = LIMITES_POR_DEFECTO }) {
+//   restricciones (disponibilidad.js), limites, fijas (tareas ya asignadas que el reparto
+//   respeta como ocupadas: asignarEquipo) }
+export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla = {}, nombre = 'Semana', ahora = new Date(), restricciones = [], limites = LIMITES_POR_DEFECTO, fijas = [] }) {
   const inicioMartes = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate());
   const fechas = {};
   DIAS.forEach((d, i) => { fechas[d] = sumarDias(inicioMartes, i); });
@@ -243,7 +257,7 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
   // ── Preparación y limpieza de la semana (si hay eventos de jueves en adelante o sábado) ──
   const eventosGrandes = eventos.filter(e => DIAS.indexOf(diaDeFecha(e.fecha)) >= DIAS.indexOf('jueves'));
   if (eventosGrandes.length > 0) {
-    const nombres = eventosGrandes.map(e => e.nombre).join(' + ');
+    const nombres = [...new Set(eventosGrandes.map(e => e.nombre))].join(' + '); // un rodaje de varios días, una vez
     nueva({ dia: 'miercoles', ini: 9 * 60, fin: 15 * 60, evento: nombres, accion: 'Preparación y organización de material (checklist)', n: 3, pool: 'prepEquipo', lugar: 'Almacén Base' });
     nueva({ dia: 'miercoles', ini: 9 * 60, fin: 15 * 60, evento: CAT_LIMPIEZA, accion: 'Limpieza y empaquetado de vajilla y utensilios para los eventos', n: 2, pool: 'limpieza', lugar: 'Almacén Base' });
   }
@@ -299,7 +313,7 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
   const fechasIso = Object.fromEntries(DIAS.map(d => [d, aIso(fechas[d])]));
   const { asignados, horas, avisos: avisosReparto } = asignarEquipo({
     // La disponibilidad fija de cada persona (su ficha) cuenta igual que la de la semana.
-    equipo: roster, restricciones: [...restriccionesDelEquipo(roster), ...restricciones], limites, vacaciones, fechas: fechasIso,
+    equipo: roster, restricciones: [...restriccionesDelEquipo(roster), ...restricciones], limites, vacaciones, fechas: fechasIso, fijas,
     tareas: tareas.map((t, i) => ({
       clave: i, dia: t.dia, ini: t.ini, fin: t.fin <= t.ini ? t.fin + 1440 : t.fin, n: t.n,
       candidatos: candidatosDePerfil(pools, t.pool).map(p => p.name),
