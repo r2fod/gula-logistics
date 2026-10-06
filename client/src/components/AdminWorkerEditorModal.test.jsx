@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, within } from '../test/render';
+import { render, screen, fireEvent, waitFor, within } from '../test/render';
 import AdminWorkerEditorModal from './AdminWorkerEditorModal';
 
 const equipo = [
@@ -57,11 +57,21 @@ describe('AdminWorkerEditorModal (Gestionar equipo)', () => {
     expect(p.onRemoveWorker).toHaveBeenCalledWith('Eva');
   });
 
-  it('el lápiz abre la ficha editable de esa persona', () => {
+  it('el lápiz abre la ficha a todo el ancho, en lugar de la lista, y «Volver» regresa a ella', () => {
     pintar();
-    const lapiz = screen.getByRole('button', { name: 'Editar la ficha de Ana' });
-    fireEvent.click(lapiz);
-    expect(lapiz).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Editar la ficha de Ana' }));
+    expect(screen.getByRole('form', { name: 'Ficha de Ana' })).toBeInTheDocument();
     expect(screen.getByDisplayValue('Conductora Flota')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Conductores' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Volver' }));
+    expect(screen.getByRole('region', { name: 'Conductores' })).toBeInTheDocument();
+  });
+
+  it('en la ficha se puede cambiar el icono', async () => {
+    const p = pintar();
+    fireEvent.click(screen.getByRole('button', { name: 'Editar la ficha de Ana' }));
+    fireEvent.click(screen.getByRole('button', { name: /Tráiler/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Guardar ficha/ }));
+    await waitFor(() => expect(p.onUpdateWorker).toHaveBeenCalledWith('Ana', expect.objectContaining({ avatar: '🚛' })));
   });
 });
