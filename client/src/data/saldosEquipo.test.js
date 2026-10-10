@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fusionarSaldosConEquipo, buscarPorNombreDeSaldo } from './saldosEquipo';
+import { fusionarSaldosConEquipo, buscarPorNombreDeSaldo, turnoAbiertoDeFicha } from './saldosEquipo';
 
 const equipo = [
   { name: 'Marta', role: 'Conductora', avatar: '🚛', isPayroll: false },
@@ -61,5 +61,14 @@ describe('Ana y Mariana (un nombre dentro de otro)', () => {
     expect(buscarPorNombreDeSaldo(horas, 'Ana Gula')).toEqual({ totalHours: 5 });
     const fusion = fusionarSaldosConEquipo({ workers: [{ id: 'mariana-gula', name: 'Mariana Gula' }, { id: 'ana-gula', name: 'Ana Gula' }] }, [{ name: 'Ana' }, { name: 'Mariana' }]);
     expect(fusion.workers.map(w => w.id)).toEqual(['ana-gula', 'mariana-gula']);
+  });
+});
+
+describe('turnoAbiertoDeFicha', () => {
+  const equipo = [{ name: 'Ana' }, { name: 'Mariana' }];
+  it('BUG evitado: el turno abierto de Ana ya no suma en el saldo de "Mariana Gula"', () => {
+    const abiertos = { Ana: { workerName: 'Ana', type: 'entrada' } };
+    expect(turnoAbiertoDeFicha(abiertos, { name: 'Mariana Gula' }, equipo)).toBeNull();
+    expect(turnoAbiertoDeFicha(abiertos, { name: 'Ana Gula' }, equipo)).toBe(abiertos.Ana);
   });
 });

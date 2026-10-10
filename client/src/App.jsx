@@ -45,6 +45,7 @@ import {
   fetchCalendarioApuntes,
   createDraftWeekInAPI,
   retryPendingClockEntries,
+  retryPendingTaskPatches,
   deleteWeekFromAPI,
   saveWeeksToAPI,
   getAiMemories
@@ -446,7 +447,7 @@ export default function App() {
     // En cuanto el móvil recupera cobertura, reintentar YA los fichajes
     // pendientes en vez de esperar hasta 20s al siguiente tick del
     // intervalo — importante en fincas de boda con cobertura intermitente.
-    const handleOnline = () => { retryPendingClockEntries(); };
+    const handleOnline = () => { retryPendingClockEntries(); retryPendingTaskPatches(); };
     window.addEventListener('online', handleOnline);
 
     const actualizar = () => {
@@ -454,6 +455,7 @@ export default function App() {
       // caído (para todos, no solo admin — cualquier trabajador puede
       // tener fichajes pendientes en su propio móvil).
       retryPendingClockEntries();
+      retryPendingTaskPatches(); // y las tareas marcadas sin red (colaTareas.js)
       sincronizarFichajes();
       // No sobreescribir semanas si el usuario ha tocado algo en los últimos 5s
       // (el PATCH puede tardar un poco en llegar al servidor y reflejarse en el GET)

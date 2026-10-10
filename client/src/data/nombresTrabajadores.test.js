@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizarNombre, coincideNombre, parecidoNombre, elMasParecido } from './nombresTrabajadores';
+import { normalizarNombre, coincideNombre, parecidoNombre, elMasParecido, mismoNombre, fichaDePersona, personaDelFichaje } from './nombresTrabajadores';
 
 describe('normalizarNombre', () => {
   it('quita espacios, pasa a minúsculas y unifica la doble f', () => {
@@ -53,5 +53,23 @@ describe('nombres con tildes y la ficha que mejor encaja', () => {
     expect(parecidoNombre('Luis', 'Luis Gula')).toBe(2);
     expect(parecidoNombre('Luis', 'José Luis Gula')).toBe(1);
     expect(elMasParecido([{ name: 'Eva' }], f => parecidoNombre('Pau', f.name))).toBeNull();
+  });
+});
+
+describe('la ficha de cada persona, mirando a todo el equipo', () => {
+  const fichas = [{ name: 'Mariana Gula' }, { name: 'Luis Gula' }];
+  const equipo = ['Ana', 'Mariana', 'Luis'];
+
+  it('BUG evitado: Ana sin ficha propia ya no se queda con la de Mariana (ni ve su dinero)', () => {
+    expect(fichaDePersona('Ana', fichas, equipo)).toBeNull();
+    expect(fichaDePersona('Mariana', fichas, equipo)).toBe(fichas[0]);
+    expect(fichaDePersona('Luis', fichas, equipo)).toBe(fichas[1]);
+  });
+
+  it('mismoNombre solo ignora mayúsculas, tildes y espacios; personaDelFichaje admite el nombre seguido de más', () => {
+    expect(mismoNombre(' sofia ', 'Sofía')).toBe(true);
+    expect(mismoNombre('Ana', 'Mariana')).toBe(false);
+    expect(personaDelFichaje(['Ana', 'Marta'], 'Marta Gula')).toBe('Marta');
+    expect(personaDelFichaje(['Ana'], 'Mariana')).toBeNull();
   });
 });

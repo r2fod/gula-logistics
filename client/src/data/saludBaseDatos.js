@@ -1,6 +1,6 @@
 import { revisarFichajes } from './revisionFichajes';
 import { tareasActivas } from './checklistSemana';
-import { coincideNombre } from './nombresTrabajadores';
+import { coincideNombre, fichaDePersona, personaDelFichaje } from './nombresTrabajadores';
 import { NOMBRE_DIA } from './disponibilidad';
 
 // Estado de la base de datos para «Configuración → Base de datos»: lo que se puede
@@ -10,7 +10,10 @@ import { NOMBRE_DIA } from './disponibilidad';
 // `fichajes` son los activos; `borrados`, los de la papelera; `fichas`, las de Saldos.
 export function revisarBaseDeDatos({ fichajes = [], borrados = [], equipo = [], semanas = {}, fichas = [], ahora = new Date() } = {}) {
   const { sobran, revisar } = revisarFichajes(fichajes, ahora);
-  const enEquipo = (nombre) => equipo.some(w => coincideNombre(w.name, nombre));
+  // Fichajes y tareas llevan el nombre del equipo: "lo contiene" no basta (los de una
+  // "Mariana" que ya no está no son de "Ana"). Las fichas, sí (pueden llamarse distinto).
+  const enEquipo = (nombre) => !!personaDelFichaje(equipo, nombre, w => w.name);
+  const fichaConPersona = (nombre) => equipo.some(w => coincideNombre(w.name, nombre));
   const conEquipo = equipo.length > 0; // sin equipo cargado no se puede decir qué es huérfano
 
   const fichajesSinPersona = conEquipo
@@ -23,8 +26,8 @@ export function revisarBaseDeDatos({ fichajes = [], borrados = [], equipo = [], 
     : [];
   // Sin fichas cargadas (sesión caducada, aún llegando) no se sabe: no se avisa de nada.
   const conFichas = conEquipo && fichas.length > 0;
-  const fichasSinPersona = conFichas ? fichas.filter(f => f?.name && !enEquipo(f.name)).map(f => f.name) : [];
-  const personasSinFicha = conFichas ? equipo.filter(w => !fichas.some(f => coincideNombre(w.name, f?.name))).map(w => w.name) : [];
+  const fichasSinPersona = conFichas ? fichas.filter(f => f?.name && !fichaConPersona(f.name)).map(f => f.name) : [];
+  const personasSinFicha = conFichas ? equipo.filter(w => !fichaDePersona(w.name, fichas, equipo.map(x => x.name))).map(w => w.name) : [];
 
   const idsQueSobran = sobran.flatMap(g => g.fichajes.map(e => e.id));
   const pendientes = (borrados.length ? 1 : 0) + (idsQueSobran.length ? 1 : 0) + (revisar.length ? 1 : 0)

@@ -12,7 +12,7 @@
 //      cuando los demás van cargados).
 // Primero se colocan las tareas con menos gente posible (las difíciles) y al final
 // se pasan tareas de quien más lleva a quien menos mientras mejore el reparto.
-import { coincideNombre } from './nombresTrabajadores';
+import { mismoNombre, parecidoNombre } from './nombresTrabajadores';
 import { esTareaActiva, getWeekRange, resolveTaskDate } from './taskPlanning';
 import { getWeddingTaskName } from './eventNaming';
 import { formatearHoras } from './formatoFinanciero';
@@ -38,7 +38,7 @@ export function perfilDeTarea(texto, asignados = [], pools = null) {
   const regla = REGLAS_PERFIL.find(([re]) => re.test(texto || ''));
   if (regla) return regla[1];
   if (pools && asignados.length) {
-    const suyos = new Set(asignados.map(n => Object.keys(pools).find(k => pools[k].some(p => coincideNombre(p.name, n)))).filter(Boolean));
+    const suyos = new Set(asignados.map(n => Object.keys(pools).find(k => pools[k].some(p => mismoNombre(p.name, n)))).filter(Boolean));
     if (suyos.size === 1) return [...suyos][0];
   }
   return 'equipo';
@@ -70,7 +70,7 @@ export function asignarEquipo({ tareas = [], equipo = [], restricciones = [], li
     (t.fijos || []).forEach(p => poner(p, itemDe(t)));
   });
 
-  const deVacaciones = (p, dia) => !!fechas[dia] && vacaciones.some(v => coincideNombre(v.nombre, p) && fechas[dia] >= v.desde && fechas[dia] <= v.hasta);
+  const deVacaciones = (p, dia) => !!fechas[dia] && vacaciones.some(v => parecidoNombre(v.nombre, p) >= 2 && fechas[dia] >= v.desde && fechas[dia] <= v.hasta);
   const solapa = (p, it) => (agenda.get(p) || []).some(x => x.clave !== it.clave && it.ini < x.fin && x.ini < it.fin);
   const bloqueado = (p, t, it) => deVacaciones(p, t.dia) || !!restriccionQueBloquea(restricciones, p, t.dia, t.ini, t.fin) || solapa(p, it);
   const jornada = (p, dia, it) => {

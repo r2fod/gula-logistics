@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { crearEnlacesTrabajadoresEnAPI } from '../data/apiService';
-import { elMasParecido, parecidoNombre } from '../data/nombresTrabajadores';
+import { fichaDePersona } from '../data/nombresTrabajadores';
 
 // Enlaces firmados de los trabajadores (con ellos cada uno ve SU saldo), para el admin.
 //
 // const { tokenDe, cargando, error, generar } = useEnlacesTrabajadores(esAdmin);
 // - Con `activo` los pide al montarse, así copiar después es inmediato (el
 //   portapapeles de Safari no deja copiar tras esperar a la red).
-// - tokenDe(nombre) → el token de esa persona del equipo (su ficha de Saldos puede
-//   llamarse distinto: "Marta Gula" / "Marta"), o null (sin ficha, o aún cargando: el
-//   enlace sale sin saldo, igual que antes).
+// - tokenDe(nombre, equipo) → el token de esa persona del equipo (su ficha de Saldos
+//   puede llamarse distinto: "Marta Gula" / "Marta"; `equipo`, los nombres de todos, para
+//   que una ficha sea de quien más se le parece), o null (sin ficha, o aún cargando: el
+//   enlace sale sin saldo). fichaDe(nombre, equipo) → { id, name, token } de esa ficha.
 // - generar({ anularAnteriores: true }) deja sin efecto todos los ya enviados y
 //   trae los nuevos.
 const aEstado = (r) => (r.ok
@@ -33,10 +34,12 @@ export function useEnlacesTrabajadores(activo) {
     return r.ok;
   }, []);
 
-  const tokenDe = useCallback(
-    (nombre) => elMasParecido(estado.enlaces, e => parecidoNombre(nombre, e.name))?.token || null,
+  // `equipo`: los nombres de todo el equipo (una ficha es de quien más se le parece).
+  const fichaDe = useCallback(
+    (nombre, equipo = []) => fichaDePersona(nombre, estado.enlaces, equipo) || null,
     [estado.enlaces]
   );
+  const tokenDe = useCallback((nombre, equipo = []) => fichaDe(nombre, equipo)?.token || null, [fichaDe]);
 
-  return { tokenDe, cargando: estado.cargando, error: estado.error, generar };
+  return { tokenDe, fichaDe, cargando: estado.cargando, error: estado.error, generar };
 }

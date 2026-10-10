@@ -21,7 +21,7 @@ import { conceptosDelPeriodo } from '../../data/conceptosSaldos';
 import { estimarHorasPlanning } from '../../data/estimadoPlanning';
 import { enCursoDelPeriodo } from '../../data/costeEnVivo';
 import { textoResumenWhatsApp } from '../../data/resumenWhatsApp';
-import { coincideNombre } from '../../data/nombresTrabajadores';
+import { elMasParecido, parecidoNombre } from '../../data/nombresTrabajadores';
 import { useCopiado } from '../../hooks/useCopiado';
 
 // Con el planning de la semana abierta (la del selector de arriba) como punto de
@@ -91,7 +91,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
       conceptos.items.forEach(it => {
         if (it.tipo === 'pago') return; // pagos do not add to cost
 
-        let worker = copy.find(w => coincideNombre(w.name, it.persona));
+        let worker = elMasParecido(copy, w => parecidoNombre(w.name, it.persona));
         if (!worker) {
           worker = { id: it.persona.toLowerCase().replace(/\s+/g, '-'), name: it.persona, isPayroll: false, totalHours: 0, totalCost: 0, shifts: [] };
           copy.push(worker);
@@ -162,7 +162,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
   };
   const siguienteEsFuturo = modo !== 'todo' && rangoDePeriodo(modo, moverPeriodo(modo, ancla, 1), allWeeks).desde > new Date();
 
-  const personaEnfocada = enfoque?.persona ? conHoras.find(w => coincideNombre(w.name, enfoque.persona))?.name : null;
+  const personaEnfocada = enfoque?.persona ? elMasParecido(conHoras, w => parecidoNombre(w.name, enfoque.persona))?.name : null;
   const copiarParaWhatsApp = () => copiar(textoResumenWhatsApp({
     etiqueta: rango.etiqueta, personas: conHoras, totalExtras: totalExtraExpense, totalNomina: totalPayrollValuation, totalHoras, conceptos, estimado,
   }));
@@ -352,7 +352,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
                         .filter(evt => evt.workers[w.name])
                         .map(evt => ({ nombre: evt.eventName, horas: evt.workers[w.name].hours, coste: evt.workers[w.name].cost }));
 
-                      const manualesDelTrabajador = (conceptos?.items || []).filter(it => it.tipo !== 'pago' && coincideNombre(w.name, it.persona));
+                      const manualesDelTrabajador = (conceptos?.items || []).filter(it => it.tipo !== 'pago' && elMasParecido(conHoras, x => parecidoNombre(x.name, it.persona)) === w);
                       if (manualesDelTrabajador.length > 0) {
                         const costeManual = manualesDelTrabajador.reduce((suma, it) => suma + it.importe, 0);
                         const horasManual = manualesDelTrabajador.reduce((suma, it) => suma + (it.horas || 0), 0);

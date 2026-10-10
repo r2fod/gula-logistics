@@ -139,3 +139,11 @@ describe('reajustarSemana', () => {
     expect(avisos[0]).toBe('Jueves: Boda X - Recogida y vuelta a base — Ana, pero no puede el jueves.');
   });
 });
+
+describe('disponibilidad con nombres que contienen otros', () => {
+  it('BUG evitado: "Ana no puede el jueves" ya no bloquea a Mariana', () => {
+    const rs = [crearRestriccion({ persona: 'Ana', dia: 'jueves', tipo: 'no' }).restriccion];
+    expect(restriccionQueBloquea(rs, 'Ana', 'jueves', 600, 660)).toBeTruthy();
+    expect(restriccionQueBloquea(rs, 'Mariana', 'jueves', 600, 660)).toBeNull();
+  });
+});

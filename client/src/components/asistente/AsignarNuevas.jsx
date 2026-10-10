@@ -4,7 +4,7 @@ import Chip from '../ui/Chip';
 import { asignarEnPropuesta, coincideConTarea, tareasNuevas } from '../../data/comprobarTareas';
 import { personasPorTipo, tipoDeTarea } from '../../data/aprendizajeFichajes';
 import { NOMBRE_DIA } from '../../data/disponibilidad';
-import { coincideNombre } from '../../data/nombresTrabajadores';
+import { mismoNombre } from '../../data/nombresTrabajadores';
 
 const MAX_TAREAS = 6;
 
@@ -30,11 +30,11 @@ export default function AsignarNuevas({ original, propuesta, equipo = [], sugere
       </p>
       {nuevas.slice(0, MAX_TAREAS).map(tarea => {
         const lista = sugeridos(tarea);
-        const nota = (nombre) => lista.find(p => coincideNombre(p.nombre, nombre))?.nota;
+        const nota = (nombre) => lista.find(p => mismoNombre(p.nombre, nombre))?.nota;
         // Primero quien la suele hacer; luego el resto del equipo.
         const orden = [...equipo].sort((a, b) => (nota(b.name) ? 1 : 0) - (nota(a.name) ? 1 : 0));
-        const elegido = (nombre) => tarea.personas.some(p => coincideNombre(p, nombre));
-        const alternar = (nombre) => onCambiar(asignarEnPropuesta(propuesta, tarea.clave, elegido(nombre) ? tarea.personas.filter(p => !coincideNombre(p, nombre)) : [...tarea.personas, nombre]));
+        const elegido = (nombre) => tarea.personas.some(p => mismoNombre(p, nombre));
+        const alternar = (nombre) => onCambiar(asignarEnPropuesta(propuesta, tarea.clave, elegido(nombre) ? tarea.personas.filter(p => !mismoNombre(p, nombre)) : [...tarea.personas, nombre]));
         return (
           <div key={tarea.clave} className="space-y-1.5">
             <p className="text-xs text-slate-200"><b>{NOMBRE_DIA[tarea.dia]}</b>: {tarea.texto}</p>

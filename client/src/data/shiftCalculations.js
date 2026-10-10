@@ -6,7 +6,7 @@
 // dejarlo indefinidamente como "en turno" con un cronómetro absurdo.
 import { parseEventAndTask } from './eventNaming';
 import { fechaDeFichaje, horaDeFichaje } from './fichajes';
-import { coincideNombre } from './nombresTrabajadores';
+import { mismoNombre, personaDelFichaje } from './nombresTrabajadores';
 
 export const ZOMBIE_SHIFT_HOURS = 16;
 
@@ -67,8 +67,9 @@ export function pairShiftsFromEntries(entries = []) {
     const { workerName, type, timestamp, isPayroll, rate, note, taskName } = entry;
     if (!workerName) return;
 
-    // Normalizar la búsqueda por nombre ignorando mayúsculas y acentos
-    const matchedKey = Object.keys(activeWorkerShifts).find(k => coincideNombre(k, workerName));
+    // La misma persona ignorando mayúsculas y acentos (nunca "lo contiene": la salida
+    // de "Mariana" cerraba el turno abierto de "Ana").
+    const matchedKey = Object.keys(activeWorkerShifts).find(k => mismoNombre(k, workerName));
     const activeKey = matchedKey || workerName;
 
     if (type === 'entrada') {
@@ -228,8 +229,9 @@ export function aggregateShiftsByWorker(shifts, workersList = []) {
   });
 
   shifts.forEach(shift => {
-    // Buscar la clave correcta en workerBalances (ignora mayúsculas y acentos)
-    let matchedKey = Object.keys(workerBalances).find(key => coincideNombre(key, shift.workerName));
+    // Su persona del equipo: la misma (sin mayúsculas ni acentos) o su nombre seguido de
+    // más; no "lo contiene" (las horas de "Mariana", ya fuera del equipo, iban a "Ana").
+    let matchedKey = personaDelFichaje(Object.keys(workerBalances), shift.workerName);
     let bucket = matchedKey ? workerBalances[matchedKey] : null;
 
     if (!bucket) {

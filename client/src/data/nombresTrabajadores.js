@@ -38,3 +38,32 @@ export function elMasParecido(lista = [], puntos) {
   });
   return mejor;
 }
+
+// ¿La misma persona del EQUIPO, escrita igual salvo mayúsculas, tildes y espacios? Para
+// comparar nombres del equipo entre sí (fichajes, asignaciones), donde "lo contiene" no
+// vale: la salida de "Mariana" cerraba el turno de "Ana".
+export function mismoNombre(a, b) {
+  const x = normalizarNombre(a);
+  return !!x && x === normalizarNombre(b);
+}
+
+// De `lista`, la persona a la que corresponde un nombre de fichaje o de planning:
+// igual o su nombre seguido de más ("Marta" → "Marta Gula"), o null. "Lo contiene" no
+// basta: las horas de "Mariana" (ya fuera del equipo) iban a "Ana".
+export function personaDelFichaje(lista, nombre, nombreDe = (x) => x) {
+  return elMasParecido(lista, (x) => {
+    const p = parecidoNombre(nombreDe(x), nombre);
+    return p >= 2 ? p : 0;
+  });
+}
+
+// La ficha de Saldos de `nombre` mirando a todo el `equipo` (sus nombres): una ficha es
+// de quien MÁS se le parece. "Mariana Gula" es de Mariana aunque contenga "Ana": sin
+// esto, Ana sin ficha propia se quedaba con la de Mariana (y veía su dinero).
+export function fichaDePersona(nombre, fichas = [], equipo = [], nombreDe = (f) => f?.name) {
+  return elMasParecido(fichas, (f) => {
+    const n = nombreDe(f);
+    const p = parecidoNombre(nombre, n);
+    return p > 0 && !equipo.some((otro) => !mismoNombre(otro, nombre) && parecidoNombre(otro, n) > p) ? p : 0;
+  });
+}

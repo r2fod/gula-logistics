@@ -1,4 +1,4 @@
-import { coincideNombre } from './nombresTrabajadores';
+import { parecidoNombre } from './nombresTrabajadores';
 import { aMinutos } from './horarios';
 
 // Lo que el admin dice del equipo para UNA semana: "Tomás no puede el jueves",
@@ -50,7 +50,8 @@ export const restriccionesDe = (semana) => (Array.isArray(semana?.meta?.disponib
 // (minutos desde las 00:00 de ese día; `fin` puede pasar de 1440), o null.
 export function restriccionQueBloquea(restricciones = [], persona, dia, ini, fin) {
   for (const r of restricciones) {
-    if (!coincideNombre(r.persona, persona) || (r.dia !== 'semana' && r.dia !== dia)) continue;
+    // Su nombre o su nombre seguido de más; no "lo contiene" ("Ana no puede" bloqueaba a Mariana).
+    if (parecidoNombre(r.persona, persona) < 2 || (r.dia !== 'semana' && r.dia !== dia)) continue;
     if (r.tipo !== 'solo') return r;
     const desde = aMinutos(r.desde);
     let hasta = aMinutos(r.hasta);

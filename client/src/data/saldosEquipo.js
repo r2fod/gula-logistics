@@ -1,4 +1,4 @@
-import { elMasParecido, parecidoNombre } from './nombresTrabajadores';
+import { elMasParecido, fichaDePersona, mismoNombre, parecidoNombre } from './nombresTrabajadores';
 
 // Ficha de Saldos de alguien del equipo que aún no tiene ninguna en Mongo.
 const fichaVacia = (worker) => ({
@@ -20,7 +20,7 @@ export function fusionarSaldosConEquipo(balancesData, workersList) {
   const fichas = balancesData?.workers || [];
   return {
     ...balancesData,
-    workers: workersList.map((worker) => elMasParecido(fichas, (f) => parecidoNombre(worker.name, f.name)) || fichaVacia(worker)),
+    workers: workersList.map((worker) => fichaDePersona(worker.name, fichas, workersList.map(w => w.name)) || fichaVacia(worker)),
   };
 }
 
@@ -31,4 +31,12 @@ export function buscarPorNombreDeSaldo(datosPorNombre, nombreSaldo) {
   if (!nombreSaldo || !datosPorNombre) return null;
   const clave = elMasParecido(Object.keys(datosPorNombre), (nombreEquipo) => parecidoNombre(nombreEquipo, nombreSaldo));
   return clave ? datosPorNombre[clave] : null;
+}
+
+// El turno abierto (entrada sin salida) de la persona del equipo de esta ficha, o null.
+// La persona es la que MÁS se parece a la ficha: el turno de "Ana" sumaba en directo al
+// saldo de "Mariana Gula" (su nombre contiene "ana").
+export function turnoAbiertoDeFicha(turnosAbiertos = {}, ficha, equipo = []) {
+  const persona = elMasParecido(equipo, (w) => parecidoNombre(w.name, ficha?.name))?.name || ficha?.name;
+  return Object.values(turnosAbiertos || {}).find((e) => mismoNombre(e.workerName, persona)) || null;
 }

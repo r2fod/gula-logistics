@@ -167,3 +167,20 @@ describe('TeamBalancesTab — bolsa de horas por meses', () => {
   });
 });
 
+
+describe('TeamBalancesTab — fecha del turno a mano', () => {
+  it('BUG evitado: de madrugada propone HOY en hora de aquí (antes, en UTC: el día anterior, y el 1 de mes caía en el mes anterior)', () => {
+    const tzAntes = process.env.TZ;
+    process.env.TZ = 'Europe/Madrid';
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-31T23:30:00Z')); // 1 de noviembre, 00:30 en España
+    try {
+      pintar();
+      fireEvent.click(screen.getByRole('button', { name: /Añadir concepto \/ horas manual/ }));
+      expect(document.querySelector('input[type="date"]').value).toBe('2026-11-01');
+    } finally {
+      vi.useRealTimers();
+      process.env.TZ = tzAntes;
+    }
+  });
+});

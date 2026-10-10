@@ -1,24 +1,12 @@
 // Central API Client for Gula Logistics Backend & MongoDB Atlas
 import { initialBalancesData } from './balancesData';
-import { seguirPeticion } from './servidorLento';
+import { API_BASE, fetchConLimite } from './servidor';
+import { conTareasPendientes } from './colaTareas';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-// Toda petición al servidor tiene un tiempo máximo. Sin él, una que se quedaba
-// colgada (p. ej. en una conexión que el servidor ya había cerrado: el navegador no
-// repite un POST por su cuenta) dejaba la pantalla "Generando enlace…" o "Guardando"
-// para siempre. Pasado el tiempo, falla como si no hubiera red (y cada llamada hace
-// lo que ya hacía sin red: un fichaje, por ejemplo, queda en la cola de pendientes).
-// 60 s por defecto: más de lo que tarda en despertar el servidor dormido de Render.
-export const ESPERA_MAXIMA_MS = 60 * 1000;
-// Las de tiempo normal cuentan para el aviso «Despertando el servidor» (servidorLento.js);
-// las largas a propósito (Gemini, subir un PDF), no.
-export function fetchConLimite(url, opciones = {}, ms = ESPERA_MAXIMA_MS) {
-  const control = new AbortController();
-  const reloj = setTimeout(() => control.abort(), ms);
-  const peticion = fetch(url, { ...opciones, signal: control.signal }).finally(() => clearTimeout(reloj));
-  return ms === ESPERA_MAXIMA_MS ? seguirPeticion(peticion) : peticion;
-}
+// La conexión (servidor.js) y la cola de tareas marcadas sin red (colaTareas.js)
+// viven aparte; se siguen pudiendo importar desde aquí.
+export { ESPERA_MAXIMA_MS, fetchConLimite } from './servidor';
+export { patchTaskCompletionInAPI, retryPendingTaskPatches } from './colaTareas';
 
 const TOKEN_STORAGE_KEY = 'gula_admin_token_v1';
 // Enlace de socias: token firmado de SOLO LECTURA (saldos y panel), aparte de
@@ -660,7 +648,8 @@ export async function fetchWeeksFromAPI() {
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const data = await res.json();
     if (data && typeof data === 'object' && Object.keys(data).length > 0) {
-      return data;
+      // Con las tareas marcadas sin red encima: si no, el sondeo las desmarcaba.
+      return conTareasPendientes(data);
     }
   } catch (err) {
     console.warn('Backend API weeks fetch failed, using local fallback:', err.message);
@@ -694,31 +683,6 @@ export async function saveWeeksToAPI(weeksPayload) {
     }
   } catch (err) {
     console.warn('Backend API weeks save failed:', err.message);
-  }
-  return null;
-}
-
-/**
- * Marca/desmarca UNA tarea del planning como completada — sin necesitar
- * sesión de admin (a diferencia de saveWeeksToAPI). Es lo que usa el propio
- * trabajador al fichar salida de una tarea o al tocarla en su cuadrante;
- * el servidor solo permite tocar los campos `completed` y `reopened` de esa
- * tarea, nunca el resto del documento de la semana.
- */
-export async function patchTaskCompletionInAPI(weekId, dayKey, taskIndex, completed, reopened, completedAt) {
-  try {
-    const res = await fetchConLimite(`${API_BASE}/logistics/weeks/${weekId}/tasks`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      // `reopened` (opcional): true si alguien la desmarcó a propósito.
-      // `completedAt`: hora real de completado.
-      body: JSON.stringify({ dayKey, taskIndex, completed, reopened, completedAt })
-    });
-    if (res.ok) {
-      return await res.json();
-    }
-  } catch (err) {
-    console.warn('Backend API task completion patch failed:', err.message);
   }
   return null;
 }

@@ -294,3 +294,31 @@ describe('isZombieShift', () => {
     expect(isZombieShift({})).toBe(false); // sin timestamp
   });
 });
+
+describe('nombres que contienen otros (Ana / Mariana)', () => {
+  const t = (id, workerName, type, hora) => entry({ id, workerName, type, timestamp: `2026-09-10T${hora}:00.000Z` });
+
+  it('BUG evitado: la salida de Mariana ya no cierra el turno abierto de Ana', () => {
+    const { shifts, activeShifts } = pairShiftsFromEntries([
+      t('a1', 'Ana', 'entrada', '08:00'),
+      t('m1', 'Mariana', 'entrada', '09:00'),
+      t('m2', 'Mariana', 'salida', '13:00'),
+    ]);
+    expect(shifts.map(s => `${s.workerName} ${s.durationHours}h`)).toEqual(['Mariana 4h']);
+    expect(Object.keys(activeShifts)).toEqual(['Ana']); // Ana sigue en turno
+  });
+
+  it('BUG evitado: las horas de Mariana (ya fuera del equipo) no se suman a Ana', () => {
+    const { shifts } = pairShiftsFromEntries([t('m1', 'Mariana', 'entrada', '09:00'), t('m2', 'Mariana', 'salida', '13:00')]);
+    const porPersona = aggregateShiftsByWorker(shifts, [{ name: 'Ana' }]);
+    expect(porPersona.Ana.totalHours).toBe(0);
+    expect(porPersona.Mariana).toMatchObject({ totalHours: 4, isOrphaned: true });
+  });
+
+  it('sigue juntando mayúsculas, tildes y el nombre seguido de más ("Marta" / "marta gula")', () => {
+    const { shifts } = pairShiftsFromEntries([t('x1', 'sofia', 'entrada', '09:00'), t('x2', 'Sofía', 'salida', '11:00'), t('y1', 'marta gula', 'entrada', '09:00'), t('y2', 'marta gula', 'salida', '10:00')]);
+    expect(shifts.map(s => `${s.workerName} ${s.durationHours}`).sort()).toEqual(['Sofía 2', 'marta gula 1']);
+    const porPersona = aggregateShiftsByWorker(shifts, [{ name: 'Sofía' }, { name: 'Marta' }]);
+    expect([porPersona['Sofía'].totalHours, porPersona.Marta.totalHours]).toEqual([2, 1]);
+  });
+});

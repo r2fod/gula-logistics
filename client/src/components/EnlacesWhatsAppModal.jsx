@@ -19,10 +19,13 @@ import CabeceraModal from './ui/CabeceraModal';
 export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = [], admin = false }) {
   const { alert, confirm } = useDialog();
   const [copiadoTrabajador, copiarTrabajador] = useCopiado();
-  const { tokenDe, cargando: cargandoFirmas, error: errorFirmas, generar: generarFirmas } = useEnlacesTrabajadores(abierto && admin);
+  const { tokenDe: tokenDeFicha, fichaDe: fichaDeEquipo, cargando: cargandoFirmas, error: errorFirmas, generar: generarFirmas } = useEnlacesTrabajadores(abierto && admin);
 
   if (!abierto) return null;
 
+  const nombresEquipo = workersList.map(w => w.name);
+  const tokenDe = (nombre) => tokenDeFicha(nombre, nombresEquipo);
+  const fichaDe = (nombre) => fichaDeEquipo(nombre, nombresEquipo);
   const enlaceDe = (nombre) => enlaceTrabajador(nombre, admin ? tokenDe(nombre) : null);
 
   const compartirTrabajador = (nombre) => {
@@ -85,7 +88,7 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
                     antes de mandarlo (antes salía igual y solo lo notaba el trabajador). */}
                 {admin && !cargandoFirmas && !errorFirmas && !w.isPayroll && (
                   tokenDe(w.name)
-                    ? <p className="text-[11px] text-emerald-400">Su enlace enseña su saldo</p>
+                    ? <p className="text-[11px] text-emerald-400 break-words">Su enlace enseña su saldo{fichaDe(w.name)?.name && fichaDe(w.name).name !== w.name ? ` (ficha «${fichaDe(w.name).name}»)` : ''}</p>
                     : <p className="text-[11px] text-amber-300">Sin saldo: no tiene ficha en Saldos y Acuerdos con este nombre</p>
                 )}
               </div>
