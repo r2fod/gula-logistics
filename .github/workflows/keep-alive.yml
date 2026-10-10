@@ -2,7 +2,10 @@ name: Keep Render Alive
 
 on:
   schedule:
-    # Ejecuta cada 14 minutos para evitar que Render se duerma (límite de 15 min de inactividad)
+    # GitHub no garantiza la hora de los programados: con */14 lo ejecutó una vez cada
+    # 3–5 h (35 veces del 03/10 al 10/10), así que Render se dormía igual. Esto queda
+    # solo de refuerzo: lo que lo mantiene despierto es un aviso externo cada 10 min a
+    # /api/health (cron-job.org o UptimeRobot, gratis; ver PENDIENTES.md).
     - cron: '*/14 * * * *'
   workflow_dispatch: # Permite ejecutarlo manualmente si hace falta
 
@@ -11,5 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping al servidor de Render
-        run: curl -s https://gula-logistics.onrender.com/api/roster > /dev/null
-        # Hacemos un ping a una ruta pública o rápida del API para mantenerla despierta
+        # /api/health no consulta la base. Hasta 90 s: lo que tarda en despertar. Si
+        # falla no se marca en rojo (avisaría por correo cada vez que Render tarde).
+        run: curl -sS -o /dev/null --max-time 90 https://gula-logistics.onrender.com/api/health || true

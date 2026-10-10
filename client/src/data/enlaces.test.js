@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { construirEnlaceTrabajador, semanaPedidaEnEnlace, urlBase, enlaceTrabajador, enlaceSocias, enlaceVistaPublica, enlaceWhatsApp, abrirEnPestanaNueva, telefonoWhatsApp } from './enlaces';
+import { construirEnlaceTrabajador, semanaPedidaEnEnlace, urlBase, enlaceTrabajador, enlaceSocias, enlaceVistaPublica, enlaceWhatsApp, abrirEnPestanaNueva, abrirEnPestanaNuevaAlLlegar, telefonoWhatsApp } from './enlaces';
 
 const semana = (dateRange, status = 'Operativa Activa') => ({ meta: { dateRange, status } });
 const semanas = {
@@ -88,6 +88,29 @@ describe('abrirEnPestanaNueva', () => {
   it('si el navegador bloquea la ventana no falla', () => {
     const abrir = vi.spyOn(window, 'open').mockReturnValue(null);
     expect(() => abrirEnPestanaNueva('https://ejemplo.test')).not.toThrow();
+    abrir.mockRestore();
+  });
+});
+
+describe('abrirEnPestanaNuevaAlLlegar', () => {
+  it('abre la pestaña en el clic (sin esperar) y le pone la dirección cuando llega', async () => {
+    const ventana = { opener: window, location: { href: '' }, close: vi.fn() };
+    const abrir = vi.spyOn(window, 'open').mockReturnValue(ventana);
+    let dar;
+    const pendiente = abrirEnPestanaNuevaAlLlegar(() => new Promise(r => { dar = r; }));
+    expect(abrir).toHaveBeenCalledWith('', '_blank');
+    expect(ventana.opener).toBeNull();
+    dar('blob:local/1');
+    await pendiente;
+    expect(ventana.location.href).toBe('blob:local/1');
+    abrir.mockRestore();
+  });
+
+  it('si falla, cierra la pestaña vacía y el error sigue', async () => {
+    const ventana = { opener: window, location: { href: '' }, close: vi.fn() };
+    const abrir = vi.spyOn(window, 'open').mockReturnValue(ventana);
+    await expect(abrirEnPestanaNuevaAlLlegar(async () => { throw new Error('404'); })).rejects.toThrow('404');
+    expect(ventana.close).toHaveBeenCalled();
     abrir.mockRestore();
   });
 });

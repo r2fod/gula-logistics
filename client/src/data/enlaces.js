@@ -64,3 +64,20 @@ export function abrirEnPestanaNueva(url) {
   const ventana = window.open(url, '_blank');
   if (ventana) ventana.opener = null;
 }
+
+// Lo mismo para algo que hay que pedir antes (un PDF que el servidor solo da con la
+// sesión de admin): la pestaña se abre YA, en el clic —abierta tras la espera, el
+// navegador la bloquea como emergente— y recibe la dirección cuando llega. Si falla,
+// se cierra y el error sigue hacia quien llama. `obtenerUrl`: async () => url.
+export async function abrirEnPestanaNuevaAlLlegar(obtenerUrl) {
+  const ventana = window.open('', '_blank');
+  if (ventana) ventana.opener = null;
+  try {
+    const url = await obtenerUrl();
+    if (ventana) ventana.location.href = url;
+    else abrirEnPestanaNueva(url);
+  } catch (error) {
+    ventana?.close();
+    throw error;
+  }
+}

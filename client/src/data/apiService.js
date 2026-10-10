@@ -1,20 +1,12 @@
 // Central API Client for Gula Logistics Backend & MongoDB Atlas
 import { initialBalancesData } from './balancesData';
+import { API_BASE, fetchConLimite } from './servidor';
+import { conTareasPendientes } from './colaTareas';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-// Toda petición al servidor tiene un tiempo máximo. Sin él, una que se quedaba
-// colgada (p. ej. en una conexión que el servidor ya había cerrado: el navegador no
-// repite un POST por su cuenta) dejaba la pantalla "Generando enlace…" o "Guardando"
-// para siempre. Pasado el tiempo, falla como si no hubiera red (y cada llamada hace
-// lo que ya hacía sin red: un fichaje, por ejemplo, queda en la cola de pendientes).
-// 60 s por defecto: más de lo que tarda en despertar el servidor dormido de Render.
-export const ESPERA_MAXIMA_MS = 60 * 1000;
-export function fetchConLimite(url, opciones = {}, ms = ESPERA_MAXIMA_MS) {
-  const control = new AbortController();
-  const reloj = setTimeout(() => control.abort(), ms);
-  return fetch(url, { ...opciones, signal: control.signal }).finally(() => clearTimeout(reloj));
-}
+// La conexión (servidor.js) y la cola de tareas marcadas sin red (colaTareas.js)
+// viven aparte; se siguen pudiendo importar desde aquí.
+export { ESPERA_MAXIMA_MS, fetchConLimite } from './servidor';
+export { patchTaskCompletionInAPI, retryPendingTaskPatches } from './colaTareas';
 
 const TOKEN_STORAGE_KEY = 'gula_admin_token_v1';
 // Enlace de socias: token firmado de SOLO LECTURA (saldos y panel), aparte de
@@ -433,6 +425,16 @@ function cabecerasDeFichaje(entry) {
   return { 'Content-Type': 'application/json', ...authHeaders(), ...(enlace ? { 'X-Enlace': enlace } : {}) };
 }
 
+// Un fichaje que el servidor no va a aceptar por mucho que se reintente: 400 (fecha
+// imposible, persona fuera del equipo…), 413 (demasiado grande) o 401 por falta del
+// enlace personal. Devuelve el motivo, o null si vale la pena reintentarlo.
+async function rechazoDefinitivo(res) {
+  if (![400, 401, 413].includes(res.status)) return null;
+  const datos = await res.json().catch(() => ({}));
+  if (res.status === 401 && datos.codigo !== 'ENLACE_REQUERIDO') return null;
+  return datos.error || `El servidor no lo acepta (HTTP ${res.status}).`;
+}
+
 export async function saveClockEntryToAPI(entry) {
   try {
     const res = await fetchConLimite(`${API_BASE}/clock`, {
@@ -440,10 +442,10 @@ export async function saveClockEntryToAPI(entry) {
       headers: cabecerasDeFichaje(entry),
       body: JSON.stringify(entry)
     });
-    if (res.status === 401) {
-      const datos = await res.json().catch(() => ({}));
-      if (datos.codigo === 'ENLACE_REQUERIDO') return { rechazado: datos.error };
-    }
+    // Antes solo el 401: un 400 se encolaba como si no hubiera red y el fichaje se veía
+    // hecho en el móvil sin llegar nunca al servidor.
+    const motivo = await rechazoDefinitivo(res);
+    if (motivo) return { rechazado: motivo };
     if (res.ok) {
       // Por si este fichaje ya estaba en la cola de una sesión/pestaña
       // anterior y ahora se guarda por la vía normal.
@@ -482,6 +484,12 @@ export async function retryPendingClockEntries() {
       });
       if (res.ok) {
         synced.push(entry);
+      } else if (res.status !== 401 && await rechazoDefinitivo(res)) {
+        // No va a entrar nunca: fuera de la cola. Antes se reintentaba cada 20 s para
+        // siempre y gastaba el límite por IP de todos los que fichan desde esa red.
+        // Un 401 por falta del enlace NO: tras anular los enlaces, en cuanto la persona
+        // abre el nuevo este reintento ya lo lleva y entra (se perdería su salida).
+        console.warn('Fichaje pendiente rechazado por el servidor, sale de la cola:', entry.id);
       } else {
         stillPending.push(entry);
       }
@@ -640,7 +648,8 @@ export async function fetchWeeksFromAPI() {
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const data = await res.json();
     if (data && typeof data === 'object' && Object.keys(data).length > 0) {
-      return data;
+      // Con las tareas marcadas sin red encima: si no, el sondeo las desmarcaba.
+      return conTareasPendientes(data);
     }
   } catch (err) {
     console.warn('Backend API weeks fetch failed, using local fallback:', err.message);
@@ -674,31 +683,6 @@ export async function saveWeeksToAPI(weeksPayload) {
     }
   } catch (err) {
     console.warn('Backend API weeks save failed:', err.message);
-  }
-  return null;
-}
-
-/**
- * Marca/desmarca UNA tarea del planning como completada — sin necesitar
- * sesión de admin (a diferencia de saveWeeksToAPI). Es lo que usa el propio
- * trabajador al fichar salida de una tarea o al tocarla en su cuadrante;
- * el servidor solo permite tocar los campos `completed` y `reopened` de esa
- * tarea, nunca el resto del documento de la semana.
- */
-export async function patchTaskCompletionInAPI(weekId, dayKey, taskIndex, completed, reopened, completedAt) {
-  try {
-    const res = await fetchConLimite(`${API_BASE}/logistics/weeks/${weekId}/tasks`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      // `reopened` (opcional): true si alguien la desmarcó a propósito.
-      // `completedAt`: hora real de completado.
-      body: JSON.stringify({ dayKey, taskIndex, completed, reopened, completedAt })
-    });
-    if (res.ok) {
-      return await res.json();
-    }
-  } catch (err) {
-    console.warn('Backend API task completion patch failed:', err.message);
   }
   return null;
 }
@@ -761,6 +745,24 @@ export async function deleteWeekFromAPI(weekId) {
   } catch (err) {
     return { success: false, message: err.message };
   }
+}
+
+// Dirección completa de un archivo subido al servidor (`/uploads/…`). Relativa, el
+// navegador la buscaba en la web de la app (GitHub Pages) y daba 404.
+export const urlDeArchivoSubido = (ruta) => (ruta ? new URL(ruta, API_BASE).href : '');
+
+// El PDF de un camión (Flota) como dirección local (blob) para abrirlo: el servidor lo
+// guarda en la base y solo lo da con la sesión de admin. Los antiguos (/uploads/…)
+// estaban en el disco de Render, que se borra solo: si ya no están, se dice.
+export async function urlLocalDeDocumento(ruta) {
+  const res = await fetchConLimite(urlDeArchivoSubido(ruta), { headers: { ...authHeaders() } });
+  if (!res.ok) {
+    throw new Error(res.status === 404 ? 'El archivo ya no está en el servidor: vuelve a subirlo.'
+      : res.status === 401 ? 'Hace falta la sesión de administrador.' : `Error del servidor (HTTP ${res.status}).`);
+  }
+  const url = URL.createObjectURL(await res.blob());
+  setTimeout(() => URL.revokeObjectURL(url), 10 * 60 * 1000);
+  return url;
 }
 
 export async function uploadRentalPdf(file) {

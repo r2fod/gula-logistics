@@ -103,6 +103,13 @@ describe('completarPlanGenerado', () => {
     sundayMonday: { tasks: [{ text: 'Limpieza Eventos - Vajilla', timeFrame: '10:00 - 14:00', assigned: ['Eva'], targetDay: 'domingo' }] },
   });
 
+  it('BUG evitado: un nombre que Gemini devuelve se lleva a la persona que es, no a la primera que lo contenga ("Mariana" ya no pasa a "Ana")', () => {
+    const p = propuesta();
+    p.schedule.jueves.tasks = [{ text: 'Logística Carga - Otra', timeFrame: '09:00 - 10:00', assigned: ['mariana'] }];
+    const r = completarPlanGenerado(p, { original: semana(), equipo: [...equipo, { name: 'Mariana', role: 'Apoyo logística' }] });
+    expect(r.schedule.jueves.tasks.at(-1).assigned).toEqual(['Mariana']);
+  });
+
   it('BUG evitado: una tarea HECHA no cambia ni se desmarca aunque Gemini la reescriba', () => {
     const r = completarPlanGenerado(propuesta(), { original: semana(), equipo });
     expect(r.schedule.martes.tasks[0]).toEqual(semana().schedule.martes.tasks[0]);

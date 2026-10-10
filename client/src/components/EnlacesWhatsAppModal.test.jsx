@@ -126,6 +126,26 @@ describe('enlaces firmados de los trabajadores (ven su saldo)', () => {
     expect(abrir).toHaveBeenLastCalledWith(expect.stringMatching(/\?worker=Luis$/), '_blank'); // sin ficha: sin firma
   });
 
+  it('BUG evitado: dice de quién sale el enlace SIN saldo (no tiene ficha con ese nombre) antes de mandarlo', async () => {
+    crearToken.mockResolvedValue({ ok: true, token: 's.s', expiresAt: Date.now() + 1000 });
+    crearEnlaces.mockResolvedValue({ ok: true, enlaces: [{ id: 'ana-gula', name: 'Ana Gula', token: 'firma.ana' }] });
+    render(<EnlacesWhatsAppModal abierto onCerrar={() => {}} admin workersList={[...equipo, { name: 'Eva', role: 'Apoyo', isPayroll: false }]} />);
+    expect(await screen.findByText('Su enlace enseña su saldo (ficha «Ana Gula»)')).toBeInTheDocument(); // Ana: se ve a qué ficha va
+    expect(screen.getAllByText(/Sin saldo: no tiene ficha/)).toHaveLength(1); // Eva (Luis es de nómina: no ve euros)
+  });
+
+  it('BUG evitado: Ana sin ficha propia no se lleva el enlace (y el saldo) de "Mariana Gula"', async () => {
+    crearToken.mockResolvedValue({ ok: true, token: 's.s', expiresAt: Date.now() + 1000 });
+    crearEnlaces.mockResolvedValue({ ok: true, enlaces: [{ id: 'mariana-gula', name: 'Mariana Gula', token: 'firma.mariana' }] });
+    const abrir = vi.spyOn(window, 'open').mockImplementation(() => null);
+    render(<EnlacesWhatsAppModal abierto onCerrar={() => {}} admin workersList={[equipo[0], { name: 'Mariana', role: 'Apoyo', isPayroll: false }]} />);
+    await screen.findByText(/Su enlace enseña su saldo/);
+    fireEvent.click(screen.getAllByRole('button', { name: /Abrir/ })[0]);
+    expect(abrir).toHaveBeenLastCalledWith(expect.stringMatching(/\?worker=Ana$/), '_blank');
+    fireEvent.click(screen.getAllByRole('button', { name: /Abrir/ })[1]);
+    expect(abrir).toHaveBeenLastCalledWith(expect.stringMatching(/\?worker=Mariana&t=firma\.mariana$/), '_blank');
+  });
+
   it('si el servidor no los da, lo dice y los enlaces siguen funcionando sin saldo', async () => {
     crearToken.mockResolvedValue({ ok: true, token: 's.s', expiresAt: Date.now() + 1000 });
     crearEnlaces.mockResolvedValue({ ok: false, error: 'sin conexión' });

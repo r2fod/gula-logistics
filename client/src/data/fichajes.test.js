@@ -129,3 +129,19 @@ describe('quienFichaConEnlace', () => {
     expect(r).toEqual({ conEnlace: ['Ana'], sinEnlace: ['Luis'] });
   });
 });
+
+describe('fichajesDeLaSemana — semana del cambio de hora (25/10/2026)', () => {
+  it('BUG evitado: lo fichado el lunes de cola entre las 23:00 y las 24:00 está en su semana (antes, en ninguna)', () => {
+    const tzAntes = process.env.TZ;
+    process.env.TZ = 'Europe/Madrid';
+    try {
+      const semana = { start: new Date(2026, 9, 20) }; // martes 20 de octubre
+      const siguiente = { start: new Date(2026, 9, 27) };
+      const tarde = { id: 't', type: 'salida', timestamp: new Date(2026, 9, 26, 23, 30).toISOString() }; // lunes 26, 23:30
+      expect(fichajesDeLaSemana([tarde], semana)).toEqual([tarde]);
+      expect(fichajesDeLaSemana([tarde], siguiente)).toEqual([]);
+    } finally {
+      process.env.TZ = tzAntes;
+    }
+  });
+});

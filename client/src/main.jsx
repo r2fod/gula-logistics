@@ -5,12 +5,14 @@ import './index.css';
 
 import { DialogProvider } from './contexts/DialogContext';
 import RedDeSeguridad from './components/ui/RedDeSeguridad';
+import AvisoServidorLento from './components/ui/AvisoServidorLento';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <RedDeSeguridad>
       <DialogProvider>
         <App />
+        <AvisoServidorLento />
       </DialogProvider>
     </RedDeSeguridad>
   </React.StrictMode>

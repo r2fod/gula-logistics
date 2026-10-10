@@ -1,4 +1,5 @@
 import { formatDate, formatTime } from '../utils/dateUtils';
+import { sumarDias } from './fechasSemana';
 
 // Tarifa por hora si quien ficha no trae la suya.
 const TARIFA_POR_DEFECTO = 10;
@@ -54,11 +55,12 @@ export const fechaDeFichaje = (fichaje) => (tieneFechaValida(fichaje) ? formatDa
 // `rango` es el de getWeekRange ({ start, end } a las 00:00); sin rango
 // legible se devuelven todos. `abiertos` son las entradas de turnos sin salida
 // (activeShifts de pairShiftsFromEntries).
-const DIA_MS = 24 * 60 * 60 * 1000;
 export function fichajesDeLaSemana(fichajes = [], rango, abiertos = []) {
   if (!rango?.start) return fichajes;
   const desde = rango.start.getTime();
-  const hasta = desde + 7 * DIA_MS;
+  // Siete días de calendario, no 7×24 h: la semana del cambio de hora tiene una hora más
+  // (o menos) y el último rato del lunes de cola se quedaba fuera de las dos semanas.
+  const hasta = sumarDias(rango.start, 7).getTime();
   const idsAbiertos = new Set(abiertos.map(e => e?.id).filter(Boolean));
   return fichajes.filter(e => {
     if (idsAbiertos.has(e.id)) return true;
