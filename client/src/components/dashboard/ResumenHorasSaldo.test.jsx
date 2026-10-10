@@ -87,6 +87,29 @@ describe('ResumenHorasSaldo (vista del trabajador)', () => {
     expect(fetchMio).not.toHaveBeenCalled();
   });
 
+  it('BUG evitado: con enlace pero sin ficha en el servidor (404) le dice qué pasa (antes, el hueco vacío)', async () => {
+    token.mockReturnValue('firma.ana');
+    fetchMio.mockResolvedValue({ ok: false, status: 404 });
+    pintar();
+    await esperarRed();
+    expect(screen.getByText(/no encontramos tu ficha de saldo/)).toBeInTheDocument();
+    expect(screen.queryByText(/pide tu enlace personal/)).toBeNull();
+  });
+
+  it('con la app en segundo plano no pregunta; al volver, pregunta en el momento', async () => {
+    token.mockReturnValue('firma.ana');
+    fetchMio.mockResolvedValue({ ok: true, ficha: { id: 'ana', name: 'Ana', currentBalance: 120 } });
+    pintar();
+    await esperarRed();
+    const oculta = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+    await act(async () => { await vi.advanceTimersByTimeAsync(REFRESCO_SALDO_MS * 3); });
+    expect(fetchMio).toHaveBeenCalledTimes(1);
+    oculta.mockReturnValue(false);
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')); await vi.advanceTimersByTimeAsync(0); });
+    expect(fetchMio).toHaveBeenCalledTimes(2);
+    oculta.mockRestore();
+  });
+
   it('en nómina fija no enseña euros aunque tenga enlace', async () => {
     token.mockReturnValue('firma.ana');
     fetchMio.mockResolvedValue({ ok: true, ficha: { id: 'ana', name: 'Ana', currentBalance: 0, statusType: 'payroll' } });

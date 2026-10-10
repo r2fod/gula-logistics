@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { crearEnlacesTrabajadoresEnAPI } from '../data/apiService';
-import { coincideNombre } from '../data/nombresTrabajadores';
+import { elMasParecido, parecidoNombre } from '../data/nombresTrabajadores';
 
 // Enlaces firmados de los trabajadores (con ellos cada uno ve SU saldo), para el admin.
 //
@@ -34,7 +34,7 @@ export function useEnlacesTrabajadores(activo) {
   }, []);
 
   const tokenDe = useCallback(
-    (nombre) => estado.enlaces.find(e => coincideNombre(nombre, e.name))?.token || null,
+    (nombre) => elMasParecido(estado.enlaces, e => parecidoNombre(nombre, e.name))?.token || null,
     [estado.enlaces]
   );
 

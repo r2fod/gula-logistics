@@ -53,3 +53,13 @@ describe('buscarPorNombreDeSaldo', () => {
     expect(buscarPorNombreDeSaldo(undefined, 'Marta')).toBeNull();
   });
 });
+
+describe('Ana y Mariana (un nombre dentro de otro)', () => {
+  it('BUG evitado: las horas de "Mariana Gula" ya no se cuentan como las de "Ana" ni al revés', () => {
+    const horas = { Ana: { totalHours: 5 }, Mariana: { totalHours: 9 } };
+    expect(buscarPorNombreDeSaldo(horas, 'Mariana Gula')).toEqual({ totalHours: 9 });
+    expect(buscarPorNombreDeSaldo(horas, 'Ana Gula')).toEqual({ totalHours: 5 });
+    const fusion = fusionarSaldosConEquipo({ workers: [{ id: 'mariana-gula', name: 'Mariana Gula' }, { id: 'ana-gula', name: 'Ana Gula' }] }, [{ name: 'Ana' }, { name: 'Mariana' }]);
+    expect(fusion.workers.map(w => w.id)).toEqual(['ana-gula', 'mariana-gula']);
+  });
+});

@@ -81,6 +81,13 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
                   )}
                 </div>
                 <p className="text-xs text-slate-400 truncate" title={w.role}>{w.role}</p>
+                {/* Si no se le encuentra ficha en Saldos, su enlace sale sin saldo: que se vea
+                    antes de mandarlo (antes salía igual y solo lo notaba el trabajador). */}
+                {admin && !cargandoFirmas && !errorFirmas && !w.isPayroll && (
+                  tokenDe(w.name)
+                    ? <p className="text-[11px] text-emerald-400">Su enlace enseña su saldo</p>
+                    : <p className="text-[11px] text-amber-300">Sin saldo: no tiene ficha en Saldos y Acuerdos con este nombre</p>
+                )}
               </div>
             </div>
 

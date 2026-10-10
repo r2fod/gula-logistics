@@ -197,6 +197,12 @@ describe('POST /api/clock — fichar con el enlace personal', () => {
     expect((await fichar('Carlos', { 'X-Enlace': enlace('sofia') })).body.firmado).toBe(false);
   });
 
+  it('BUG evitado: con tildes también firma ("Sofía" y su ficha sofía-gula); y su nombre seguido de más', async () => {
+    expect((await fichar('Sofía', { 'X-Enlace': enlace('sofía-gula') })).body.firmado).toBe(true);
+    expect((await fichar('Elena', { 'X-Enlace': enlace('elena-lopez') })).body.firmado).toBe(true);
+    expect((await fichar('Elena', { 'X-Enlace': enlace('helena') })).body.firmado).toBe(false);
+  });
+
   it('un enlace anulado (versión vieja) no firma', async () => {
     AdminConfig.findOne.mockResolvedValue({ trabajadoresVersion: 2 });
     expect((await fichar('Carlos', { 'X-Enlace': enlace('carlos', 1) })).body.firmado).toBe(false);

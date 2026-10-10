@@ -1,4 +1,4 @@
-import { coincideNombre } from './nombresTrabajadores';
+import { elMasParecido, parecidoNombre } from './nombresTrabajadores';
 
 // Ficha de Saldos de alguien del equipo que aún no tiene ninguna en Mongo.
 const fichaVacia = (worker) => ({
@@ -20,7 +20,7 @@ export function fusionarSaldosConEquipo(balancesData, workersList) {
   const fichas = balancesData?.workers || [];
   return {
     ...balancesData,
-    workers: workersList.map((worker) => fichas.find((f) => coincideNombre(worker.name, f.name)) || fichaVacia(worker)),
+    workers: workersList.map((worker) => elMasParecido(fichas, (f) => parecidoNombre(worker.name, f.name)) || fichaVacia(worker)),
   };
 }
 
@@ -29,6 +29,6 @@ export function fusionarSaldosConEquipo(balancesData, workersList) {
 // ("Marta Gula"), o null si no hay.
 export function buscarPorNombreDeSaldo(datosPorNombre, nombreSaldo) {
   if (!nombreSaldo || !datosPorNombre) return null;
-  const clave = Object.keys(datosPorNombre).find((nombreEquipo) => coincideNombre(nombreEquipo, nombreSaldo));
+  const clave = elMasParecido(Object.keys(datosPorNombre), (nombreEquipo) => parecidoNombre(nombreEquipo, nombreSaldo));
   return clave ? datosPorNombre[clave] : null;
 }

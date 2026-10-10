@@ -126,6 +126,14 @@ describe('enlaces firmados de los trabajadores (ven su saldo)', () => {
     expect(abrir).toHaveBeenLastCalledWith(expect.stringMatching(/\?worker=Luis$/), '_blank'); // sin ficha: sin firma
   });
 
+  it('BUG evitado: dice de quién sale el enlace SIN saldo (no tiene ficha con ese nombre) antes de mandarlo', async () => {
+    crearToken.mockResolvedValue({ ok: true, token: 's.s', expiresAt: Date.now() + 1000 });
+    crearEnlaces.mockResolvedValue({ ok: true, enlaces: [{ id: 'ana-gula', name: 'Ana Gula', token: 'firma.ana' }] });
+    render(<EnlacesWhatsAppModal abierto onCerrar={() => {}} admin workersList={[...equipo, { name: 'Eva', role: 'Apoyo', isPayroll: false }]} />);
+    expect(await screen.findByText('Su enlace enseña su saldo')).toBeInTheDocument(); // Ana
+    expect(screen.getAllByText(/Sin saldo: no tiene ficha/)).toHaveLength(1); // Eva (Luis es de nómina: no ve euros)
+  });
+
   it('si el servidor no los da, lo dice y los enlaces siguen funcionando sin saldo', async () => {
     crearToken.mockResolvedValue({ ok: true, token: 's.s', expiresAt: Date.now() + 1000 });
     crearEnlaces.mockResolvedValue({ ok: false, error: 'sin conexión' });

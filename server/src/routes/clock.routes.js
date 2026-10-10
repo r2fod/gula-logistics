@@ -27,9 +27,13 @@ const plano = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g
 async function firmaDelFichaje(req, workerName) {
   const payload = verifyToken(req.headers['x-enlace'] || null);
   const config = mongoose.connection.readyState === 1 ? await AdminConfig.findOne({ configKey: 'admin' }) : null;
+  // Sin tildes en los dos lados: el id de la ficha las conserva ("sofía-gula") y aquí
+  // se quitaban, así que el enlace de "Sofía" nunca firmaba (ni valía si se exige).
+  // Vale también su nombre seguido de más ("marta" → "marta-lopez").
   const id = plano(workerName).replace(/\s+/g, '-');
-  const esSuyo = payload?.role === 'trabajador'
-    && [id, id.replace(/-gula$/, ''), `${id}-gula`].includes(payload.w)
+  const w = plano(payload?.w);
+  const esSuyo = payload?.role === 'trabajador' && !!id
+    && (w === id || w === id.replace(/-gula$/, '') || w.startsWith(`${id}-`))
     && (!config || payload.tv === (config.trabajadoresVersion || 1));
   return { firmado: !!esSuyo, exigido: !!config?.exigirEnlaceAlFichar };
 }

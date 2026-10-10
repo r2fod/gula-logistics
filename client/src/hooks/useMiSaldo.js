@@ -37,18 +37,26 @@ export function useMiSaldo(nombre) {
         } else {
           localStorage.removeItem(cacheKey);
         }
-        setEstado({ ficha: fichaValida, sinEnlace: false });
+        setEstado({ ficha: fichaValida, sinEnlace: false, sinFicha: !fichaValida });
       } else if (r.status === 401) {
         // Anulado o caducado: se olvida y deja de preguntar. Un 404 NO (servidor aún sin
         // esta ruta mientras se despliega, o ficha borrada): se sigue con lo que hubiera.
         olvidarTokenTrabajador(nombre);
         localStorage.removeItem(cacheKey);
         setEstado({ ficha: null, sinEnlace: true });
+      } else if (r.status === 404) {
+        // Enlace bueno pero sin ficha (borrada o el servidor a medio desplegar): si no
+        // hay copia que enseñar, se le dice en vez de dejar el hueco vacío.
+        setEstado(e => (e.ficha ? e : { ...e, sinFicha: true }));
       }
     };
     pedir();
-    const id = setInterval(pedir, REFRESCO_SALDO_MS);
-    return () => { vigente = false; clearInterval(id); };
+    // Como el resto de la app: con la app en segundo plano no se pregunta (batería y
+    // datos) y al volver se pone al día en el momento, sin esperar al siguiente turno.
+    const id = setInterval(() => { if (!document.hidden) pedir(); }, REFRESCO_SALDO_MS);
+    const alVolver = () => { if (!document.hidden) pedir(); };
+    document.addEventListener('visibilitychange', alVolver);
+    return () => { vigente = false; clearInterval(id); document.removeEventListener('visibilitychange', alVolver); };
   }, [nombre]);
 
   return estado;

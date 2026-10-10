@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizarNombre, coincideNombre } from './nombresTrabajadores';
+import { normalizarNombre, coincideNombre, parecidoNombre, elMasParecido } from './nombresTrabajadores';
 
 describe('normalizarNombre', () => {
   it('quita espacios, pasa a minúsculas y unifica la doble f', () => {
@@ -32,5 +32,26 @@ describe('coincideNombre', () => {
   it('un nombre vacío no coincide con nada (evita cruzar todo con todos)', () => {
     expect(coincideNombre('', 'Marta Gula')).toBe(false);
     expect(coincideNombre('Marta', '')).toBe(false);
+  });
+});
+
+describe('nombres con tildes y la ficha que mejor encaja', () => {
+  it('BUG evitado: "Sofía" en el equipo encuentra su ficha "Sofia Gula" (y al revés): su enlace salía sin saldo', () => {
+    expect(coincideNombre('Sofía', 'Sofia Gula')).toBe(true);
+    expect(coincideNombre('Jesus', 'Jesús')).toBe(true);
+    expect(normalizarNombre('  Íñigo  Peña ')).toBe('inigo pena');
+  });
+
+  it('BUG evitado: "Ana" se queda con "Ana Gula" aunque "Mariana Gula" salga antes (antes, el primero que la contuviera)', () => {
+    const fichas = [{ name: 'Mariana Gula' }, { name: 'Ana Gula' }];
+    expect(elMasParecido(fichas, f => parecidoNombre('Ana', f.name))).toBe(fichas[1]);
+    expect(elMasParecido(fichas, f => parecidoNombre('Mariana', f.name))).toBe(fichas[0]);
+  });
+
+  it('igual gana a "empieza por" y este a "lo contiene"; sin parecido, null', () => {
+    expect(parecidoNombre('Luis', 'luis')).toBe(3);
+    expect(parecidoNombre('Luis', 'Luis Gula')).toBe(2);
+    expect(parecidoNombre('Luis', 'José Luis Gula')).toBe(1);
+    expect(elMasParecido([{ name: 'Eva' }], f => parecidoNombre('Pau', f.name))).toBeNull();
   });
 });
