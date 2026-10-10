@@ -781,6 +781,20 @@ export async function deleteWeekFromAPI(weekId) {
 // navegador la buscaba en la web de la app (GitHub Pages) y daba 404.
 export const urlDeArchivoSubido = (ruta) => (ruta ? new URL(ruta, API_BASE).href : '');
 
+// El PDF de un camión (Flota) como dirección local (blob) para abrirlo: el servidor lo
+// guarda en la base y solo lo da con la sesión de admin. Los antiguos (/uploads/…)
+// estaban en el disco de Render, que se borra solo: si ya no están, se dice.
+export async function urlLocalDeDocumento(ruta) {
+  const res = await fetchConLimite(urlDeArchivoSubido(ruta), { headers: { ...authHeaders() } });
+  if (!res.ok) {
+    throw new Error(res.status === 404 ? 'El archivo ya no está en el servidor: vuelve a subirlo.'
+      : res.status === 401 ? 'Hace falta la sesión de administrador.' : `Error del servidor (HTTP ${res.status}).`);
+  }
+  const url = URL.createObjectURL(await res.blob());
+  setTimeout(() => URL.revokeObjectURL(url), 10 * 60 * 1000);
+  return url;
+}
+
 export async function uploadRentalPdf(file) {
   const formData = new FormData();
   formData.append('file', file);
