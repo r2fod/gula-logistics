@@ -112,7 +112,22 @@ describe('retryPendingClockEntries', () => {
     };
     global.fetch = vi.fn(async (url, { body }) => respuestas[JSON.parse(body).id]);
     expect(await retryPendingClockEntries()).toEqual([]);
-    expect(getPendingClockEntriesSnapshot().map(e => e.id)).toEqual(['caido']);
+    expect(getPendingClockEntriesSnapshot().map(e => e.id)).toEqual(['sinEnlace', 'caido']);
+  });
+
+  it('BUG evitado: una salida sin cobertura que llega tras anular los enlaces espera en la cola y entra al abrir el enlace nuevo (no se pierde)', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    await saveClockEntryToAPI(entry({ id: 'salida', type: 'salida' }));
+    // El admin anuló los enlaces y exige el enlace personal: el viejo ya no vale.
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 401, json: async () => ({ codigo: 'ENLACE_REQUERIDO', error: 'Usa tu enlace' }) });
+    await retryPendingClockEntries();
+    expect(getPendingClockEntriesSnapshot().map(e => e.id)).toEqual(['salida']);
+    // Abre su enlace nuevo: el siguiente reintento lo lleva y el servidor lo acepta.
+    guardarTokenTrabajador('Carlos', 'firma.nueva');
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => entry({ id: 'salida' }) });
+    expect((await retryPendingClockEntries()).map(e => e.id)).toEqual(['salida']);
+    expect(global.fetch.mock.calls[0][1].headers['X-Enlace']).toBe('firma.nueva');
+    expect(getPendingClockEntriesSnapshot()).toEqual([]);
   });
 
   it('con la cola vacía, no hace ninguna petición', async () => {

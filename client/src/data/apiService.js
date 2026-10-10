@@ -496,9 +496,11 @@ export async function retryPendingClockEntries() {
       });
       if (res.ok) {
         synced.push(entry);
-      } else if (await rechazoDefinitivo(res)) {
+      } else if (res.status !== 401 && await rechazoDefinitivo(res)) {
         // No va a entrar nunca: fuera de la cola. Antes se reintentaba cada 20 s para
         // siempre y gastaba el límite por IP de todos los que fichan desde esa red.
+        // Un 401 por falta del enlace NO: tras anular los enlaces, en cuanto la persona
+        // abre el nuevo este reintento ya lo lleva y entra (se perdería su salida).
         console.warn('Fichaje pendiente rechazado por el servidor, sale de la cola:', entry.id);
       } else {
         stillPending.push(entry);
