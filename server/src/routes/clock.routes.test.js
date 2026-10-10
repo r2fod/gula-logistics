@@ -203,13 +203,51 @@ describe('POST /api/clock — fichar con el enlace personal', () => {
   });
 
   it('si el admin lo exige: sin enlace, 401 y no se guarda; con enlace o con sesión de admin, sí', async () => {
-    AdminConfig.findOne.mockResolvedValue({ exigirEnlaceAlFichar: true, trabajadoresVersion: 1 });
+    AdminConfig.findOne.mockResolvedValue({ exigirEnlaceAlFichar: true, tokenVersion: 1, trabajadoresVersion: 1 });
     const sin = await fichar('Carlos');
     expect(sin.status).toBe(401);
     expect(sin.body.codigo).toBe('ENLACE_REQUERIDO');
     expect(ClockEntry.create).not.toHaveBeenCalled();
     expect((await fichar('Carlos', { 'X-Enlace': enlace('carlos') })).status).toBe(201);
     expect((await fichar('Carlos', { Authorization: `Bearer ${signToken({ role: 'admin', v: 1 })}` })).status).toBe(201);
+  });
+});
+
+describe('Sesión de admin anulada en las rutas abiertas de fichajes', () => {
+  // Contraseña cambiada o «Cerrar todas las sesiones»: la base va por la versión 2.
+  const anulada = () => `Bearer ${signToken({ role: 'admin', v: 1 })}`;
+  beforeEach(() => AdminConfig.findOne.mockResolvedValue({ tokenVersion: 2, trabajadoresVersion: 1, exigirEnlaceAlFichar: true }));
+  afterEach(() => AdminConfig.findOne.mockResolvedValue(null));
+
+  it('BUG evitado: ya no deja apuntar fechas antiguas ni fichar sin el enlace exigido', async () => {
+    ClockEntry.create.mockImplementation(async (d) => d);
+    const antigua = await request(buildApp()).post('/api/clock').set('Authorization', anulada())
+      .send({ id: 'a1', workerName: 'Carlos', type: 'entrada', timestamp: '2026-07-01T08:00:00.000Z' });
+    expect(antigua.status).toBe(400);
+    const sinEnlace = await request(buildApp()).post('/api/clock').set('Authorization', anulada())
+      .send({ id: 'a2', workerName: 'Carlos', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z' });
+    expect(sinEnlace.status).toBe(401);
+    expect(ClockEntry.create).not.toHaveBeenCalled();
+    // La vigente sí.
+    const vigente = await request(buildApp()).post('/api/clock').set('Authorization', `Bearer ${signToken({ role: 'admin', v: 2 })}`)
+      .send({ id: 'a3', workerName: 'Carlos', type: 'entrada', timestamp: '2026-07-01T08:00:00.000Z' });
+    expect(vigente.status).toBe(201);
+  });
+
+  it('BUG evitado: ya no manda a la papelera un fichaje antiguo', async () => {
+    ClockEntry.findOne.mockResolvedValue({ id: 'viejo', timestamp: '2026-09-18T08:00:00.000Z' });
+    const res = await request(buildApp()).delete('/api/clock/viejo').set('Authorization', anulada());
+    expect(res.status).toBe(401);
+    expect(ClockEntry.findOneAndUpdate).not.toHaveBeenCalled();
+    const vigente = await request(buildApp()).delete('/api/clock/viejo').set('Authorization', `Bearer ${signToken({ role: 'admin', v: 2 })}`);
+    expect(vigente.status).toBe(200);
+  });
+
+  it('si la base falla al comprobarla, cuenta como sin sesión (no como admin)', async () => {
+    AdminConfig.findOne.mockRejectedValue(new Error('Atlas caído'));
+    ClockEntry.findOne.mockResolvedValue({ id: 'viejo', timestamp: '2026-09-18T08:00:00.000Z' });
+    const res = await request(buildApp()).delete('/api/clock/viejo').set('Authorization', `Bearer ${signToken({ role: 'admin', v: 2 })}`);
+    expect(res.status).toBe(401);
   });
 });
 

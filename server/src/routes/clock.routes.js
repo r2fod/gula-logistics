@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import { ClockEntry } from '../models/ClockEntry.model.js';
 import { TeamRoster } from '../models/TeamRoster.model.js';
 import { AdminConfig } from '../models/AdminConfig.model.js';
-import { requireAdmin } from '../middleware/requireAdmin.js';
+import { requireAdmin, esAdminVigente } from '../middleware/requireAdmin.js';
 import { limitePorIp } from '../middleware/limitePorIp.js';
 import { verifyToken } from '../utils/authToken.js';
 
@@ -19,10 +19,6 @@ const limiteBorrar = limitePorIp({ max: 200, ventanaMs: DIEZ_MIN });
 // con la hora mal). El admin sí puede apuntar fechas antiguas a mano.
 const DIAS_ATRAS_MAX = 45;
 const HORAS_FUTURO_MAX = 12;
-const esAdmin = (req) => {
-  const auth = req.headers.authorization || '';
-  return verifyToken(auth.startsWith('Bearer ') ? auth.slice(7) : null)?.role === 'admin';
-};
 const plano = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
 // ¿Llega con el enlace personal de esa persona? (cabecera X-Enlace: el token del enlace
@@ -40,10 +36,11 @@ async function firmaDelFichaje(req, workerName) {
 
 // Por qué no vale un fichaje que llega sin sesión, o null si vale. Sin equipo guardado
 // (o sin base) no se comprueba el nombre: mejor guardar que perder un fichaje.
-async function motivoParaRechazar(datos, req) {
+// `admin`: llega con una sesión de admin vigente (esAdminVigente).
+async function motivoParaRechazar(datos, admin) {
   const momento = new Date(datos.timestamp).getTime();
   if (!datos.timestamp || Number.isNaN(momento)) return 'timestamp no es una fecha válida';
-  if (esAdmin(req)) return null;
+  if (admin) return null;
   const ahora = Date.now();
   if (momento > ahora + HORAS_FUTURO_MAX * 3600 * 1000) return 'La fecha del fichaje está en el futuro';
   if (momento < ahora - DIAS_ATRAS_MAX * 24 * 3600 * 1000) return 'Fichaje demasiado antiguo: lo tiene que apuntar el administrador';
@@ -99,7 +96,8 @@ router.get('/', async (req, res) => {
 router.post('/', limiteFichar, async (req, res) => {
   try {
     const newEntryData = { ...req.body };
-    const motivo = await motivoParaRechazar(newEntryData, req);
+    const admin = await esAdminVigente(req);
+    const motivo = await motivoParaRechazar(newEntryData, admin);
     if (motivo) return res.status(400).json({ error: motivo });
     if (!newEntryData.id) {
       newEntryData.id = crypto.randomUUID();
@@ -118,7 +116,7 @@ router.post('/', limiteFichar, async (req, res) => {
     delete newEntryData.revisado;
     // Si va firmado con su enlace lo decide el servidor, no lo que diga la petición.
     const firma = await firmaDelFichaje(req, newEntryData.workerName);
-    if (firma.exigido && !firma.firmado && !esAdmin(req)) {
+    if (firma.exigido && !firma.firmado && !admin) {
       return res.status(401).json({ error: 'Para fichar usa tu enlace personal: pídeselo al administrador.', codigo: 'ENLACE_REQUERIDO' });
     }
     newEntryData.firmado = firma.firmado;
@@ -189,19 +187,9 @@ router.put('/:id', requireAdmin, async (req, res) => {
 router.delete('/:id', limiteBorrar, async (req, res) => {
   try {
     const { id } = req.params;
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    let isAdmin = false;
-    
-    if (token) {
-      try {
-        const { verifyToken } = await import('../utils/authToken.js');
-        const payload = verifyToken(token);
-        if (payload && payload.role === 'admin') isAdmin = true;
-      } catch (e) {
-        console.error('Invalid token on delete', e);
-      }
-    }
+    // Una sesión de admin anulada (o un enlace viejo de socias con ella dentro) ya no
+    // borra fichajes antiguos: antes bastaba con que la firma fuera buena.
+    const isAdmin = await esAdminVigente(req);
 
     if (mongoose.connection.readyState === 1) {
       const entry = await ClockEntry.findOne({ id });

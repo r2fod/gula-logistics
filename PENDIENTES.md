@@ -12,6 +12,7 @@ _Solo lo que sigue abierto (actualizado el 04/10/2026). Lo resuelto se borra de 
 - [ ] **Regla "base/checklist y jefe de logística no cargan":** el usuario quitó ese texto de las tarjetas de equipo (21/09) pero sigue en el generador y en el prompt de Gemini. ¿Sigue vigente?
 - [ ] **Semana 3:** 62,5 h de jornada sin tarea van repartidas por estimación; si el usuario dice qué se hizo el domingo por la noche, se ajustan asignaciones/horas y el reparto cambia solo. Anotar los **pax** de cada evento (sin pax, reparto a partes iguales).
 - [ ] **Enlaces de trabajador firmados** (30/09): ya existen (`&t=`, desde «Enlaces de WhatsApp» con sesión de admin) y con ellos cada uno ve sus horas y lo que tiene por cobrar. **El admin tiene que reenviar a cada persona su enlace nuevo** (los antiguos siguen valiendo, sin saldo). Si uno se filtra: «Enlaces de WhatsApp» → «Anular enlaces de trabajador enviados» (04/10; luego reenviarlos todos). Falta, cuando todos tengan el nuevo, exigirlo para fichar y cerrar los endpoints públicos de arriba.
+- [ ] **PDF de alquiler de los camiones** (Flota): se guardan en el disco de Render, que en el plan gratuito se borra en cada despliegue y cada vez que se duerme (15 min). «Ver Documento» ya abre el servidor (antes, la web: 404), pero el archivo puede no estar. Guardarlos en Atlas (GridFS) o quitar la subida.
 - [ ] Revisión responsive sistemática 320–1920 px del resto de vistas.
 
 ## Asistente IA (27/09)

@@ -433,6 +433,16 @@ function cabecerasDeFichaje(entry) {
   return { 'Content-Type': 'application/json', ...authHeaders(), ...(enlace ? { 'X-Enlace': enlace } : {}) };
 }
 
+// Un fichaje que el servidor no va a aceptar por mucho que se reintente: 400 (fecha
+// imposible, persona fuera del equipo…), 413 (demasiado grande) o 401 por falta del
+// enlace personal. Devuelve el motivo, o null si vale la pena reintentarlo.
+async function rechazoDefinitivo(res) {
+  if (![400, 401, 413].includes(res.status)) return null;
+  const datos = await res.json().catch(() => ({}));
+  if (res.status === 401 && datos.codigo !== 'ENLACE_REQUERIDO') return null;
+  return datos.error || `El servidor no lo acepta (HTTP ${res.status}).`;
+}
+
 export async function saveClockEntryToAPI(entry) {
   try {
     const res = await fetchConLimite(`${API_BASE}/clock`, {
@@ -440,10 +450,10 @@ export async function saveClockEntryToAPI(entry) {
       headers: cabecerasDeFichaje(entry),
       body: JSON.stringify(entry)
     });
-    if (res.status === 401) {
-      const datos = await res.json().catch(() => ({}));
-      if (datos.codigo === 'ENLACE_REQUERIDO') return { rechazado: datos.error };
-    }
+    // Antes solo el 401: un 400 se encolaba como si no hubiera red y el fichaje se veía
+    // hecho en el móvil sin llegar nunca al servidor.
+    const motivo = await rechazoDefinitivo(res);
+    if (motivo) return { rechazado: motivo };
     if (res.ok) {
       // Por si este fichaje ya estaba en la cola de una sesión/pestaña
       // anterior y ahora se guarda por la vía normal.
@@ -482,6 +492,10 @@ export async function retryPendingClockEntries() {
       });
       if (res.ok) {
         synced.push(entry);
+      } else if (await rechazoDefinitivo(res)) {
+        // No va a entrar nunca: fuera de la cola. Antes se reintentaba cada 20 s para
+        // siempre y gastaba el límite por IP de todos los que fichan desde esa red.
+        console.warn('Fichaje pendiente rechazado por el servidor, sale de la cola:', entry.id);
       } else {
         stillPending.push(entry);
       }
@@ -762,6 +776,10 @@ export async function deleteWeekFromAPI(weekId) {
     return { success: false, message: err.message };
   }
 }
+
+// Dirección completa de un archivo subido al servidor (`/uploads/…`). Relativa, el
+// navegador la buscaba en la web de la app (GitHub Pages) y daba 404.
+export const urlDeArchivoSubido = (ruta) => (ruta ? new URL(ruta, API_BASE).href : '');
 
 export async function uploadRentalPdf(file) {
   const formData = new FormData();

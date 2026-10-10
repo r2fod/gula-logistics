@@ -471,3 +471,25 @@ describe('POST /api/logistics/optimize (vaciar la papelera de fichajes)', () => 
     expect(res.status).toBe(401);
   });
 });
+
+describe('POST /api/logistics/upload-rental (PDF del alquiler de un camión)', () => {
+  it('BUG evitado: un archivo que dice ser PDF pero se llama .html se guarda como .pdf (no se sirve como página)', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const res = await request(buildApp())
+      .post('/api/logistics/upload-rental')
+      .set('Authorization', adminAuthHeader())
+      .attach('file', Buffer.from('<script>alert(1)</script>'), { filename: 'contrato.html', contentType: 'application/pdf' });
+    expect(res.status).toBe(200);
+    expect(res.body.url).toMatch(/^\/uploads\/rental-[\d-]+\.pdf$/);
+    fs.unlinkSync(path.join(import.meta.dirname, '..', res.body.url));
+  });
+
+  it('lo que no es PDF se rechaza con 400', async () => {
+    const res = await request(buildApp())
+      .post('/api/logistics/upload-rental')
+      .set('Authorization', adminAuthHeader())
+      .attach('file', Buffer.from('hola'), { filename: 'nota.txt', contentType: 'text/plain' });
+    expect(res.status).toBe(400);
+  });
+});

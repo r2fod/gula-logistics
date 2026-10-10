@@ -24,7 +24,9 @@ const storage = multer.diskStorage({
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'rental-' + uniqueSuffix + path.extname(file.originalname));
+    // Siempre .pdf: el tipo lo declara el navegador, y con la extensión del nombre
+    // original un "contrato.html" que dijera ser PDF se servía como página web.
+    cb(null, 'rental-' + uniqueSuffix + '.pdf');
   }
 });
 // Solo PDFs (es un contrato/factura de alquiler) y máximo 10MB — sin esto,
