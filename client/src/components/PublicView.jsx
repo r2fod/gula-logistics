@@ -14,11 +14,13 @@ import {
 import LiveMonitorPanel from './LiveMonitorPanel';
 import { getTaskListForDay, isTaskEffectivelyDone, esTareaActiva } from '../data/taskPlanning';
 import { equipoPorRoles } from '../data/equipoRoles';
+import AvisoFichajesPrivados from './AvisoFichajesPrivados';
 
 export default function PublicView({ 
   data = {}, 
   workersList = [], 
   clockEntries = [], 
+  lecturaFichajes = null, // 'todos' | 'propios' | 'ninguna' (accesoAFichajes): sin 'todos' no hay actividad que enseñar
   semanas = null,
   onOpenLogin,
   onClockEntryCreated,
@@ -140,14 +142,18 @@ export default function PublicView({
       </div>
 
       {/* Live Monitor Panel (Tiempo Real) */}
-      <LiveMonitorPanel
-        workersList={workersList}
-        clockEntries={clockEntries}
-        activeWeekData={data}
-        semanas={semanas}
-        onClockEntryCreated={onClockEntryCreated}
-        onOpenClockModal={onOpenClockModal}
-      />
+      {lecturaFichajes && lecturaFichajes !== 'todos' ? (
+        <AvisoFichajesPrivados vista="publica" />
+      ) : (
+        <LiveMonitorPanel
+          workersList={workersList}
+          clockEntries={clockEntries}
+          activeWeekData={data}
+          semanas={semanas}
+          onClockEntryCreated={onClockEntryCreated}
+          onOpenClockModal={onOpenClockModal}
+        />
+      )}
 
       {/* Mobile Selector Tabs */}
       <div className="flex md:hidden items-center space-x-1 bg-slate-900/80 p-1 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar">

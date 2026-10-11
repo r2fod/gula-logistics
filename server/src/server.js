@@ -43,7 +43,9 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(cors());
+// X-Lectura (GET /api/clock): la web está en otro dominio y sin esto no puede leerla.
+// maxAge: el navegador no vuelve a preguntar «¿puedo?» en cada sondeo de 20 s.
+app.use(cors({ exposedHeaders: ['X-Lectura'], maxAge: 600 }));
 // 2 MB: el prompt de Gemini lleva la semana entera y, aunque la app ya solo envía
 // las semanas que cambian, el límite por defecto (100 KB) se quedaba corto. Lo público
 // (fichar, avisos), mucho menos: ver cuerpoJson.js.

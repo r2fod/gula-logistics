@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import { ClockEntry } from '../models/ClockEntry.model.js';
 import { TeamRoster } from '../models/TeamRoster.model.js';
 import { AdminConfig } from '../models/AdminConfig.model.js';
-import { requireAdmin, esAdminVigente } from '../middleware/requireAdmin.js';
+import { requireAdmin, esAdminVigente, rolVigente } from '../middleware/requireAdmin.js';
 import { limitePorIp } from '../middleware/limitePorIp.js';
 import { verifyToken } from '../utils/authToken.js';
 
@@ -26,21 +26,39 @@ const plano = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g
 // ?worker=…&t=…, cuyo `w` es el id de su ficha de Saldos: "Ana Gula" → ana-gula; las
 // fichas antiguas van sin el "-gula"). `exigido`: el admin ha activado que sea obligatorio.
 const idDe = (nombre) => plano(nombre).replace(/\s+/g, '-');
-async function firmaDelFichaje(req, workerName, equipo = []) {
+
+// El enlace personal que trae la petición: `payload` si es de un trabajador y sigue
+// vigente (no anulado), o null; y si el admin exige el enlace (`exigido`).
+async function enlaceDe(req) {
   const payload = verifyToken(req.headers['x-enlace'] || null);
   const config = mongoose.connection.readyState === 1 ? await AdminConfig.findOne({ configKey: 'admin' }) : null;
-  // Sin tildes en los dos lados: el id de la ficha las conserva ("sofía-gula") y aquí
-  // se quitaban, así que el enlace de "Sofía" nunca firmaba (ni valía si se exige).
-  // Vale también su nombre seguido de más ("marta" → "marta-lopez"), salvo que ese
-  // enlace sea de otra persona del equipo con el nombre más largo: el de "Ana Luisa"
-  // (ana-luisa-gula) firmaba los fichajes de "Ana".
+  const vigente = payload?.role === 'trabajador' && (!config || payload.tv === (config.trabajadoresVersion || 1));
+  return { payload: vigente ? payload : null, exigido: !!config?.exigirEnlaceAlFichar };
+}
+
+// ¿Es de `workerName` ese enlace? Sin tildes en los dos lados: el id de la ficha las
+// conserva ("sofía-gula") y aquí se quitaban, así que el enlace de "Sofía" nunca firmaba
+// (ni valía si se exige). Cuánto se parece el id del enlace al de una persona: 3 igual,
+// 2 igual sin el "-gula" (fichas antiguas), 1 su nombre seguido de más ("marta" →
+// "marta-lopez"), 0 nada. Y es suyo solo si a nadie más del equipo se le parece más:
+// con "Ana" y "Ana Gula" en el equipo, el enlace de una valía también para la otra, y
+// el de "Ana Luisa" (ana-luisa-gula) firmaba los fichajes de "Ana".
+const parecido = (w, id) => (w === id ? 3 : w === id.replace(/-gula$/, '') ? 2 : w.startsWith(`${id}-`) ? 1 : 0);
+function esSuEnlace(payload, workerName, equipo = []) {
   const id = idDe(workerName);
   const w = plano(payload?.w);
-  const deOtro = equipo.map(o => idDe(o.name)).some(o => o.length > id.length && (w === o || w.startsWith(`${o}-`)));
-  const esSuyo = payload?.role === 'trabajador' && !!id
-    && (w === id || w === id.replace(/-gula$/, '') || (w.startsWith(`${id}-`) && !deOtro))
-    && (!config || payload.tv === (config.trabajadoresVersion || 1));
-  return { firmado: !!esSuyo, exigido: !!config?.exigirEnlaceAlFichar };
+  if (!payload || !id || !w) return false;
+  const suyo = parecido(w, id);
+  return suyo > 0 && !equipo.map(o => idDe(o.name)).some((otro) => {
+    if (otro === id) return false;
+    const p = parecido(w, otro);
+    return p > suyo || (p === suyo && otro.length > id.length);
+  });
+}
+
+async function firmaDelFichaje(req, workerName, equipo = []) {
+  const { payload, exigido } = await enlaceDe(req);
+  return { firmado: esSuEnlace(payload, workerName, equipo), exigido };
 }
 
 // El equipo guardado ([] sin base o sin equipo: entonces no se comprueba nada con él).
@@ -74,9 +92,24 @@ const conMarca = (e) => ({ ...e, updatedAt: new Date().toISOString() });
 // regular (antes iba tal cual: con un patrón malicioso se podía cargar la base).
 const escaparRegex = (texto) => String(texto).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+// Qué fichajes puede leer la petición: 'todos' | 'propios' | 'ninguna'. Mientras el
+// admin no exija el enlace personal, todos (como siempre: el trabajador no tiene
+// sesión). Con él exigido, la dirección del servidor sola ya no enseña quién trabajó ni
+// cuánto: la sesión de admin o de socias los ve todos; el enlace de un trabajador, los
+// suyos (`nombres`, tal como está en el equipo); sin nada, ninguno.
+async function lecturaPermitida(req) {
+  const { payload, exigido } = await enlaceDe(req);
+  if (!exigido || await rolVigente(req)) return { lectura: 'todos' };
+  if (!payload) return { lectura: 'ninguna' };
+  const equipo = await equipoGuardado();
+  return { lectura: 'propios', nombres: equipo.filter(w => esSuEnlace(payload, w.name, equipo)).map(w => w.name) };
+}
+
 // GET /api/clock - Fichajes (opcional ?worker=Nombre). Con ?desde=<fecha ISO>, solo
 // los creados o cambiados desde entonces (también los borrados: se marcan, no se
 // quitan): la app sondea cada 20 s y así no descarga el histórico entero cada vez.
+// La cabecera X-Lectura dice cuáles van (lecturaPermitida): la app la usa para no
+// tomar una lista vacía por «aún no hay fichajes».
 router.get('/', async (req, res) => {
   try {
     const { worker, desde } = req.query;
@@ -84,16 +117,25 @@ router.get('/', async (req, res) => {
     if (desdeFecha && Number.isNaN(desdeFecha.getTime())) {
       return res.status(400).json({ error: 'desde debe ser una fecha ISO' });
     }
+    const { lectura, nombres = [] } = await lecturaPermitida(req);
+    res.set('X-Lectura', lectura);
+    if (lectura === 'ninguna' || (lectura === 'propios' && !nombres.length)) return res.json([]);
+    const esPropio = (nombre) => nombres.some(n => plano(n) === plano(nombre));
 
     if (mongoose.connection.readyState === 1) {
       const query = {};
-      if (worker) query.workerName = new RegExp(`^${escaparRegex(worker)}$`, 'i');
+      if (lectura === 'propios') query.workerName = { $in: nombres.map(n => new RegExp(`^${escaparRegex(n)}$`, 'i')) };
+      if (worker) {
+        if (lectura === 'propios' && !esPropio(worker)) return res.json([]);
+        query.workerName = new RegExp(`^${escaparRegex(worker)}$`, 'i');
+      }
       if (desdeFecha) query.updatedAt = { $gte: desdeFecha };
       const entries = await ClockEntry.find(query).sort({ createdAt: -1 });
       return res.json(entries);
     }
 
     let filtered = memoryClockEntries;
+    if (lectura === 'propios') filtered = filtered.filter(e => esPropio(e.workerName));
     if (desdeFecha) filtered = filtered.filter(e => e.updatedAt && new Date(e.updatedAt) >= desdeFecha);
     if (worker) {
       filtered = filtered.filter(e => e.workerName?.toLowerCase() === String(worker).toLowerCase());

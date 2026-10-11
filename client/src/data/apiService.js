@@ -334,15 +334,37 @@ export async function revisarAccesoGuardado() {
   return eraAdmin ? 'admin-anulada' : 'socias-anulado';
 }
 
+// Con qué se piden los fichajes: la sesión (admin o socias) y, si se sabe de quién es
+// este móvil, su enlace personal. Cuando el admin exige el enlace, el servidor solo da
+// todos a una sesión y, a un trabajador, los suyos. Sin nada que mandar no se añade
+// ninguna cabecera: la petición sigue siendo de las que el navegador no pregunta antes.
+function cabecerasDeLectura(trabajador) {
+  const enlace = trabajador ? tokenTrabajador(trabajador) : null;
+  return { ...authHeaders(), ...(enlace ? { 'X-Enlace': enlace } : {}) };
+}
+const opcionesDeLectura = (trabajador) => {
+  const headers = cabecerasDeLectura(trabajador);
+  return Object.keys(headers).length ? { headers } : undefined;
+};
+
+// Qué fichajes dio el servidor la última vez que se le pidieron todos: 'todos' |
+// 'propios' (los de quien lleva este móvil) | 'ninguna' (hace falta el enlace personal
+// o una sesión) | null (aún no se sabe). Un servidor anterior no lo dice: 'todos'.
+let lecturaDeFichajes = null;
+export const accesoAFichajes = () => lecturaDeFichajes;
+
 /**
  * Fetch all clock entries from MongoDB / Backend API
+ * `trabajador`: de quién es este móvil (su enlace personal va en la petición).
  */
-export async function fetchClockEntriesFromAPI() {
+export async function fetchClockEntriesFromAPI(trabajador = null) {
   try {
-    const res = await fetchConLimite(`${API_BASE}/clock`);
+    const opciones = opcionesDeLectura(trabajador);
+    const res = await (opciones ? fetchConLimite(`${API_BASE}/clock`, opciones) : fetchConLimite(`${API_BASE}/clock`));
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const data = await res.json();
     if (Array.isArray(data)) {
+      lecturaDeFichajes = res.headers?.get?.('X-Lectura') || 'todos';
       // Fusionar con lo que siga pendiente de sincronizar (fichado sin
       // cobertura, ver saveClockEntryToAPI) en vez de sobrescribirlo a
       // ciegas — si no, en cuanto volvía la conexión este GET traía la
@@ -376,9 +398,11 @@ export async function fetchClockEntriesFromAPI() {
 // Solo los fichajes creados o cambiados desde `desde` (fecha ISO del servidor,
 // ver ultimaModificacion). null si no se pudo preguntar: quien llama sigue con
 // lo que tiene y lo reintenta en el siguiente ciclo.
-export async function fetchClockEntryChangesFromAPI(desde) {
+export async function fetchClockEntryChangesFromAPI(desde, trabajador = null) {
   try {
-    const res = await fetchConLimite(`${API_BASE}/clock?desde=${encodeURIComponent(desde)}`);
+    const url = `${API_BASE}/clock?desde=${encodeURIComponent(desde)}`;
+    const opciones = opcionesDeLectura(trabajador);
+    const res = await (opciones ? fetchConLimite(url, opciones) : fetchConLimite(url));
     if (!res.ok) return null;
     const data = await res.json();
     return Array.isArray(data) ? data : null;

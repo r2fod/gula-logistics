@@ -226,6 +226,17 @@ describe('POST /api/clock — fichar con el enlace personal', () => {
     expect((await fichar('Elena', { 'X-Enlace': enlace('elena-gula') })).body.firmado).toBe(true);
   });
 
+  it('BUG evitado: con "Elena" y "Elena Gula" en el equipo, el enlace de una no vale para la otra', async () => {
+    TeamRoster.findOne.mockResolvedValue({ workers: [{ name: 'Elena' }, { name: 'Elena Gula' }] });
+    expect((await fichar('Elena Gula', { 'X-Enlace': enlace('elena') })).body.firmado).toBe(false);
+    expect((await fichar('Elena', { 'X-Enlace': enlace('elena') })).body.firmado).toBe(true);
+    expect((await fichar('Elena', { 'X-Enlace': enlace('elena-gula') })).body.firmado).toBe(false);
+    expect((await fichar('Elena Gula', { 'X-Enlace': enlace('elena-gula') })).body.firmado).toBe(true);
+    // Sola en el equipo, su ficha antigua (sin "-gula") sigue valiendo.
+    TeamRoster.findOne.mockResolvedValue({ workers: [{ name: 'Elena Gula' }] });
+    expect((await fichar('Elena Gula', { 'X-Enlace': enlace('elena') })).body.firmado).toBe(true);
+  });
+
   it('un enlace anulado (versión vieja) no firma', async () => {
     AdminConfig.findOne.mockResolvedValue({ trabajadoresVersion: 2 });
     expect((await fichar('Carlos', { 'X-Enlace': enlace('carlos', 1) })).body.firmado).toBe(false);
@@ -288,6 +299,78 @@ describe('DELETE /api/clock (sin id)', () => {
     const res = await request(buildApp()).delete('/api/clock').set('Authorization', `Bearer ${signToken({ role: 'admin', v: 1 })}`);
     expect(res.status).toBe(404);
     expect(ClockEntry.deleteMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('GET /api/clock — quién puede leer los fichajes', () => {
+  const ordenar = (lista) => ({ sort: vi.fn().mockResolvedValue(lista) });
+  const enlace = (w, tv = 1) => signToken({ role: 'trabajador', w, tv });
+  const leer = (cabeceras = {}, ruta = '/api/clock') => {
+    const r = request(buildApp()).get(ruta);
+    Object.entries(cabeceras).forEach(([k, v]) => r.set(k, v));
+    return r;
+  };
+  const exigir = () => AdminConfig.findOne.mockResolvedValue({ exigirEnlaceAlFichar: true, tokenVersion: 1, trabajadoresVersion: 1, sociasVersion: 1 });
+  beforeEach(() => ClockEntry.find.mockReturnValue(ordenar([{ id: 'f1', workerName: 'Carlos' }])));
+  afterEach(() => AdminConfig.findOne.mockResolvedValue(null));
+
+  it('mientras el admin no exija el enlace, como siempre: todos, sin sesión', async () => {
+    const r = await leer();
+    expect(r.headers['x-lectura']).toBe('todos');
+    expect(r.body).toHaveLength(1);
+    expect(ClockEntry.find).toHaveBeenCalledWith({});
+  });
+
+  it('BUG evitado: con el enlace exigido, la dirección del servidor sola ya no enseña los fichajes de nadie', async () => {
+    exigir();
+    const r = await leer();
+    expect(r.status).toBe(200);
+    expect(r.headers['x-lectura']).toBe('ninguna');
+    expect(r.body).toEqual([]);
+    expect(ClockEntry.find).not.toHaveBeenCalled();
+  });
+
+  it('con su enlace, cada uno lee SOLO los suyos (aunque pida los de otra persona)', async () => {
+    exigir();
+    const r = await leer({ 'X-Enlace': enlace('carlos-gula') });
+    expect(r.headers['x-lectura']).toBe('propios');
+    const [{ workerName }] = ClockEntry.find.mock.calls[0];
+    expect(workerName.$in.map(String)).toEqual(['/^Carlos$/i']);
+
+    ClockEntry.find.mockClear();
+    const ajeno = await leer({ 'X-Enlace': enlace('carlos-gula') }, '/api/clock?worker=Elena');
+    expect(ajeno.body).toEqual([]);
+    expect(ClockEntry.find).not.toHaveBeenCalled();
+  });
+
+  it('con "Carlos" y "Carlos Gula" en el equipo, el enlace de uno lee solo los de ese', async () => {
+    exigir();
+    TeamRoster.findOne.mockResolvedValue({ workers: [{ name: 'Carlos' }, { name: 'Carlos Gula' }] });
+    await leer({ 'X-Enlace': enlace('carlos') });
+    expect(ClockEntry.find.mock.calls[0][0].workerName.$in.map(String)).toEqual(['/^Carlos$/i']);
+    ClockEntry.find.mockClear();
+    await leer({ 'X-Enlace': enlace('carlos-gula') });
+    expect(ClockEntry.find.mock.calls[0][0].workerName.$in.map(String)).toEqual(['/^Carlos Gula$/i']);
+  });
+
+  it('un enlace anulado o de alguien que ya no está en el equipo no lee nada', async () => {
+    AdminConfig.findOne.mockResolvedValue({ exigirEnlaceAlFichar: true, tokenVersion: 1, trabajadoresVersion: 2 });
+    expect((await leer({ 'X-Enlace': enlace('carlos-gula', 1) })).headers['x-lectura']).toBe('ninguna');
+    exigir();
+    const fuera = await leer({ 'X-Enlace': enlace('marcos-gula') });
+    expect(fuera.body).toEqual([]);
+    expect(ClockEntry.find).not.toHaveBeenCalled();
+  });
+
+  it('la sesión de admin o de socias sigue leyéndolos todos; una sesión anulada, ninguno', async () => {
+    exigir();
+    const admin = await leer({ Authorization: `Bearer ${signToken({ role: 'admin', v: 1 })}` });
+    expect(admin.headers['x-lectura']).toBe('todos');
+    const socias = await leer({ Authorization: `Bearer ${signToken({ role: 'socias', v: 1, sv: 1 })}` });
+    expect(socias.headers['x-lectura']).toBe('todos');
+    expect(ClockEntry.find).toHaveBeenLastCalledWith({});
+    const anulada = await leer({ Authorization: `Bearer ${signToken({ role: 'admin', v: 0 })}` });
+    expect(anulada.headers['x-lectura']).toBe('ninguna');
   });
 });
 

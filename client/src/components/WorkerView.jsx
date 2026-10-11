@@ -14,6 +14,7 @@ import { getWeddingTaskName } from '../data/eventNaming';
 import { formatTimeShort, formatWeekdayDay } from '../utils/dateUtils';
 import { formatearEuros } from '../data/formatoFinanciero';
 import HistorialFichajes from './trabajador/HistorialFichajes';
+import AvisoFichajesPrivados from './AvisoFichajesPrivados';
 import { useDialog } from '../contexts/DialogContext';
 import EnVivo from './ui/EnVivo';
 import { useAhora } from '../hooks/useAhora';
@@ -40,6 +41,7 @@ export default function WorkerView({
   activeWeekData = {},
   clockEntries = [],
   fichajesDeTodo = [],
+  lecturaFichajes = null, // 'todos' | 'propios' | 'ninguna' (accesoAFichajes)
   isAdmin = false,
   onToggleTask,
   onClockEntryCreated,
@@ -403,7 +405,8 @@ export default function WorkerView({
 
   return (
     <div className="space-y-4 sm:space-y-5 animate-fadeIn w-full max-w-full overflow-x-hidden">
-      
+      {lecturaFichajes === 'ninguna' && <AvisoFichajesPrivados vista="trabajador" />}
+
       {/* 1. Worker Personal Profile Header Card - Compact & Clean */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
@@ -735,9 +738,12 @@ export default function WorkerView({
                 <span className="text-base shrink-0">{profile?.avatar || '👤'}</span>
                 <div className="min-w-0">
                   <span className="text-xs font-bold text-white block truncate">{name}</span>
-                  <span className={`text-[11px] block truncate ${isClockedIn ? 'text-emerald-400 font-semibold' : 'text-slate-500'}`}>
-                    {isClockedIn ? '🟢 Ya ha fichado' : 'Aún no ha fichado'}
-                  </span>
+                  {/* Con los fichajes privados solo llegan los propios: de los demás no se sabe. */}
+                  {(!lecturaFichajes || lecturaFichajes === 'todos') && (
+                    <span className={`text-[11px] block truncate ${isClockedIn ? 'text-emerald-400 font-semibold' : 'text-slate-500'}`}>
+                      {isClockedIn ? '🟢 Ya ha fichado' : 'Aún no ha fichado'}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

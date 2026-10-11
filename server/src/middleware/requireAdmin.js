@@ -59,15 +59,18 @@ export const requireAdmin = crearGuardia(['admin'], 'Acceso restringido: se requ
 export const requireLectura = crearGuardia(['admin', 'socias'], 'Acceso restringido: se requiere sesión de Administrador o enlace de socias válido');
 export const requireTrabajador = crearGuardia(['trabajador'], 'Este enlace no permite ver el saldo: pide tu enlace nuevo al administrador');
 
-// Para las rutas abiertas que dejan hacer más a un admin (fichajes): ¿trae una sesión
-// de admin VIGENTE? Una anulada (contraseña cambiada, «Cerrar todas las sesiones»,
-// enlaces viejos de socias con la sesión dentro) o un fallo de la base cuenta como sin sesión.
-export async function esAdminVigente(req) {
+// Para las rutas abiertas que dejan hacer o ver más con sesión (fichajes): el rol de la
+// sesión VIGENTE que trae la petición ('admin' | 'socias') o null. Una anulada
+// (contraseña cambiada, «Cerrar todas las sesiones», enlaces viejos de socias con la
+// sesión dentro) o un fallo de la base cuenta como sin sesión.
+export async function rolVigente(req) {
   const payload = verifyToken(tokenDe(req));
-  if (payload?.role !== 'admin') return false;
+  if (!['admin', 'socias'].includes(payload?.role)) return null;
   try {
-    return !(await motivoDeAnulacion(payload));
+    return (await motivoDeAnulacion(payload)) ? null : payload.role;
   } catch {
-    return false;
+    return null;
   }
 }
+
+export const esAdminVigente = async (req) => (await rolVigente(req)) === 'admin';

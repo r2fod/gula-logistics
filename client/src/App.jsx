@@ -43,6 +43,7 @@ const CargandoPanel = () => (
 import { logisticsData as BASE_DATA } from './data/logisticsData';
 import {
   fetchClockEntriesFromAPI,
+  accesoAFichajes,
   fetchClockEntryChangesFromAPI,
   guardarCopiaFichajes,
   getStoredAdminToken,
@@ -430,14 +431,30 @@ export default function App() {
   // el resto de ciclos piden lo cambiado desde el último fichaje visto (?desde=).
   const cursorFichajesRef = useRef(null);
   const ultimaCompletaRef = useRef(0);
+  // De quién es este móvil: sus fichajes se piden con su enlace personal (cuando el
+  // admin lo exige, el servidor solo le da los suyos). Al abrir aún no se ha resuelto
+  // `trabajadorActivo`: vale el nombre del enlace o el de la última vez.
+  const trabajadorActivoRef = useRef(trabajadorActivo);
+  const sincronizarFichajesRef = useRef(null);
+  const [lecturaFichajes, setLecturaFichajes] = useState(null);
   useEffect(() => {
+    const quienLee = () => {
+      if (trabajadorActivoRef.current) return trabajadorActivoRef.current;
+      const delEnlace = new URLSearchParams(window.location.search).get('worker');
+      if (delEnlace) return delEnlace;
+      try { return localStorage.getItem('gula_last_worker_v1'); } catch { return null; }
+    };
     const sincronizarFichajes = async () => {
       const toca = !cursorFichajesRef.current || Date.now() - ultimaCompletaRef.current > 10 * 60 * 1000;
       if (toca) {
-        const todos = await fetchClockEntriesFromAPI();
+        const todos = await fetchClockEntriesFromAPI(quienLee());
         if (!Array.isArray(todos)) return;
-        // Al abrir, una lista vacía no pisa la copia local (puede ser el servidor despertando).
-        if (todos.length > 0 || cursorFichajesRef.current) setClockEntries(todos);
+        const acceso = accesoAFichajes();
+        setLecturaFichajes(acceso);
+        // Al abrir, una lista vacía no pisa la copia local (puede ser el servidor
+        // despertando)… salvo que el servidor diga que no da más: entonces lo que
+        // hubiera guardado de otras personas ya no toca enseñarlo.
+        if (todos.length > 0 || cursorFichajesRef.current || acceso === 'propios' || acceso === 'ninguna') setClockEntries(todos);
         cursorFichajesRef.current = ultimaModificacion(todos);
         ultimaCompletaRef.current = Date.now();
         return;
@@ -445,7 +462,7 @@ export default function App() {
       // 30 s de margen: dos fichajes guardados a la vez pueden llegar a la base
       // en otro orden; lo repetido se descarta al fusionar (mismo updatedAt).
       const desde = new Date(Date.parse(cursorFichajesRef.current) - 30 * 1000).toISOString();
-      const cambios = await fetchClockEntryChangesFromAPI(desde);
+      const cambios = await fetchClockEntryChangesFromAPI(desde, quienLee());
       if (!cambios?.length) return;
       cursorFichajesRef.current = ultimaModificacion([...cambios, { updatedAt: cursorFichajesRef.current }]);
       setClockEntries(prev => {
@@ -454,6 +471,7 @@ export default function App() {
         return siguiente;
       });
     };
+    sincronizarFichajesRef.current = sincronizarFichajes;
     sincronizarFichajes();
 
     // En cuanto el móvil recupera cobertura, reintentar YA los fichajes
@@ -489,6 +507,14 @@ export default function App() {
       document.removeEventListener('visibilitychange', alVolver);
     };
   }, []);
+
+  // Cambia quién lleva este móvil (o ya se sabe quién es): sus fichajes, enteros, ya.
+  useEffect(() => {
+    if (trabajadorActivoRef.current === trabajadorActivo) return;
+    trabajadorActivoRef.current = trabajadorActivo;
+    cursorFichajesRef.current = null;
+    sincronizarFichajesRef.current?.();
+  }, [trabajadorActivo]);
 
 
 
@@ -541,6 +567,7 @@ export default function App() {
           activeWeekData={activeWeek}
           clockEntries={currentWeekClockEntries}
           fichajesDeTodo={activeClockEntries}
+          lecturaFichajes={lecturaFichajes}
           isAdmin={isAdmin}
           onToggleTask={(dayKey, taskIdx, weekId) => toggleTask(dayKey, taskIdx, weekId)}
           onClockEntryCreated={handleClockEntryCreated}
@@ -603,6 +630,7 @@ export default function App() {
             data={activeWeek}
             workersList={workersList}
             clockEntries={currentWeekClockEntries}
+            lecturaFichajes={lecturaFichajes}
             semanas={allWeeks}
             onClockEntryCreated={handleClockEntryCreated}
             onOpenClockModal={(workerName) => {
@@ -647,6 +675,7 @@ export default function App() {
             data={activeWeek}
             workersList={workersList}
             clockEntries={currentWeekClockEntries}
+            lecturaFichajes={lecturaFichajes}
             semanas={allWeeks}
             onOpenLogin={() => setIsAdminLoginOpen(true)}
             onClockEntryCreated={handleClockEntryCreated}

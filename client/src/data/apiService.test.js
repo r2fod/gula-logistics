@@ -3,6 +3,8 @@ import {
   saveClockEntryToAPI,
   retryPendingClockEntries,
   fetchClockEntriesFromAPI,
+  fetchClockEntryChangesFromAPI,
+  accesoAFichajes,
   getPendingClockEntriesSnapshot,
   saveWeeksToAPI,
   setStoredSociasToken,
@@ -137,6 +139,46 @@ describe('retryPendingClockEntries', () => {
     const synced = await retryPendingClockEntries();
     expect(synced).toEqual([]);
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('leer los fichajes: con qué se piden y qué deja ver el servidor', () => {
+  const responde = (lista, lectura) => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => lista, headers: { get: (c) => (c === 'X-Lectura' ? lectura : null) } });
+  };
+  const tokenCon = (cuerpo) => `${btoa(JSON.stringify(cuerpo)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')}.firma`;
+
+  it('sin sesión ni enlace no manda cabeceras (la petición de siempre); un servidor que no dice nada = todos', async () => {
+    responde([entry({ id: 'a' })], null);
+    await fetchClockEntriesFromAPI();
+    expect(fetch.mock.calls[0][1].headers).toBeUndefined();
+    expect(accesoAFichajes()).toBe('todos');
+    await fetchClockEntryChangesFromAPI('2026-09-19T08:00:00.000Z');
+    expect(fetch.mock.calls[1][1].headers).toBeUndefined();
+  });
+
+  it('el trabajador los pide con su enlace personal y la app sabe si le han dado solo los suyos', async () => {
+    const enlace = tokenCon({ role: 'trabajador', w: 'carlos-gula', exp: Date.now() + 60000 });
+    guardarTokenTrabajador('Carlos', enlace);
+    responde([entry({ id: 'suyo' })], 'propios');
+    expect(await fetchClockEntriesFromAPI('Carlos')).toHaveLength(1);
+    expect(fetch.mock.calls[0][1].headers).toEqual({ 'X-Enlace': enlace });
+    expect(accesoAFichajes()).toBe('propios');
+    await fetchClockEntryChangesFromAPI('2026-09-19T08:00:00.000Z', 'Carlos');
+    expect(fetch.mock.calls[1][1].headers).toEqual({ 'X-Enlace': enlace });
+  });
+
+  it('con sesión de admin va la sesión; y «ninguna» deja la copia local vacía (nada de otra gente guardado)', async () => {
+    setStoredAdminToken('ADMIN', Date.now() + 60000);
+    responde([entry({ id: 'a' })], 'todos');
+    await fetchClockEntriesFromAPI();
+    expect(fetch.mock.calls[0][1].headers).toEqual({ Authorization: 'Bearer ADMIN' });
+
+    cerrarAccesosGuardados();
+    responde([], 'ninguna');
+    expect(await fetchClockEntriesFromAPI()).toEqual([]);
+    expect(accesoAFichajes()).toBe('ninguna');
+    expect(JSON.parse(localStorage.getItem('gula_clock_entries_v1'))).toEqual([]);
   });
 });
 
