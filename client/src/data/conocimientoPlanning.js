@@ -1,7 +1,7 @@
 import { construirGrafoMemoria, vecinosDe } from './grafoMemoria';
 import { esBorradorSemana, parseEventAndTask } from './eventNaming';
 import { esTareaActiva } from './taskPlanning';
-import { coincideNombre } from './nombresTrabajadores';
+import { personaDelFichaje } from './nombresTrabajadores';
 import { plano } from '../utils/texto';
 
 // Lo que el asistente aprende SOLO del planning de las semanas ya aceptadas (sin que
@@ -26,7 +26,7 @@ export function claveDeTarea(texto) {
 const ordenar = (mapa) => [...mapa].map(([nombre, veces]) => ({ nombre, veces })).sort((a, b) => b.veces - a.veces || a.nombre.localeCompare(b.nombre, 'es'));
 
 export function aprenderDelPlanning(semanas = {}, equipo = []) {
-  const delEquipo = (n) => !equipo.length || equipo.some(w => coincideNombre(w.name, n));
+  const delEquipo = (n) => !equipo.length || !!personaDelFichaje(equipo, n, w => w.name);
 
   // Camiones: los vecinos de cada camión en el grafo (veces que van juntos).
   const grafo = construirGrafoMemoria({ equipo, semanas });

@@ -54,3 +54,10 @@ describe('revisarFichajes', () => {
     expect(r).toEqual({ sobran: [], revisar: [] });
   });
 });
+
+describe('nombres que contienen otros', () => {
+  it('BUG evitado: la salida de Mariana no se toma como la de Ana (ni deja la de Ana "suelta")', () => {
+    const r = revisarFichajes([f('Ana', 'entrada', '08:00:00'), f('Mariana', 'entrada', '09:00:00'), f('Mariana', 'salida', '13:00:00'), f('Ana', 'salida', '14:00:00')], AHORA);
+    expect(motivos(r)).toEqual([]);
+  });
+});

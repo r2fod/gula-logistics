@@ -46,7 +46,7 @@ function Horas({ valor, texto }) {
 // Props: nombre, enNomina, turnoAbierto (su entrada sin salida, o null),
 // fichajesDeTodo (el histórico: el mes y el saldo cuentan todos sus turnos) y equipo.
 export default function ResumenHorasSaldo({ nombre, enNomina = false, turnoAbierto = null, fichajesDeTodo = [], equipo = [] }) {
-  const { ficha, sinEnlace } = useMiSaldo(nombre);
+  const { ficha, sinEnlace, sinFicha } = useMiSaldo(nombre);
   const ahora = useAhora(60 * 1000); // para cambiar de semana y de mes sin recargar
 
   const turnos = useMemo(() => pairShiftsFromEntries(fichajesDeTodo).shifts, [fichajesDeTodo]);
@@ -99,6 +99,11 @@ export default function ResumenHorasSaldo({ nombre, enNomina = false, turnoAbier
       {!verSaldo && sinEnlace && !enNomina && (
         <p className="basis-full text-[11px] leading-snug text-slate-500">
           Para ver aquí lo que tienes pendiente de cobro, pide tu enlace personal al administrador.
+        </p>
+      )}
+      {!verSaldo && !sinEnlace && sinFicha && !enNomina && (
+        <p className="basis-full text-[11px] leading-snug text-amber-300/90">
+          Tu enlace es correcto, pero no encontramos tu ficha de saldo. Avisa al administrador.
         </p>
       )}
     </section>

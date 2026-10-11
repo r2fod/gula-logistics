@@ -5,7 +5,7 @@ import CabeceraModal from '../../ui/CabeceraModal';
 import { AreaTexto, Campo } from '../../ui/Campo';
 import { mensajeDeSaldo } from '../../../data/mensajeSaldo';
 import { abrirEnPestanaNueva, enlaceTrabajador, enlaceWhatsApp, telefonoWhatsApp } from '../../../data/enlaces';
-import { coincideNombre } from '../../../data/nombresTrabajadores';
+import { elMasParecido, parecidoNombre } from '../../../data/nombresTrabajadores';
 import { useEnlacesTrabajadores } from '../../../hooks/useEnlacesTrabajadores';
 import { useCopiado } from '../../../hooks/useCopiado';
 
@@ -32,7 +32,7 @@ export default function EnviarSaldoModal({ datos, admin = false, equipo = [], on
   const [ahora] = useState(() => new Date());
   const [copiado, copiar] = useCopiado();
 
-  const persona = useMemo(() => (datos ? equipo.find(w => coincideNombre(w.name, datos.ficha.name)) : null), [datos, equipo]);
+  const persona = useMemo(() => (datos ? elMasParecido(equipo, w => parecidoNombre(w.name, datos.ficha.name)) : null), [datos, equipo]);
   const token = datos && admin ? tokenDe(datos.ficha.name) : null;
   const enlace = token ? enlaceTrabajador(persona?.name || datos.ficha.name, token) : null;
   const generado = useMemo(

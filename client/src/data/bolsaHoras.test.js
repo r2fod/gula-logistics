@@ -107,3 +107,13 @@ describe('bolsa por meses (acuerdo con desde/hasta)', () => {
   });
 });
 
+
+describe('la bolsa es de su persona', () => {
+  it('BUG evitado: los turnos de "Ana" ya no gastan la bolsa de "Mariana Gula"', () => {
+    const deAna = turno('Ana', 15, 3);
+    const deMariana = turno('Mariana', 16, 3);
+    const r = aplicarTarifaDeBolsa([deAna, deMariana], [{ name: 'Mariana Gula', isSpecialPurse: true, purseInfo }]);
+    expect(r[0]).toBe(deAna); // sin tocar: Ana no tiene bolsa
+    expect(r[1].cost).toBe(24); // Mariana gasta su bolsa desde el principio (4 h libres a 8 €/h: 3 h)
+  });
+});

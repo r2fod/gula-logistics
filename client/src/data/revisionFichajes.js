@@ -1,5 +1,5 @@
 import { sortEntriesByTimestamp, HORAS_TURNO_LARGO, HORAS_ABIERTO_AVISO } from './shiftCalculations';
-import { coincideNombre } from './nombresTrabajadores';
+import { mismoNombre } from './nombresTrabajadores';
 import { plano } from '../utils/texto';
 import { formatTimeShort, formatDuration } from '../utils/dateUtils';
 
@@ -22,7 +22,7 @@ export function revisarFichajes(fichajes = [], ahora = new Date()) {
   const sobran = [];
   const revisar = [];
   const abiertos = {}; // persona → { entrada, subtareas }
-  const clave = (nombre) => Object.keys(abiertos).find(k => coincideNombre(k, nombre)) || nombre;
+  const clave = (nombre) => Object.keys(abiertos).find(k => mismoNombre(k, nombre)) || nombre;
 
   sortEntriesByTimestamp(fichajes.filter(e => !e.deleted && e.workerName)).forEach(e => {
     const k = clave(e.workerName);

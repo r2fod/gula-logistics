@@ -80,3 +80,15 @@ describe('costeEnCurso con la bolsa por meses', () => {
   });
 });
 
+
+describe('enCursoDelPeriodo: la ficha de cada uno', () => {
+  it('BUG evitado: el turno abierto de "Ana" usa la bolsa de su ficha "Ana Gula" (antes no la encontraba y cobraba a tarifa normal)', () => {
+    const semana = { desde: new Date(2026, 8, 22), hasta: new Date(2026, 8, 29) };
+    const fichas = [{ name: 'Mariana Gula' }, { name: 'Ana Gula', isSpecialPurse: true, purseInfo: { totalHours: 10, consumedHours: 0, hourlyRate: 8, extraRateAfter80h: 12 } }];
+    const equipo = [{ name: 'Ana' }, { name: 'Mariana' }];
+    const abiertoAna = { workerName: 'Ana', type: 'entrada', timestamp: a(9).toISOString(), rate: 10 };
+    expect(enCursoDelPeriodo([abiertoAna], semana, { ahora: a(11), equipo, fichas }).extras).toBe(16); // 2 h de bolsa a 8 €/h
+    const abiertoMariana = { ...abiertoAna, workerName: 'Mariana' };
+    expect(enCursoDelPeriodo([abiertoMariana], semana, { ahora: a(11), equipo, fichas }).extras).toBe(20); // sin bolsa
+  });
+});

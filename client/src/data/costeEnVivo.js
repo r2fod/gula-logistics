@@ -1,6 +1,6 @@
 import { bolsaDeFicha, mesDe, repartirBolsa, tieneBolsa } from './bolsaHoras';
 import { isZombieShift } from './shiftCalculations';
-import { coincideNombre } from './nombresTrabajadores';
+import { fichaDePersona, mismoNombre } from './nombresTrabajadores';
 
 // Horas y dinero de un turno ABIERTO hasta `ahora`, para verlo subir en tiempo
 // real. Sin redondear: al fichar la salida el turno se paga a la media hora más
@@ -35,13 +35,14 @@ export function enCursoDelPeriodo(abiertos = [], { desde = null, hasta = null } 
   (abiertos || []).forEach(entrada => {
     const inicio = new Date(entrada?.timestamp).getTime();
     if (Number.isNaN(inicio) || (desde && inicio < desde.getTime()) || (hasta && inicio >= hasta.getTime()) || isZombieShift(entrada, ahora)) return;
-    const esSuyo = (nombre) => coincideNombre(nombre, entrada.workerName);
+    // La misma persona (no "lo contiene": los turnos de "Ana" contaban en la bolsa de "Mariana").
+    const esSuyo = (nombre) => mismoNombre(nombre, entrada.workerName);
     const persona = equipo.find(w => esSuyo(w.name));
     const { horas, coste } = costeEnCurso({
       entrada,
       ahora,
       tarifa: entrada.rate || (entrada.isPayroll ? 14 : 10),
-      ficha: (fichas || []).find(f => esSuyo(f.name)) || null,
+      ficha: fichaDePersona(entrada.workerName, fichas || [], equipo.map(w => w.name)),
       turnosPrevios: turnos.filter(t => esSuyo(t.workerName)),
     });
     suma.turnos += 1;

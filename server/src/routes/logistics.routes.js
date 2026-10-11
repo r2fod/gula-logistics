@@ -4,35 +4,15 @@ import { Logistics } from '../models/Logistics.model.js';
 import { LogisticsWeek } from '../models/LogisticsWeek.model.js';
 import mongoose from 'mongoose';
 import { requireAdmin } from '../middleware/requireAdmin.js';
+import { Documento } from '../models/Documento.model.js';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Configurar multer
-const uploadDir = path.join(__dirname, '..', 'uploads');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, uploadDir);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'rental-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-// Solo PDFs (es un contrato/factura de alquiler) y máximo 10MB — sin esto,
-// multer aceptaba cualquier archivo de cualquier tamaño de quien tuviera
-// sesión de admin, y /uploads se sirve como estático (un .html o .svg
-// subido se serviría con su propio Content-Type).
+// El PDF del alquiler de un camión: en memoria hasta guardarlo en la base (antes iba
+// al disco de Render, que se borra al desplegar y al dormirse: los PDF desaparecían).
+// Solo PDFs (es un contrato/factura de alquiler) y máximo 10 MB.
 const upload = multer({
-  storage: storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype !== 'application/pdf') {
@@ -41,6 +21,8 @@ const upload = multer({
     cb(null, true);
   }
 });
+// Sin base (en local), los documentos viven en memoria como el resto de datos.
+const documentosEnMemoria = new Map();
 
 const router = express.Router();
 
@@ -341,7 +323,8 @@ router.patch('/weeks/:weekId/tasks', async (req, res) => {
   }
 });
 
-// POST /api/logistics/upload-rental
+// POST /api/logistics/upload-rental — guarda el PDF en la base y devuelve su dirección
+// (`/api/logistics/documentos/<clave>`), que es lo que se apunta en el camión.
 router.post('/upload-rental', requireAdmin, (req, res, next) => {
   // No hay un error-handler global en server.js, así que si fileFilter o
   // el límite de tamaño rechazan el archivo, multer llama a next(err) y sin
@@ -350,12 +333,49 @@ router.post('/upload-rental', requireAdmin, (req, res, next) => {
     if (err) return res.status(400).json({ success: false, message: err.message });
     next();
   });
-}, (req, res) => {
+}, async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'No file uploaded' });
   }
-  const fileUrl = `/uploads/${req.file.filename}`;
-  res.json({ success: true, url: fileUrl });
+  // El tipo lo declara el navegador: se mira que el contenido empiece como un PDF.
+  if (req.file.buffer.subarray(0, 5).toString('latin1') !== '%PDF-') {
+    return res.status(400).json({ success: false, message: 'El archivo no es un PDF' });
+  }
+  try {
+    const documento = {
+      clave: crypto.randomBytes(16).toString('hex'),
+      nombre: String(req.file.originalname || '').slice(0, 120),
+      tipo: 'application/pdf',
+      tamano: req.file.size,
+      datos: req.file.buffer
+    };
+    if (mongoose.connection.readyState === 1) await Documento.create(documento);
+    else documentosEnMemoria.set(documento.clave, documento);
+    res.json({ success: true, url: `/api/logistics/documentos/${documento.clave}` });
+  } catch (error) {
+    console.error('Error al guardar el PDF:', error);
+    res.status(500).json({ success: false, message: 'No se pudo guardar el PDF' });
+  }
+});
+
+// GET /api/logistics/documentos/:clave — el PDF, solo con sesión de admin (la semana
+// es pública y lleva la dirección: con ella sola no basta).
+router.get('/documentos/:clave', requireAdmin, async (req, res) => {
+  try {
+    const { clave } = req.params;
+    const documento = !/^[a-f0-9]{32}$/.test(clave) ? null
+      : mongoose.connection.readyState === 1 ? await Documento.findOne({ clave }) : documentosEnMemoria.get(clave);
+    if (!documento) return res.status(404).json({ error: 'Documento no encontrado' });
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': 'inline; filename="documento.pdf"',
+      'Cache-Control': 'private, no-store'
+    });
+    return res.send(Buffer.from(documento.datos));
+  } catch (error) {
+    console.error('Error al leer el PDF:', error);
+    return res.status(500).json({ error: 'No se pudo leer el documento' });
+  }
 });
 
 // POST /api/logistics/optimize — vacía la papelera de fichajes: borra PARA SIEMPRE los

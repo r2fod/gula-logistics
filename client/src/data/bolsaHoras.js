@@ -1,4 +1,4 @@
-import { coincideNombre } from './nombresTrabajadores';
+import { fichaDePersona } from './nombresTrabajadores';
 
 // Bolsa mensual de horas (ficha de Saldos con `isSpecialPurse` y `purseInfo`): las
 // horas se pagan a `hourlyRate` hasta agotar `totalHours` —contando las ya metidas a
@@ -93,8 +93,11 @@ export function aplicarTarifaDeBolsa(turnos = [], fichas = []) {
   if (!conBolsa.length) return turnos;
 
   const costes = new Map();
+  // Un turno es de la ficha que MÁS se parece a su persona (los de "Ana" no gastan la
+  // bolsa de "Mariana Gula").
+  const personas = [...new Set(turnos.map(t => t.workerName))];
   conBolsa.forEach(ficha => {
-    const suyos = turnos.filter(t => coincideNombre(t.workerName, ficha.name)).sort((a, b) => momento(a) - momento(b));
+    const suyos = turnos.filter(t => fichaDePersona(t.workerName, fichas, personas) === ficha).sort((a, b) => momento(a) - momento(b));
     repartirBolsa(suyos.map(t => t.durationHours || 0), bolsaDeFicha(ficha), suyos.map(t => mesDe(momento(t))))
       .forEach((r, i) => costes.set(suyos[i], r.coste));
   });

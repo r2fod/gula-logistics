@@ -4,7 +4,7 @@
 // entera: lento, caro, con datos personales de más y con riesgo de desmarcar tareas
 // hechas o de inventarse gente.
 import { normalizarEtiquetaTarea, normalizeGeneratedEvents } from './eventNaming';
-import { coincideNombre } from './nombresTrabajadores';
+import { elMasParecido, mismoNombre, parecidoNombre } from './nombresTrabajadores';
 import { esTareaActiva, getDayLabel } from './taskPlanning';
 import { estimarHorasPlanning } from './estimadoPlanning';
 import { formatearHoras } from './formatoFinanciero';
@@ -152,7 +152,7 @@ function conIds(entradas, prefijo) {
 //   · nombres exactos del equipo, horarios "HH:MM - HH:MM", ids únicos por día.
 export function completarPlanGenerado(generado, { original = null, equipo = [], eventNames = [] } = {}) {
   const plan = normalizeGeneratedEvents(generado || {}, eventNames);
-  const nombreExacto = (n) => { const s = String(n || '').trim(); return equipo.find(w => coincideNombre(w.name, s))?.name || s; };
+  const nombreExacto = (n) => { const s = String(n || '').trim(); return elMasParecido(equipo, w => parecidoNombre(w.name, s))?.name || s; };
   const porTexto = (t) => normalizarEtiquetaTarea(t?.text || '');
   const porLugar = (b) => normalizarEtiquetaTarea(b?.location || '');
 
@@ -201,7 +201,7 @@ export function contextoParaPrompt({ semana = null, equipo = [], disponibles = n
     const dias = [...DIAS, 'sabado', 'domingo', 'lunes'].map(d => getDayLabel(semana, d));
     lineas.push(`SEMANA: ${semana.meta.dateRange}. Días: ${dias.join(', ')} (el lunes es la cola: devoluciones, limpieza y cargas).`);
   }
-  const libres = disponibles?.length ? equipo.filter(w => disponibles.some(n => coincideNombre(n, w.name))) : equipo;
+  const libres = disponibles?.length ? equipo.filter(w => disponibles.some(n => mismoNombre(n, w.name))) : equipo;
   if (libres.length) lineas.push(`EQUIPO DISPONIBLE (usa EXACTAMENTE estos nombres en "assigned"):\n${libres.map(w => `- ${descripcionParaIa(w)}`).join('\n')}`);
   const fuera = disponibles?.length ? equipo.filter(w => !libres.includes(w)).map(w => w.name) : [];
   if (fuera.length) lineas.push(`NO DISPONIBLES esta semana (no los asignes): ${fuera.join(', ')}.`);

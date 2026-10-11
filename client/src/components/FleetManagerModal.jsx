@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Upload, FileText, Truck, AlertCircle } from 'lucide-react';
-import { uploadRentalPdf } from '../data/apiService';
+import { uploadRentalPdf, urlLocalDeDocumento } from '../data/apiService';
+import { abrirEnPestanaNuevaAlLlegar } from '../data/enlaces';
 import Modal from './ui/Modal';
 import BotonCerrar from './ui/BotonCerrar';
 import { Input, Selector } from './ui/Campo';
 import { useDialog } from '../contexts/DialogContext';
 
 export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onUpdateWeek }) {
-  const { confirm } = useDialog();
+  const { confirm, alert } = useDialog();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
 
@@ -54,6 +55,10 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
       setIsUploading(false);
     }
   };
+
+  // El PDF solo lo da el servidor con la sesión de admin: se pide y se abre en otra pestaña.
+  const verDocumento = (ruta) => abrirEnPestanaNuevaAlLlegar(() => urlLocalDeDocumento(ruta))
+    .catch((err) => alert(`No se pudo abrir el documento. ${err.message}`, { type: 'warning' }));
 
   const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
@@ -216,12 +221,12 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
 
                 <div>
                   <label className="block text-xs font-medium text-slate-400 mb-2">Contrato / Resguardo (PDF)</label>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     {truck.pdfUrl ? (
-                      <div className="flex items-center gap-3 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg flex-1">
-                        <FileText className="w-4 h-4 text-emerald-400" />
+                      <div className="flex items-center gap-3 bg-slate-900 border border-slate-700 px-3 py-2 rounded-lg flex-1 min-w-[10rem]">
+                        <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
                         <span className="text-xs text-slate-300 truncate font-mono">
-                          {truck.pdfUrl.split('/').pop()}
+                          {truck.pdfUrl.includes('/documentos/') ? 'Contrato (PDF)' : truck.pdfUrl.split('/').pop()}
                         </span>
                         <button 
                           onClick={() => handleUpdateTruck(idx, 'pdfUrl', '')}
@@ -234,7 +239,7 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
                       <div className="relative flex-1">
                         <input
                           type="file"
-                          accept=".pdf,image/*"
+                          accept=".pdf,application/pdf"
                           onChange={(e) => handleFileUpload(idx, e)}
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                           disabled={isUploading}
@@ -247,14 +252,13 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
                     )}
                     
                     {truck.pdfUrl && (
-                      <a 
-                        href={truck.pdfUrl}
-                        target="_blank" 
-                        rel="noreferrer"
+                      <button
+                        type="button"
+                        onClick={() => verDocumento(truck.pdfUrl)}
                         className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium rounded-lg border border-slate-700 whitespace-nowrap"
                       >
                         Ver Documento
-                      </a>
+                      </button>
                     )}
                   </div>
                 </div>

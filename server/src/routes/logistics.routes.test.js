@@ -9,6 +9,9 @@ vi.mock('../models/LogisticsWeek.model.js', () => ({
 vi.mock('../models/ClockEntry.model.js', () => ({
   ClockEntry: { deleteMany: vi.fn() },
 }));
+vi.mock('../models/Documento.model.js', () => ({
+  Documento: { create: vi.fn(), findOne: vi.fn() },
+}));
 vi.mock('../models/Logistics.model.js', () => ({
   Logistics: { findOne: vi.fn(), create: vi.fn() },
 }));
@@ -21,6 +24,7 @@ vi.mock('../models/AdminConfig.model.js', () => ({
 
 const { LogisticsWeek } = await import('../models/LogisticsWeek.model.js');
 const { ClockEntry } = await import('../models/ClockEntry.model.js');
+const { Documento } = await import('../models/Documento.model.js');
 const logisticsRoutes = (await import('./logistics.routes.js')).default;
 const { signToken } = await import('../utils/authToken.js');
 
@@ -469,5 +473,64 @@ describe('POST /api/logistics/optimize (vaciar la papelera de fichajes)', () => 
   it('sin sesión de admin, 401', async () => {
     const res = await request(buildApp()).post('/api/logistics/optimize');
     expect(res.status).toBe(401);
+  });
+});
+
+describe('PDF del alquiler de un camión (upload-rental y documentos)', () => {
+  const PDF = Buffer.from('%PDF-1.4 contrato de prueba');
+  const subir = (contenido, nombre = 'contrato.pdf', tipo = 'application/pdf') => request(buildApp())
+    .post('/api/logistics/upload-rental')
+    .set('Authorization', adminAuthHeader())
+    .attach('file', contenido, { filename: nombre, contentType: tipo });
+
+  it('BUG evitado: el PDF se guarda en la base, no en el disco de Render (que se borra al dormirse)', async () => {
+    Documento.create.mockImplementation(async (d) => d);
+    const res = await subir(PDF);
+    expect(res.status).toBe(200);
+    expect(res.body.url).toMatch(/^\/api\/logistics\/documentos\/[a-f0-9]{32}$/);
+    expect(Documento.create.mock.calls[0][0].nombre).toBe('contrato.pdf'); // solo en la base: la semana es pública
+    const guardado = Documento.create.mock.calls[0][0];
+    expect(guardado.clave).toBe(res.body.url.split('/').pop());
+    expect(Buffer.compare(guardado.datos, PDF)).toBe(0);
+  });
+
+  it('BUG evitado: un archivo que dice ser PDF pero no lo es (p. ej. una web) se rechaza', async () => {
+    const res = await subir(Buffer.from('<script>alert(1)</script>'), 'contrato.html');
+    expect(res.status).toBe(400);
+    expect(Documento.create).not.toHaveBeenCalled();
+  });
+
+  it('lo que no se declara PDF se rechaza con 400', async () => {
+    expect((await subir(Buffer.from('hola'), 'nota.txt', 'text/plain')).status).toBe(400);
+  });
+
+  it('el PDF solo lo da con sesión de admin (la semana es pública y lleva la dirección)', async () => {
+    const clave = 'a'.repeat(32);
+    Documento.findOne.mockResolvedValue({ clave, datos: PDF });
+    expect((await request(buildApp()).get(`/api/logistics/documentos/${clave}`)).status).toBe(401);
+    expect(Documento.findOne).not.toHaveBeenCalled();
+    const res = await request(buildApp()).get(`/api/logistics/documentos/${clave}`).set('Authorization', adminAuthHeader());
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toBe('application/pdf');
+    expect(res.headers['cache-control']).toBe('private, no-store');
+    expect(Buffer.compare(res.body, PDF)).toBe(0);
+    expect(Documento.findOne).toHaveBeenCalledWith({ clave });
+  });
+
+  it('una clave rara o que no existe da 404 (sin consultas raras a la base)', async () => {
+    Documento.findOne.mockResolvedValue(null);
+    const auth = { Authorization: adminAuthHeader() };
+    expect((await request(buildApp()).get('/api/logistics/documentos/' + 'b'.repeat(32)).set(auth)).status).toBe(404);
+    expect((await request(buildApp()).get('/api/logistics/documentos/..%2Fsecreto').set(auth)).status).toBe(404);
+    expect(Documento.findOne).toHaveBeenCalledTimes(1);
+  });
+
+  it('sin base (en local) se guarda en memoria y se puede abrir', async () => {
+    mongoose.connection.readyState = 0;
+    const { body } = await subir(PDF);
+    const res = await request(buildApp()).get(body.url).set('Authorization', adminAuthHeader());
+    expect(res.status).toBe(200);
+    expect(Buffer.compare(res.body, PDF)).toBe(0);
+    expect(Documento.create).not.toHaveBeenCalled();
   });
 });

@@ -2,7 +2,7 @@ import { plano } from '../utils/texto';
 import { getDayLabel } from './taskPlanning';
 import { tareasActivas } from './checklistSemana';
 import { tipoDeTarea, personasPorTipo } from './aprendizajeFichajes';
-import { coincideNombre } from './nombresTrabajadores';
+import { personaDelFichaje } from './nombresTrabajadores';
 
 // «¿Hay en el planning recoger furgo Albacar y recoger generador 7K? Si no está,
 // añádelo»: se comprueba aquí, sin gastar Gemini, y solo lo que falte se le pide.
@@ -63,7 +63,7 @@ export function buscarEnSemana(semana, item) {
 // se hizo, quién hace más horas de ese tipo según los fichajes. Solo gente del equipo.
 // → { lista: [{ nombre, veces? , horas? }], fuente: 'planning' | 'fichajes' }
 export function quienSueleHacerla(item, { semanas = {}, aprendizaje = null, equipo = [] } = {}) {
-  const delEquipo = (nombre) => !equipo.length || equipo.some(w => coincideNombre(w.name, nombre));
+  const delEquipo = (nombre) => !equipo.length || !!personaDelFichaje(equipo, nombre, w => w.name);
   const veces = new Map();
   Object.values(semanas || {}).forEach(s => tareasActivas(s)
     .filter(x => coincideConTarea(x.texto, item))

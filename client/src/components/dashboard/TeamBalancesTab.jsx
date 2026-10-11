@@ -8,7 +8,8 @@ import GrupoConceptos from './saldos/GrupoConceptos';
 import EnVivo from '../ui/EnVivo';
 import { duracionEnCurso } from '../../data/costeEnVivo';
 import { saldoDeTrabajador } from '../../data/saldoTrabajador';
-import { coincideNombre } from '../../data/nombresTrabajadores';
+import { turnoAbiertoDeFicha } from '../../data/saldosEquipo';
+import { aIso } from '../../data/fechasSemana';
 import EnviarSaldoModal from './saldos/EnviarSaldoModal';
 import PanelBolsa from './saldos/PanelBolsa';
 
@@ -345,7 +346,7 @@ export default function TeamBalancesTab({
               // Turno abierto ahora mismo: su dinero se suma al saldo en directo (sin
               // redondear; al fichar la salida se paga a la media hora). Con más de 16 h
               // abierto es una salida olvidada: se avisa y no se suma.
-              const abierto = Object.values(turnosAbiertos).find(e => coincideNombre(e.workerName, worker.name)) || null;
+              const abierto = turnoAbiertoDeFicha(turnosAbiertos, worker, equipo);
               const saldo = saldoDeTrabajador({ ficha: worker, horas: hours, abierto });
               const { enNomina, olvidado, cobraEnDirecto, enCurso } = saldo;
               const dynamicCost = saldo.fichado;
@@ -743,7 +744,7 @@ export default function TeamBalancesTab({
                           <button
                             onClick={() => {
                               setAddingConceptFor(worker.id);
-                              setNewShiftDate(new Date().toISOString().slice(0, 10));
+                              setNewShiftDate(aIso(new Date())); // hoy en hora de aquí (en UTC, de madrugada era ayer)
                             }}
                             className="w-full py-2 rounded-xl border border-dashed border-slate-700 hover:border-amber-500/50 text-slate-400 hover:text-amber-400 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
                           >

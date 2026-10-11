@@ -8,7 +8,7 @@ import BarraProgreso from './ui/BarraProgreso';
 import EnVivo from './ui/EnVivo';
 import { useAhora } from '../hooks/useAhora';
 import { costeEnCurso, duracionEnCurso } from '../data/costeEnVivo';
-import { coincideNombre } from '../data/nombresTrabajadores';
+import { fichaDePersona } from '../data/nombresTrabajadores';
 import { formatearEuros } from '../data/formatoFinanciero';
 
 
@@ -370,7 +370,7 @@ export default function LiveMonitorPanel({
                           entrada: worker.clockEntry,
                           ahora,
                           tarifa: tarifaDe(worker),
-                          ficha: saldos.find(f => coincideNombre(worker.name, f.name)),
+                          ficha: fichaDePersona(worker.name, saldos, workersList.map(w => w.name)),
                           turnosPrevios: turnosCerrados[worker.name] || [],
                         }).coste)}</EnVivo>
                       </span>
