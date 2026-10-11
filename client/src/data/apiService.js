@@ -316,6 +316,24 @@ export function logoutAdmin() {
   cerrarAccesosGuardados();
 }
 
+// Al abrir la app: ¿sigue valiendo el acceso guardado en este navegador? Una sesión de
+// admin anulada («Cerrar todas las sesiones», clave cambiada) seguía pintando el panel
+// de admin, con los saldos vacíos y sin poder guardar nada. Si ya no vale, se borra de
+// aquí. 'vale' (o no se pudo comprobar: no se cierra nada) | 'socias' (la sesión de
+// admin no vale, pero el enlace de socias de este navegador sí: queda en solo lectura)
+// | 'admin-anulada' | 'socias-anulado'.
+export async function revisarAccesoGuardado() {
+  const eraAdmin = !!getStoredAdminToken();
+  if (!eraAdmin && !getStoredSociasToken()) return 'vale';
+  if ((await comprobarSesionEnAPI()) !== null) return 'vale';
+  if (eraAdmin) {
+    clearStoredAdminToken();
+    if (getStoredSociasToken() && (await comprobarSesionEnAPI()) !== null) return 'socias';
+  }
+  logoutAdmin();
+  return eraAdmin ? 'admin-anulada' : 'socias-anulado';
+}
+
 /**
  * Fetch all clock entries from MongoDB / Backend API
  */

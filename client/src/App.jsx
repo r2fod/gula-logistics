@@ -39,7 +39,7 @@ import {
   getStoredSociasToken,
   setStoredSociasToken,
   guardarTokenTrabajador,
-  comprobarSesionEnAPI,
+  revisarAccesoGuardado,
   logoutAdmin,
   fetchWeeksFromAPI,
   fetchCalendarioApuntes,
@@ -383,17 +383,18 @@ export default function App() {
       setAvisoAcceso('Este enlace de socias ya no da acceso. Pide al administrador el enlace nuevo.');
     }
 
-    // Un enlace de socias guardado puede haber caducado o haberse anulado: se
-    // comprueba al abrir para no enseñar un panel sin datos. Si no se puede
-    // comprobar (sin red, servidor dormido) no se cierra nada.
-    if (!hasAdminSession && (accesoParam || getStoredSociasToken())) {
-      comprobarSesionEnAPI().then(rol => {
-        if (rol !== null) return;
-        logoutAdmin();
-        setIsPartnerMode(false);
-        setAvisoAcceso('Tu enlace de socias ha caducado o se ha anulado. Pide uno nuevo al administrador.');
-      });
-    }
+    // El acceso guardado (sesión de admin o enlace de socias) puede haber caducado o
+    // haberse anulado: se comprueba al abrir para no enseñar un panel sin datos. Si no
+    // se puede comprobar (sin red, servidor dormido) no se cierra nada.
+    revisarAccesoGuardado().then(estado => {
+      if (estado === 'vale') return;
+      setIsAdminUnlocked(false);
+      if (estado === 'socias') return;
+      setIsPartnerMode(false);
+      setAvisoAcceso(estado === 'admin-anulada'
+        ? 'Tu sesión de administrador se ha cerrado (se cerraron todas las sesiones o cambió la clave). Vuelve a entrar con la clave.'
+        : 'Tu enlace de socias ha caducado o se ha anulado. Pide uno nuevo al administrador.');
+    });
 
     // Sync the shared weekly planning from MongoDB Atlas — this is the
     // source of truth now, not each browser's own localStorage copy.
