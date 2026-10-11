@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { initialBalancesData } from '../data/balancesData';
 import { fetchBalancesFromAPI, saveWorkerBalanceToAPI } from '../data/apiService';
 import { pairShiftsFromEntries, aggregateShiftsByWorker } from '../data/shiftCalculations';
@@ -10,22 +10,12 @@ import { useCopiado } from '../hooks/useCopiado';
 import { useEnlaceSocias } from '../hooks/useEnlaceSocias';
 import { useAvisarCambios } from '../hooks/useAvisarCambios';
 import { useDialog } from '../contexts/DialogContext';
-import TeamBalancesTab from './dashboard/TeamBalancesTab';
-import FinancialSummaryTab from './dashboard/FinancialSummaryTab';
-import LogisticsTab from './dashboard/LogisticsTab';
-import ScheduleTab from './dashboard/ScheduleTab';
-import FichajesTab from './dashboard/FichajesTab';
 import LiveMonitorPanel from './LiveMonitorPanel';
 import AdminClockEditModal from './AdminClockEditModal';
-import TaskFlowGraphView from './TaskFlowGraphView';
-import AdminSettingsModal from './AdminSettingsModal';
-import AdminAiMemoryModal from './AdminAiMemoryModal';
 import AvisoDeshacerIa from './panel/AvisoDeshacerIa';
 import BackgroundAnimation from './BackgroundAnimation';
 import AvisoTurnosLargos from './dashboard/fichajes/AvisoTurnosLargos';
 import SemanaBorradorBanner from './SemanaBorradorBanner';
-import DisponibilidadSemana from './planning/DisponibilidadSemana';
-import ActualizarDesdeCalendario from './planning/ActualizarDesdeCalendario';
 import RevisionIaBorrador from './panel/RevisionIaBorrador';
 import CabeceraPanel from './panel/CabeceraPanel';
 import MenuLateral from './panel/MenuLateral';
@@ -33,6 +23,36 @@ import { BarraPestanas, BarraInferior } from './panel/NavegacionPrincipal';
 import AvisarCambiosModal from './panel/AvisarCambiosModal';
 import { crearAcciones } from './panel/acciones';
 import { pestanaDesdeUrl, guardarPestanaEnUrl } from './panel/pestanas';
+import Cargando from './ui/Cargando';
+import AlAbrir from './ui/AlAbrir';
+import { precargarEnReposo } from '../utils/precargar';
+
+// Con el panel solo va la pestaña con la que abre (Actividad). Las demás y las ventanas
+// de ajustes se bajan al abrirlas: todas juntas eran ~590 kB (los gráficos, el grafo,
+// el generador…) y había que esperarlas para ver la primera. Con el panel ya en
+// pantalla se van trayendo en segundo plano, para que cambiar de pestaña sea inmediato.
+const PIEZAS = {
+  saldos: () => import('./dashboard/TeamBalancesTab'),
+  resumen: () => import('./dashboard/FinancialSummaryTab'),
+  flota: () => import('./dashboard/LogisticsTab'),
+  cuadrante: () => import('./dashboard/ScheduleTab'),
+  fichajes: () => import('./dashboard/FichajesTab'),
+  grafo: () => import('./TaskFlowGraphView'),
+  disponibilidad: () => import('./planning/DisponibilidadSemana'),
+  calendario: () => import('./planning/ActualizarDesdeCalendario'),
+  ajustes: () => import('./AdminSettingsModal'),
+  memoria: () => import('./AdminAiMemoryModal'),
+};
+const TeamBalancesTab = lazy(PIEZAS.saldos);
+const FinancialSummaryTab = lazy(PIEZAS.resumen);
+const LogisticsTab = lazy(PIEZAS.flota);
+const ScheduleTab = lazy(PIEZAS.cuadrante);
+const FichajesTab = lazy(PIEZAS.fichajes);
+const TaskFlowGraphView = lazy(PIEZAS.grafo);
+const DisponibilidadSemana = lazy(PIEZAS.disponibilidad);
+const ActualizarDesdeCalendario = lazy(PIEZAS.calendario);
+const AdminSettingsModal = lazy(PIEZAS.ajustes);
+const AdminAiMemoryModal = lazy(PIEZAS.memoria);
 
 // Panel de control de la dirección: cabecera con acciones, pestañas y los
 // modales que se abren desde ellas. Aquí solo vive el estado compartido (pestaña,
@@ -89,6 +109,9 @@ export default function PartnerDashboardView({
   const [enlaceCopiado, copiarEnlace] = useCopiado();
   const enlaceSocias = useEnlaceSocias(adminUnlocked);
   const aviso = useAvisarCambios();
+
+  // El resto de pestañas, en segundo plano en cuanto el panel está pintado.
+  useEffect(() => precargarEnReposo(Object.values(PIEZAS)), []);
 
   // Persona a enseñar en el Resumen Financiero al llegar desde Saldos ("Ver en
   // Resumen"); cualquier otro cambio de pestaña la olvida.
@@ -272,6 +295,7 @@ export default function PartnerDashboardView({
 
       {/* Cada pestaña entra igual (sube y aparece); `key` la reanima al cambiar. */}
       <div key={activeTab} className="space-y-3 animate-aparecer motion-reduce:animate-none">
+      <Suspense fallback={<Cargando />}>
       {activeTab === 'balances' && (
         <TeamBalancesTab
           balancesData={mergedBalancesData}
@@ -366,6 +390,7 @@ export default function PartnerDashboardView({
       {activeTab === 'graph' && (
         <TaskFlowGraphView activeWeekData={activeWeekData} workersList={workersList} />
       )}
+      </Suspense>
       </div>
 
       <AdminClockEditModal
@@ -378,6 +403,7 @@ export default function PartnerDashboardView({
         onClockEntryCreated={onClockEntryCreated}
       />
 
+      <AlAbrir abierto={isAdminSettingsOpen}>
       <AdminSettingsModal
         isOpen={isAdminSettingsOpen}
         onClose={() => setIsAdminSettingsOpen(false)}
@@ -391,7 +417,9 @@ export default function PartnerDashboardView({
         onVaciarPapelera={onVaciarPapelera}
         onMoverAPapelera={onDeleteClockEntries}
       />
+      </AlAbrir>
 
+      <AlAbrir abierto={isAdminAiMemoryOpen}>
       <AdminAiMemoryModal
         isOpen={isAdminAiMemoryOpen}
         onClose={() => setIsAdminAiMemoryOpen(false)}
@@ -399,6 +427,7 @@ export default function PartnerDashboardView({
         allWeeks={allWeeks}
         aprendizaje={aprendizaje}
       />
+      </AlAbrir>
 
       <MenuLateral
         abierto={isMobileDrawerOpen}

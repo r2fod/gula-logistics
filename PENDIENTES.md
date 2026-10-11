@@ -30,7 +30,6 @@ _Solo lo que sigue abierto (actualizado el 04/10/2026). Lo resuelto se borra de 
 - [ ] Revisar en producción con sesión de admin: Saldos (dos grupos y el saldo subiendo con alguien en turno), "Ver sus horas por evento", el Resumen con lo apuntado a mano y lo previsto, copiar para WhatsApp y la papelera del Historial.
 
 ## 🟢 Código
-- [ ] **Peso del panel** (11/10): `PartnerDashboardView` sale en un solo archivo de ~590 kB (170 kB comprimido) que se baja entero al entrar. Cargar cada pestaña cuando se abre (`React.lazy`, como ya se hace con los modales) para que el panel abra antes en el móvil.
 - [ ] ESLint del cliente: 11 errores, todos anteriores: `setState` dentro de efectos (`App`, `PartnerDashboardView`, `AdminTaskEditorModal`, `FinancialSummaryTab`, `AvisarCambiosModal`, `useCountUp`), refs leídos al pintar (`App`, `useCerrarConEscape`: el patrón «último callback»), una variable usada antes de declararla (`App`) y `Date.now()` al pintar (`TaskFlowGraphView`); ~150 avisos. No añadir nuevos.
 - [ ] Archivos grandes: `AdminTaskEditorModal` (~1050 líneas), `WorkerView` (~1030; su historial ya va en `trabajador/HistorialFichajes`), `TeamBalancesTab` (~810). Siguientes piezas: la tarjeta de la tarea inmediata de `WorkerView`, `Boton`, `Chip` seleccionable, `PuntoEstado`.
 - [ ] Normalizar las tareas a objeto al cargar la semana y quitar los `typeof task === 'object' ? task.text : task` repartidos.

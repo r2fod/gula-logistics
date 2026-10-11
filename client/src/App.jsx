@@ -9,25 +9,36 @@ import ClockInModal from './components/ClockInModal';
 import WorkerView from './components/WorkerView';
 import PublicView from './components/PublicView';
 import BackgroundAnimation from './components/BackgroundAnimation';
+import Cargando from './components/ui/Cargando';
+import AlAbrir from './components/ui/AlAbrir';
+import { precargarEnReposo } from './utils/precargar';
 import { pestanaDesdeUrl } from './components/panel/pestanas';
 import AdminLoginModal from './components/AdminLoginModal';
 // El panel de admin/socias y sus editores se descargan solo cuando hacen falta: un
 // trabajador en su móvil no los usa (antes todo iba en un único archivo de ~1 MB).
+// Las ventanas, además, no se montan hasta abrirlas (<AlAbrir>): montadas desde el
+// principio, el panel no se pintaba hasta tenerlas todas bajadas. Con el panel ya en
+// pantalla se van trayendo en segundo plano (precargarEnReposo).
 const PartnerDashboardView = lazy(() => import('./components/PartnerDashboardView'));
-const WeekManagerModal = lazy(() => import('./components/WeekManagerModal'));
-const GeminiAssistantModal = lazy(() => import('./components/GeminiAssistantModal'));
-const AdminWorkerEditorModal = lazy(() => import('./components/AdminWorkerEditorModal'));
-const AdminTaskEditorModal = lazy(() => import('./components/AdminTaskEditorModal'));
-const EnlacesWhatsAppModal = lazy(() => import('./components/EnlacesWhatsAppModal'));
+const VENTANAS = {
+  semanas: () => import('./components/WeekManagerModal'),
+  asistente: () => import('./components/GeminiAssistantModal'),
+  equipo: () => import('./components/AdminWorkerEditorModal'),
+  planning: () => import('./components/AdminTaskEditorModal'),
+  enlaces: () => import('./components/EnlacesWhatsAppModal'),
+};
+const WeekManagerModal = lazy(VENTANAS.semanas);
+const GeminiAssistantModal = lazy(VENTANAS.asistente);
+const AdminWorkerEditorModal = lazy(VENTANAS.equipo);
+const AdminTaskEditorModal = lazy(VENTANAS.planning);
+const EnlacesWhatsAppModal = lazy(VENTANAS.enlaces);
 
 // Mientras llega el panel, ya con el fondo de la pestaña que se va a abrir (luego lo
 // pinta el propio panel, que es quien sabe en qué pestaña está).
 const CargandoPanel = () => (
-  <div role="status" className="flex min-h-[60vh] items-center justify-center gap-3 text-sm text-slate-400">
+  <Cargando texto="Cargando el panel…" className="min-h-[60vh]">
     <BackgroundAnimation viewMode={pestanaDesdeUrl(window.location.search)} />
-    <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-700 border-t-amber-400 motion-reduce:animate-none" aria-hidden="true" />
-    Cargando el panel…
-  </div>
+  </Cargando>
 );
 import { logisticsData as BASE_DATA } from './data/logisticsData';
 import {
@@ -487,6 +498,9 @@ export default function App() {
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => !!getStoredAdminToken());
   const isAdmin = isAdminUnlocked;
 
+  // Con el panel de admin ya en pantalla, sus ventanas se van bajando en segundo plano.
+  useEffect(() => (isAdmin ? precargarEnReposo(Object.values(VENTANAS)) : undefined), [isAdmin]);
+
   // Salir cierra también el enlace de socias de este navegador y vuelve a la
   // vista pública: sin acceso, el panel ya no tiene saldos que enseñar.
   const handleAdminLogout = () => {
@@ -722,51 +736,61 @@ export default function App() {
         isAdmin={isAdmin}
       />
 
-      <WeekManagerModal
-        isOpen={isWeekModalOpen}
-        onClose={() => setIsWeekModalOpen(false)}
-        onCreateWeek={handleCreateWeek}
-        onForceAutoDraft={() => ejecutarAnticipacion(true)}
-        currentWeekName={activeWeek.name}
-        currentWeekTrucks={activeWeek.trucks || []}
-        workersList={workersList}
-        aprendizaje={aprendizaje}
-      />
+      <AlAbrir abierto={isWeekModalOpen}>
+        <WeekManagerModal
+          isOpen={isWeekModalOpen}
+          onClose={() => setIsWeekModalOpen(false)}
+          onCreateWeek={handleCreateWeek}
+          onForceAutoDraft={() => ejecutarAnticipacion(true)}
+          currentWeekName={activeWeek.name}
+          currentWeekTrucks={activeWeek.trucks || []}
+          workersList={workersList}
+          aprendizaje={aprendizaje}
+        />
+      </AlAbrir>
 
-      <GeminiAssistantModal
-        isOpen={isGeminiModalOpen}
-        onClose={() => setIsGeminiModalOpen(false)}
-        onApplyGeneratedSchedule={handleApplyGeminiSchedule}
-        activeWeekData={activeWeek}
-        workersList={workersList}
-        aprendizaje={aprendizaje}
-        semanas={allWeeks}
-      />
+      <AlAbrir abierto={isGeminiModalOpen}>
+        <GeminiAssistantModal
+          isOpen={isGeminiModalOpen}
+          onClose={() => setIsGeminiModalOpen(false)}
+          onApplyGeneratedSchedule={handleApplyGeminiSchedule}
+          activeWeekData={activeWeek}
+          workersList={workersList}
+          aprendizaje={aprendizaje}
+          semanas={allWeeks}
+        />
+      </AlAbrir>
 
-      <EnlacesWhatsAppModal
-        abierto={isShareModalOpen}
-        onCerrar={() => setIsShareModalOpen(false)}
-        workersList={workersList}
-        admin={isAdmin}
-      />
+      <AlAbrir abierto={isShareModalOpen}>
+        <EnlacesWhatsAppModal
+          abierto={isShareModalOpen}
+          onCerrar={() => setIsShareModalOpen(false)}
+          workersList={workersList}
+          admin={isAdmin}
+        />
+      </AlAbrir>
 
-      <AdminWorkerEditorModal
-        isOpen={isWorkerEditorModalOpen}
-        onClose={() => setIsWorkerEditorModalOpen(false)}
-        workersList={workersList}
-        onAddWorker={handleAddWorker}
-        onRemoveWorker={handleRemoveWorker}
-        onUpdateWorker={handleUpdateWorker}
-      />
+      <AlAbrir abierto={isWorkerEditorModalOpen}>
+        <AdminWorkerEditorModal
+          isOpen={isWorkerEditorModalOpen}
+          onClose={() => setIsWorkerEditorModalOpen(false)}
+          workersList={workersList}
+          onAddWorker={handleAddWorker}
+          onRemoveWorker={handleRemoveWorker}
+          onUpdateWorker={handleUpdateWorker}
+        />
+      </AlAbrir>
 
-      <AdminTaskEditorModal
-        isOpen={isTaskEditorModalOpen}
-        onClose={() => setIsTaskEditorModalOpen(false)}
-        activeWeekData={activeWeek}
-        workersList={workersList}
-        onSaveWeekData={handleUpdateActiveWeek}
-        onJumpToVispera={handleJumpToVispera}
-      />
+      <AlAbrir abierto={isTaskEditorModalOpen}>
+        <AdminTaskEditorModal
+          isOpen={isTaskEditorModalOpen}
+          onClose={() => setIsTaskEditorModalOpen(false)}
+          activeWeekData={activeWeek}
+          workersList={workersList}
+          onSaveWeekData={handleUpdateActiveWeek}
+          onJumpToVispera={handleJumpToVispera}
+        />
+      </AlAbrir>
       </Suspense>
 
       <AdminLoginModal
