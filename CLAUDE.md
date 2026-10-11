@@ -27,7 +27,7 @@
 - ⚠️ `npm run dev` usa la API de PRODUCCIÓN (`client/.env`): en local solo mirar; nada de fichar, marcar ni guardar.
 - Seguridad: secretos solo en Render/Atlas; todo acceso de admin por `/api/auth/*` y `requireAdmin`. Antes de mergear algo de auth o dinero, releer esta sección y `MEJORAS.md`.
 - IA (Gemini): revisar el JSON antes de aplicarlo a una semana (puede inventar asignaciones o camiones).
-- MCP de Gemini (`mcp__google-gemini__*`, solo si la sesión lo tiene): encargarle lo que hace mejor o más barato — probar los prompts del asistente (`data/editorIa.js`) con el Gemini real y contar sus tokens, una segunda opinión independiente antes de mergear dinero o auth, resumir textos enormes y buscar en Google. Antes, comprobar que responde (`count_tokens`); si falla, seguir sin él y decírselo al usuario. Nunca mandarle datos reales (nombres, teléfonos, saldos, claves): inventados, como en los tests. Lo que diga es una opinión: comprobarla antes de aplicarla.
+- MCP de Gemini (`mcp__google-gemini__*`, solo si la sesión lo tiene): encargarle lo que hace mejor o más barato — probar los prompts del asistente (`data/editorIa.js`) con el Gemini real, una segunda opinión independiente antes de mergear dinero o auth, resumir textos enormes y buscar en Google. Antes, comprobar que responde (una pregunta corta); si falla, seguir sin él y decírselo al usuario. Nunca mandarle datos reales (nombres, teléfonos, saldos, claves): inventados, como en los tests. Lo que diga es una opinión: comprobarla antes de aplicarla.
 
 ## WORKFLOW
 - El planning vive en Mongo: `logisticsData.js` (cliente/servidor) es solo semilla. Cambiar una semana = `POST /api/logistics/weeks` con el objeto COMPLETO (reemplaza el documento; control por `updatedAt`, 409 si alguien guardó antes).
