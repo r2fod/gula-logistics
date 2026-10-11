@@ -100,3 +100,44 @@ describe('AdminTaskEditorModal — tareas anteriores al formato (evento en el ca
     expect(guardado.schedule.martes.tasks[0]).toMatchObject({ text: 'Recoger sillas nuevas', event: 'Logística Preparación' });
   });
 });
+
+describe('AdminTaskEditorModal — el evento también se elige el sábado y en domingo/lunes', () => {
+  const conFinDeSemana = () => ({
+    ...semana(),
+    saturdaySpecial: { title: 'Sábado', weddings: [{ location: 'Finca Sur', truck: 'Camión Gula', details: 'Montaje', timeFrame: '10:00-12:00', assigned: [] }] },
+    sundayMonday: { title: 'D/L', tasks: [
+      { id: 'sl1', text: 'Devolver sillas', timeFrame: '09:30-10:30', targetDay: 'Lunes', assigned: [] },
+      { id: 'sl2', text: 'Limpieza de vajilla', event: 'Limpieza Eventos', timeFrame: '10:00-12:00', assigned: [] },
+    ] },
+  });
+  const abrir = () => render(<AdminTaskEditorModal isOpen onClose={() => {}} activeWeekData={conFinDeSemana()} workersList={[]} onSaveWeekData={(w) => { guardado = w; }} />);
+  const guardar = () => fireEvent.click(screen.getByRole('button', { name: /Guardar y Actualizar Planning/ }));
+  const botonDe = (seccion, nombre) => Array.from(seccion.querySelectorAll('button[aria-pressed]')).find(b => b.textContent === nombre);
+
+  it('BUG evitado: en domingo/lunes no se podía decir de qué evento es una tarea (solo había el texto)', () => {
+    abrir();
+    const cola = document.getElementById('editor-day-sundayMonday');
+    const campos = cola.querySelectorAll('input[aria-label="Evento"]');
+    expect(campos).toHaveLength(2);
+    // La primera no tenía evento: al elegirlo, el texto pasa a "EVENTO - Tarea".
+    fireEvent.click(botonDe(campos[0].closest('div.flex.flex-col.gap-2'), 'Boda Ana y Luis'));
+    // La segunda lo lleva en su campo `event`: se cambia ahí y su texto no se toca.
+    fireEvent.click(botonDe(campos[1].closest('div.flex.flex-col.gap-2'), 'Boda Eva y Pau'));
+    guardar();
+    const [primera, segunda] = guardado.sundayMonday.tasks;
+    expect(primera.text).toBe('Boda Ana y Luis - Devolver sillas');
+    expect(primera.targetDay).toBe('Lunes');
+    expect(segunda).toMatchObject({ text: 'Limpieza de vajilla', event: 'Limpieza Eventos + Boda Eva y Pau' });
+  });
+
+  it('BUG evitado: el sábado tampoco: ahora el evento se guarda en su campo, sin tocar lo demás', () => {
+    abrir();
+    const sabado = document.getElementById('editor-day-saturday') || document.body;
+    const campo = sabado.querySelector('input[placeholder^="A qué boda o evento pertenece"]');
+    expect(campo).not.toBeNull();
+    fireEvent.click(botonDe(campo.closest('div').parentElement, 'Boda Ana y Luis'));
+    guardar();
+    expect(guardado.saturdaySpecial.weddings[0]).toMatchObject({ location: 'Finca Sur', details: 'Montaje', event: 'Boda Ana y Luis' });
+  });
+});
+

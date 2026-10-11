@@ -9,7 +9,7 @@ import { tareasDelPlanning } from './optimizadorPlanning';
 import { limitesDe, restriccionesDe } from './disponibilidad';
 import { getWeekRange } from './taskPlanning';
 import { EVENT_CATEGORIES, parseEventAndTask } from './eventNaming';
-import { PREFIJO_ID, aIso, fechaLocal, sumarDias } from './fechasSemana';
+import { PREFIJO_ID, aIso, fechaLocal, idLibreDeTarea, sumarDias } from './fechasSemana';
 import { plano } from '../utils/texto';
 
 const DIAS_LISTA = ['martes', 'miercoles', 'jueves', 'viernes'];
@@ -97,12 +97,6 @@ export function eventosQueFaltan(semana, apuntes = [], { equipo = [], ahora = ne
 // libre de su día, y el pax de los eventos nuevos en week.events.
 export function anadirAlPlanning(semana, elegidas = [], eventos = []) {
   const nueva = JSON.parse(JSON.stringify(semana || {}));
-  const idLibre = (lista, prefijo) => {
-    const usados = new Set(lista.map(t => String(t?.id || '')));
-    let n = lista.length + 1;
-    while (usados.has(`${prefijo}${n}`)) n += 1;
-    return `${prefijo}${n}`;
-  };
   elegidas.forEach(({ lista, tarea }) => {
     if (lista === 'sabado') {
       nueva.saturdaySpecial = nueva.saturdaySpecial || { title: '', weddings: [] };
@@ -112,13 +106,13 @@ export function anadirAlPlanning(semana, elegidas = [], eventos = []) {
     if (lista === 'cola') {
       nueva.sundayMonday = nueva.sundayMonday || { title: '', tasks: [] };
       const tareas = nueva.sundayMonday.tasks || [];
-      nueva.sundayMonday.tasks = [...tareas, { ...tarea, id: idLibre(tareas, 'sl') }];
+      nueva.sundayMonday.tasks = [...tareas, { ...tarea, id: idLibreDeTarea(tareas, 'sl') }];
       return;
     }
     nueva.schedule = nueva.schedule || {};
     const dia = nueva.schedule[lista] || { title: '', badge: '', tasks: [] };
     const tareas = dia.tasks || [];
-    nueva.schedule[lista] = { ...dia, tasks: [...tareas, { ...tarea, id: idLibre(tareas, PREFIJO_ID[lista]) }] };
+    nueva.schedule[lista] = { ...dia, tasks: [...tareas, { ...tarea, id: idLibreDeTarea(tareas, PREFIJO_ID[lista]) }] };
   });
   const conPax = eventos.filter(e => e.pax && !(nueva.events || []).some(x => mismoEvento(x?.name, e.nombre)));
   if (conPax.length) nueva.events = [...(nueva.events || []), ...conPax.map(e => ({ name: e.nombre, pax: e.pax }))];

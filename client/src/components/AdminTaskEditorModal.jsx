@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Calendar, ChevronDown, ChevronUp, Edit3, MapPin, Plus, Save, Trash2, Users, Eye, EyeOff } from 'lucide-react';
 import { getTaskListForDay, buildTaskListPatch } from '../data/taskPlanning';
-import { collectEventNames, splitEventNames, parseEventAndTask, EVENT_CATEGORIES } from '../data/eventNaming';
+import { collectEventNames, EVENT_CATEGORIES } from '../data/eventNaming';
 import Modal from './ui/Modal';
 import SelectorPosicion from './ui/SelectorPosicion';
 import CabeceraModal from './ui/CabeceraModal';
 import BotonCerrar from './ui/BotonCerrar';
 import Boton from './ui/Boton';
-import { Campo, Input, Selector, AreaTexto } from './ui/Campo';
+import { Input, Selector } from './ui/Campo';
 import { enlaceMaps } from '../data/mapas';
+import EventoYTarea from './editor/EventoYTarea';
+import CampoEvento from './editor/CampoEvento';
 
 const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 
@@ -139,6 +141,10 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
   }, [localWeek, isOpen]);
 
   if (!isOpen || !localWeek) return null;
+
+  // Los eventos de la semana, para elegir a cuál pertenece cada tarea (días de diario,
+  // sábado y domingo/lunes).
+  const eventosDeLaSemana = collectEventNames(localWeek);
 
   // Estas cinco funciones manejaban por separado "sundayMonday" (domingo Y
   // lunes comparten una sola lista, bajo weekData.sundayMonday.tasks) frente
@@ -519,7 +525,6 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
               
               <div className="p-2 sm:p-4 space-y-3">
                 {currentTasks.map((task, idx) => {
-                  const textValue = typeof task === 'object' ? task.text : task;
                   const timeValue = typeof task === 'object' ? (task.timeFrame || '') : '';
                   const locationValue = typeof task === 'object' ? (task.location || '') : '';
                   const mapsValue = typeof task === 'object' ? (task.mapsUrl || '') : '';
@@ -544,92 +549,12 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                       </div>
                       <div className="mb-4 pr-16 flex items-center gap-3">
                       <div className="flex-1 min-w-0 space-y-2">
-                        {/* Event / Task Split Inputs */}
-                        {(() => {
-                          let eventName = '';
-                          let specificTask = textValue;
-                          if (textValue && textValue.includes(' - ')) {
-                            const parts = textValue.split(' - ');
-                            eventName = parts[0];
-                            specificTask = parts.slice(1).join(' - ');
-                          }
-
-                          // Tarea de una semana anterior al formato "Evento - Tarea" que ya lleva su
-                          // evento en el campo `event` (sin él en el texto): el evento se edita EN ESE
-                          // CAMPO y el texto no se toca. Los fichajes ya hechos guardan el texto tal
-                          // cual, así que reescribirlo (poniéndole "Evento - " delante) los desligaba
-                          // de la tarea y de su evento.
-                          const modoCampo = typeof task === 'object' && task !== null && !parseEventAndTask(textValue || '').explicit
-                            && typeof task.event === 'string'; // aunque se vacíe: sigue siendo una tarea de "campo"
-                          if (modoCampo) eventName = task.event;
-
-                          const handleSplitChange = (newEv, newTk) => {
-                            if (modoCampo) {
-                              if (newTk !== textValue) handleTaskChange(dayKey, idx, newTk);
-                              if (newEv !== eventName) handleTaskMetadataChange(dayKey, idx, 'event', newEv);
-                              return;
-                            }
-                            const combined = newEv.trim() ? `${newEv} - ${newTk}` : newTk;
-                            handleTaskChange(dayKey, idx, combined);
-                          };
-
-                          // Una tarea puede ser de varios eventos: se guardan unidos con " + "
-                          // ("Boda A + Boda B") y su coste se reparte entre ellos. Los chips
-                          // son un atajo: tocar uno lo añade o lo quita de la tarea.
-                          const selectedEvents = splitEventNames(eventName);
-                          const eventChips = [...new Set([...collectEventNames(localWeek), ...selectedEvents])];
-                          const toggleEvent = (name) => {
-                            const next = selectedEvents.includes(name) ? selectedEvents.filter(n => n !== name) : [...selectedEvents, name];
-                            handleSplitChange(next.join(' + '), specificTask);
-                          };
-
-                          return (
-                            <div className="flex flex-col gap-2">
-                              <div>
-                                <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Evento (Ej: Boda Ana y Luis) — si es de varios, sepáralos con +</label>
-                                <div className="relative">
-                                  <div className="flex flex-nowrap overflow-x-auto gap-2 mb-2 w-full pb-2 scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x">
-                                    {eventChips.map(name => {
-                                      const on = selectedEvents.includes(name);
-                                      return (
-                                        <button
-                                          key={name}
-                                          type="button"
-                                          aria-pressed={on}
-                                          onClick={() => toggleEvent(name)}
-                                          className={`shrink-0 px-3.5 py-1.5 rounded-full text-[11px] sm:text-xs font-bold border transition-colors snap-start ${
-                                            on ? 'bg-amber-500 border-amber-500 text-slate-950 shadow-md shadow-amber-500/20' : 'bg-slate-900/80 border-slate-700/50 text-slate-300 hover:text-white hover:bg-slate-800'
-                                          }`}
-                                        >
-                                          {name}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                  {/* Right fade gradient to indicate scroll */}
-                                  <div className="absolute top-0 right-0 bottom-2 w-8 bg-gradient-to-l from-slate-950 to-transparent pointer-events-none rounded-r-lg"></div>
-                                </div>
-                                <Input
-                                  type="text"
-                                  value={eventName}
-                                  onChange={(e) => handleSplitChange(e.target.value, specificTask)}
-                                  placeholder="Dejar vacío si es una Tarea General"
-                                  tamano="sm" redondeo="lg" texto="destacado"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Descripción de la Tarea Específica</label>
-                                <AreaTexto
-                                  rows={2}
-                                  value={specificTask}
-                                  onChange={(e) => handleSplitChange(eventName, e.target.value)}
-                                  placeholder="Ej: Carga de camión y montaje de carpas..."
-                                  tamano="sm" redondeo="lg" texto="suave" className="w-full resize-y min-h-[60px]"
-                                />
-                              </div>
-                            </div>
-                          );
-                        })()}
+                        <EventoYTarea
+                          tarea={task}
+                          eventos={eventosDeLaSemana}
+                          onCambiarTexto={(texto) => handleTaskChange(dayKey, idx, texto)}
+                          onCambiarEvento={(evento) => handleTaskMetadataChange(dayKey, idx, 'event', evento)}
+                        />
                         <div className="flex flex-col sm:flex-row gap-2">
                           <TimeRangeEditor
                             value={timeValue}
@@ -797,6 +722,12 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                         tamano="xs" acento="rose" borde="marcado"
                       />
                     </div>
+                    <CampoEvento
+                      valor={w.event || ''}
+                      eventos={eventosDeLaSemana}
+                      onCambiar={(evento) => handleWeddingChange(idx, 'event', evento)}
+                      placeholder="A qué boda o evento pertenece (para el coste por evento)"
+                    />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Horario</label>
@@ -898,7 +829,6 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
 
             <div className="p-2 sm:p-4 space-y-3">
               {(localWeek.sundayMonday.tasks || []).map((task, idx) => {
-                const textValue = typeof task === 'object' ? task.text : task;
                 const timeValue = typeof task === 'object' ? (task.timeFrame || '') : '';
                 const locationValue = typeof task === 'object' ? (task.location || '') : '';
                 const mapsValue = typeof task === 'object' ? (task.mapsUrl || '') : '';
@@ -921,12 +851,11 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                     </div>
 
                     <div className="flex-1 min-w-0 space-y-2 pr-14">
-                      <AreaTexto
-                        rows={3}
-                        value={textValue}
-                        onChange={(e) => handleTaskChange('sundayMonday', idx, e.target.value)}
-                        placeholder="Descripción de la tarea..."
-                        tamano="sm" redondeo="lg" acento="emerald" texto="suave" className="w-full resize-y min-h-[80px]"
+                      <EventoYTarea
+                        tarea={task}
+                        eventos={eventosDeLaSemana}
+                        onCambiarTexto={(texto) => handleTaskChange('sundayMonday', idx, texto)}
+                        onCambiarEvento={(evento) => handleTaskMetadataChange('sundayMonday', idx, 'event', evento)}
                       />
                       <div className="flex flex-col sm:flex-row gap-2">
                         <TimeRangeEditor

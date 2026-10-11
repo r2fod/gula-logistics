@@ -74,6 +74,7 @@ export default function PartnerDashboardView({
   onCerrarAnticipacionAviso,
 
   onUpdateWeek,
+  onPasarADiaHabil = null,
   workersList = [],
   clockEntries = [],
   isAdmin = false,
@@ -360,7 +361,7 @@ export default function PartnerDashboardView({
         />
       )}
 
-      {activeTab === 'schedule' && <AvisoFestivos semana={activeWeekData} />}
+      {activeTab === 'schedule' && <AvisoFestivos semana={activeWeekData} onPasar={adminUnlocked ? onPasarADiaHabil : null} />}
 
       {activeTab === 'schedule' && adminUnlocked && (
         <DisponibilidadSemana

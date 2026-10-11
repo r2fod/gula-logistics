@@ -13,6 +13,7 @@ import Cargando from './components/ui/Cargando';
 import AlAbrir from './components/ui/AlAbrir';
 import { precargarEnReposo } from './utils/precargar';
 import { cargarFestivosLocales } from './data/festivosGuardados';
+import { pasarADiaHabil } from './data/festivosSemana';
 import { pestanaDesdeUrl } from './components/panel/pestanas';
 import AdminLoginModal from './components/AdminLoginModal';
 // El panel de admin/socias y sus editores se descargan solo cuando hacen falta: un
@@ -115,6 +116,7 @@ export default function App() {
     activeWeekId,
     setActiveWeekId,
     activeWeek,
+    updateWeeks,
     handleUpdateActiveWeek,
     toggleTask,
     markTaskCompleted,
@@ -547,6 +549,15 @@ export default function App() {
   // enseñando la semana de antes, y "Guardar" la mandaba con la clave de la otra
   // semana (el servidor lo rechazaba como conflicto y se perdían los cambios). Ahora
   // se avisa de que lo no guardado se pierde, se cierra, se cambia y se reabre.
+  // Una recogida o devolución puesta en festivo, al día que abren (Cuadrante, aviso de
+  // festivos). Puede caer en otra semana: se guardan las dos a la vez.
+  const handlePasarADiaHabil = async (dia, indice) => {
+    const cambio = pasarADiaHabil(allWeeks, activeWeekId, dia, indice);
+    if (cambio.error) return cambio;
+    // Si no se guarda, updateWeeks ya lo ha avisado.
+    return (await updateWeeks(cambio.semanas)) ? cambio : {};
+  };
+
   const handleJumpToVispera = async () => {
     const vispera = semanaDeLaVispera(allWeeks, activeWeek);
     if (!vispera) {
@@ -726,6 +737,7 @@ export default function App() {
         activeWeekId={activeWeekId}
         onSelectWeek={setActiveWeekId}
         onUpdateWeek={handleUpdateActiveWeek}
+        onPasarADiaHabil={handlePasarADiaHabil}
         onRegenerateDraft={regenerarBorrador}
         onEliminarSemana={eliminarSemana}
         anticipacionAviso={avisoAnticipacion}
