@@ -15,6 +15,7 @@ import rosterRoutes from './routes/roster.routes.js';
 import aiMemoryRoutes from './routes/aiMemory.routes.js';
 import iaRoutes from './routes/ia.routes.js';
 import { usarCuerposJson, erroresDeCuerpo } from './middleware/cuerpoJson.js';
+import { mantenerDespierto } from './mantenerDespierto.js';
 
 dotenv.config();
 
@@ -85,4 +86,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.listen(PORT, () => console.log(`Servidor de Gula Logistics en puerto ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Servidor de Gula Logistics en puerto ${PORT}`);
+  mantenerDespierto(); // en Render: que no se duerma (ver mantenerDespierto.js)
+});
