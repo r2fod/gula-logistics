@@ -40,3 +40,34 @@ describe('FleetManagerModal — PDF del alquiler', () => {
     expect(ventana.close).toHaveBeenCalled();
   });
 });
+
+describe('FleetManagerModal — el día de recogida y de devolución, con festivos', () => {
+  // Semana del 6 al 11 de octubre de 2026: viernes 9 y lunes 12 (cola) son festivos.
+  const conFechas = (camion) => ({ id: 'week_6', meta: { dateRange: 'Del 6 al 11 de Octubre de 2026' }, trucks: [{ name: 'Camión Alquiler', tag: 'ALQUILER', ...camion }] });
+  const abrir = (camion = {}) => {
+    const onUpdateWeek = vi.fn();
+    render(<FleetManagerModal isOpen onClose={vi.fn()} activeWeekData={conFechas(camion)} onUpdateWeek={onUpdateWeek} />);
+    const [recogida, devolucion] = screen.getAllByRole('combobox').filter(s => [...s.options].some(o => /Martes/.test(o.textContent)));
+    return { recogida, devolucion, onUpdateWeek };
+  };
+  const opcion = (selector, texto) => [...selector.options].find(o => o.textContent.startsWith(texto));
+
+  it('BUG evitado: un festivo no se puede elegir (el alquiler cierra); cada día lleva su número', () => {
+    const { recogida, devolucion, onUpdateWeek } = abrir();
+    expect(opcion(devolucion, 'Lunes').textContent).toBe('Lunes 12 · festivo'); // el lunes de la cola
+    expect(opcion(devolucion, 'Lunes').disabled).toBe(true);
+    expect(opcion(devolucion, 'Viernes').disabled).toBe(true);
+    expect(opcion(devolucion, 'Martes').textContent).toBe('Martes 6');
+    expect(opcion(recogida, 'Lunes').textContent).toBe('Lunes 5'); // el de la víspera: no es festivo
+    expect(opcion(recogida, 'Lunes').disabled).toBe(false);
+    fireEvent.change(devolucion, { target: { value: 'Domingo' } });
+    expect(onUpdateWeek).toHaveBeenCalledWith('week_6', { trucks: [expect.objectContaining({ returnDay: 'Domingo' })] });
+  });
+
+  it('si el día que ya estaba puesto es festivo, lo avisa (y se puede cambiar)', () => {
+    const { devolucion } = abrir({ returnDay: 'Lunes' });
+    expect(devolucion.value).toBe('Lunes');
+    expect(screen.getByRole('alert')).toHaveTextContent('Es festivo (Fiesta Nacional de España): el alquiler cierra. Elige otro día.');
+  });
+});
+

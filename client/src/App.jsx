@@ -12,6 +12,7 @@ import BackgroundAnimation from './components/BackgroundAnimation';
 import Cargando from './components/ui/Cargando';
 import AlAbrir from './components/ui/AlAbrir';
 import { precargarEnReposo } from './utils/precargar';
+import { cargarFestivosLocales } from './data/festivosGuardados';
 import { pestanaDesdeUrl } from './components/panel/pestanas';
 import AdminLoginModal from './components/AdminLoginModal';
 // El panel de admin/socias y sus editores se descargan solo cuando hacen falta: un
@@ -209,6 +210,7 @@ export default function App() {
       if (!semanas) return { ok: false };
       // Solo lo usa el admin: se carga aparte (generador + optimizador) para no pesar en la vista del trabajador.
       const { anticiparSemanas } = await import('./data/anticipacion');
+      await cargarFestivosLocales(); // el generador mueve los alquileres que caen en festivo
       const r = await anticiparSemanas({
         semanas, hoy: new Date(), roster: workersList,
         leerApuntes: fetchCalendarioApuntes, crearBorrador: createDraftWeekInAPI,
@@ -526,6 +528,8 @@ export default function App() {
 
   // Con el panel de admin ya en pantalla, sus ventanas se van bajando en segundo plano.
   useEffect(() => (isAdmin ? precargarEnReposo(Object.values(VENTANAS)) : undefined), [isAdmin]);
+  // Y sus festivos locales (los usan el generador de borradores, el Cuadrante y la flota).
+  useEffect(() => { if (isAdmin) cargarFestivosLocales({ forzar: true }); }, [isAdmin]);
 
   // Salir cierra también el enlace de socias de este navegador y vuelve a la
   // vista pública: sin acceso, el panel ya no tiene saldos que enseñar.

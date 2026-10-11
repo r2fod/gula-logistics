@@ -15,6 +15,7 @@ import AdminClockEditModal from './AdminClockEditModal';
 import AvisoDeshacerIa from './panel/AvisoDeshacerIa';
 import BackgroundAnimation from './BackgroundAnimation';
 import AvisoTurnosLargos from './dashboard/fichajes/AvisoTurnosLargos';
+import AvisoFestivos from './planning/AvisoFestivos';
 import SemanaBorradorBanner from './SemanaBorradorBanner';
 import RevisionIaBorrador from './panel/RevisionIaBorrador';
 import CabeceraPanel from './panel/CabeceraPanel';
@@ -358,6 +359,8 @@ export default function PartnerDashboardView({
           onUpdateWeek={actualizarSemana}
         />
       )}
+
+      {activeTab === 'schedule' && <AvisoFestivos semana={activeWeekData} />}
 
       {activeTab === 'schedule' && adminUnlocked && (
         <DisponibilidadSemana

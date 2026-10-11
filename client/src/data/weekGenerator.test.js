@@ -291,17 +291,55 @@ describe('generarBorrador — recogidas de alquiler del mismo día', () => {
   });
 });
 
+describe('generarBorrador — alquileres en día festivo (cierran)', () => {
+  // Semana del 6 al 11 de octubre de 2026: el viernes 9 (Comunitat Valenciana) y el
+  // lunes 12 de la cola (Fiesta Nacional) son festivos.
+  const generarOctubre = (apuntes, extra = {}) =>
+    generarBorrador({ inicio: new Date(2026, 9, 6), apuntes, roster: ROSTER, plantilla: PLANTILLA, nombre: 'Semana 6', ahora: new Date(2026, 9, 5, 12, 0), festivos: [], ...extra });
+  const textos = (lista) => lista.map(t => t.text || t.details);
+
+  it('BUG evitado: la devolución apuntada en festivo pasa al primer día que abren, y la recogida al anterior', () => {
+    const { week, resumen } = generarOctubre([
+      { id: 'a', fecha: '2026-10-09', tipo: 'recogida', titulo: 'Devolver generador' },
+      { id: 'b', fecha: '2026-10-09', tipo: 'recogida', titulo: 'Recoger furgoneta' },
+    ]);
+    expect(textos(week.schedule.viernes.tasks)).toEqual([]);
+    expect(textos(week.schedule.jueves.tasks)).toEqual(['Logística Preparación - Recoger furgoneta']);
+    expect(textos(week.saturdaySpecial.weddings)).toEqual(['Logística Preparación — Devolver generador']);
+    expect(resumen.avisos).toEqual(expect.arrayContaining([
+      'La devolución «Devolver generador» estaba el viernes 9, festivo (Día de la Comunitat Valenciana): se ha pasado al sábado 10.',
+      'La recogida «Recoger furgoneta» estaba el viernes 9, festivo (Día de la Comunitat Valenciana): se ha pasado al jueves 8.',
+    ]));
+  });
+
+  it('si el día que abren ya es de otra semana (lunes de cola festivo), se queda donde está y se avisa', () => {
+    const { week, resumen } = generarOctubre([{ id: 'a', fecha: '2026-10-12', tipo: 'recogida', titulo: 'Devolver sillas' }]);
+    expect(week.sundayMonday.tasks.map(t => `${t.targetDay}: ${t.text}`)).toEqual(['Lunes: Logística Preparación - Devolver sillas']);
+    expect(resumen.avisos).toContain('La devolución «Devolver sillas» está el lunes 12, festivo (Fiesta Nacional de España), y los alquileres cierran: hazla el martes 13, que ya es de otra semana.');
+  });
+
+  it('también con un festivo local añadido por el admin; en día normal no se toca ni se avisa', () => {
+    const apuntes = [{ id: 'a', fecha: '2026-10-07', tipo: 'recogida', titulo: 'Devolver mesas' }];
+    const normal = generarOctubre(apuntes);
+    expect(textos(normal.week.schedule.miercoles.tasks)).toHaveLength(1);
+    expect(normal.resumen.avisos.some(a => /festivo/.test(a))).toBe(false);
+    const conLocal = generarOctubre(apuntes, { festivos: [{ fecha: '2026-10-07', nombre: 'Fiesta local' }] });
+    expect(textos(conLocal.week.schedule.miercoles.tasks)).toHaveLength(0);
+    expect(textos(conLocal.week.schedule.jueves.tasks)).toEqual(['Logística Preparación - Devolver mesas']);
+  });
+});
+
 describe('generarBorrador — producciones (rodajes) y cumpleaños', () => {
   it('BUG evitado: las producciones y los cumpleaños del calendario entran como eventos (antes se ignoraban)', () => {
     const { week, resumen } = generar([
       { id: 'p', fecha: '2026-09-23', tipo: 'produccion', titulo: 'Produ Faro 40 PAX', pax: 40, hora: '13:00' },
-      { id: 'c', fecha: '2026-09-24', tipo: 'cumpleanos', titulo: 'Cumple Leo', pax: 20, hora: '14:00' },
+      { id: 'c', fecha: '2026-09-24', tipo: 'cumpleanos', titulo: 'Cumple Nico', pax: 20, hora: '14:00' },
     ]);
     expect(resumen.eventos).toBe(2);
     const textos = todas(week).map(t => t.text);
     expect(textos).toContain('Produ Faro - Carga de material');
-    expect(textos).toContain('Cumple Leo - Recogida y vuelta a base');
-    expect(week.events).toEqual([{ name: 'Produ Faro', pax: 40 }, { name: 'Cumple Leo', pax: 20 }]);
+    expect(textos).toContain('Cumple Nico - Recogida y vuelta a base');
+    expect(week.events).toEqual([{ name: 'Produ Faro', pax: 40 }, { name: 'Cumple Nico', pax: 20 }]);
   });
 
   it('una producción de varios días (con «hasta») se sirve cada día de la semana que dura; apuntada día a día no se fusiona', () => {
@@ -322,7 +360,7 @@ describe('generarBorrador — producciones (rodajes) y cumpleaños', () => {
   it('nombres: "Producción"/"Cumpleaños" delante salvo que el título ya empiece así', () => {
     expect(nombreDeEvento({ tipo: 'produccion', titulo: 'NETFILM' })).toBe('Producción Netfilm');
     expect(nombreDeEvento({ tipo: 'produccion', titulo: 'Rodaje Sur' })).toBe('Rodaje Sur');
-    expect(nombreDeEvento({ tipo: 'cumpleanos', titulo: 'Leo' })).toBe('Cumpleaños Leo');
+    expect(nombreDeEvento({ tipo: 'cumpleanos', titulo: 'Nico' })).toBe('Cumpleaños Nico');
   });
 
   it('con tareas ya fijas, el reparto no pone a nadie a la vez que en ellas', () => {

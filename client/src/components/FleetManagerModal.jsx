@@ -6,11 +6,46 @@ import Modal from './ui/Modal';
 import BotonCerrar from './ui/BotonCerrar';
 import { Input, Selector } from './ui/Campo';
 import { useDialog } from '../contexts/DialogContext';
+import { fechaLocal } from '../data/fechasSemana';
+import { festivoEn } from '../data/festivos';
+import { fechaDeDiaDeFlota } from '../data/festivosSemana';
+import { useFestivosLocales } from '../hooks/useFestivosLocales';
+
+const DIAS_DE_LA_SEMANA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+// Día de la recogida o de la devolución de un alquiler. Cada día lleva su número y, si
+// es festivo, lo dice y no se puede elegir: ese día el alquiler está cerrado. Si el que
+// ya estaba puesto resulta ser festivo, avisa.
+function SelectorDiaAlquiler({ semana, uso, valor, onCambiar, festivos }) {
+  const dias = DIAS_DE_LA_SEMANA.map((dia) => {
+    const fecha = fechaDeDiaDeFlota(semana, dia, uso);
+    return { dia, fecha, festivo: fecha ? festivoEn(fecha, festivos) : null };
+  });
+  const elegido = dias.find(d => d.dia === valor);
+  return (
+    <>
+      <Selector value={valor || ''} onChange={(e) => onCambiar(e.target.value)} tamano="2xs" redondeo="lg" fondo="medio" borde="marcado">
+        <option value="">-- Día --</option>
+        {dias.map(({ dia, fecha, festivo }) => (
+          <option key={dia} value={dia} disabled={!!festivo && dia !== valor}>
+            {dia}{fecha ? ` ${fechaLocal(fecha).getDate()}` : ''}{festivo ? ' · festivo' : ''}
+          </option>
+        ))}
+      </Selector>
+      {elegido?.festivo && (
+        <p role="alert" className="mt-1 text-[11px] leading-snug text-amber-300">
+          Es festivo ({elegido.festivo.nombre}): el alquiler cierra. Elige otro día.
+        </p>
+      )}
+    </>
+  );
+}
 
 export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onUpdateWeek }) {
   const { confirm, alert } = useDialog();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  const festivos = useFestivosLocales();
 
   if (!isOpen || !activeWeekData) return null;
 
@@ -59,8 +94,6 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
   // El PDF solo lo da el servidor con la sesión de admin: se pide y se abre en otra pestaña.
   const verDocumento = (ruta) => abrirEnPestanaNuevaAlLlegar(() => urlLocalDeDocumento(ruta))
     .catch((err) => alert(`No se pudo abrir el documento. ${err.message}`, { type: 'warning' }));
-
-  const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
   return (
     <Modal onCerrar={onClose} ancho="4xl" capa={100} disposicion="columna" botonCerrar={false}>
@@ -170,14 +203,7 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="block text-[11px] text-slate-500 mb-1">Día</label>
-                        <Selector
-                          value={truck.pickupDay || ''}
-                          onChange={(e) => handleUpdateTruck(idx, 'pickupDay', e.target.value)}
-                          tamano="2xs" redondeo="lg" fondo="medio" borde="marcado"
-                        >
-                          <option value="">-- Día --</option>
-                          {daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}
-                        </Selector>
+                        <SelectorDiaAlquiler semana={activeWeekData} uso="recogida" valor={truck.pickupDay} festivos={festivos} onCambiar={(dia) => handleUpdateTruck(idx, 'pickupDay', dia)} />
                       </div>
                       <div>
                         <label className="block text-[11px] text-slate-500 mb-1">Hora (Ej: 10:00)</label>
@@ -196,14 +222,7 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="block text-[11px] text-slate-500 mb-1">Día</label>
-                        <Selector
-                          value={truck.returnDay || ''}
-                          onChange={(e) => handleUpdateTruck(idx, 'returnDay', e.target.value)}
-                          tamano="2xs" redondeo="lg" fondo="medio" borde="marcado"
-                        >
-                          <option value="">-- Día --</option>
-                          {daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}
-                        </Selector>
+                        <SelectorDiaAlquiler semana={activeWeekData} uso="devolucion" valor={truck.returnDay} festivos={festivos} onCambiar={(dia) => handleUpdateTruck(idx, 'returnDay', dia)} />
                       </div>
                       <div>
                         <label className="block text-[11px] text-slate-500 mb-1">Hora límite</label>

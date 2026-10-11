@@ -26,6 +26,7 @@ import { candidatosDePerfil, clasificarEquipo } from './equipoRoles';
 import { LIMITES_POR_DEFECTO, restriccionesDelEquipo } from './disponibilidad';
 import { plano } from '../utils/texto';
 import { PREFIJO_ID, aIso, fechaLocal, formatearRango, sumarDias } from './fechasSemana';
+import { diaHabilCercano, festivoEn, festivosLocales } from './festivos';
 
 // Se siguen exportando desde aquí (tests y quien ya los importaba).
 export { PREFIJO_ID, martesDeSemana, formatearRango, weekIdParaInicio } from './fechasSemana';
@@ -151,7 +152,7 @@ function extraerVacaciones(apuntes, roster) {
 // { inicio: Date (martes), apuntes, roster: [{name, role}], plantilla: {team, trucks}, nombre,
 //   restricciones (disponibilidad.js), limites, fijas (tareas ya asignadas que el reparto
 //   respeta como ocupadas: asignarEquipo) }
-export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla = {}, nombre = 'Semana', ahora = new Date(), restricciones = [], limites = LIMITES_POR_DEFECTO, fijas = [] }) {
+export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla = {}, nombre = 'Semana', ahora = new Date(), restricciones = [], limites = LIMITES_POR_DEFECTO, fijas = [], festivos = festivosLocales() }) {
   const inicioMartes = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate());
   const fechas = {};
   DIAS.forEach((d, i) => { fechas[d] = sumarDias(inicioMartes, i); });
@@ -287,8 +288,24 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
   // Las del mismo día y hora van JUNTAS en una tarea de una sola persona (recoge la furgo
   // y con ella el generador), con media hora más por parada. Antes salía una tarea por
   // cosa a la vez y cada una se llevaba a alguien distinto.
+  // En festivo los alquileres cierran: la devolución pasa al primer día que abren y la
+  // recogida, al último anterior (hay que tenerlo antes del evento). Si ese día ya no
+  // es de esta semana, se deja donde estaba y se avisa (antes salía en el festivo sin más).
+  const elDia = (iso) => `${NOMBRE_DIA[diaDeFecha(iso)].toLowerCase()} ${fechaLocal(iso).getDate()}`;
+  const alquileresEnDiaHabil = alquileres.map(r => {
+    const festivo = festivoEn(r.fecha, festivos);
+    if (!festivo) return r;
+    const otroDia = diaHabilCercano(r.fecha, r.esDevolucion ? 1 : -1, festivos);
+    const que = `${r.esDevolucion ? 'La devolución' : 'La recogida'}${r.titulo ? ` «${r.titulo}»` : ' de alquiler'}`;
+    if (enSemana(otroDia)) {
+      avisos.push(`${que} estaba el ${elDia(r.fecha)}, festivo (${festivo.nombre}): se ha pasado al ${elDia(otroDia)}.`);
+      return { ...r, fecha: otroDia };
+    }
+    avisos.push(`${que} está el ${elDia(r.fecha)}, festivo (${festivo.nombre}), y los alquileres cierran: hazla el ${elDia(otroDia)}, que ya es de otra semana.`);
+    return r;
+  });
   const grupos = new Map();
-  alquileres.forEach(r => {
+  alquileresEnDiaHabil.forEach(r => {
     const clave = `${r.fecha}|${r.hora ?? ''}|${r.esDevolucion ? 'devolver' : 'recoger'}`;
     if (!grupos.has(clave)) grupos.set(clave, []);
     grupos.get(clave).push(r);
