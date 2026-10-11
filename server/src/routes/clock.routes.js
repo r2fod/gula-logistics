@@ -19,39 +19,48 @@ const limiteBorrar = limitePorIp({ max: 200, ventanaMs: DIEZ_MIN });
 // con la hora mal). El admin sí puede apuntar fechas antiguas a mano.
 const DIAS_ATRAS_MAX = 45;
 const HORAS_FUTURO_MAX = 12;
+const TARIFA_POR_DEFECTO = 10;
 const plano = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
 // ¿Llega con el enlace personal de esa persona? (cabecera X-Enlace: el token del enlace
 // ?worker=…&t=…, cuyo `w` es el id de su ficha de Saldos: "Ana Gula" → ana-gula; las
 // fichas antiguas van sin el "-gula"). `exigido`: el admin ha activado que sea obligatorio.
-async function firmaDelFichaje(req, workerName) {
+const idDe = (nombre) => plano(nombre).replace(/\s+/g, '-');
+async function firmaDelFichaje(req, workerName, equipo = []) {
   const payload = verifyToken(req.headers['x-enlace'] || null);
   const config = mongoose.connection.readyState === 1 ? await AdminConfig.findOne({ configKey: 'admin' }) : null;
   // Sin tildes en los dos lados: el id de la ficha las conserva ("sofía-gula") y aquí
   // se quitaban, así que el enlace de "Sofía" nunca firmaba (ni valía si se exige).
-  // Vale también su nombre seguido de más ("marta" → "marta-lopez").
-  const id = plano(workerName).replace(/\s+/g, '-');
+  // Vale también su nombre seguido de más ("marta" → "marta-lopez"), salvo que ese
+  // enlace sea de otra persona del equipo con el nombre más largo: el de "Ana Luisa"
+  // (ana-luisa-gula) firmaba los fichajes de "Ana".
+  const id = idDe(workerName);
   const w = plano(payload?.w);
+  const deOtro = equipo.map(o => idDe(o.name)).some(o => o.length > id.length && (w === o || w.startsWith(`${o}-`)));
   const esSuyo = payload?.role === 'trabajador' && !!id
-    && (w === id || w === id.replace(/-gula$/, '') || w.startsWith(`${id}-`))
+    && (w === id || w === id.replace(/-gula$/, '') || (w.startsWith(`${id}-`) && !deOtro))
     && (!config || payload.tv === (config.trabajadoresVersion || 1));
   return { firmado: !!esSuyo, exigido: !!config?.exigirEnlaceAlFichar };
 }
 
+// El equipo guardado ([] sin base o sin equipo: entonces no se comprueba nada con él).
+async function equipoGuardado() {
+  if (mongoose.connection.readyState !== 1) return [];
+  return (await TeamRoster.findOne({ key: 'roster' }))?.workers || [];
+}
+
 // Por qué no vale un fichaje que llega sin sesión, o null si vale. Sin equipo guardado
 // (o sin base) no se comprueba el nombre: mejor guardar que perder un fichaje.
-// `admin`: llega con una sesión de admin vigente (esAdminVigente).
-async function motivoParaRechazar(datos, admin) {
+// `admin`: llega con una sesión de admin vigente (esAdminVigente). `persona`: quien ficha,
+// de `equipo` (el guardado), si está.
+function motivoParaRechazar(datos, admin, equipo, persona) {
   const momento = new Date(datos.timestamp).getTime();
   if (!datos.timestamp || Number.isNaN(momento)) return 'timestamp no es una fecha válida';
   if (admin) return null;
   const ahora = Date.now();
   if (momento > ahora + HORAS_FUTURO_MAX * 3600 * 1000) return 'La fecha del fichaje está en el futuro';
   if (momento < ahora - DIAS_ATRAS_MAX * 24 * 3600 * 1000) return 'Fichaje demasiado antiguo: lo tiene que apuntar el administrador';
-  if (mongoose.connection.readyState === 1) {
-    const equipo = (await TeamRoster.findOne({ key: 'roster' }))?.workers || [];
-    if (equipo.length && !equipo.some(w => plano(w.name) === plano(datos.workerName))) return 'Esa persona no está en el equipo';
-  }
+  if (equipo.length && !persona) return 'Esa persona no está en el equipo';
   return null;
 }
 
@@ -101,7 +110,9 @@ router.post('/', limiteFichar, async (req, res) => {
   try {
     const newEntryData = { ...req.body };
     const admin = await esAdminVigente(req);
-    const motivo = await motivoParaRechazar(newEntryData, admin);
+    const equipo = await equipoGuardado();
+    const persona = equipo.find(w => plano(w.name) === plano(newEntryData.workerName)) || null;
+    const motivo = motivoParaRechazar(newEntryData, admin, equipo, persona);
     if (motivo) return res.status(400).json({ error: motivo });
     if (!newEntryData.id) {
       newEntryData.id = crypto.randomUUID();
@@ -119,7 +130,7 @@ router.post('/', limiteFichar, async (req, res) => {
     // Dar por bueno un turno largo es cosa del admin (PUT): fichando no se puede.
     delete newEntryData.revisado;
     // Si va firmado con su enlace lo decide el servidor, no lo que diga la petición.
-    const firma = await firmaDelFichaje(req, newEntryData.workerName);
+    const firma = await firmaDelFichaje(req, newEntryData.workerName, equipo);
     if (firma.exigido && !firma.firmado && !admin) {
       return res.status(401).json({ error: 'Para fichar usa tu enlace personal: pídeselo al administrador.', codigo: 'ENLACE_REQUERIDO' });
     }
@@ -134,6 +145,13 @@ router.post('/', limiteFichar, async (req, res) => {
         return res.status(400).json({ error: 'rate fuera de un rango razonable (0-100€/h)' });
       }
       newEntryData.rate = rate;
+    }
+    // Sin sesión de admin, la tarifa y si es de nómina son las de su ficha del equipo,
+    // no las que mande el móvil: con un POST directo cualquiera se ponía hasta 100 €/h.
+    // Sin tarifa en la ficha, la de por defecto (como crearFichaje en el cliente).
+    if (!admin && persona) {
+      newEntryData.rate = Number(persona.rate) > 0 ? Number(persona.rate) : TARIFA_POR_DEFECTO;
+      newEntryData.isPayroll = !!persona.isPayroll;
     }
 
     if (mongoose.connection.readyState === 1) {

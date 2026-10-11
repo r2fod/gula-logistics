@@ -131,8 +131,9 @@ describe('POST /api/clock', () => {
     expect(res2.status).toBe(400);
   });
 
-  it('acepta un rate legítimo dentro de rango (el flujo real de fichaje sí lo manda)', async () => {
+  it('acepta un rate legítimo dentro de rango (el flujo real de fichaje manda el de su ficha del equipo)', async () => {
     ClockEntry.create.mockImplementation(async (data) => data);
+    TeamRoster.findOne.mockResolvedValue({ workers: [{ name: 'Elena', rate: 14 }] });
     const app = buildApp();
     const res = await request(app)
       .post('/api/clock')
@@ -183,6 +184,21 @@ describe('POST /api/clock — lo que no vale sin sesión de admin', () => {
 
 describe('POST /api/clock — fichar con el enlace personal', () => {
   const enlace = (w, tv = 1) => signToken({ role: 'trabajador', w, tv });
+  it('BUG evitado: sin sesión, la tarifa y la nómina las pone el servidor (las de su ficha del equipo), no el móvil', async () => {
+    ClockEntry.create.mockImplementation(async (data) => data);
+    TeamRoster.findOne.mockResolvedValue({ workers: [{ name: 'Carlos', rate: 10, isPayroll: false }] });
+    const datos = { workerName: 'Carlos', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z', rate: 99, isPayroll: true };
+    const sinSesion = await request(buildApp()).post('/api/clock').send({ id: 't1', ...datos });
+    expect(sinSesion.body).toMatchObject({ rate: 10, isPayroll: false });
+    // Sin tarifa en su ficha, la de por defecto: tampoco vale la que mande el móvil.
+    TeamRoster.findOne.mockResolvedValue({ workers: [{ name: 'Carlos' }] });
+    expect((await request(buildApp()).post('/api/clock').send({ id: 't3', ...datos })).body.rate).toBe(10);
+    // El admin sí puede apuntar otra tarifa a mano.
+    const admin = await request(buildApp()).post('/api/clock')
+      .set('Authorization', `Bearer ${signToken({ role: 'admin', v: 1 })}`).send({ id: 't2', ...datos });
+    expect(admin.body).toMatchObject({ rate: 99, isPayroll: true });
+  });
+
   const fichar = (workerName, cabeceras = {}) => {
     const r = request(buildApp()).post('/api/clock');
     Object.entries(cabeceras).forEach(([k, v]) => r.set(k, v));
@@ -201,6 +217,13 @@ describe('POST /api/clock — fichar con el enlace personal', () => {
     expect((await fichar('Sofía', { 'X-Enlace': enlace('sofía-gula') })).body.firmado).toBe(true);
     expect((await fichar('Elena', { 'X-Enlace': enlace('elena-lopez') })).body.firmado).toBe(true);
     expect((await fichar('Elena', { 'X-Enlace': enlace('helena') })).body.firmado).toBe(false);
+  });
+
+  it('BUG evitado: el enlace de alguien con el nombre más largo ("Elena Sofía") no firma por "Elena"', async () => {
+    TeamRoster.findOne.mockResolvedValue({ workers: [{ name: 'Elena' }, { name: 'Elena Sofía' }] });
+    expect((await fichar('Elena', { 'X-Enlace': enlace('elena-sofia-gula') })).body.firmado).toBe(false);
+    expect((await fichar('Elena Sofía', { 'X-Enlace': enlace('elena-sofia-gula') })).body.firmado).toBe(true);
+    expect((await fichar('Elena', { 'X-Enlace': enlace('elena-gula') })).body.firmado).toBe(true);
   });
 
   it('un enlace anulado (versión vieja) no firma', async () => {

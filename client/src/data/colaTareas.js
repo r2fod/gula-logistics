@@ -2,8 +2,10 @@
 // no llega al servidor se guarda en el móvil, se reintenta y, mientras tanto, lo que
 // trae el servidor no lo desmarca. Antes la marca se perdía: la salida de una tarea
 // fichada sin red entraba después (cola de fichajes) pero la tarea se quedaba sin hacer.
+// Cada marca lleva el id y el texto de su tarea: puede salir de la cola horas después,
+// con el día ya reordenado por el admin, y por la posición sola se marcaba otra.
 import { API_BASE, fetchConLimite } from './servidor';
-import { buildTaskListPatch, getTaskListForDay } from './taskPlanning';
+import { buildTaskListPatch, getTaskListForDay, getTaskText, indiceDeTareaFichada } from './taskPlanning';
 
 const CLAVE = 'gula_pending_task_sync_v1';
 
@@ -21,7 +23,8 @@ function guardar(lista) {
     else localStorage.removeItem(CLAVE);
   } catch { /* sin almacenamiento: no hay cola, como antes */ }
 }
-const mismaTarea = (a, b) => a.weekId === b.weekId && a.dayKey === b.dayKey && a.taskIndex === b.taskIndex;
+const mismaTarea = (a, b) => a.weekId === b.weekId && a.dayKey === b.dayKey
+  && (a.taskId && b.taskId ? a.taskId === b.taskId : a.taskIndex === b.taskIndex);
 
 export const tareasPendientes = () => leer();
 
@@ -31,13 +34,14 @@ function encolar(cambio) {
   guardar([...leer().filter(p => !mismaTarea(p, cambio)), cambio]);
 }
 
-async function enviar({ weekId, dayKey, taskIndex, completed, reopened, completedAt }) {
+async function enviar({ weekId, dayKey, taskIndex, completed, reopened, completedAt, taskId, taskText }) {
   return fetchConLimite(`${API_BASE}/logistics/weeks/${weekId}/tasks`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     // `reopened` (opcional): true si alguien la desmarcó a propósito.
-    // `completedAt`: hora real de completado.
-    body: JSON.stringify({ dayKey, taskIndex, completed, reopened, completedAt })
+    // `completedAt`: hora real de completado. `taskId`/`taskText`: para que el
+    // servidor la encuentre aunque ya no esté en esa posición.
+    body: JSON.stringify({ dayKey, taskIndex, completed, reopened, completedAt, taskId, taskText })
   });
 }
 
@@ -51,9 +55,11 @@ const reintentable = (res) => !res || res.status >= 500 || res.status === 429;
  * trabajador al fichar salida de una tarea o al tocarla en su cuadrante;
  * el servidor solo permite tocar los campos `completed` y `reopened` de esa
  * tarea, nunca el resto del documento de la semana. Si no llega, queda en la cola.
+ * `tarea`: la que se marca (tal como está en la semana), para llevar su id y su texto.
  */
-export async function patchTaskCompletionInAPI(weekId, dayKey, taskIndex, completed, reopened, completedAt) {
+export async function patchTaskCompletionInAPI(weekId, dayKey, taskIndex, completed, reopened, completedAt, tarea = null) {
   const cambio = { weekId, dayKey, taskIndex, completed, reopened, completedAt };
+  if (tarea) Object.assign(cambio, { taskId: (typeof tarea === 'object' && tarea.id) || null, taskText: getTaskText(tarea) || null });
   let res = null;
   try {
     res = await enviar(cambio);
@@ -94,12 +100,15 @@ export function conTareasPendientes(semanas) {
   const pendientes = leer();
   if (!semanas || !pendientes.length) return semanas;
   const resultado = { ...semanas };
-  pendientes.forEach(({ weekId, dayKey, taskIndex, completed, reopened, completedAt }) => {
+  pendientes.forEach((pendiente) => {
+    const { weekId, dayKey, completed, reopened, completedAt } = pendiente;
     const semana = resultado[weekId];
+    // Donde esté AHORA esa tarea (si ya no se sabe cuál es, no se pinta en ninguna).
+    const indice = semana ? indiceDeTareaFichada(semana, pendiente) : null;
+    if (indice == null) return;
     const lista = [...getTaskListForDay(semana, dayKey)];
-    const tarea = lista[taskIndex];
-    if (!semana || tarea === undefined) return;
-    lista[taskIndex] = { ...(typeof tarea === 'object' ? tarea : { text: tarea }), completed, reopened, completedAt };
+    const tarea = lista[indice];
+    lista[indice] = { ...(typeof tarea === 'object' ? tarea : { text: tarea }), completed, reopened, completedAt };
     resultado[weekId] = { ...semana, ...buildTaskListPatch(semana, dayKey, lista) };
   });
   return resultado;

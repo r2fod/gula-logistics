@@ -15,6 +15,9 @@ export default function AdminClockEditModal(props) {
   return <FormularioFichaje key={props.entry?.id ?? 'nuevo'} {...props} />;
 }
 
+// La tarifa de una persona del equipo (como al emparejar turnos: nómina 14, el resto 10).
+const tarifaDe = (persona) => persona?.rate || (persona?.isPayroll ? 14 : 10);
+
 function FormularioFichaje({
   onClose,
   entry = null, // null if creating a new manual entry
@@ -28,7 +31,9 @@ function FormularioFichaje({
   const [workerName, setWorkerName] = useState(() => entry?.workerName || workersList[0]?.name || '');
   const [type, setType] = useState(() => entry?.type || 'entrada');
   const [dateTimeLocal, setDateTimeLocal] = useState(() => valorDatetimeLocal(entry?.timestamp || new Date()));
-  const [rate, setRate] = useState(() => entry?.rate || 10);
+  // Uno nuevo sale con la tarifa de la persona que ya viene elegida (antes, siempre 10:
+  // el fichaje olvidado de quien cobra otra tarifa se apuntaba a 10 €/h).
+  const [rate, setRate] = useState(() => entry?.rate || tarifaDe(workersList.find(w => w.name === workerName)));
   const [note, setNote] = useState(() => entry?.note || entry?.taskName || '');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -36,9 +41,7 @@ function FormularioFichaje({
     const selectedName = e.target.value;
     setWorkerName(selectedName);
     const workerObj = workersList.find(w => w.name === selectedName);
-    if (workerObj) {
-      setRate(workerObj.rate || (workerObj.isPayroll ? 14 : 10));
-    }
+    if (workerObj) setRate(tarifaDe(workerObj));
   };
 
   const handleSave = () => {

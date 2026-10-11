@@ -58,6 +58,31 @@ describe('cola de tareas marcadas sin cobertura', () => {
     expect(tareasPendientes()).toEqual([]); // guardada: sale también la anterior
   });
 
+  it('BUG evitado: si el admin reordena el día mientras la marca espera en la cola, se marca SU tarea, no la que ocupa su sitio', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const antes = semana().week_1.schedule.jueves.tasks;
+    await patchTaskCompletionInAPI('week_1', 'jueves', 0, true, false, 'x', antes[0]);
+
+    // El admin mete una tarea delante: «Boda Ana - Recogida» pasa a la posición 1.
+    const reordenada = semana();
+    reordenada.week_1.schedule.jueves.tasks = [{ id: 'j9', text: 'Nueva' }, ...antes];
+    const { tasks } = conTareasPendientes(reordenada).week_1.schedule.jueves;
+    expect(tasks.map(t => !!t.completed)).toEqual([false, true, false]);
+
+    // Y al servidor le llega con qué tarea es (él la busca por su id o su texto).
+    global.fetch = vi.fn().mockResolvedValue(ok());
+    await retryPendingTaskPatches();
+    expect(JSON.parse(global.fetch.mock.calls[0][1].body)).toMatchObject({ taskIndex: 0, taskId: 'j1', taskText: 'Boda Ana - Recogida' });
+
+    // Si la tarea ya no existe, no se pinta marcada ninguna.
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    await patchTaskCompletionInAPI('week_1', 'jueves', 0, true, false, 'x', antes[0]);
+    const sinElla = semana();
+    sinElla.week_1.schedule.jueves.tasks = [{ id: 'j9', text: 'Nueva' }];
+    expect(conTareasPendientes(sinElla).week_1.schedule.jueves.tasks[0].completed).toBeFalsy();
+  });
+
   it('sin pendientes, las semanas pasan tal cual (el mismo objeto)', () => {
     const s = semana();
     expect(conTareasPendientes(s)).toBe(s);

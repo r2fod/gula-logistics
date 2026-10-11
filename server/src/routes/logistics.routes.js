@@ -247,16 +247,43 @@ router.delete('/weeks/:weekId', requireAdmin, async (req, res) => {
 // cambio, este endpoint SOLO puede escribir el campo `completed` de una
 // tarea concreta de un día concreto (vía $set con ruta acotada), nunca
 // camiones, horarios, asignaciones, ni ningún otro dato de la semana.
+// Posición ACTUAL de la tarea en su día, o null si ya no se puede asegurar cuál es
+// (como indiceDeTareaFichada en el cliente). La marca puede llegar tarde —se quedó en
+// la cola del móvil sin cobertura— y el admin haber reordenado el día entretanto: por
+// la posición sola se marcaba otra tarea. `taskId`/`taskText` son opcionales (las
+// versiones anteriores de la app no los mandan). Una boda del sábado no lleva texto
+// propio: sigue yendo por su posición.
+const textoDe = (t) => (typeof t === 'string' ? t : (t && typeof t.text === 'string' ? t.text : null));
+function posicionDeTarea(lista, { taskIndex, taskId, taskText }) {
+  if (taskId) {
+    const i = lista.findIndex(t => t && typeof t === 'object' && t.id === taskId);
+    return i !== -1 ? i : null;
+  }
+  const enSuSitio = lista[taskIndex];
+  if (taskText) {
+    const texto = textoDe(enSuSitio);
+    if (texto === taskText || (enSuSitio !== undefined && texto === null)) return taskIndex;
+    const i = lista.findIndex(t => textoDe(t) === taskText);
+    return i !== -1 ? i : null;
+  }
+  return enSuSitio !== undefined ? taskIndex : null;
+}
+
 router.patch('/weeks/:weekId/tasks', async (req, res) => {
   try {
     const { weekId } = req.params;
-    const { dayKey, taskIndex, completed, reopened, completedAt } = req.body;
+    const { dayKey, completed, reopened, completedAt, taskId, taskText } = req.body;
+    let { taskIndex } = req.body;
 
     if (typeof dayKey !== 'string' || !dayKey || !Number.isInteger(taskIndex) || taskIndex < 0 || typeof completed !== 'boolean') {
       return res.status(400).json({ error: 'dayKey (string), taskIndex (entero >= 0) y completed (booleano) son obligatorios' });
     }
     if (reopened !== undefined && typeof reopened !== 'boolean') {
       return res.status(400).json({ error: 'reopened, si se envía, debe ser un booleano' });
+    }
+    const textoCorto = (v, max) => v === undefined || v === null || (typeof v === 'string' && v.length <= max);
+    if (!textoCorto(taskId, 60) || !textoCorto(taskText, 500)) {
+      return res.status(400).json({ error: 'taskId y taskText, si se envían, deben ser textos cortos' });
     }
     // Endpoint público: `completedAt` solo puede ser una fecha (o null al
     // desmarcar). Antes se guardaba tal cual — cualquiera podía meter objetos o
@@ -282,7 +309,8 @@ router.patch('/weeks/:weekId/tasks', async (req, res) => {
     const isDomingoOLunes = dayKey === 'domingo' || dayKey === 'lunes';
     const isSabado = dayKey === 'sabado';
     const list = (isSabado ? week.saturdaySpecial?.weddings : isDomingoOLunes ? week.sundayMonday?.tasks : week.schedule?.[dayKey]?.tasks) || [];
-    const current = list[taskIndex];
+    taskIndex = posicionDeTarea(list, { taskIndex, taskId, taskText });
+    const current = taskIndex === null ? undefined : list[taskIndex];
     if (current === undefined) return res.status(404).json({ error: 'Tarea no encontrada en ese día' });
 
     // Sin cambio real -> no se escribe. Cada escritura sube `updatedAt`, y
