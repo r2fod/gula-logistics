@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.routes.js';
+import { mantenerDespierto } from './services/mantenerDespierto.js';
 import clockRoutes from './routes/clock.routes.js';
 import logisticsRoutes from './routes/logistics.routes.js';
 import balancesRoutes from './routes/balances.routes.js';
@@ -78,13 +79,20 @@ app.use(erroresDeCuerpo);
 
 // Endpoint de verificación de salud. `version`: el commit desplegado (Render lo da en
 // RENDER_GIT_COMMIT; el repo es público): así se sabe si un despliegue ya está en marcha.
+// `activoDesde`: cuándo arrancó este proceso. Render lo para al dormirlo, así que si es
+// de hace horas es que no se ha dormido (ver mantenerDespierto.js).
+const ACTIVO_DESDE = new Date().toISOString();
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     version: (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7),
     mongoConnected: mongoose.connection.readyState === 1,
+    activoDesde: ACTIVO_DESDE,
     timestamp: new Date().toISOString()
   });
 });
 
-app.listen(PORT, () => console.log(`Servidor de Gula Logistics en puerto ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Servidor de Gula Logistics en puerto ${PORT}`);
+  mantenerDespierto();
+});
