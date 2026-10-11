@@ -7,6 +7,12 @@ on:
     # solo de refuerzo (lo despierta si se ha dormido): quien intenta mantenerlo despierto
     # es el propio servidor, que se llama cada 10 min (server/src/services/mantenerDespierto.js).
     - cron: '*/14 * * * *'
+    # De 5 a 7 (hora de Madrid) el servidor descansa y, dormido, no puede despertarse
+    # solo: estos dos lo despiertan hacia las 06:55 (04:55 UTC en verano, 05:55 UTC en
+    # invierno), para que a las 7 ya se esté llamando otra vez. Si GitHub los retrasa,
+    # lo despierta la primera persona que entre.
+    - cron: '55 4 * * *'
+    - cron: '55 5 * * *'
   workflow_dispatch: # Permite ejecutarlo manualmente si hace falta
 
 jobs:
