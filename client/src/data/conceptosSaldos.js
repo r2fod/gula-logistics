@@ -76,6 +76,14 @@ export function fechaDeConcepto(item = '', referencia = new Date()) {
   return fecha;
 }
 
+// ¿La fecha de este concepto va APARTE de su texto? Sí en ajustes, transporte y pagos; no
+// en un turno a mano ("🕒 15/09 …" ya la dice) ni en la bolsa acumulada (no tiene).
+export const llevaFechaAparte = (item) => !esBolsaAcumulada(item) && !/^🕒\s*\d{1,2}\/\d{1,2}/.test(String(item?.concept || '').trim());
+
+// El concepto con otra fecha (AAAA-MM-DD). Deja fijado su tipo: la fecha de un apunte
+// antiguo sin `tipo` no cuenta si coincide con la de la migración (ver fechaGuardada).
+export const conFecha = (item, fechaIso) => ({ ...item, date: fechaIso, tipo: tipoDeConcepto(item) });
+
 const esNomina = (ficha) => ficha?.statusType === 'payroll';
 const MES_SIN_FECHA = new Date(2026, 8, 1);
 

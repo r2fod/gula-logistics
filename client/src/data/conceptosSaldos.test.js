@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tipoDeConcepto, fechaDeConcepto, conceptosDelPeriodo, horasDeConcepto } from './conceptosSaldos';
+import { tipoDeConcepto, fechaDeConcepto, conceptosDelPeriodo, horasDeConcepto, llevaFechaAparte, conFecha } from './conceptosSaldos';
 import { rangoDePeriodo } from './periodosFinancieros';
 
 const ahora = new Date(2026, 8, 28, 12, 0);
@@ -117,5 +117,26 @@ describe('horasDeConcepto', () => {
     expect(horasDeConcepto({ concept: 'Valor Acumulado Horas Bolsa (42h a 8€/h)', amount: 336 })).toBe(42);
     expect(horasDeConcepto({ concept: '🕒 23/09 — 10€ ayuda transporte', amount: 10 })).toBe(0);
     expect(horasDeConcepto({ concept: 'Rotura de 3 copas', amount: -12 })).toBe(0);
+  });
+});
+
+describe('la fecha de un concepto a mano', () => {
+  it('va aparte en transporte, ajustes y pagos; no en un turno a mano (su texto la dice) ni en la bolsa acumulada', () => {
+    expect(llevaFechaAparte({ concept: 'Transporte', amount: 10 })).toBe(true);
+    expect(llevaFechaAparte({ concept: 'Efectivo', amount: -50, tipo: 'pago' })).toBe(true);
+    expect(llevaFechaAparte({ concept: '🕒 16/09 (17:00 a 20:30 - 3.5h a 10€/h)', amount: 35 })).toBe(false);
+    expect(llevaFechaAparte({ concept: '🕒 23/09 — 10€ ayuda transporte', amount: 10 })).toBe(false);
+    expect(llevaFechaAparte({ concept: 'Valor Acumulado Horas Bolsa (42h a 8€/h)', amount: 336 })).toBe(false);
+  });
+
+  it('cambiarla conserva lo demás y fija el tipo', () => {
+    expect(conFecha({ concept: 'Efectivo', amount: -50 }, '2026-10-04')).toEqual({ concept: 'Efectivo', amount: -50, date: '2026-10-04', tipo: 'pago' });
+    expect(conFecha({ concept: 'Transporte', amount: 10, tipo: 'ajuste', date: '2026-10-01' }, '2026-10-04')).toMatchObject({ tipo: 'ajuste', date: '2026-10-04' });
+  });
+
+  it('BUG evitado: a un apunte antiguo (sin tipo) se le puede poner el 30/09, la fecha que una migración puso a todos y que se ignora', () => {
+    const viejo = { concept: 'Transporte', amount: 10, date: '2026-09-30' };
+    expect(fechaDeConcepto(viejo)).toBeNull();
+    expect(fechaDeConcepto(conFecha(viejo, '2026-09-30'))).toEqual(new Date(2026, 8, 30));
   });
 });

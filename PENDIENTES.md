@@ -32,7 +32,7 @@ _Solo lo que sigue abierto (actualizado el 04/10/2026). Lo resuelto se borra de 
 
 ## 🟢 Código
 - [ ] ESLint del cliente: 11 errores, todos anteriores: `setState` dentro de efectos (`App`, `PartnerDashboardView`, `AdminTaskEditorModal`, `FinancialSummaryTab`, `AvisarCambiosModal`, `useCountUp`), refs leídos al pintar (`App`, `useCerrarConEscape`: el patrón «último callback»), una variable usada antes de declararla (`App`) y `Date.now()` al pintar (`TaskFlowGraphView`); ~150 avisos. No añadir nuevos.
-- [ ] Archivos grandes: `AdminTaskEditorModal` (~980 líneas; el evento de cada tarea ya va en `editor/`), `WorkerView` (~1030; su historial ya va en `trabajador/HistorialFichajes`), `TeamBalancesTab` (~810). Siguientes piezas: la tarjeta de la tarea inmediata de `WorkerView`, `Boton`, `Chip` seleccionable, `PuntoEstado`.
+- [ ] Archivos grandes: `AdminTaskEditorModal` (~980 líneas; el evento de cada tarea ya va en `editor/`), `WorkerView` (~1030; su historial ya va en `trabajador/HistorialFichajes`), `TeamBalancesTab` (~740; el formulario de un concepto ya va en `saldos/FormularioConcepto`). Siguientes piezas: la tarjeta de la tarea inmediata de `WorkerView`, `Boton`, `Chip` seleccionable, `PuntoEstado`.
 - [ ] Normalizar las tareas a objeto al cargar la semana y quitar los `typeof task === 'object' ? task.text : task` repartidos.
 - [ ] `npm audit` del cliente: 7 avisos, todos de herramientas de build (nada llega al navegador): `vite`/`esbuild` (solo `npm run dev`) y `tailwindcss` 3 (`braces`/`micromatch`, de su vigilante de archivos). Arreglarlo es subir `vite` y `tailwindcss` de versión mayor, en rama aparte. `--legacy-peer-deps` sigue haciendo falta: `eslint-plugin-react` aún no admite ESLint 10.
 
