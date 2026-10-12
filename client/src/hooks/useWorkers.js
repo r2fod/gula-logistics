@@ -31,7 +31,7 @@ export function useWorkers() {
     saveRosterToAPI(updatedWorkers).catch(() => {});
   };
 
-  // Cambia la ficha de alguien (rol, "solo si hace falta", nota, disponibilidad fija).
+  // Cambia la ficha de alguien (rol, tarifa, "solo si hace falta", nota, disponibilidad fija).
   // Nunca el nombre: de él cuelgan sus fichajes y su saldo. → true si se guardó.
   const handleUpdateWorker = (nombre, cambios) => {
     const sinNombre = { ...cambios };

@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { initialBalancesData } from '../data/balancesData';
 import { saveWorkerBalanceToAPI, hasRealBalancesData } from '../data/apiService';
+import { fichaDePersona } from '../data/nombresTrabajadores';
+import { tarifaEnFichaDeSaldos } from '../data/tarifas';
 
 // Antes esto leía y escribía en 'gula_balances_v1', una clave DISTINTA de
 // 'gula_balances_data_v1' que usa fetchBalancesFromAPI (apiService.js) para
@@ -69,9 +71,23 @@ export function useBalances(workersList, setWorkersList) {
     });
   };
 
+  // La tarifa nueva de alguien del equipo va también a su ficha de Saldos, si ya tiene
+  // una guardada (ver tarifaEnFichaDeSaldos).
+  const handleTarifaEnSaldos = (nombre, tarifa) => {
+    const fichas = balancesData.workers || [];
+    const ficha = fichaDePersona(nombre, fichas, workersList.map(w => w.name));
+    if (!ficha?.id) return;
+    const cambios = tarifaEnFichaDeSaldos(ficha, tarifa);
+    const actualizados = { ...balancesData, workers: fichas.map(w => (w.id === ficha.id ? { ...w, ...cambios } : w)) };
+    setBalancesData(actualizados);
+    try { localStorage.setItem(BALANCES_CACHE_KEY, JSON.stringify(actualizados)); } catch { /* sin almacenamiento */ }
+    saveWorkerBalanceToAPI(ficha.id, cambios);
+  };
+
   return {
     balancesData,
     setBalancesData,
-    handleAddWorker
+    handleAddWorker,
+    handleTarifaEnSaldos
   };
 }

@@ -74,4 +74,15 @@ describe('AdminWorkerEditorModal (Gestionar equipo)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Guardar ficha/ }));
     await waitFor(() => expect(p.onUpdateWorker).toHaveBeenCalledWith('Ana', expect.objectContaining({ avatar: '🚛' })));
   });
+
+  it('avisa de la tarifa nueva (para la ficha de Saldos) solo si de verdad cambia', async () => {
+    const p = pintar({ onTarifaCambiada: vi.fn() });
+    fireEvent.click(screen.getByRole('button', { name: 'Editar la ficha de Pau' }));
+    fireEvent.click(screen.getByRole('button', { name: /Guardar ficha/ })); // nómina sin tarifa propia: sigue en 14
+    await waitFor(() => expect(p.onUpdateWorker).toHaveBeenCalledWith('Pau', expect.objectContaining({ rate: 14 })));
+    expect(p.onTarifaCambiada).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('Tarifa por hora (€)'), { target: { value: '15' } });
+    fireEvent.click(screen.getByRole('button', { name: /Guardar ficha/ }));
+    await waitFor(() => expect(p.onTarifaCambiada).toHaveBeenCalledWith('Pau', 15));
+  });
 });

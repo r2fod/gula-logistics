@@ -8,6 +8,7 @@ import FichaTrabajador from './equipo/FichaTrabajador';
 import FilaTrabajador from './equipo/FilaTrabajador';
 import SelectorIcono from './equipo/SelectorIcono';
 import { gruposDeEquipo } from '../data/equipoRoles';
+import { tarifaDe } from '../data/tarifas';
 import { useDialog } from '../contexts/DialogContext';
 
 const ROL_INICIAL = 'Conductor Extra';
@@ -18,8 +19,10 @@ const ROL_INICIAL = 'Conductor Extra';
 // el ancho en lugar de la lista (dentro de una columna no cabía) y al volver se queda
 // donde estaba.
 //
-// `onUpdateWorker(nombre, cambios)` → true si se guardó (ver FichaTrabajador).
-export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = [], onAddWorker, onRemoveWorker, onUpdateWorker = null }) {
+// `onUpdateWorker(nombre, cambios)` → true si se guardó (ver FichaTrabajador). Si con la
+// ficha cambia la tarifa: `onTarifaCambiada(nombre, tarifa)` (va a su ficha de Saldos) y,
+// con `clockEntries` y `onCambiarTarifa`, sus fichajes desde el día que se pida.
+export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = [], onAddWorker, onRemoveWorker, onUpdateWorker = null, clockEntries = [], onCambiarTarifa = null, onTarifaCambiada = null }) {
   const { alert } = useDialog();
   const [editando, setEditando] = useState(null); // nombre con la ficha abierta
   const [confirmRemove, setConfirmRemove] = useState(null); // nombre pendiente de confirmar
@@ -72,6 +75,13 @@ export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = 
   const grupos = gruposDeEquipo(workersList);
   const ficha = onUpdateWorker ? workersList.find(w => w.name === editando) : null;
 
+  const guardarFicha = async (cambios) => {
+    const tarifaNueva = cambios.rate !== tarifaDe(ficha);
+    const guardado = await onUpdateWorker(ficha.name, cambios);
+    if (guardado && tarifaNueva) onTarifaCambiada?.(ficha.name, cambios.rate);
+    return guardado;
+  };
+
   return (
     <Modal onCerrar={onClose} ancho="4xl" disposicion="columna" botonCerrar={false} etiqueta="Gestionar equipo">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 p-4 sm:p-5">
@@ -87,7 +97,7 @@ export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = 
 
       <div ref={cuerpo} className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
         {ficha ? (
-          <FichaTrabajador key={ficha.name} trabajador={ficha} onGuardar={(cambios) => onUpdateWorker(ficha.name, cambios)} onCerrar={() => setEditando(null)} />
+          <FichaTrabajador key={ficha.name} trabajador={ficha} onGuardar={guardarFicha} onCerrar={() => setEditando(null)} fichajes={clockEntries} onCambiarTarifa={onCambiarTarifa} />
         ) : (
           <>
           {anadiendo ? (

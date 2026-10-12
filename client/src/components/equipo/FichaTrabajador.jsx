@@ -4,32 +4,41 @@ import Boton from '../ui/Boton';
 import { Campo, Input, Selector } from '../ui/Campo';
 import SelectorIcono from './SelectorIcono';
 import { agruparRestricciones, OPCIONES_DIA, restriccionesDeFormulario, textoGrupo, TIPOS_DISPONIBILIDAD } from '../../data/disponibilidad';
+import { aIso, fechaLocal } from '../../data/fechasSemana';
+import { formatearEuros } from '../../data/formatoFinanciero';
+import { fichajesACambiarDeTarifa, tarifaDe } from '../../data/tarifas';
+import { formatDayMonthShort } from '../../utils/dateUtils';
 import { useDialog } from '../../contexts/DialogContext';
 
 const NUEVA = { dia: 'semana', tipo: 'solo', desde: '', hasta: '' };
 const aRestriccion = ({ dia, tipo, desde = '', hasta = '' }) => ({ dia, tipo, desde, hasta });
 // Para saber si hay cambios sin guardar (lo que vuelve del servidor trae campos de más).
-const huella = ({ avatar, role, backup, nota, disponibilidad }) =>
-  JSON.stringify([avatar, role.trim(), backup, nota.trim(), disponibilidad.map(r => `${r.dia}|${r.tipo}|${r.desde || ''}|${r.hasta || ''}`)]);
+const huella = ({ avatar, role, backup, nota, tarifa, disponibilidad }) =>
+  JSON.stringify([avatar, role.trim(), backup, nota.trim(), Number(tarifa), disponibilidad.map(r => `${r.dia}|${r.tipo}|${r.desde || ''}|${r.hasta || ''}`)]);
 
 // La ficha de una persona del equipo, a todo el ancho de «Gestionar equipo»: icono,
-// rol, "solo si hace falta", una nota y su disponibilidad FIJA (para todas las semanas:
-// "desde las 15:00", "no los lunes"). La respetan el reparto, el calendario y Gemini.
-// El nombre no se cambia aquí: de él cuelgan sus fichajes y su saldo.
+// rol, tarifa por hora, "solo si hace falta", una nota y su disponibilidad FIJA (para
+// todas las semanas: "desde las 15:00", "no los lunes"). La respetan el reparto, el
+// calendario y Gemini. El nombre no se cambia aquí: de él cuelgan sus fichajes y su saldo.
 // `onGuardar(cambios)` → true si se guardó. `onCerrar` vuelve a la lista.
-export default function FichaTrabajador({ trabajador, onGuardar, onCerrar }) {
+// La tarifa vale para los fichajes NUEVOS; con `fichajes` y `onCambiarTarifa(ids, tarifa)`
+// (→ true si se guardaron todos) se puede poner también a los que ya hizo desde un día.
+export default function FichaTrabajador({ trabajador, onGuardar, onCerrar, fichajes = [], onCambiarTarifa = null }) {
   const { confirm } = useDialog();
   const inicial = {
     avatar: trabajador.avatar || '👤',
     role: trabajador.role || '',
     backup: trabajador.backup === true,
     nota: trabajador.nota || '',
+    tarifa: tarifaDe(trabajador),
     disponibilidad: Array.isArray(trabajador.disponibilidad) ? trabajador.disponibilidad : [],
   };
   const [avatar, setAvatar] = useState(inicial.avatar);
   const [role, setRole] = useState(inicial.role);
   const [backup, setBackup] = useState(inicial.backup);
   const [nota, setNota] = useState(inicial.nota);
+  const [tarifa, setTarifa] = useState(String(inicial.tarifa));
+  const [desde, setDesde] = useState(''); // AAAA-MM-DD: sus fichajes desde ese día también cambian
   const [disponibilidad, setDisponibilidad] = useState(inicial.disponibilidad);
   const [nueva, setNueva] = useState(NUEVA);
   const [mensaje, setMensaje] = useState(null);
@@ -55,16 +64,25 @@ export default function FichaTrabajador({ trabajador, onGuardar, onCerrar }) {
     e.preventDefault();
     const nuevas = pendiente ? leerNueva() : [];
     if (!nuevas) return;
+    const rate = Number(tarifa);
+    if (!(rate > 0)) { setMensaje({ tipo: 'error', texto: 'Pon la tarifa en euros por hora (por ejemplo, 12).' }); return; }
+    const aCambiar = desde && onCambiarTarifa ? fichajesACambiarDeTarifa(fichajes, trabajador.name, desde, rate) : [];
+    const cuantos = `${aCambiar.length} ${aCambiar.length === 1 ? 'fichaje' : 'fichajes'}`;
+    if (aCambiar.length && !(await confirm(`Vas a poner a ${formatearEuros(rate)}/h ${cuantos} de ${trabajador.name} desde el ${formatDayMonthShort(fechaLocal(desde))}. Sus turnos de esos días se pagarán a esa tarifa.`, { type: 'warning', title: 'Cambiar fichajes ya hechos', confirmText: 'Cambiarlos' }))) return;
     const todas = [...disponibilidad, ...nuevas];
     if (nuevas.length) { setDisponibilidad(todas); setNueva(NUEVA); }
     setGuardando(true);
-    const ok = await onGuardar({ avatar, role: role.trim(), backup, nota: nota.trim().slice(0, 120), disponibilidad: todas });
+    const ok = await onGuardar({ avatar, role: role.trim(), backup, nota: nota.trim().slice(0, 120), rate, disponibilidad: todas });
+    const cambiados = ok && aCambiar.length ? await onCambiarTarifa(aCambiar.map(f => f.id), rate) : true;
     setGuardando(false);
-    setMensaje(ok ? { tipo: 'ok', texto: 'Guardado.' } : { tipo: 'error', texto: 'No se pudo guardar: vuelve a iniciar sesión de administrador y repítelo.' });
+    if (!ok) { setMensaje({ tipo: 'error', texto: 'No se pudo guardar: vuelve a iniciar sesión de administrador y repítelo.' }); return; }
+    if (!cambiados) { setMensaje({ tipo: 'error', texto: 'La tarifa se guardó, pero no todos sus fichajes: pulsa «Guardar ficha» otra vez para repetirlo.' }); return; }
+    setMensaje({ tipo: 'ok', texto: !desde ? 'Guardado.' : aCambiar.length ? `Guardado. ${cuantos} a ${formatearEuros(rate)}/h.` : 'Guardado. No había fichajes que cambiar desde ese día.' });
+    setDesde('');
   };
 
   const volver = async () => {
-    const sinGuardar = pendiente || huella({ avatar, role, backup, nota, disponibilidad }) !== huella(inicial);
+    const sinGuardar = pendiente || !!desde || huella({ avatar, role, backup, nota, tarifa, disponibilidad }) !== huella(inicial);
     if (sinGuardar && !(await confirm('Hay cambios en la ficha que no has guardado. ¿Volver sin guardarlos?', { type: 'warning', title: 'Cambios sin guardar', confirmText: 'Volver sin guardar' }))) return;
     onCerrar();
   };
@@ -96,6 +114,19 @@ export default function FichaTrabajador({ trabajador, onGuardar, onCerrar }) {
           <Campo etiqueta="Rol">
             <Input id={`rol-${trabajador.name}`} value={role} onChange={(e) => setRole(e.target.value)} acento="emerald" />
           </Campo>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Campo etiqueta="Tarifa por hora (€)">
+              <Input id={`tarifa-${trabajador.name}`} type="number" inputMode="decimal" min="1" step="0.5" value={tarifa} onChange={(e) => setTarifa(e.target.value)} acento="emerald" />
+            </Campo>
+            {onCambiarTarifa && (
+              <Campo etiqueta="Cambiar fichajes desde">
+                <Input id={`tarifa-desde-${trabajador.name}`} type="date" max={aIso(new Date())} value={desde} onChange={(e) => setDesde(e.target.value)} acento="emerald" />
+              </Campo>
+            )}
+            <p className="text-[11px] leading-snug text-slate-500 sm:col-span-2">
+              Con esta tarifa se apuntan sus fichajes nuevos.{onCambiarTarifa && ' Para cambiar también los que ya hizo, pon desde qué día; sin fecha, se quedan como están.'}
+            </p>
+          </div>
           <label className="flex items-start gap-2 text-sm text-slate-300">
             <input type="checkbox" checked={backup} onChange={(e) => setBackup(e.target.checked)} className="mt-1 accent-emerald-500" />
             <span>Solo si hace falta <span className="text-slate-500">(entra cuando los demás van cargados)</span></span>

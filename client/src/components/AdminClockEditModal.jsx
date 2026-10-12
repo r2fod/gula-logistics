@@ -4,6 +4,7 @@ import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input, Selector, AreaTexto } from './ui/Campo';
 import { crearFichaje } from '../data/fichajes';
+import { tarifaDe } from '../data/tarifas';
 import { valorDatetimeLocal } from '../utils/dateUtils';
 
 // Se monta de nuevo al abrir y con cada fichaje (`key`): el formulario sale de las
@@ -14,9 +15,6 @@ export default function AdminClockEditModal(props) {
   if (!props.isOpen) return null;
   return <FormularioFichaje key={props.entry?.id ?? 'nuevo'} {...props} />;
 }
-
-// La tarifa de una persona del equipo (como al emparejar turnos: nómina 14, el resto 10).
-const tarifaDe = (persona) => persona?.rate || (persona?.isPayroll ? 14 : 10);
 
 function FormularioFichaje({
   onClose,

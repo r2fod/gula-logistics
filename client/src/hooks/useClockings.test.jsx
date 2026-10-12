@@ -66,5 +66,15 @@ describe('useClockings', () => {
     await act(async () => { await result.current.handleUpdateClockEntry(editado); });
     expect(result.current.clockEntries[0]).toMatchObject({ timestamp: '2026-09-20T09:00:00.000Z', editedByAdmin: true, taskRef, firmado: true, revisado: true });
   });
-});
 
+  it('otra tarifa para varios fichajes: solo viaja la tarifa y en pantalla cambian los que se guardaron', async () => {
+    const { result } = montar([f('a', { rate: 10, firmado: true }), f('b', { rate: 10 }), f('c', { rate: 10 })]);
+    updateClockEntryInAPI.mockResolvedValueOnce(true).mockResolvedValueOnce(null); // el segundo falla
+    let todos;
+    await act(async () => { todos = await result.current.handleCambiarTarifa(['a', 'b'], 12); });
+    expect(updateClockEntryInAPI.mock.calls.map(c => c[0])).toEqual([{ id: 'a', rate: 12 }, { id: 'b', rate: 12 }]);
+    expect(todos).toBe(false);
+    expect(result.current.clockEntries.map(e => e.rate)).toEqual([12, 10, 10]);
+    expect(result.current.clockEntries[0].firmado).toBe(true);
+  });
+});

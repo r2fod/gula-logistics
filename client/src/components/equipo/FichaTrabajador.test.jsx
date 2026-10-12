@@ -11,7 +11,7 @@ describe('FichaTrabajador', () => {
     fireEvent.click(screen.getByRole('button', { name: /Añadir disponibilidad/ }));
     expect(screen.getByText('desde las 15:00')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Guardar ficha/ }));
-    await waitFor(() => expect(onGuardar).toHaveBeenCalledWith({ avatar: '👤', role: 'Conductor Extra', backup: false, nota: '', disponibilidad: [{ dia: 'semana', tipo: 'solo', desde: '15:00', hasta: '23:59' }] }));
+    await waitFor(() => expect(onGuardar).toHaveBeenCalledWith({ avatar: '👤', role: 'Conductor Extra', backup: false, nota: '', rate: 10, disponibilidad: [{ dia: 'semana', tipo: 'solo', desde: '15:00', hasta: '23:59' }] }));
     expect(await screen.findByRole('status')).toHaveTextContent('Guardado.');
   });
 
@@ -80,5 +80,87 @@ describe('FichaTrabajador — grupos de días', () => {
     render(<FichaTrabajador trabajador={{ name: 'Luis', role: 'x', disponibilidad: dias.map(dia => ({ dia, tipo: 'solo', desde: '15:00', hasta: '23:59' })) }} onGuardar={vi.fn()} onCerrar={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: 'Quitar: desde las 15:00 de lunes a viernes' }));
     expect(screen.queryByText(/desde las 15:00/)).toBeNull();
+  });
+
+  describe('tarifa por hora', () => {
+    // Horas locales, sin depender de la zona de la máquina.
+    const a = (dia, hora) => new Date(2026, 9, dia, hora).toISOString();
+    const fichajes = [
+      { id: 'e1', workerName: 'Luis', type: 'entrada', timestamp: a(1, 9), rate: 10 }, { id: 's1', workerName: 'Luis', type: 'salida', timestamp: a(1, 14), rate: 10 },
+      { id: 'e2', workerName: 'Luis', type: 'entrada', timestamp: a(4, 10), rate: 10 }, { id: 's2', workerName: 'Luis', type: 'salida', timestamp: a(4, 17), rate: 10 },
+      { id: 'x1', workerName: 'Ana', type: 'entrada', timestamp: a(4, 10), rate: 10 },
+    ];
+    const pintar = (props = {}) => {
+      const p = { onGuardar: vi.fn().mockResolvedValue(true), onCambiarTarifa: vi.fn().mockResolvedValue(true), ...props };
+      render(<FichaTrabajador trabajador={{ name: 'Luis', role: 'x', rate: 10 }} onCerrar={() => {}} fichajes={fichajes} {...p} />);
+      return p;
+    };
+
+    it('enseña la suya (14 en nómina fija si no tiene otra) y la guarda en su ficha', async () => {
+      const onGuardar = vi.fn().mockResolvedValue(true);
+      render(<FichaTrabajador trabajador={{ name: 'Pau', role: 'x', isPayroll: true }} onGuardar={onGuardar} onCerrar={() => {}} />);
+      expect(screen.getByLabelText('Tarifa por hora (€)')).toHaveValue(14);
+      fireEvent.change(screen.getByLabelText('Tarifa por hora (€)'), { target: { value: '15.5' } });
+      fireEvent.click(screen.getByRole('button', { name: /Guardar ficha/ }));
+      await waitFor(() => expect(onGuardar).toHaveBeenCalledWith(expect.objectContaining({ rate: 15.5 })));
+    });
+
+    it('sin fecha, solo cambia para los fichajes nuevos: los ya hechos no se tocan', async () => {
+      const { onGuardar, onCambiarTarifa } = pintar();
+      fireEvent.change(screen.getByLabelText('Tarifa por hora (€)'), { target: { value: '12' } });
+      fireEvent.click(screen.getByRole('button', { name: /Guardar ficha/ }));
+      await waitFor(() => expect(onGuardar).toHaveBeenCalledWith(expect.objectContaining({ rate: 12 })));
+      expect(onCambiarTarifa).not.toHaveBeenCalled();
+      expect(await screen.findByRole('status')).toHaveTextContent('Guardado.');
+    });
+
+    it('con «desde el día 4», pregunta antes y cambia solo sus fichajes de ese día en adelante', async () => {
+      const { onGuardar, onCambiarTarifa } = pintar();
+      fireEvent.change(screen.getByLabelText('Tarifa por hora (€)'), { target: { value: '12' } });
+      fireEvent.change(screen.getByLabelText('Cambiar fichajes desde'), { target: { value: '2026-10-04' } });
+      fireEvent.click(screen.getByRole('button', { name: /Guardar ficha/ }));
+      expect(await screen.findByText(/Vas a poner a 12,00 €\/h 2 fichajes de Luis desde el 4 oct/)).toBeInTheDocument();
+      expect(onGuardar).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Cambiarlos' }));
+      await waitFor(() => expect(onCambiarTarifa).toHaveBeenCalledWith(['e2', 's2'], 12));
+      expect(onGuardar).toHaveBeenCalledWith(expect.objectContaining({ rate: 12 }));
+      expect(await screen.findByRole('status')).toHaveTextContent('Guardado. 2 fichajes a 12,00 €/h.');
+      expect(screen.getByLabelText('Cambiar fichajes desde')).toHaveValue('');
+    });
+
+    it('si se cancela el aviso, no se guarda nada', async () => {
+      const { onGuardar, onCambiarTarifa } = pintar();
+      fireEvent.change(screen.getByLabelText('Tarifa por hora (€)'), { target: { value: '12' } });
+      fireEvent.change(screen.getByLabelText('Cambiar fichajes desde'), { target: { value: '2026-10-04' } });
+      fireEvent.click(screen.getByRole('button', { name: /Guardar ficha/ }));
+      await screen.findByText(/Vas a poner a 12,00 €\/h/);
+      fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+      await waitFor(() => expect(screen.queryByText(/Vas a poner a 12,00 €\/h/)).toBeNull());
+      expect(onGuardar).not.toHaveBeenCalled();
+      expect(onCambiarTarifa).not.toHaveBeenCalled();
+    });
+
+    it('si algún fichaje no se guarda, lo dice y deja la fecha para repetirlo', async () => {
+      pintar({ onCambiarTarifa: vi.fn().mockResolvedValue(false) });
+      fireEvent.change(screen.getByLabelText('Tarifa por hora (€)'), { target: { value: '12' } });
+      fireEvent.change(screen.getByLabelText('Cambiar fichajes desde'), { target: { value: '2026-10-04' } });
+      fireEvent.click(screen.getByRole('button', { name: /Guardar ficha/ }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Cambiarlos' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('no todos sus fichajes');
+      expect(screen.getByLabelText('Cambiar fichajes desde')).toHaveValue('2026-10-04');
+    });
+
+    it('una tarifa vacía o a cero no se guarda', async () => {
+      const { onGuardar } = pintar();
+      fireEvent.change(screen.getByLabelText('Tarifa por hora (€)'), { target: { value: '' } });
+      fireEvent.click(screen.getByRole('button', { name: /Guardar ficha/ }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('Pon la tarifa');
+      expect(onGuardar).not.toHaveBeenCalled();
+    });
+
+    it('sin acceso a los fichajes (onCambiarTarifa) no ofrece la fecha', () => {
+      render(<FichaTrabajador trabajador={{ name: 'Luis', role: 'x' }} onGuardar={vi.fn()} onCerrar={() => {}} />);
+      expect(screen.queryByLabelText('Cambiar fichajes desde')).toBeNull();
+    });
   });
 });
