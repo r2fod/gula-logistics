@@ -31,8 +31,8 @@ describe('AdminSettingsModal', () => {
     const interruptor = screen.getByRole('switch', { name: /Exigir el enlace/ });
     await waitFor(() => expect(interruptor.disabled).toBe(false));
     fireEvent.click(interruptor);
-    const dialogo = await screen.findByRole('dialog', { name: 'Exigir el enlace para fichar' });
-    expect(within(dialogo).getByText(/Luis aún ficha sin su enlace/)).toBeTruthy();
+    const dialogo = await screen.findByRole('dialog', { name: 'Exigir el enlace personal' });
+    expect(within(dialogo).getByText(/Luis aún ficha sin su enlace: no podrá fichar ni ver sus fichajes/)).toBeTruthy();
     fireEvent.click(within(dialogo).getByRole('button', { name: 'Activar' }));
     await waitFor(() => expect(guardarAjustesAdmin).toHaveBeenCalledWith({ exigirEnlaceAlFichar: true }));
     await waitFor(() => expect(interruptor.getAttribute('aria-checked')).toBe('true'));

@@ -4,6 +4,7 @@ import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input, Selector, AreaTexto } from './ui/Campo';
 import { crearFichaje } from '../data/fichajes';
+import { tarifaDe } from '../data/tarifas';
 import { valorDatetimeLocal } from '../utils/dateUtils';
 
 // Se monta de nuevo al abrir y con cada fichaje (`key`): el formulario sale de las
@@ -28,7 +29,9 @@ function FormularioFichaje({
   const [workerName, setWorkerName] = useState(() => entry?.workerName || workersList[0]?.name || '');
   const [type, setType] = useState(() => entry?.type || 'entrada');
   const [dateTimeLocal, setDateTimeLocal] = useState(() => valorDatetimeLocal(entry?.timestamp || new Date()));
-  const [rate, setRate] = useState(() => entry?.rate || 10);
+  // Uno nuevo sale con la tarifa de la persona que ya viene elegida (antes, siempre 10:
+  // el fichaje olvidado de quien cobra otra tarifa se apuntaba a 10 €/h).
+  const [rate, setRate] = useState(() => entry?.rate || tarifaDe(workersList.find(w => w.name === workerName)));
   const [note, setNote] = useState(() => entry?.note || entry?.taskName || '');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -36,9 +39,7 @@ function FormularioFichaje({
     const selectedName = e.target.value;
     setWorkerName(selectedName);
     const workerObj = workersList.find(w => w.name === selectedName);
-    if (workerObj) {
-      setRate(workerObj.rate || (workerObj.isPayroll ? 14 : 10));
-    }
+    if (workerObj) setRate(tarifaDe(workerObj));
   };
 
   const handleSave = () => {

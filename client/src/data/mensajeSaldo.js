@@ -1,11 +1,16 @@
 import { formatearEuros, formatearEurosConSigno, formatearHoras } from './formatoFinanciero';
-import { tipoDeConcepto } from './conceptosSaldos';
+import { fechaDeConcepto, llevaFechaAparte, tipoDeConcepto } from './conceptosSaldos';
 import { estadoBolsa, tieneBolsa } from './bolsaHoras';
 import { horasDelPeriodo, rangoDePeriodo } from './periodosFinancieros';
-import { formatMonthName, formatTimeShort, formatWeekdayDayMonth } from '../utils/dateUtils';
+import { formatDayMonthShort, formatMonthName, formatTimeShort, formatWeekdayDayMonth } from '../utils/dateUtils';
 
 const suma = (items) => items.reduce((total, it) => total + (Number(it.amount) || 0), 0);
 const linea = (it) => `• ${it.concept}: ${formatearEurosConSigno(Number(it.amount) || 0)}`;
+// Un apunte a mano dice de qué día es (un transporte, un pago), si su texto no lo dice ya.
+const lineaAMano = (it, ahora) => {
+  const fecha = llevaFechaAparte(it) ? fechaDeConcepto(it, ahora) : null;
+  return fecha ? linea({ ...it, concept: `${formatDayMonthShort(fecha)} · ${it.concept}` }) : linea(it);
+};
 
 // Texto de WhatsApp con el saldo de una persona: la MISMA cuenta que se ve en Saldos
 // (`saldo` de saldoDeTrabajador, con el turno en curso a `ahora`), sus horas de la
@@ -50,11 +55,11 @@ export function mensajeDeSaldo({ ficha, saldo, turnos = [], turnosHoras = [], ah
     const aMano = conceptos.filter(it => tipoDeConcepto(it) !== 'pago');
     if (conAMano && aMano.length) {
       partes.push('', `*Apuntado a mano* (${formatearEurosConSigno(suma(aMano))})`);
-      aMano.forEach(it => partes.push(linea(it)));
+      aMano.forEach(it => partes.push(lineaAMano(it, ahora)));
     }
     if (conAMano && pagos.length) {
       partes.push('', `*Pagos y adelantos* (${formatearEurosConSigno(suma(pagos))})`);
-      pagos.forEach(it => partes.push(linea(it)));
+      pagos.forEach(it => partes.push(lineaAMano(it, ahora)));
     }
 
     if (tieneBolsa(ficha)) {

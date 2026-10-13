@@ -223,13 +223,30 @@ describe('GET/PUT /api/auth/ajustes (exigir el enlace personal para fichar)', ()
     mongoose.connection.readyState = 1;
     const config = { tokenVersion: 1, exigirEnlaceAlFichar: false, save: vi.fn().mockResolvedValue() };
     AdminConfig.findOne.mockResolvedValue(config);
-    expect((await request(buildApp()).get('/api/auth/ajustes').set('Authorization', admin)).body).toEqual({ exigirEnlaceAlFichar: false });
+    expect((await request(buildApp()).get('/api/auth/ajustes').set('Authorization', admin)).body).toEqual({ exigirEnlaceAlFichar: false, festivos: [] });
     const r = await request(buildApp()).put('/api/auth/ajustes').set('Authorization', admin).send({ exigirEnlaceAlFichar: true });
-    expect(r.body).toEqual({ exigirEnlaceAlFichar: true });
+    expect(r.body).toEqual({ exigirEnlaceAlFichar: true, festivos: [] });
     expect(config.save).toHaveBeenCalled();
     expect((await request(buildApp()).put('/api/auth/ajustes').set('Authorization', admin).send({ exigirEnlaceAlFichar: 'si' })).status).toBe(400);
     const socias = `Bearer ${signToken({ role: 'socias', v: 1, sv: 1 })}`;
     expect((await request(buildApp()).put('/api/auth/ajustes').set('Authorization', socias).send({ exigirEnlaceAlFichar: false })).status).toBe(401);
+    AdminConfig.findOne.mockResolvedValue(null);
+  });
+
+  it('festivos locales: se guardan limpios y por fecha, sin tocar lo demás; lo que no es una fecha se rechaza', async () => {
+    const admin = `Bearer ${signToken({ role: 'admin', v: 1 })}`;
+    mongoose.connection.readyState = 1;
+    const config = { tokenVersion: 1, exigirEnlaceAlFichar: true, festivos: [], save: vi.fn().mockResolvedValue() };
+    AdminConfig.findOne.mockResolvedValue(config);
+    const guardar = (festivos) => request(buildApp()).put('/api/auth/ajustes').set('Authorization', admin).send({ festivos });
+    const r = await guardar([{ fecha: '2027-04-05', nombre: '  San Vicente  ' }, { fecha: '2027-01-22', nombre: 'x'.repeat(90) }, { fecha: '2027-04-05', nombre: 'repetido' }]);
+    expect(r.body).toEqual({ exigirEnlaceAlFichar: true, festivos: [{ fecha: '2027-01-22', nombre: 'x'.repeat(60) }, { fecha: '2027-04-05', nombre: 'San Vicente' }] });
+    expect(config.save).toHaveBeenCalledTimes(1);
+    for (const malo of ['nada', [{ fecha: '2027-13-40' }], [{ nombre: 'sin fecha' }], [{ fecha: { $gt: '' } }], Array.from({ length: 61 }, () => ({ fecha: '2027-01-01' }))]) {
+      expect((await guardar(malo)).status).toBe(400);
+    }
+    expect((await request(buildApp()).put('/api/auth/ajustes').set('Authorization', admin).send({})).status).toBe(400);
+    expect(config.save).toHaveBeenCalledTimes(1);
     AdminConfig.findOne.mockResolvedValue(null);
   });
 });

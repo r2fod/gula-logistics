@@ -40,11 +40,11 @@ describe('useWeeks — marcar y desmarcar tareas (solo a mano)', () => {
 
     act(() => result.current.toggleTask('domingo', 0));
     const hora = new Date(2026, 8, 21, 11, 0).toISOString();
-    expect(patch).toHaveBeenLastCalledWith('week_3', 'domingo', 0, true, false, hora);
+    expect(patch).toHaveBeenLastCalledWith('week_3', 'domingo', 0, true, false, hora, expect.anything());
     expect(result.current.activeWeek.sundayMonday.tasks[0]).toMatchObject({ completed: true, reopened: false, completedAt: hora });
 
     act(() => result.current.toggleTask('domingo', 0));
-    expect(patch).toHaveBeenLastCalledWith('week_3', 'domingo', 0, false, true, null);
+    expect(patch).toHaveBeenLastCalledWith('week_3', 'domingo', 0, false, true, null, expect.anything());
     expect(result.current.activeWeek.sundayMonday.tasks[0]).toMatchObject({ completed: false, completedAt: null });
   });
 
@@ -53,7 +53,7 @@ describe('useWeeks — marcar y desmarcar tareas (solo a mano)', () => {
     const { result } = montar();
     act(() => result.current.markTaskCompleted({ dayKey: 'domingo', taskIndex: 0 }));
     expect(patch).toHaveBeenCalledTimes(1);
-    expect(patch).toHaveBeenCalledWith('week_3', 'domingo', 0, true, false, new Date(2026, 8, 21, 10, 5).toISOString());
+    expect(patch).toHaveBeenCalledWith('week_3', 'domingo', 0, true, false, new Date(2026, 8, 21, 10, 5).toISOString(), expect.anything());
 
     act(() => result.current.markTaskCompleted({ dayKey: 'domingo', taskIndex: 0 }));
     expect(patch).toHaveBeenCalledTimes(1);
@@ -65,7 +65,7 @@ describe('useWeeks — marcar y desmarcar tareas (solo a mano)', () => {
     // Se fichó la entrada de "Devolución Generador" cuando estaba la 1.ª; ahora es la 2.ª.
     const ref = { dayKey: 'domingo', taskIndex: 1, weekId: 'week_3', taskId: null, taskText: 'Devolución Generador' };
     act(() => result.current.markTaskCompleted(ref));
-    expect(patch).toHaveBeenLastCalledWith('week_3', 'domingo', 0, true, false, expect.any(String));
+    expect(patch).toHaveBeenLastCalledWith('week_3', 'domingo', 0, true, false, expect.any(String), expect.anything());
     expect(result.current.activeWeek.sundayMonday.tasks[1].completed).toBe(false);
   });
 

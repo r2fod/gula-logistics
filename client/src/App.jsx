@@ -9,29 +9,43 @@ import ClockInModal from './components/ClockInModal';
 import WorkerView from './components/WorkerView';
 import PublicView from './components/PublicView';
 import BackgroundAnimation from './components/BackgroundAnimation';
+import Cargando from './components/ui/Cargando';
+import AlAbrir from './components/ui/AlAbrir';
+import { precargarEnReposo } from './utils/precargar';
+import { cargarFestivosLocales } from './data/festivosGuardados';
+import { pasarADiaHabil } from './data/festivosSemana';
 import { pestanaDesdeUrl } from './components/panel/pestanas';
 import AdminLoginModal from './components/AdminLoginModal';
 // El panel de admin/socias y sus editores se descargan solo cuando hacen falta: un
 // trabajador en su móvil no los usa (antes todo iba en un único archivo de ~1 MB).
+// Las ventanas, además, no se montan hasta abrirlas (<AlAbrir>): montadas desde el
+// principio, el panel no se pintaba hasta tenerlas todas bajadas. Con el panel ya en
+// pantalla se van trayendo en segundo plano (precargarEnReposo).
 const PartnerDashboardView = lazy(() => import('./components/PartnerDashboardView'));
-const WeekManagerModal = lazy(() => import('./components/WeekManagerModal'));
-const GeminiAssistantModal = lazy(() => import('./components/GeminiAssistantModal'));
-const AdminWorkerEditorModal = lazy(() => import('./components/AdminWorkerEditorModal'));
-const AdminTaskEditorModal = lazy(() => import('./components/AdminTaskEditorModal'));
-const EnlacesWhatsAppModal = lazy(() => import('./components/EnlacesWhatsAppModal'));
+const VENTANAS = {
+  semanas: () => import('./components/WeekManagerModal'),
+  asistente: () => import('./components/GeminiAssistantModal'),
+  equipo: () => import('./components/AdminWorkerEditorModal'),
+  planning: () => import('./components/AdminTaskEditorModal'),
+  enlaces: () => import('./components/EnlacesWhatsAppModal'),
+};
+const WeekManagerModal = lazy(VENTANAS.semanas);
+const GeminiAssistantModal = lazy(VENTANAS.asistente);
+const AdminWorkerEditorModal = lazy(VENTANAS.equipo);
+const AdminTaskEditorModal = lazy(VENTANAS.planning);
+const EnlacesWhatsAppModal = lazy(VENTANAS.enlaces);
 
 // Mientras llega el panel, ya con el fondo de la pestaña que se va a abrir (luego lo
 // pinta el propio panel, que es quien sabe en qué pestaña está).
 const CargandoPanel = () => (
-  <div role="status" className="flex min-h-[60vh] items-center justify-center gap-3 text-sm text-slate-400">
+  <Cargando texto="Cargando el panel…" className="min-h-[60vh]">
     <BackgroundAnimation viewMode={pestanaDesdeUrl(window.location.search)} />
-    <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-700 border-t-amber-400 motion-reduce:animate-none" aria-hidden="true" />
-    Cargando el panel…
-  </div>
+  </Cargando>
 );
 import { logisticsData as BASE_DATA } from './data/logisticsData';
 import {
   fetchClockEntriesFromAPI,
+  accesoAFichajes,
   fetchClockEntryChangesFromAPI,
   guardarCopiaFichajes,
   getStoredAdminToken,
@@ -39,7 +53,7 @@ import {
   getStoredSociasToken,
   setStoredSociasToken,
   guardarTokenTrabajador,
-  comprobarSesionEnAPI,
+  revisarAccesoGuardado,
   logoutAdmin,
   fetchWeeksFromAPI,
   fetchCalendarioApuntes,
@@ -74,7 +88,7 @@ import { useDialog } from './contexts/DialogContext';
 export default function App() {
   const { alert, confirm } = useDialog();
   const { workersList, setWorkersList, handleRemoveWorker, handleUpdateWorker } = useWorkers();
-  const { balancesData, setBalancesData, handleAddWorker } = useBalances(workersList, setWorkersList);
+  const { balancesData, setBalancesData, handleAddWorker, handleTarifaEnSaldos } = useBalances(workersList, setWorkersList);
   
   // Modals
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -102,6 +116,7 @@ export default function App() {
     activeWeekId,
     setActiveWeekId,
     activeWeek,
+    updateWeeks,
     handleUpdateActiveWeek,
     toggleTask,
     markTaskCompleted,
@@ -124,6 +139,7 @@ export default function App() {
     deletedClockEntries,
     handleClockEntryCreated,
     handleUpdateClockEntry,
+    handleCambiarTarifa,
     handleDeleteClockEntry,
     handleDeleteClockEntries,
     handleRestoreClockEntry,
@@ -197,6 +213,7 @@ export default function App() {
       if (!semanas) return { ok: false };
       // Solo lo usa el admin: se carga aparte (generador + optimizador) para no pesar en la vista del trabajador.
       const { anticiparSemanas } = await import('./data/anticipacion');
+      await cargarFestivosLocales(); // el generador mueve los alquileres que caen en festivo
       const r = await anticiparSemanas({
         semanas, hoy: new Date(), roster: workersList,
         leerApuntes: fetchCalendarioApuntes, crearBorrador: createDraftWeekInAPI,
@@ -383,17 +400,18 @@ export default function App() {
       setAvisoAcceso('Este enlace de socias ya no da acceso. Pide al administrador el enlace nuevo.');
     }
 
-    // Un enlace de socias guardado puede haber caducado o haberse anulado: se
-    // comprueba al abrir para no enseñar un panel sin datos. Si no se puede
-    // comprobar (sin red, servidor dormido) no se cierra nada.
-    if (!hasAdminSession && (accesoParam || getStoredSociasToken())) {
-      comprobarSesionEnAPI().then(rol => {
-        if (rol !== null) return;
-        logoutAdmin();
-        setIsPartnerMode(false);
-        setAvisoAcceso('Tu enlace de socias ha caducado o se ha anulado. Pide uno nuevo al administrador.');
-      });
-    }
+    // El acceso guardado (sesión de admin o enlace de socias) puede haber caducado o
+    // haberse anulado: se comprueba al abrir para no enseñar un panel sin datos. Si no
+    // se puede comprobar (sin red, servidor dormido) no se cierra nada.
+    revisarAccesoGuardado().then(estado => {
+      if (estado === 'vale') return;
+      setIsAdminUnlocked(false);
+      if (estado === 'socias') return;
+      setIsPartnerMode(false);
+      setAvisoAcceso(estado === 'admin-anulada'
+        ? 'Tu sesión de administrador se ha cerrado (se cerraron todas las sesiones o cambió la clave). Vuelve a entrar con la clave.'
+        : 'Tu enlace de socias ha caducado o se ha anulado. Pide uno nuevo al administrador.');
+    });
 
     // Sync the shared weekly planning from MongoDB Atlas — this is the
     // source of truth now, not each browser's own localStorage copy.
@@ -418,14 +436,30 @@ export default function App() {
   // el resto de ciclos piden lo cambiado desde el último fichaje visto (?desde=).
   const cursorFichajesRef = useRef(null);
   const ultimaCompletaRef = useRef(0);
+  // De quién es este móvil: sus fichajes se piden con su enlace personal (cuando el
+  // admin lo exige, el servidor solo le da los suyos). Al abrir aún no se ha resuelto
+  // `trabajadorActivo`: vale el nombre del enlace o el de la última vez.
+  const trabajadorActivoRef = useRef(trabajadorActivo);
+  const sincronizarFichajesRef = useRef(null);
+  const [lecturaFichajes, setLecturaFichajes] = useState(null);
   useEffect(() => {
+    const quienLee = () => {
+      if (trabajadorActivoRef.current) return trabajadorActivoRef.current;
+      const delEnlace = new URLSearchParams(window.location.search).get('worker');
+      if (delEnlace) return delEnlace;
+      try { return localStorage.getItem('gula_last_worker_v1'); } catch { return null; }
+    };
     const sincronizarFichajes = async () => {
       const toca = !cursorFichajesRef.current || Date.now() - ultimaCompletaRef.current > 10 * 60 * 1000;
       if (toca) {
-        const todos = await fetchClockEntriesFromAPI();
+        const todos = await fetchClockEntriesFromAPI(quienLee());
         if (!Array.isArray(todos)) return;
-        // Al abrir, una lista vacía no pisa la copia local (puede ser el servidor despertando).
-        if (todos.length > 0 || cursorFichajesRef.current) setClockEntries(todos);
+        const acceso = accesoAFichajes();
+        setLecturaFichajes(acceso);
+        // Al abrir, una lista vacía no pisa la copia local (puede ser el servidor
+        // despertando)… salvo que el servidor diga que no da más: entonces lo que
+        // hubiera guardado de otras personas ya no toca enseñarlo.
+        if (todos.length > 0 || cursorFichajesRef.current || acceso === 'propios' || acceso === 'ninguna') setClockEntries(todos);
         cursorFichajesRef.current = ultimaModificacion(todos);
         ultimaCompletaRef.current = Date.now();
         return;
@@ -433,7 +467,7 @@ export default function App() {
       // 30 s de margen: dos fichajes guardados a la vez pueden llegar a la base
       // en otro orden; lo repetido se descarta al fusionar (mismo updatedAt).
       const desde = new Date(Date.parse(cursorFichajesRef.current) - 30 * 1000).toISOString();
-      const cambios = await fetchClockEntryChangesFromAPI(desde);
+      const cambios = await fetchClockEntryChangesFromAPI(desde, quienLee());
       if (!cambios?.length) return;
       cursorFichajesRef.current = ultimaModificacion([...cambios, { updatedAt: cursorFichajesRef.current }]);
       setClockEntries(prev => {
@@ -442,6 +476,7 @@ export default function App() {
         return siguiente;
       });
     };
+    sincronizarFichajesRef.current = sincronizarFichajes;
     sincronizarFichajes();
 
     // En cuanto el móvil recupera cobertura, reintentar YA los fichajes
@@ -478,6 +513,14 @@ export default function App() {
     };
   }, []);
 
+  // Cambia quién lleva este móvil (o ya se sabe quién es): sus fichajes, enteros, ya.
+  useEffect(() => {
+    if (trabajadorActivoRef.current === trabajadorActivo) return;
+    trabajadorActivoRef.current = trabajadorActivo;
+    cursorFichajesRef.current = null;
+    sincronizarFichajesRef.current?.();
+  }, [trabajadorActivo]);
+
 
 
   // Admin mode state — the source of truth is the signed backend session
@@ -485,6 +528,11 @@ export default function App() {
   // could fake from devtools with localStorage.setItem('x', 'true').
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => !!getStoredAdminToken());
   const isAdmin = isAdminUnlocked;
+
+  // Con el panel de admin ya en pantalla, sus ventanas se van bajando en segundo plano.
+  useEffect(() => (isAdmin ? precargarEnReposo(Object.values(VENTANAS)) : undefined), [isAdmin]);
+  // Y sus festivos locales (los usan el generador de borradores, el Cuadrante y la flota).
+  useEffect(() => { if (isAdmin) cargarFestivosLocales({ forzar: true }); }, [isAdmin]);
 
   // Salir cierra también el enlace de socias de este navegador y vuelve a la
   // vista pública: sin acceso, el panel ya no tiene saldos que enseñar.
@@ -502,6 +550,15 @@ export default function App() {
   // enseñando la semana de antes, y "Guardar" la mandaba con la clave de la otra
   // semana (el servidor lo rechazaba como conflicto y se perdían los cambios). Ahora
   // se avisa de que lo no guardado se pierde, se cierra, se cambia y se reabre.
+  // Una recogida o devolución puesta en festivo, al día que abren (Cuadrante, aviso de
+  // festivos). Puede caer en otra semana: se guardan las dos a la vez.
+  const handlePasarADiaHabil = async (dia, indice) => {
+    const cambio = pasarADiaHabil(allWeeks, activeWeekId, dia, indice);
+    if (cambio.error) return cambio;
+    // Si no se guarda, updateWeeks ya lo ha avisado.
+    return (await updateWeeks(cambio.semanas)) ? cambio : {};
+  };
+
   const handleJumpToVispera = async () => {
     const vispera = semanaDeLaVispera(allWeeks, activeWeek);
     if (!vispera) {
@@ -526,6 +583,7 @@ export default function App() {
           activeWeekData={activeWeek}
           clockEntries={currentWeekClockEntries}
           fichajesDeTodo={activeClockEntries}
+          lecturaFichajes={lecturaFichajes}
           isAdmin={isAdmin}
           onToggleTask={(dayKey, taskIdx, weekId) => toggleTask(dayKey, taskIdx, weekId)}
           onClockEntryCreated={handleClockEntryCreated}
@@ -588,6 +646,7 @@ export default function App() {
             data={activeWeek}
             workersList={workersList}
             clockEntries={currentWeekClockEntries}
+            lecturaFichajes={lecturaFichajes}
             semanas={allWeeks}
             onClockEntryCreated={handleClockEntryCreated}
             onOpenClockModal={(workerName) => {
@@ -632,6 +691,7 @@ export default function App() {
             data={activeWeek}
             workersList={workersList}
             clockEntries={currentWeekClockEntries}
+            lecturaFichajes={lecturaFichajes}
             semanas={allWeeks}
             onOpenLogin={() => setIsAdminLoginOpen(true)}
             onClockEntryCreated={handleClockEntryCreated}
@@ -678,6 +738,7 @@ export default function App() {
         activeWeekId={activeWeekId}
         onSelectWeek={setActiveWeekId}
         onUpdateWeek={handleUpdateActiveWeek}
+        onPasarADiaHabil={handlePasarADiaHabil}
         onRegenerateDraft={regenerarBorrador}
         onEliminarSemana={eliminarSemana}
         anticipacionAviso={avisoAnticipacion}
@@ -721,51 +782,64 @@ export default function App() {
         isAdmin={isAdmin}
       />
 
-      <WeekManagerModal
-        isOpen={isWeekModalOpen}
-        onClose={() => setIsWeekModalOpen(false)}
-        onCreateWeek={handleCreateWeek}
-        onForceAutoDraft={() => ejecutarAnticipacion(true)}
-        currentWeekName={activeWeek.name}
-        currentWeekTrucks={activeWeek.trucks || []}
-        workersList={workersList}
-        aprendizaje={aprendizaje}
-      />
+      <AlAbrir abierto={isWeekModalOpen}>
+        <WeekManagerModal
+          isOpen={isWeekModalOpen}
+          onClose={() => setIsWeekModalOpen(false)}
+          onCreateWeek={handleCreateWeek}
+          onForceAutoDraft={() => ejecutarAnticipacion(true)}
+          currentWeekName={activeWeek.name}
+          currentWeekTrucks={activeWeek.trucks || []}
+          workersList={workersList}
+          aprendizaje={aprendizaje}
+        />
+      </AlAbrir>
 
-      <GeminiAssistantModal
-        isOpen={isGeminiModalOpen}
-        onClose={() => setIsGeminiModalOpen(false)}
-        onApplyGeneratedSchedule={handleApplyGeminiSchedule}
-        activeWeekData={activeWeek}
-        workersList={workersList}
-        aprendizaje={aprendizaje}
-        semanas={allWeeks}
-      />
+      <AlAbrir abierto={isGeminiModalOpen}>
+        <GeminiAssistantModal
+          isOpen={isGeminiModalOpen}
+          onClose={() => setIsGeminiModalOpen(false)}
+          onApplyGeneratedSchedule={handleApplyGeminiSchedule}
+          activeWeekData={activeWeek}
+          workersList={workersList}
+          aprendizaje={aprendizaje}
+          semanas={allWeeks}
+        />
+      </AlAbrir>
 
-      <EnlacesWhatsAppModal
-        abierto={isShareModalOpen}
-        onCerrar={() => setIsShareModalOpen(false)}
-        workersList={workersList}
-        admin={isAdmin}
-      />
+      <AlAbrir abierto={isShareModalOpen}>
+        <EnlacesWhatsAppModal
+          abierto={isShareModalOpen}
+          onCerrar={() => setIsShareModalOpen(false)}
+          workersList={workersList}
+          admin={isAdmin}
+        />
+      </AlAbrir>
 
-      <AdminWorkerEditorModal
-        isOpen={isWorkerEditorModalOpen}
-        onClose={() => setIsWorkerEditorModalOpen(false)}
-        workersList={workersList}
-        onAddWorker={handleAddWorker}
-        onRemoveWorker={handleRemoveWorker}
-        onUpdateWorker={handleUpdateWorker}
-      />
+      <AlAbrir abierto={isWorkerEditorModalOpen}>
+        <AdminWorkerEditorModal
+          isOpen={isWorkerEditorModalOpen}
+          onClose={() => setIsWorkerEditorModalOpen(false)}
+          workersList={workersList}
+          onAddWorker={handleAddWorker}
+          onRemoveWorker={handleRemoveWorker}
+          onUpdateWorker={handleUpdateWorker}
+          clockEntries={activeClockEntries}
+          onCambiarTarifa={handleCambiarTarifa}
+          onTarifaCambiada={handleTarifaEnSaldos}
+        />
+      </AlAbrir>
 
-      <AdminTaskEditorModal
-        isOpen={isTaskEditorModalOpen}
-        onClose={() => setIsTaskEditorModalOpen(false)}
-        activeWeekData={activeWeek}
-        workersList={workersList}
-        onSaveWeekData={handleUpdateActiveWeek}
-        onJumpToVispera={handleJumpToVispera}
-      />
+      <AlAbrir abierto={isTaskEditorModalOpen}>
+        <AdminTaskEditorModal
+          isOpen={isTaskEditorModalOpen}
+          onClose={() => setIsTaskEditorModalOpen(false)}
+          activeWeekData={activeWeek}
+          workersList={workersList}
+          onSaveWeekData={handleUpdateActiveWeek}
+          onJumpToVispera={handleJumpToVispera}
+        />
+      </AlAbrir>
       </Suspense>
 
       <AdminLoginModal

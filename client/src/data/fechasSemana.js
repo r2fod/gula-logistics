@@ -4,6 +4,13 @@
 
 // Ids cortos de las tareas por día (m1, mi2, sl3…): domingo y lunes comparten lista.
 export const PREFIJO_ID = { martes: 'm', miercoles: 'mi', jueves: 'j', viernes: 'v', domingo: 'sl', lunes: 'sl' };
+// Un id corto que no esté ya en esa lista de tareas (m4, sl7…), para la que se añade al final.
+export function idLibreDeTarea(lista = [], prefijo = '') {
+  const usados = new Set(lista.map(t => String(t?.id || '')));
+  let n = lista.length + 1;
+  while (usados.has(`${prefijo}${n}`)) n += 1;
+  return `${prefijo}${n}`;
+}
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 export const fechaLocal = (iso) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); };

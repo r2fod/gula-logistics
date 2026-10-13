@@ -18,7 +18,10 @@ const AdminConfigSchema = new mongoose.Schema({
   trabajadoresVersion: { type: Number, default: 1 },
   // Con esto activado, para fichar hace falta el enlace personal de esa persona (o la
   // sesión de admin): nadie puede fichar por otro con solo la URL de la API.
-  exigirEnlaceAlFichar: { type: Boolean, default: false }
+  exigirEnlaceAlFichar: { type: Boolean, default: false },
+  // Festivos locales que añade el admin (los dos de su municipio, un cierre…): los
+  // nacionales y autonómicos los calcula la app (client/src/data/festivos.js).
+  festivos: { type: [{ _id: false, fecha: { type: String, required: true }, nombre: { type: String, default: '' } }], default: [] }
 }, {
   timestamps: true
 });

@@ -131,6 +131,16 @@ describe('AdminClockEditModal', () => {
     expect(onClockEntryCreated.mock.calls[0][0]).toMatchObject({ workerName: 'Ana', editedByAdmin: false, taskName: 'Inicio de Jornada Operativa' });
   });
 
+  it('BUG evitado: uno nuevo sale con la tarifa de la persona ya elegida, no siempre a 10 €/h', () => {
+    // El fichaje olvidado de un trabajador (su tarifa es 12) y el manual del admin sin tocar el desplegable.
+    const olvidado = pintar({ isAdmin: false, workersList: [equipo[0]] });
+    fireEvent.click(screen.getByRole('button', { name: /Crear Fichaje/ }));
+    expect(olvidado.onClockEntryCreated.mock.calls[0][0].rate).toBe(12);
+    cleanup();
+    pintar({ workersList: [equipo[1], equipo[0]] });
+    expect(campo('Tarifa Hora (€/h)')).toHaveValue(14);
+  });
+
   it('«Cancelar» cierra sin guardar', () => {
     const { onClose, onClockEntryCreated } = pintar();
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));

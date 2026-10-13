@@ -57,4 +57,13 @@ describe('mensajeDeSaldo (WhatsApp de Saldos)', () => {
     const fuera = { ...conBolsa, purseInfo: { ...purseInfo, desde: '2026-08', hasta: '2026-09' } };
     expect(mensajeDeSaldo({ ficha: fuera, saldo: saldoDeTrabajador({ ficha: fuera, horas }), turnosHoras: delMes, ahora })).toContain('octubre queda fuera del acuerdo; todas las horas, a 11,00 €/h');
   });
+
+  it('cada apunte a mano dice de qué día es (un transporte, un pago), salvo que su texto ya lo diga', () => {
+    const conDias = { ...ficha, breakdown: [...ficha.breakdown, { concept: 'Transporte', amount: 10, tipo: 'ajuste', date: '2026-10-01' }, { concept: 'Plus antiguo', amount: 5 }] };
+    const t = mensajeDeSaldo({ ficha: conDias, saldo: saldoDeTrabajador({ ficha: conDias, horas }), turnos, turnosHoras, ahora });
+    expect(t).toContain('• 1 oct · Transporte: +10,00 €');
+    expect(t).toContain('• 30 sept · Bizum adelanto: -40,00 €');
+    expect(t).toContain('• 🕒 23/09 — 10€ ayuda transporte: +10,00 €'); // su texto ya lo dice
+    expect(t).toContain('• Plus antiguo: +5,00 €'); // sin fecha: no se inventa
+  });
 });

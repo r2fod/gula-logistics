@@ -121,7 +121,7 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
     }
     applyLocalWeeksState({ ...allWeeks, [targetWeekId]: { ...semana, ...buildTaskListPatch(semana, dayKey, list) } });
     lastLocalEditRef.current = Date.now();
-    patchTaskCompletionInAPI(targetWeekId, dayKey, taskIdx, newCompleted, reopened, completedAt);
+    patchTaskCompletionInAPI(targetWeekId, dayKey, taskIdx, newCompleted, reopened, completedAt, taskItem);
   };
 
   // `taskRef`: la del fichaje de entrada (refDeTareaFichada). Se marca en SU semana (el
@@ -149,7 +149,7 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
     // desmarcar la tarea que se acaba de completar (el mismo bug que ya
     // se arregló para el toggle manual, pero aquí faltaba).
     lastLocalEditRef.current = Date.now();
-    patchTaskCompletionInAPI(weekId, dayKey, taskIdx, true, false, completedAt);
+    patchTaskCompletionInAPI(weekId, dayKey, taskIdx, true, false, completedAt, taskItem);
   };
 
   // aiGeneratedJson (opcional): viene del asistente guiado de

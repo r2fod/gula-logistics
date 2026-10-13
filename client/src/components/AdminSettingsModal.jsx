@@ -4,6 +4,7 @@ import { cerrarSesionesEnAPI } from '../data/apiService';
 import { useDialog } from '../contexts/DialogContext';
 import BaseDeDatos from './ajustes/BaseDeDatos';
 import FicharConEnlace from './ajustes/FicharConEnlace';
+import Festivos from './ajustes/Festivos';
 import CambiarClave from './ajustes/CambiarClave';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
@@ -43,6 +44,8 @@ export default function AdminSettingsModal({
       />
 
       <FicharConEnlace fichajes={fichajes} />
+
+      <Festivos />
 
       <section aria-labelledby="titulo-seguridad" className="space-y-3 border-t border-slate-800 pt-5">
         <h4 id="titulo-seguridad" className="flex items-center gap-1.5 text-xs font-bold text-amber-500">

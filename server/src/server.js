@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import authRoutes from './routes/auth.routes.js';
+import { mantenerDespierto } from './services/mantenerDespierto.js';
 import clockRoutes from './routes/clock.routes.js';
 import logisticsRoutes from './routes/logistics.routes.js';
 import balancesRoutes from './routes/balances.routes.js';
@@ -15,7 +16,6 @@ import rosterRoutes from './routes/roster.routes.js';
 import aiMemoryRoutes from './routes/aiMemory.routes.js';
 import iaRoutes from './routes/ia.routes.js';
 import { usarCuerposJson, erroresDeCuerpo } from './middleware/cuerpoJson.js';
-import { mantenerDespierto } from './mantenerDespierto.js';
 
 dotenv.config();
 
@@ -44,7 +44,9 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(cors());
+// X-Lectura (GET /api/clock): la web está en otro dominio y sin esto no puede leerla.
+// maxAge: el navegador no vuelve a preguntar «¿puedo?» en cada sondeo de 20 s.
+app.use(cors({ exposedHeaders: ['X-Lectura'], maxAge: 600 }));
 // 2 MB: el prompt de Gemini lleva la semana entera y, aunque la app ya solo envía
 // las semanas que cambian, el límite por defecto (100 KB) se quedaba corto. Lo público
 // (fichar, avisos), mucho menos: ver cuerpoJson.js.
@@ -77,16 +79,20 @@ app.use(erroresDeCuerpo);
 
 // Endpoint de verificación de salud. `version`: el commit desplegado (Render lo da en
 // RENDER_GIT_COMMIT; el repo es público): así se sabe si un despliegue ya está en marcha.
+// `activoDesde`: cuándo arrancó este proceso. Render lo para al dormirlo, así que si es
+// de hace horas es que no se ha dormido (ver mantenerDespierto.js).
+const ACTIVO_DESDE = new Date().toISOString();
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     version: (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7),
     mongoConnected: mongoose.connection.readyState === 1,
+    activoDesde: ACTIVO_DESDE,
     timestamp: new Date().toISOString()
   });
 });
 
 app.listen(PORT, () => {
   console.log(`Servidor de Gula Logistics en puerto ${PORT}`);
-  mantenerDespierto(); // en Render: que no se duerma (ver mantenerDespierto.js)
+  mantenerDespierto();
 });

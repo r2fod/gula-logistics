@@ -78,6 +78,20 @@ export function useClockings(markTaskCompleted) {
     }
   };
 
+  // La misma tarifa para varios fichajes (la ficha del equipo: «desde el día X»). Solo
+  // viaja `rate`: el servidor mezcla (PUT = $set) y lo demás del fichaje no cambia. De 6
+  // en 6, para no lanzar cientos de peticiones a la vez. En pantalla cambian los que de
+  // verdad se guardaron. → true si fueron todos.
+  const handleCambiarTarifa = async (ids = [], tarifa) => {
+    const guardados = [];
+    for (let i = 0; i < ids.length; i += 6) {
+      guardados.push(...await Promise.all(ids.slice(i, i + 6).map(id => updateClockEntryInAPI({ id, rate: tarifa }))));
+    }
+    const hechos = new Set(ids.filter((_, i) => guardados[i]));
+    actualizarLocal(prev => prev.map(e => (hechos.has(e.id) ? { ...e, rate: tarifa } : e)));
+    return hechos.size === ids.length;
+  };
+
   // Mover a la papelera uno o varios (la revisión de fichajes manda los que sobran).
   const handleDeleteClockEntries = async (ids = []) => {
     const aBorrar = new Set(ids);
@@ -127,6 +141,7 @@ export function useClockings(markTaskCompleted) {
     deletedClockEntries,
     handleClockEntryCreated,
     handleUpdateClockEntry,
+    handleCambiarTarifa,
     handleDeleteClockEntry,
     handleDeleteClockEntries,
     handleRestoreClockEntry,

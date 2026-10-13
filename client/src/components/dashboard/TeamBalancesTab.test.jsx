@@ -184,3 +184,55 @@ describe('TeamBalancesTab — fecha del turno a mano', () => {
     }
   });
 });
+
+describe('TeamBalancesTab — el día de cada apunte a mano', () => {
+  const conDias = { ...ficha, breakdown: [...ficha.breakdown, { concept: 'Transporte', amount: 10, tipo: 'ajuste', date: '2026-10-04' }, { concept: 'Efectivo', amount: -30 }] };
+
+  it('cada transporte o pago enseña su día; un turno a mano no lo repite (su texto ya lo dice)', () => {
+    pintar({ balancesData: { workers: [conDias] }, adminUnlocked: false });
+    expect(within(screen.getByText('Transporte').closest('li')).getByText('4 oct')).toBeInTheDocument();
+    expect(within(screen.getByText('Efectivo').closest('li')).getByText('Sin fecha')).toBeInTheDocument();
+    expect(within(screen.getByText(/16\/09 \(17:00 a 20:30/).closest('li')).queryByText(/Sin fecha|sept/)).toBeNull();
+  });
+
+  it('al apuntar un transporte se elige el día al que corresponde (por defecto, hoy)', async () => {
+    const p = pintar();
+    fireEvent.click(screen.getByRole('button', { name: /Añadir concepto \/ horas manual/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Ajuste/ }));
+    expect(screen.getByLabelText('Día al que corresponde').value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    fireEvent.change(screen.getByPlaceholderText(/Plus puntualidad/), { target: { value: 'Transporte' } });
+    fireEvent.change(screen.getByPlaceholderText(/Importe a SUMAR/), { target: { value: '10' } });
+    fireEvent.change(screen.getByLabelText('Día al que corresponde'), { target: { value: '2026-10-04' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Añadir Importe' }));
+    await waitFor(() => expect(p.persistWorkerBalance).toHaveBeenCalled());
+    expect(p.persistWorkerBalance.mock.calls[0][1].breakdown.at(-1)).toEqual({ concept: 'Transporte', amount: 10, isPositive: true, tipo: 'ajuste', date: '2026-10-04' });
+  });
+
+  it('el admin pone el día a un apunte que no lo tenía, sin tocar el saldo ni los demás', async () => {
+    const p = pintar({ balancesData: { workers: [conDias] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Poner el día de Efectivo' }));
+    fireEvent.change(screen.getByLabelText('Día de Efectivo'), { target: { value: '2026-10-02' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar el día' }));
+    await waitFor(() => expect(p.persistWorkerBalance).toHaveBeenCalledTimes(1));
+    const [id, cambios] = p.persistWorkerBalance.mock.calls[0];
+    expect(id).toBe('ana');
+    expect(Object.keys(cambios)).toEqual(['breakdown']);
+    expect(cambios.breakdown).toEqual([...conDias.breakdown.slice(0, 3), { concept: 'Efectivo', amount: -30, date: '2026-10-02', tipo: 'pago' }]);
+  });
+
+  it('sin sesión de admin el día solo se lee', () => {
+    pintar({ balancesData: { workers: [conDias] }, adminUnlocked: false });
+    expect(screen.queryByRole('button', { name: /el día/ })).toBeNull();
+  });
+
+  it('al poner el día propone los que esa persona trabajó, y con un toque queda puesto', async () => {
+    const p = pintar({ balancesData: { workers: [conDias] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Poner el día de Efectivo' }));
+    expect(screen.getByText('Días que trabajó:')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '15 sept' })); // su turno fichado
+    await waitFor(() => expect(p.persistWorkerBalance).toHaveBeenCalledTimes(1));
+    expect(p.persistWorkerBalance.mock.calls[0][1].breakdown.at(-1)).toEqual({ concept: 'Efectivo', amount: -30, date: '2026-09-15', tipo: 'pago' });
+    expect(screen.queryByText('Días que trabajó:')).toBeNull();
+  });
+});
+

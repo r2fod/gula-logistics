@@ -178,12 +178,29 @@ router.post('/cerrar-sesiones', requireAdmin, async (req, res) => {
   }
 });
 
-// GET/PUT /api/auth/ajustes — ajustes del admin: de momento, si para fichar hace falta
-// el enlace personal de cada uno (exigirEnlaceAlFichar).
+// GET/PUT /api/auth/ajustes — ajustes del admin: si para fichar y leer fichajes hace
+// falta el enlace personal de cada uno (exigirEnlaceAlFichar) y los festivos locales
+// (festivos: [{ fecha 'AAAA-MM-DD', nombre }]). El PUT cambia solo lo que se le manda.
+const FECHA_FESTIVO = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+// Limpios, sin repetir y por fecha; null si lo enviado no es una lista de festivos.
+function festivosValidos(lista) {
+  if (!Array.isArray(lista) || lista.length > 60) return null;
+  const porFecha = new Map();
+  for (const f of lista) {
+    if (!f || typeof f.fecha !== 'string' || !FECHA_FESTIVO.test(f.fecha)) return null;
+    if (!porFecha.has(f.fecha)) porFecha.set(f.fecha, { fecha: f.fecha, nombre: String(f.nombre ?? '').trim().slice(0, 60) });
+  }
+  return [...porFecha.values()].sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+const ajustesDe = (config) => ({
+  exigirEnlaceAlFichar: !!config?.exigirEnlaceAlFichar,
+  festivos: (config?.festivos || []).map(f => ({ fecha: f.fecha, nombre: f.nombre || '' })),
+});
+
 router.get('/ajustes', requireAdmin, async (req, res) => {
   try {
     const config = mongoose.connection.readyState === 1 ? await AdminConfig.findOne({ configKey: 'admin' }) : null;
-    return res.json({ exigirEnlaceAlFichar: !!config?.exigirEnlaceAlFichar });
+    return res.json(ajustesDe(config));
   } catch (error) {
     console.error('Error al leer los ajustes:', error);
     return res.status(500).json({ error: 'No se pudieron leer los ajustes' });
@@ -191,13 +208,18 @@ router.get('/ajustes', requireAdmin, async (req, res) => {
 });
 router.put('/ajustes', requireAdmin, async (req, res) => {
   try {
-    if (typeof req.body?.exigirEnlaceAlFichar !== 'boolean') return res.status(400).json({ error: 'exigirEnlaceAlFichar debe ser true o false' });
+    const { exigirEnlaceAlFichar, festivos } = req.body || {};
+    if (exigirEnlaceAlFichar === undefined && festivos === undefined) return res.status(400).json({ error: 'No hay ningún ajuste que guardar' });
+    if (exigirEnlaceAlFichar !== undefined && typeof exigirEnlaceAlFichar !== 'boolean') return res.status(400).json({ error: 'exigirEnlaceAlFichar debe ser true o false' });
+    const limpios = festivos === undefined ? undefined : festivosValidos(festivos);
+    if (limpios === null) return res.status(400).json({ error: 'festivos debe ser una lista de { fecha AAAA-MM-DD, nombre } (60 como mucho)' });
     if (mongoose.connection.readyState !== 1) return res.status(503).json({ error: 'Se necesita conexión con la base de datos' });
     const config = await AdminConfig.findOne({ configKey: 'admin' });
     if (!config) return res.status(404).json({ error: 'No hay configuración de administrador' });
-    config.exigirEnlaceAlFichar = req.body.exigirEnlaceAlFichar;
+    if (exigirEnlaceAlFichar !== undefined) config.exigirEnlaceAlFichar = exigirEnlaceAlFichar;
+    if (limpios !== undefined) config.festivos = limpios;
     await config.save();
-    return res.json({ exigirEnlaceAlFichar: config.exigirEnlaceAlFichar });
+    return res.json(ajustesDe(config));
   } catch (error) {
     console.error('Error al guardar los ajustes:', error);
     return res.status(500).json({ error: 'No se pudieron guardar los ajustes' });

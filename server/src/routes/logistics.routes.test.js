@@ -330,6 +330,37 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
     expect(res.status).toBe(404);
   });
 
+  describe('BUG evitado: la marca llega tarde (cola sin cobertura) y el admin reordenó el día', () => {
+    const semana = (tasks) => ({ weekId: 'week_3', schedule: { martes: { tasks } }, saturdaySpecial: { weddings: [{ location: 'Finca', truck: 'C1' }] } });
+    const marcar = (cuerpo) => request(buildApp()).patch('/api/logistics/weeks/week_3/tasks').send({ completed: true, ...cuerpo });
+    const marcada = () => Object.keys(LogisticsWeek.findOneAndUpdate.mock.calls[0][1].$set)[0];
+    beforeEach(() => LogisticsWeek.findOneAndUpdate.mockResolvedValue({ weekId: 'week_3' }));
+
+    it('con su id, se marca ESA tarea aunque ya esté en otra posición (antes, la que ocupaba su sitio)', async () => {
+      LogisticsWeek.findOne.mockResolvedValue(semana([{ id: 'm9', text: 'Nueva' }, { id: 'm1', text: 'Cargar' }]));
+      expect((await marcar({ dayKey: 'martes', taskIndex: 0, taskId: 'm1', taskText: 'Cargar' })).status).toBe(200);
+      expect(marcada()).toBe('schedule.martes.tasks.1');
+    });
+
+    it('sin id, por su texto; si ya no está, 404 y no se marca ninguna', async () => {
+      LogisticsWeek.findOne.mockResolvedValue(semana(['Nueva', { text: 'Cargar' }]));
+      expect((await marcar({ dayKey: 'martes', taskIndex: 0, taskText: 'Cargar' })).status).toBe(200);
+      expect(marcada()).toBe('schedule.martes.tasks.1');
+      LogisticsWeek.findOneAndUpdate.mockClear();
+      expect((await marcar({ dayKey: 'martes', taskIndex: 0, taskText: 'Descargar' })).status).toBe(404);
+      expect((await marcar({ dayKey: 'martes', taskIndex: 0, taskId: 'm7', taskText: 'Nueva' })).status).toBe(404);
+      expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
+    });
+
+    it('una boda del sábado (sin texto propio) sigue yendo por su posición; textos enormes, 400', async () => {
+      LogisticsWeek.findOne.mockResolvedValue(semana([]));
+      expect((await marcar({ dayKey: 'sabado', taskIndex: 0, taskText: 'Boda Finca · C1' })).status).toBe(200);
+      expect(marcada()).toBe('saturdaySpecial.weddings.0');
+      expect((await marcar({ dayKey: 'sabado', taskIndex: 0, taskText: 'x'.repeat(501) })).status).toBe(400);
+      expect((await marcar({ dayKey: 'sabado', taskIndex: 0, taskId: { $ne: null } })).status).toBe(400);
+    });
+  });
+
   it('devuelve 404 si el índice de tarea no existe en ese día', async () => {
     LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_3', schedule: { martes: { tasks: [] } } });
     const app = buildApp();

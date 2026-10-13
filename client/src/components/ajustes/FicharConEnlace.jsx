@@ -4,10 +4,11 @@ import { fetchAjustesAdmin, guardarAjustesAdmin } from '../../data/apiService';
 import { quienFichaConEnlace } from '../../data/fichajes';
 import { useDialog } from '../../contexts/DialogContext';
 
-// Interruptor «Exigir el enlace personal para fichar» (Configuración). Cada fichaje que
-// llega con el enlace de esa persona va firmado; con esto activado, sin él no se puede
-// fichar (el admin sí, con su sesión). Enseña quién ficha ya con su enlace y quién no,
-// para saber cuándo se puede activar sin dejar a nadie fuera.
+// Interruptor «Exigir el enlace personal» (Configuración). Cada fichaje que llega con el
+// enlace de esa persona va firmado; con esto activado, sin él no se puede fichar ni leer
+// fichajes: cada uno ve los suyos con su enlace y el admin o las socias, todos, con su
+// sesión. Enseña quién ficha ya con su enlace y quién no, para saber cuándo se puede
+// activar sin dejar a nadie fuera.
 export default function FicharConEnlace({ fichajes = [] }) {
   const { alert, confirm } = useDialog();
   const [exigido, setExigido] = useState(null); // null = cargando
@@ -29,8 +30,8 @@ export default function FicharConEnlace({ fichajes = [] }) {
   const cambiar = async () => {
     const activar = !exigido;
     if (activar && sinEnlace.length && !(await confirm(
-      `${sinEnlace.join(', ')} ${sinEnlace.length === 1 ? 'aún ficha' : 'aún fichan'} sin su enlace: no ${sinEnlace.length === 1 ? 'podrá' : 'podrán'} fichar hasta que abra${sinEnlace.length === 1 ? '' : 'n'} el suyo («Enlaces de WhatsApp»). ¿Activarlo igualmente?`,
-      { type: 'warning', title: 'Exigir el enlace para fichar', confirmText: 'Activar' }
+      `${sinEnlace.join(', ')} ${sinEnlace.length === 1 ? 'aún ficha' : 'aún fichan'} sin su enlace: no ${sinEnlace.length === 1 ? 'podrá' : 'podrán'} fichar ni ver sus fichajes hasta que abra${sinEnlace.length === 1 ? '' : 'n'} el suyo («Enlaces de WhatsApp»). ¿Activarlo igualmente?`,
+      { type: 'warning', title: 'Exigir el enlace personal', confirmText: 'Activar' }
     ))) return;
     setGuardando(true);
     const r = await guardarAjustesAdmin({ exigirEnlaceAlFichar: activar });
@@ -44,15 +45,15 @@ export default function FicharConEnlace({ fichajes = [] }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h4 className="flex items-center gap-1.5 text-xs font-bold text-amber-500">
-            <Fingerprint className="h-3.5 w-3.5" aria-hidden="true" /> Fichar solo con el enlace personal
+            <Fingerprint className="h-3.5 w-3.5" aria-hidden="true" /> Fichar y ver fichajes solo con el enlace personal
           </h4>
-          <p className="mt-1 text-[11px] text-slate-400">Así nadie puede fichar por otra persona con solo la dirección del servidor. Tú sigues pudiendo fichar por cualquiera.</p>
+          <p className="mt-1 text-[11px] text-slate-400">Así nadie puede fichar por otra persona ni leer los fichajes con solo la dirección del servidor: cada uno ve los suyos con su enlace, y tú y las socias, los de todos. Tú sigues pudiendo fichar por cualquiera.</p>
         </div>
         <button
           type="button"
           role="switch"
           aria-checked={!!exigido}
-          aria-label="Exigir el enlace personal para fichar"
+          aria-label="Exigir el enlace personal para fichar y ver fichajes"
           onClick={cambiar}
           disabled={exigido === null || guardando}
           className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full border transition-colors disabled:opacity-50 ${exigido ? 'border-emerald-400/60 bg-emerald-500/80' : 'border-slate-700 bg-slate-800'}`}

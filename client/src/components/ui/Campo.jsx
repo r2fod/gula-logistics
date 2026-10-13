@@ -32,6 +32,7 @@ const TEXTOS = {
   ambar: 'text-amber-400 font-bold',
   'ambar-claro': 'text-amber-400',
   esmeralda: 'text-emerald-400',
+  rosa: 'text-rose-400',
 };
 
 // Clases de un campo de formulario (input, select o textarea). Se exporta por
@@ -43,7 +44,7 @@ const TEXTOS = {
 // - fondo: 'oscuro' (slate-950, sobre paneles) | 'medio' (slate-900, sobre tarjetas oscuras)
 // - borde: 'normal' | 'marcado'
 // - texto: 'blanco' | 'suave' | 'destacado' (ámbar claro y negrita: contraseñas) | 'ambar' (ámbar y negrita:
-//   importes) | 'ambar-claro' | 'esmeralda' (los dos últimos, sin negrita)
+//   importes) | 'ambar-claro' | 'esmeralda' | 'rosa' (importes que restan) (los tres últimos, sin negrita)
 export function claseCampo({ tamano = 'lg', redondeo, acento = 'amber', fondo = 'oscuro', borde = 'normal', texto = 'blanco' } = {}) {
   const tamanoValido = TAMANOS[tamano] ? tamano : 'lg';
   return [

@@ -5,6 +5,8 @@ import { Input } from '../ui/Campo';
 import { useDialog } from '../../contexts/DialogContext';
 import { estadoBolsa, tieneBolsa } from '../../data/bolsaHoras';
 import GrupoConceptos from './saldos/GrupoConceptos';
+import FormularioConcepto from './saldos/FormularioConcepto';
+import { conFecha, diasSugeridos, fechaDeConcepto, llevaFechaAparte } from '../../data/conceptosSaldos';
 import EnVivo from '../ui/EnVivo';
 import { duracionEnCurso } from '../../data/costeEnVivo';
 import { saldoDeTrabajador } from '../../data/saldoTrabajador';
@@ -137,12 +139,6 @@ export default function TeamBalancesTab({
     return { hours, rate, amount, concept, dateLabel, isPurse: false, includeTransport };
   };
 
-  // Fecha de hoy como AAAA-MM-DD (la de un pago o un ajuste: cuando se apunta).
-  const hoyISO = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  };
-
   const resetAddConceptForm = () => {
     setAddingConceptFor(null);
     setNewConceptText('');
@@ -247,20 +243,32 @@ export default function TeamBalancesTab({
     }
   };
 
-  const handleAddConcept = async (worker, overrideAmount = null) => {
-    const amount = overrideAmount !== null ? overrideAmount : parseFloat(newConceptAmount.replace(',', '.'));
+  // `amount` llega ya con su signo (FormularioConcepto).
+  const handleAddConcept = async (worker, amount) => {
     if (!newConceptText.trim() || Number.isNaN(amount)) return;
     setSavingBalanceId(worker.id);
 
     try {
       // "Adelanto" = dinero ya entregado (efectivo, Bizum…): resta del saldo como
-      // siempre, y con `tipo: 'pago'` el Resumen no lo toma por un coste.
-      const newItem = { concept: newConceptText.trim(), amount, isPositive: amount >= 0, tipo: newConceptMode === 'pago' ? 'pago' : 'ajuste', date: hoyISO() };
+      // siempre, y con `tipo: 'pago'` el Resumen no lo toma por un coste. La fecha es la
+      // del día al que corresponde (la elegida en el formulario; por defecto, hoy).
+      const newItem = { concept: newConceptText.trim(), amount, isPositive: amount >= 0, tipo: newConceptMode === 'pago' ? 'pago' : 'ajuste', date: newShiftDate || aIso(new Date()) };
       const newBreakdown = [...(worker.breakdown || []), newItem];
       const newBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
 
       await persistWorkerBalance(worker.id, { breakdown: newBreakdown, currentBalance: newBalance });
       resetAddConceptForm();
+    } finally {
+      setSavingBalanceId(null);
+    }
+  };
+
+  // Otra fecha para un concepto ya apuntado (no cambia el saldo; sí la semana en la que
+  // lo cuenta el Resumen).
+  const handleFecharConcepto = async (worker, idx, fecha) => {
+    setSavingBalanceId(worker.id);
+    try {
+      await persistWorkerBalance(worker.id, { breakdown: (worker.breakdown || []).map((it, i) => (i === idx ? conFecha(it, fecha) : it)) });
     } finally {
       setSavingBalanceId(null);
     }
@@ -558,6 +566,9 @@ export default function TeamBalancesTab({
                         onBorrar={adminUnlocked ? (item, idx) => handleDeleteConcept(worker, idx) : null}
                         borrando={savingBalanceId === worker.id}
                         tituloBorrar="Eliminar concepto manual"
+                        fechaDe={(item) => (llevaFechaAparte(item) ? fechaDeConcepto(item) : undefined)}
+                        onFechar={adminUnlocked ? (item, idx, fecha) => handleFecharConcepto(worker, idx, fecha) : null}
+                        sugerirDias={(item) => diasSugeridos(item, worker, hours?.shifts || [])}
                       />
 
                       {adminUnlocked && (
@@ -665,79 +676,19 @@ export default function TeamBalancesTab({
                                   </>
                                 );
                               })()
-                            ) : newConceptMode === 'manual' ? (
-                              <>
-                                <Input
-                                  type="text"
-                                  value={newConceptText}
-                                  onChange={(e) => setNewConceptText(e.target.value)}
-                                  placeholder="Concepto (ej: Plus puntualidad)"
-                                  tamano="xs" fondo="medio" borde="marcado"
-                                />
-                                <Input
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={newConceptAmount}
-                                  onChange={(e) => setNewConceptAmount(e.target.value)}
-                                  placeholder="Importe a SUMAR (ej: 20.00)"
-                                  tamano="xs" fondo="medio" borde="marcado"
-                                />
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() => handleAddConcept(worker)}
-                                    disabled={savingBalanceId === worker.id || !newConceptAmount || isNaN(parseFloat(newConceptAmount.replace(',','.')))}
-                                    className="flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all disabled:opacity-50"
-                                  >
-                                    {savingBalanceId === worker.id ? 'Guardando...' : 'Añadir Importe'}
-                                  </button>
-                                  <button
-                                    onClick={resetAddConceptForm}
-                                    className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all"
-                                  >
-                                    Cancelar
-                                  </button>
-                                </div>
-                              </>
                             ) : (
-                              <>
-                                <input
-                                  type="text"
-                                  value={newConceptText}
-                                  onChange={(e) => setNewConceptText(e.target.value)}
-                                  placeholder="Concepto (ej: Adelanto nómina, Pago Bizum)"
-                                  className="w-full bg-slate-900 border border-rose-900/50 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-rose-500"
-                                />
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={newConceptAmount}
-                                  onChange={(e) => setNewConceptAmount(e.target.value)}
-                                  placeholder="Importe a RESTAR (se pondrá en negativo)"
-                                  className="w-full bg-slate-900 border border-rose-900/50 rounded-lg p-2 text-xs text-rose-400 focus:outline-none focus:border-rose-500"
-                                />
-                                <div className="flex gap-2">
-                                  <button
-                                    onClick={() => {
-                                      // Asegurarnos de que el importe sea negativo
-                                      let val = parseFloat(newConceptAmount.replace(',', '.'));
-                                      if (!isNaN(val)) {
-                                        val = Math.abs(val) * -1; // Fuerza negativo
-                                        handleAddConcept(worker, val);
-                                      }
-                                    }}
-                                    disabled={savingBalanceId === worker.id || !newConceptAmount || isNaN(parseFloat(newConceptAmount.replace(',','.')))}
-                                    className="flex-1 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-all disabled:opacity-50 shadow-md shadow-rose-600/20"
-                                  >
-                                    {savingBalanceId === worker.id ? 'Guardando...' : 'Registrar Adelanto'}
-                                  </button>
-                                  <button
-                                    onClick={resetAddConceptForm}
-                                    className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all"
-                                  >
-                                    Cancelar
-                                  </button>
-                                </div>
-                              </>
+                              <FormularioConcepto
+                                pago={newConceptMode === 'pago'}
+                                texto={newConceptText}
+                                importe={newConceptAmount}
+                                fecha={newShiftDate}
+                                onTexto={setNewConceptText}
+                                onImporte={setNewConceptAmount}
+                                onFecha={setNewShiftDate}
+                                onGuardar={(importe) => handleAddConcept(worker, importe)}
+                                onCancelar={resetAddConceptForm}
+                                guardando={savingBalanceId === worker.id}
+                              />
                             )}
                           </div>
                         ) : (

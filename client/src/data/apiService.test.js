@@ -3,6 +3,8 @@ import {
   saveClockEntryToAPI,
   retryPendingClockEntries,
   fetchClockEntriesFromAPI,
+  fetchClockEntryChangesFromAPI,
+  accesoAFichajes,
   getPendingClockEntriesSnapshot,
   saveWeeksToAPI,
   setStoredSociasToken,
@@ -11,6 +13,8 @@ import {
   cerrarAccesosGuardados,
   fetchBalancesFromAPI,
   comprobarSesionEnAPI,
+  revisarAccesoGuardado,
+  getStoredAdminToken,
   crearTokenSociasEnAPI,
   guardarTokenTrabajador,
   tokenTrabajador,
@@ -138,6 +142,46 @@ describe('retryPendingClockEntries', () => {
   });
 });
 
+describe('leer los fichajes: con qué se piden y qué deja ver el servidor', () => {
+  const responde = (lista, lectura) => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => lista, headers: { get: (c) => (c === 'X-Lectura' ? lectura : null) } });
+  };
+  const tokenCon = (cuerpo) => `${btoa(JSON.stringify(cuerpo)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')}.firma`;
+
+  it('sin sesión ni enlace no manda cabeceras (la petición de siempre); un servidor que no dice nada = todos', async () => {
+    responde([entry({ id: 'a' })], null);
+    await fetchClockEntriesFromAPI();
+    expect(fetch.mock.calls[0][1].headers).toBeUndefined();
+    expect(accesoAFichajes()).toBe('todos');
+    await fetchClockEntryChangesFromAPI('2026-09-19T08:00:00.000Z');
+    expect(fetch.mock.calls[1][1].headers).toBeUndefined();
+  });
+
+  it('el trabajador los pide con su enlace personal y la app sabe si le han dado solo los suyos', async () => {
+    const enlace = tokenCon({ role: 'trabajador', w: 'carlos-gula', exp: Date.now() + 60000 });
+    guardarTokenTrabajador('Carlos', enlace);
+    responde([entry({ id: 'suyo' })], 'propios');
+    expect(await fetchClockEntriesFromAPI('Carlos')).toHaveLength(1);
+    expect(fetch.mock.calls[0][1].headers).toEqual({ 'X-Enlace': enlace });
+    expect(accesoAFichajes()).toBe('propios');
+    await fetchClockEntryChangesFromAPI('2026-09-19T08:00:00.000Z', 'Carlos');
+    expect(fetch.mock.calls[1][1].headers).toEqual({ 'X-Enlace': enlace });
+  });
+
+  it('con sesión de admin va la sesión; y «ninguna» deja la copia local vacía (nada de otra gente guardado)', async () => {
+    setStoredAdminToken('ADMIN', Date.now() + 60000);
+    responde([entry({ id: 'a' })], 'todos');
+    await fetchClockEntriesFromAPI();
+    expect(fetch.mock.calls[0][1].headers).toEqual({ Authorization: 'Bearer ADMIN' });
+
+    cerrarAccesosGuardados();
+    responde([], 'ninguna');
+    expect(await fetchClockEntriesFromAPI()).toEqual([]);
+    expect(accesoAFichajes()).toBe('ninguna');
+    expect(JSON.parse(localStorage.getItem('gula_clock_entries_v1'))).toEqual([]);
+  });
+});
+
 describe('fetchClockEntriesFromAPI (fusión con pendientes)', () => {
   it('no pierde un fichaje pendiente aunque el servidor todavía no lo tenga', async () => {
     // Un fichaje quedó pendiente (sin cobertura al crearlo).
@@ -223,6 +267,47 @@ describe('enlace de socias (solo lectura)', () => {
     expect(await comprobarSesionEnAPI()).toBeNull();
     global.fetch = vi.fn().mockRejectedValue(new Error('sin red'));
     expect(await comprobarSesionEnAPI()).toBeUndefined();
+  });
+
+  describe('BUG evitado: una sesión de admin anulada seguía pintando el panel de admin (saldos vacíos, sin poder guardar)', () => {
+    const responde = (...estados) => { global.fetch = vi.fn(); estados.forEach(e => fetch.mockResolvedValueOnce(e === 401 ? { ok: false, status: 401 } : { ok: true, json: async () => ({ rol: e }) })); };
+
+    it('si el servidor ya no la acepta, se borra de este navegador y se avisa', async () => {
+      setStoredAdminToken('ADMIN', Date.now() + 60000);
+      responde(401);
+      expect(await revisarAccesoGuardado()).toBe('admin-anulada');
+      expect(getStoredAdminToken()).toBeNull();
+    });
+
+    it('si queda un enlace de socias que sí vale, se queda en solo lectura con él', async () => {
+      setStoredAdminToken('ADMIN', Date.now() + 60000);
+      const socias = tokenCon({ role: 'socias', exp: Date.now() + 60000 });
+      setStoredSociasToken(socias);
+      responde(401, 'socias');
+      expect(await revisarAccesoGuardado()).toBe('socias');
+      expect(getStoredAdminToken()).toBeNull();
+      expect(getStoredSociasToken()).toBe(socias);
+      expect(fetch.mock.calls[1][1].headers.Authorization).toBe(`Bearer ${socias}`);
+    });
+
+    it('si vale, sin red o sin nada guardado, no se toca nada', async () => {
+      global.fetch = vi.fn();
+      expect(await revisarAccesoGuardado()).toBe('vale');
+      expect(fetch).not.toHaveBeenCalled();
+      setStoredAdminToken('ADMIN', Date.now() + 60000);
+      responde('admin');
+      expect(await revisarAccesoGuardado()).toBe('vale');
+      global.fetch = vi.fn().mockRejectedValue(new Error('sin red'));
+      expect(await revisarAccesoGuardado()).toBe('vale');
+      expect(getStoredAdminToken()).toBe('ADMIN');
+    });
+
+    it('un enlace de socias anulado (sin sesión de admin) también se cierra', async () => {
+      setStoredSociasToken(tokenCon({ role: 'socias', exp: Date.now() + 60000 }));
+      responde(401);
+      expect(await revisarAccesoGuardado()).toBe('socias-anulado');
+      expect(getStoredSociasToken()).toBeNull();
+    });
   });
 
   it('BUG evitado: sin acceso (401) NO enseña los saldos guardados de otra vez en este navegador', async () => {

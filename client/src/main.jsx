@@ -5,6 +5,7 @@ import './index.css';
 
 import { DialogProvider } from './contexts/DialogContext';
 import RedDeSeguridad from './components/ui/RedDeSeguridad';
+import { hayPrecargaEnCurso } from './utils/precargar';
 import AvisoServidorLento from './components/ui/AvisoServidorLento';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -31,8 +32,11 @@ if ('serviceWorker' in navigator) {
 // El panel de admin se carga por partes (React.lazy en App.jsx). Si se despliega
 // una versión nueva con la app ya abierta, los trozos viejos ya no existen: se
 // recarga UNA vez para traer la versión nueva (si vuelve a fallar enseguida, no se
-// insiste, para no entrar en un bucle de recargas).
+// insiste, para no entrar en un bucle de recargas). Lo que se trae en segundo plano
+// (precargarEnReposo) no cuenta: si falla porque se fue la red, recargar dejaría la
+// app en blanco; ya se bajará al usarlo.
 window.addEventListener('vite:preloadError', (evento) => {
+  if (hayPrecargaEnCurso()) return;
   const CLAVE = 'gula_recarga_por_version';
   try {
     const ultima = Number(sessionStorage.getItem(CLAVE) || 0);

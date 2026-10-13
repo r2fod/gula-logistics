@@ -143,10 +143,17 @@ describe('PartnerDashboardView', () => {
     expect(screen.queryByRole('button', { name: /Link Socias/ })).toBeNull();
   });
 
-  it('"Clave" abre los ajustes de administrador', () => {
+  it('"Clave" abre los ajustes de administrador (se bajan al abrirlos)', async () => {
     pintar();
+    expect(screen.queryByText('Panel de Ajustes de Administrador')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Clave' }));
-    expect(screen.getByText('Panel de Ajustes de Administrador')).toBeInTheDocument();
+    expect(await screen.findByText('Panel de Ajustes de Administrador')).toBeInTheDocument();
+  });
+
+  it('las demás pestañas se bajan al abrirlas: mientras llega se ve «Cargando…» y luego su contenido', async () => {
+    pintar();
+    fireEvent.click(screen.getByRole('tab', { name: /Historial de fichajes/ }));
+    expect(await screen.findByRole('heading', { name: 'Historial de fichajes' })).toBeInTheDocument();
   });
 
   it('una semana en borrador enseña su aviso', () => {
