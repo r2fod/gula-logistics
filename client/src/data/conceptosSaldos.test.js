@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tipoDeConcepto, fechaDeConcepto, conceptosDelPeriodo, horasDeConcepto, llevaFechaAparte, conFecha } from './conceptosSaldos';
+import { tipoDeConcepto, fechaDeConcepto, conceptosDelPeriodo, horasDeConcepto, llevaFechaAparte, conFecha, diasSugeridos } from './conceptosSaldos';
 import { rangoDePeriodo } from './periodosFinancieros';
 
 const ahora = new Date(2026, 8, 28, 12, 0);
@@ -138,5 +138,30 @@ describe('la fecha de un concepto a mano', () => {
     const viejo = { concept: 'Transporte', amount: 10, date: '2026-09-30' };
     expect(fechaDeConcepto(viejo)).toBeNull();
     expect(fechaDeConcepto(conFecha(viejo, '2026-09-30'))).toEqual(new Date(2026, 8, 30));
+  });
+});
+
+describe('diasSugeridos (al poner fecha a un apunte)', () => {
+  const ahora = new Date(2026, 9, 13);
+  const turno = (mes, dia, hora = 9) => ({ startEntry: { timestamp: new Date(2026, mes, dia, hora).toISOString() } });
+  const turnos = [turno(8, 17), turno(8, 20), turno(8, 20, 18), turno(8, 28), turno(9, 4), turno(9, 12)];
+  const sinFecha = { concept: 'Transporte', amount: 10 };
+  const conDia = { concept: 'Transporte', amount: 10, tipo: 'ajuste', date: '2026-10-12' };
+  const ficha = { breakdown: [{ concept: '🕒 13/09 (08:00 a 15:00 - 7h a 10€/h + 10€ transporte)', amount: 80 }, sinFecha, conDia, { concept: 'Efectivo', amount: -50, tipo: 'pago', date: '2026-10-01' }] };
+
+  it('a un apunte sin fecha (de antes del 28/09) le propone los días que trabajó hasta entonces: fichados y turnos a mano, sin repetir', () => {
+    expect(diasSugeridos(sinFecha, ficha, turnos, ahora)).toEqual(['2026-09-13', '2026-09-17', '2026-09-20', '2026-09-28']);
+  });
+
+  it('a uno que ya tiene día le propone todos los trabajados (para corregirlo); un pago o un ajuste no cuentan como día trabajado', () => {
+    expect(diasSugeridos(conDia, ficha, turnos, ahora)).toEqual(['2026-09-13', '2026-09-17', '2026-09-20', '2026-09-28', '2026-10-04', '2026-10-12']);
+  });
+
+  it('sin turnos no propone nada; a uno sin fecha, todos los de septiembre; a uno con día, los 8 últimos', () => {
+    expect(diasSugeridos(sinFecha, { breakdown: [sinFecha] }, [], ahora)).toEqual([]);
+    const septiembre = Array.from({ length: 12 }, (_, i) => turno(8, i + 13));
+    expect(diasSugeridos(sinFecha, { breakdown: [sinFecha] }, septiembre, ahora)).toHaveLength(12);
+    const muchos = Array.from({ length: 12 }, (_, i) => turno(9, i + 1));
+    expect(diasSugeridos(conDia, { breakdown: [conDia] }, muchos, ahora)).toEqual(['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12']);
   });
 });

@@ -224,4 +224,15 @@ describe('TeamBalancesTab — el día de cada apunte a mano', () => {
     pintar({ balancesData: { workers: [conDias] }, adminUnlocked: false });
     expect(screen.queryByRole('button', { name: /el día/ })).toBeNull();
   });
+
+  it('al poner el día propone los que esa persona trabajó, y con un toque queda puesto', async () => {
+    const p = pintar({ balancesData: { workers: [conDias] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Poner el día de Efectivo' }));
+    expect(screen.getByText('Días que trabajó:')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '15 sept' })); // su turno fichado
+    await waitFor(() => expect(p.persistWorkerBalance).toHaveBeenCalledTimes(1));
+    expect(p.persistWorkerBalance.mock.calls[0][1].breakdown.at(-1)).toEqual({ concept: 'Efectivo', amount: -30, date: '2026-09-15', tipo: 'pago' });
+    expect(screen.queryByText('Días que trabajó:')).toBeNull();
+  });
 });
+

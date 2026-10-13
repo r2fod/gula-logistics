@@ -6,7 +6,7 @@ import { useDialog } from '../../contexts/DialogContext';
 import { estadoBolsa, tieneBolsa } from '../../data/bolsaHoras';
 import GrupoConceptos from './saldos/GrupoConceptos';
 import FormularioConcepto from './saldos/FormularioConcepto';
-import { conFecha, fechaDeConcepto, llevaFechaAparte } from '../../data/conceptosSaldos';
+import { conFecha, diasSugeridos, fechaDeConcepto, llevaFechaAparte } from '../../data/conceptosSaldos';
 import EnVivo from '../ui/EnVivo';
 import { duracionEnCurso } from '../../data/costeEnVivo';
 import { saldoDeTrabajador } from '../../data/saldoTrabajador';
@@ -568,6 +568,7 @@ export default function TeamBalancesTab({
                         tituloBorrar="Eliminar concepto manual"
                         fechaDe={(item) => (llevaFechaAparte(item) ? fechaDeConcepto(item) : undefined)}
                         onFechar={adminUnlocked ? (item, idx, fecha) => handleFecharConcepto(worker, idx, fecha) : null}
+                        sugerirDias={(item) => diasSugeridos(item, worker, hours?.shifts || [])}
                       />
 
                       {adminUnlocked && (

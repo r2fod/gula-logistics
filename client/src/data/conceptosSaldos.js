@@ -10,6 +10,8 @@
 // anteriores no: el tipo se deduce del texto y la fecha, de "🕒 15/09 …" (sin año);
 // sin fecha solo se pueden colocar en "Todo" (no se inventa en qué semana cayeron).
 
+import { aIso } from './fechasSemana';
+
 export const TIPOS_CONCEPTO = {
   turno: 'Turnos apuntados a mano',
   transporte: 'Ayuda de transporte',
@@ -83,6 +85,24 @@ export const llevaFechaAparte = (item) => !esBolsaAcumulada(item) && !/^🕒\s*\
 // El concepto con otra fecha (AAAA-MM-DD). Deja fijado su tipo: la fecha de un apunte
 // antiguo sin `tipo` no cuenta si coincide con la de la migración (ver fechaGuardada).
 export const conFecha = (item, fechaIso) => ({ ...item, date: fechaIso, tipo: tipoDeConcepto(item) });
+
+// Desde este día cada concepto nuevo guarda su fecha: uno sin fecha es de antes, y la
+// base no tiene su día (solo el 30/09 que la migración puso a todos, que no es verdad).
+const CON_FECHA_DESDE = '2026-09-28';
+
+// Días que proponer al poner fecha a un apunte (AAAA-MM-DD, en orden): los que esa
+// persona trabajó, por sus turnos fichados (`turnos`, de pairShiftsFromEntries) y los
+// apuntados a mano. A un apunte sin fecha, todos los de hasta el 28/09/2026; a uno que
+// ya la tiene (para corregirla), los 8 últimos. Es una ayuda para elegir: nunca se pone
+// sola (no se inventa el día).
+export function diasSugeridos(item, ficha, turnos = [], ahora = new Date()) {
+  const trabajados = [
+    ...turnos.map(turno => new Date(turno.startEntry?.timestamp)),
+    ...(ficha?.breakdown || []).filter(otro => otro !== item && tipoDeConcepto(otro) === 'turno').map(otro => fechaDeConcepto(otro, ahora)),
+  ].filter(dia => dia && !Number.isNaN(dia.getTime())).map(aIso);
+  const dias = [...new Set(trabajados)].sort();
+  return fechaDeConcepto(item, ahora) ? dias.slice(-8) : dias.filter(dia => dia <= CON_FECHA_DESDE);
+}
 
 const esNomina = (ficha) => ficha?.statusType === 'payroll';
 const MES_SIN_FECHA = new Date(2026, 8, 1);

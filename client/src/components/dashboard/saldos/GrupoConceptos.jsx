@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CalendarDays, Check, Trash2, X } from 'lucide-react';
 import { Input } from '../../ui/Campo';
-import { aIso } from '../../../data/fechasSemana';
+import { aIso, fechaLocal } from '../../../data/fechasSemana';
 import { formatearEuros, formatearEurosConSigno } from '../../../data/formatoFinanciero';
 import { formatDayMonthShort } from '../../../utils/dateUtils';
 
@@ -11,8 +11,9 @@ import { formatDayMonthShort } from '../../../utils/dateUtils';
 // `onBorrar(item, indice)` solo si se puede borrar (admin); `accion`, un pie opcional.
 // `fechaDe(item)`: el día de cada concepto (Date, o null si no tiene) para enseñarlo
 // bajo su texto; `undefined` si no hace falta (su texto ya lo dice). Con
-// `onFechar(item, indice, 'AAAA-MM-DD')` (admin) ese día se puede poner o corregir.
-export default function GrupoConceptos({ titulo, ayuda = null, items = [], total = 0, vacio, fichado = false, onBorrar = null, borrando = false, tituloBorrar, accion = null, fechaDe = null, onFechar = null }) {
+// `onFechar(item, indice, 'AAAA-MM-DD')` (admin) ese día se puede poner o corregir, y
+// `sugerirDias(item)` (['AAAA-MM-DD']) propone los que esa persona trabajó: un toque.
+export default function GrupoConceptos({ titulo, ayuda = null, items = [], total = 0, vacio, fichado = false, onBorrar = null, borrando = false, tituloBorrar, accion = null, fechaDe = null, onFechar = null, sugerirDias = null }) {
   const [fechando, setFechando] = useState(null); // { idx, valor } del concepto al que se le pone fecha
 
   return (
@@ -33,6 +34,8 @@ export default function GrupoConceptos({ titulo, ayuda = null, items = [], total
           {items.map((item, idx) => {
             const fecha = fechaDe ? fechaDe(item) : undefined;
             const dia = fecha ? formatDayMonthShort(fecha) : null;
+            const fechar = (valor) => { onFechar(item, idx, valor); setFechando(null); };
+            const sugeridos = fechando?.idx === idx && sugerirDias ? sugerirDias(item) : [];
             return (
               <li
                 key={idx}
@@ -89,7 +92,7 @@ export default function GrupoConceptos({ titulo, ayuda = null, items = [], total
                     />
                     <button
                       type="button"
-                      onClick={() => { onFechar(item, idx, fechando.valor); setFechando(null); }}
+                      onClick={() => fechar(fechando.valor)}
                       disabled={!fechando.valor || borrando}
                       aria-label="Guardar el día"
                       title="Guardar el día"
@@ -106,6 +109,22 @@ export default function GrupoConceptos({ titulo, ayuda = null, items = [], total
                     >
                       <X className="h-3.5 w-3.5" aria-hidden="true" />
                     </button>
+                  </span>
+                )}
+                {sugeridos.length > 0 && (
+                  <span className="flex basis-full flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
+                    Días que trabajó:
+                    {sugeridos.map(iso => (
+                      <button
+                        key={iso}
+                        type="button"
+                        onClick={() => fechar(iso)}
+                        disabled={borrando}
+                        className="rounded-lg border border-slate-600 bg-slate-900 px-2 py-1 font-semibold text-slate-200 transition-colors hover:border-amber-500/60 hover:text-amber-300 disabled:opacity-40"
+                      >
+                        {formatDayMonthShort(fechaLocal(iso))}
+                      </button>
+                    ))}
                   </span>
                 )}
               </li>
