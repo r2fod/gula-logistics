@@ -38,11 +38,6 @@ export const valorDatetimeLocal = (dateObj) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-export const parseDateString = (dateString) => {
-  if (!dateString) return null;
-  return new Date(dateString);
-};
-
 // Sin el punto que el español pone tras las abreviaturas: "sept." -> "sept".
 const sinPunto = (texto) => texto.replace('.', '');
 

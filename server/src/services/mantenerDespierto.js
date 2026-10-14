@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { ClockEntry } from '../models/ClockEntry.model.js';
+import { plano } from '../utils/texto.js';
 
 // Render (plan gratuito) duerme el servidor a los 15 min sin peticiones de fuera y tarda
 // cerca de un minuto en despertar. Mientras está en marcha, el propio servidor se llama
@@ -19,7 +20,6 @@ import { ClockEntry } from '../models/ClockEntry.model.js';
 // Sin descanso gasta ~744 de las 750 h gratuitas de la cuenta al mes; con él, ~680.
 const CADA_MS = 10 * 60 * 1000;
 const HORAS_TURNO_VIVO = 16; // una entrada más antigua es un olvido de fichar la salida
-const plano = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
 const horaEnMadrid = (fecha) => Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Madrid', hour: '2-digit', hourCycle: 'h23' }).format(fecha));
 

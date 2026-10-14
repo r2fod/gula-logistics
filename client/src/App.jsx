@@ -42,7 +42,6 @@ const CargandoPanel = () => (
     <BackgroundAnimation viewMode={pestanaDesdeUrl(window.location.search)} />
   </Cargando>
 );
-import { logisticsData as BASE_DATA } from './data/logisticsData';
 import {
   fetchClockEntriesFromAPI,
   accesoAFichajes,
@@ -72,12 +71,6 @@ import { semanaDeLaVispera } from './data/vispera';
 import { getWeekRange } from './data/taskPlanning';
 import { semanaPedidaEnEnlace } from './data/enlaces';
 import { parseWeekRange } from './data/taskPlanning';
-
-const BASE_WEEK_3 = {
-  id: "week_3",
-  name: "Semana 3",
-  ...BASE_DATA
-};
 
 import { useWorkers } from './hooks/useWorkers';
 import { useBalances } from './hooks/useBalances';
@@ -133,7 +126,6 @@ export default function App() {
   });
 
   const {
-    clockEntries,
     setClockEntries,
     activeClockEntries,
     deletedClockEntries,
@@ -587,10 +579,7 @@ export default function App() {
           isAdmin={isAdmin}
           onToggleTask={(dayKey, taskIdx, weekId) => toggleTask(dayKey, taskIdx, weekId)}
           onClockEntryCreated={handleClockEntryCreated}
-          onUpdateClockEntry={handleUpdateClockEntry}
           onDeleteClockEntry={handleDeleteClockEntry}
-          onRestoreClockEntry={handleRestoreClockEntry}
-          deletedClockEntries={deletedClockEntries}
           onOpenAdminDashboard={() => {
             if (isAdmin) {
               // Ya autenticado: ir directo al panel, sin pedir contraseña

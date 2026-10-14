@@ -3,9 +3,8 @@ import { initialBalancesData } from './balancesData';
 import { API_BASE, fetchConLimite } from './servidor';
 import { conTareasPendientes } from './colaTareas';
 
-// La conexión (servidor.js) y la cola de tareas marcadas sin red (colaTareas.js)
-// viven aparte; se siguen pudiendo importar desde aquí.
-export { ESPERA_MAXIMA_MS, fetchConLimite } from './servidor';
+// La cola de tareas marcadas sin red vive en colaTareas.js; se sigue pudiendo importar
+// desde aquí.
 export { patchTaskCompletionInAPI, retryPendingTaskPatches } from './colaTareas';
 
 const TOKEN_STORAGE_KEY = 'gula_admin_token_v1';

@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, ChevronDown, ChevronUp, Edit3, MapPin, Plus, Save, Trash2, Users, Eye, EyeOff } from 'lucide-react';
+import { Calendar, Edit3, MapPin, Plus, Save, Trash2, Users, Eye, EyeOff } from 'lucide-react';
 import { getTaskListForDay, buildTaskListPatch } from '../data/taskPlanning';
 import { collectEventNames, EVENT_CATEGORIES } from '../data/eventNaming';
 import Modal from './ui/Modal';
 import SelectorPosicion from './ui/SelectorPosicion';
 import CabeceraModal from './ui/CabeceraModal';
 import BotonCerrar from './ui/BotonCerrar';
-import Boton from './ui/Boton';
 import { Input, Selector } from './ui/Campo';
 import { enlaceMaps } from '../data/mapas';
 import EventoYTarea from './editor/EventoYTarea';
 import CampoEvento from './editor/CampoEvento';
+import SelectorCamion from './editor/SelectorCamion';
 
 const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 
@@ -209,18 +209,6 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
     });
   };
 
-  const handleMoveTask = (dayKey, taskIndex, direction) => {
-    setLocalWeek(prev => {
-      if (!prev) return prev;
-      const list = [...getTaskListForDay(prev, dayKey)];
-      const targetIndex = taskIndex + direction;
-      if (targetIndex < 0 || targetIndex >= list.length) return prev;
-      const [moved] = list.splice(taskIndex, 1);
-      list.splice(targetIndex, 0, moved);
-      return { ...prev, ...buildTaskListPatch(prev, dayKey, list) };
-    });
-  };
-
   const handleMoveTaskTo = (dayKey, taskIndex, targetIndex) => {
     setLocalWeek(prev => {
       if (!prev) return prev;
@@ -260,24 +248,6 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
       if (!prev?.saturdaySpecial?.weddings) return prev;
       const weddings = [...prev.saturdaySpecial.weddings];
       weddings.splice(weddingIndex, 1);
-      return {
-        ...prev,
-        saturdaySpecial: {
-          ...prev.saturdaySpecial,
-          weddings
-        }
-      };
-    });
-  };
-
-  const handleMoveWedding = (weddingIndex, direction) => {
-    setLocalWeek(prev => {
-      if (!prev?.saturdaySpecial?.weddings) return prev;
-      const weddings = [...prev.saturdaySpecial.weddings];
-      const targetIndex = weddingIndex + direction;
-      if (targetIndex < 0 || targetIndex >= weddings.length) return prev;
-      const [moved] = weddings.splice(weddingIndex, 1);
-      weddings.splice(targetIndex, 0, moved);
       return {
         ...prev,
         saturdaySpecial: {
@@ -584,16 +554,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                         </div>
                         <div>
                           <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Camión</label>
-                          <Selector
-                            value={truckValue}
-                            onChange={(e) => handleTaskMetadataChange(dayKey, idx, 'truck', e.target.value)}
-                            tamano="xs" texto="suave"
-                          >
-                            <option value="">Sin camión / no aplica</option>
-                            <option value="Camión Gula">Camión Gula</option>
-                            <option value="Camión Covey">Camión Covey</option>
-                            <option value="Camión Albacar">Camión Albacar</option>
-                          </Selector>
+                          <SelectorCamion valor={truckValue} flota={localWeek.trucks} onCambiar={(camion) => handleTaskMetadataChange(dayKey, idx, 'truck', camion)} />
                         </div>
                         <div>
                           <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Asignar a</label>
@@ -887,16 +848,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Camión</label>
-                          <Selector
-                            value={truckValue}
-                            onChange={(e) => handleTaskMetadataChange('sundayMonday', idx, 'truck', e.target.value)}
-                            tamano="xs" acento="emerald" texto="suave"
-                          >
-                            <option value="">Sin camión / no aplica</option>
-                            <option value="Camión Gula">Camión Gula</option>
-                            <option value="Camión Covey">Camión Covey</option>
-                            <option value="Camión Albacar">Camión Albacar</option>
-                          </Selector>
+                          <SelectorCamion valor={truckValue} flota={localWeek.trucks} acento="emerald" onCambiar={(camion) => handleTaskMetadataChange('sundayMonday', idx, 'truck', camion)} />
                         </div>
                         <div>
                           <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Día Específico</label>

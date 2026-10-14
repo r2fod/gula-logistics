@@ -13,7 +13,7 @@ export const normalizarNombre = (nombre) => plano(nombre).replace(/ff/g, 'f');
 
 // Cuánto se parece la ficha `nombreSaldo` a la persona del equipo `nombreEquipo`:
 // 3 igual, 2 es su nombre seguido de más ("Marta" → "Marta Gula"), 1 lo contiene
-// ("Luis" en "José Luis Gula" o dentro de una palabra), 0 nada.
+// ("Luis" en "Juan Luis Gula" o dentro de una palabra), 0 nada.
 export function parecidoNombre(nombreEquipo, nombreSaldo) {
   const corto = normalizarNombre(nombreEquipo);
   const largo = normalizarNombre(nombreSaldo);

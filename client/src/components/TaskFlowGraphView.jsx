@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { BarChart3, Calendar, Check, CheckCircle2, Circle, ClipboardList, Clock, Filter, Globe, Layers, ListTodo, PackageCheck, PackageMinus, PackagePlus, PartyPopper, Share2, Sparkles, Truck, Undo2, Users, Zap } from 'lucide-react';
+import { BarChart3, Calendar, Check, CheckCircle2, Circle, ClipboardList, Clock, Globe, Layers, ListTodo, PackageCheck, PackageMinus, PackagePlus, PartyPopper, Share2, Sparkles, Truck, Undo2, Users, Zap } from 'lucide-react';
 import { getDayLabel, getWeddingsBadge, isTaskEffectivelyDone, esTareaActiva } from '../data/taskPlanning';
 import { Selector } from './ui/Campo';
 import Tarjeta from './ui/Tarjeta';
 import BarraProgreso from './ui/BarraProgreso';
+import { normalizarNombre } from '../data/nombresTrabajadores';
 
 // Categoriza una tarea por su texto para darle un icono/color propio en el
 // grafo — pura ayuda visual para distinguir de un vistazo qué tipo de
@@ -40,8 +41,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
   // componente, así que quitar/añadir a alguien del roster (o un camión)
   // no se reflejaba aquí: el grafo se quedaba enseñando gente que ya no
   // estaba asignada a nada (p.ej. Jaime, tras quitarlo del equipo).
-  const normalize = (s) => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  const slug = (s) => normalize(s).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const slug = (s) => normalizarNombre(s).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 
   // Cambia cada minuto: el grafo se recalcula cuando pasa la hora de una tarea.
   const minutoActual = Math.floor(Date.now() / 60000);
@@ -101,11 +101,11 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
 
     // Worker links come from the task's own `assigned` array
     const workerIdByName = {};
-    workers.forEach(w => { workerIdByName[normalize(w.name)] = w.id; });
+    workers.forEach(w => { workerIdByName[normalizarNombre(w.name)] = w.id; });
 
     const linkAssignedWorkers = (taskId, assigned) => {
       (Array.isArray(assigned) ? assigned : []).forEach(name => {
-        const workerId = workerIdByName[normalize(name)];
+        const workerId = workerIdByName[normalizarNombre(name)];
         if (workerId) links.push({ source: taskId, target: workerId });
       });
     };
@@ -202,7 +202,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
     // solo lo que de verdad está conectado a este trabajador (sus propias
     // tareas, los días y camiones de esas tareas). Nunca al resto del equipo.
     if (restrictToWorkerName) {
-      const selfWorkerId = workerIdByName[normalize(restrictToWorkerName)];
+      const selfWorkerId = workerIdByName[normalizarNombre(restrictToWorkerName)];
       if (selfWorkerId) {
         const truckNodeIds = new Set(nodes.filter(n => n.type === 'truck').map(n => n.id));
         const keepTaskIds = new Set(links.filter(l => l.target === selfWorkerId).map(l => l.source));

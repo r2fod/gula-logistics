@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Banknote, BarChart3, Bus, Clock, Edit3, Lightbulb, MessageCircle, Plus, ScrollText, Share2, Trash2, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Banknote, BarChart3, Bus, Clock, Edit3, Lightbulb, MessageCircle, Plus, ScrollText, Share2, TrendingUp } from 'lucide-react';
 import { formatearEuros, formatearEurosConSigno, formatearHoras } from '../../data/formatoFinanciero';
 import { Input } from '../ui/Campo';
 import { useDialog } from '../../contexts/DialogContext';

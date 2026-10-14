@@ -10,6 +10,8 @@ import { useAhora } from '../hooks/useAhora';
 import { costeEnCurso, duracionEnCurso } from '../data/costeEnVivo';
 import { fichaDePersona } from '../data/nombresTrabajadores';
 import { formatearEuros } from '../data/formatoFinanciero';
+import { tarifaDe as tarifaDeFicha } from '../data/tarifas';
+import { plano } from '../utils/texto';
 
 
 // `mostrarDinero` (panel de admin/socias, nunca la vista pública): lo que lleva
@@ -39,7 +41,7 @@ export default function LiveMonitorPanel({
     shifts.forEach(t => { (porPersona[t.workerName] = porPersona[t.workerName] || []).push(t); });
     return porPersona;
   }, [shifts]);
-  const tarifaDe = (worker) => worker.clockEntry?.rate || worker.rate || (worker.isPayroll ? 14 : 10);
+  const tarifaDe = (worker) => worker.clockEntry?.rate || tarifaDeFicha(worker);
 
   const parseTimeToMinutes = (str) => {
     const m = /(\d{1,2}):(\d{2})/.exec(str || '');
@@ -108,7 +110,7 @@ export default function LiveMonitorPanel({
   // nombre: antes iba escrito a mano para unas personas concretas y no servía para
   // nadie nuevo.
   const getWorkerLocation = (worker) => {
-    const rol = String(worker?.role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const rol = plano(worker?.role);
     if (/conductor/.test(rol)) return 'En Ruta / Fincas Eventos';
     if (/limpieza/.test(rol)) return 'Almacén Base / Limpieza';
     return 'Almacén Base (Gula Ops)';

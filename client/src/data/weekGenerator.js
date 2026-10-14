@@ -34,7 +34,7 @@ export { PREFIJO_ID, martesDeSemana, formatearRango, weekIdParaInicio } from './
 const DIAS = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'];
 const JS_DIA = { 0: 'domingo', 1: 'lunes', 2: 'martes', 3: 'miercoles', 4: 'jueves', 5: 'viernes', 6: 'sabado' };
 const NOMBRE_DIA = { martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes', sabado: 'Sábado', domingo: 'Domingo', lunes: 'Lunes' };
-const [CAT_PREP, CAT_CARGA, CAT_LIMPIEZA] = ['Logística Preparación', 'Logística Carga', 'Limpieza Eventos'];
+const [CAT_PREP, CAT_LIMPIEZA] = ['Logística Preparación', 'Limpieza Eventos'];
 
 const MIN_INICIO = 6 * 60 + 30; // nadie empieza antes de las 06:30
 

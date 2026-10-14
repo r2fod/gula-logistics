@@ -8,7 +8,7 @@ import { rejillaDeDias } from './rejillaDias';
 import { formatearHoras } from '../../data/formatoFinanciero';
 import { tarifaCorta } from '../../data/tarifas';
 
-export default function ScheduleTab({ activeWeekData, workersList, onToggleTask, onUpdateWeek, vispera = null }) {
+export default function ScheduleTab({ activeWeekData, workersList, onToggleTask, vispera = null }) {
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
 
   // Auto-completion logic based on time

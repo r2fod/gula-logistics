@@ -7,6 +7,7 @@ import { AdminConfig } from '../models/AdminConfig.model.js';
 import { requireAdmin, esAdminVigente, rolVigente } from '../middleware/requireAdmin.js';
 import { limitePorIp } from '../middleware/limitePorIp.js';
 import { verifyToken } from '../utils/authToken.js';
+import { plano } from '../utils/texto.js';
 
 const router = express.Router();
 
@@ -20,7 +21,6 @@ const limiteBorrar = limitePorIp({ max: 200, ventanaMs: DIEZ_MIN });
 const DIAS_ATRAS_MAX = 45;
 const HORAS_FUTURO_MAX = 12;
 const TARIFA_POR_DEFECTO = 10;
-const plano = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
 // ¿Llega con el enlace personal de esa persona? (cabecera X-Enlace: el token del enlace
 // ?worker=…&t=…, cuyo `w` es el id de su ficha de Saldos: "Ana Gula" → ana-gula; las

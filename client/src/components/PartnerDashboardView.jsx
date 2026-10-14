@@ -386,7 +386,6 @@ export default function PartnerDashboardView({
           activeWeekData={activeWeekData}
           workersList={workersList}
           onToggleTask={onToggleTask}
-          onUpdateWeek={actualizarSemana}
           vispera={vispera}
         />
       )}

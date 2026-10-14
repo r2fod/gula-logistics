@@ -2,7 +2,7 @@
 // semanas (por defecto las 2 siguientes) leyendo el calendario, para tenerlas
 // controladas con tiempo. Nunca activa nada: un admin revisa el borrador y lo
 // acepta (ver el banner de PartnerDashboardView).
-import { aIso, formatearRango, martesDeSemana, sumarDias, weekIdParaInicio } from './fechasSemana';
+import { aIso, martesDeSemana, sumarDias, weekIdParaInicio } from './fechasSemana';
 import { parseWeekRange, isWeekFinished } from './taskPlanning';
 import { limitesDe, restriccionesDe } from './disponibilidad';
 
@@ -113,4 +113,3 @@ export async function anticiparSemanas({ semanas, hoy = new Date(), roster = [],
   return { estado: 'ok', creadas, omitidas };
 }
 
-export { formatearRango };
