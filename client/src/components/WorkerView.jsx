@@ -401,18 +401,14 @@ export default function WorkerView({
   const isTaskDone = (dayKey, task) => isTaskEffectivelyDone(activeWeekData, dayKey, task, currentTime);
 
   return (
-    <div className="space-y-4 sm:space-y-5 lg:space-y-0 animate-fadeIn w-full max-w-full 2xl:max-w-[1800px] 2xl:mx-auto overflow-x-hidden lg:grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] lg:gap-5 flex-1">
-      {lecturaFichajes === 'ninguna' && <AvisoFichajesPrivados vista="trabajador" className="lg:col-span-2" />}
-
-      {/* Columna izquierda (desde 1024 px): quién eres, tus horas y fichar. Antes, a 1920 px
-          todo iba en una sola columna de 1850 px con el botón de fichar estirado de lado a lado. */}
-      <div className="space-y-4 sm:space-y-5 min-w-0 flex flex-col h-full">
+    <div className="space-y-4 sm:space-y-5 animate-fadeIn w-full max-w-full xl:max-w-6xl 2xl:max-w-7xl mx-auto overflow-x-hidden">
+      {lecturaFichajes === 'ninguna' && <AvisoFichajesPrivados vista="trabajador" />}
 
       {/* 1. Worker Personal Profile Header Card - Compact & Clean */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-xl relative overflow-hidden flex-1 flex flex-col">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-stretch justify-between gap-3 shrink-0">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-center space-x-3 min-w-0">
             <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-3xl shadow-inner shrink-0">
               {currentWorkerObj.avatar}
@@ -445,7 +441,7 @@ export default function WorkerView({
               </div>
             </div>
           </div>
-          <div className="flex items-center space-x-2 shrink-0 self-end sm:self-auto lg:self-end w-full sm:w-auto lg:w-full justify-end mt-1 sm:mt-0 lg:mt-0">
+          <div className="flex items-center space-x-2 shrink-0">
             {pushStatus !== 'granted' && pushStatus !== 'unsupported' && (
               <button
                 onClick={handleSubscribePush}
@@ -489,7 +485,7 @@ export default function WorkerView({
           equipo={workersList}
         />
         {/* 🎯 HERO ACTION CARD: IMMEDIATE TASK (0 SCROLL REQUIRED!) */}
-        <div className={`mt-3 rounded-2xl p-3 sm:p-5 border transition-all flex-1 flex flex-col justify-between ${
+        <div className={`mt-3 rounded-2xl p-3 sm:p-5 border transition-all ${
           activeShift
             ? 'bg-gradient-to-r from-rose-950/60 via-slate-950 to-rose-950/40 border-rose-500/50 shadow-xl shadow-rose-950/30'
             : immediateTask
@@ -498,7 +494,7 @@ export default function WorkerView({
         }`}>
           {activeShift ? (
             /* ACTIVE SHIFT: Live Clock-Out Button */
-            <div className="space-y-3 flex-1 flex flex-col justify-between">
+            <div className="space-y-3">
               {/* Cada pieza en una línea: si no caben juntas (móvil estrecho o letra grande), el
                   cronómetro baja entero en vez de partirse ("3h 48m" / "02s"). */}
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-rose-500/20 pb-2">
@@ -613,7 +609,7 @@ export default function WorkerView({
             </div>
           ) : (
             /* INICIAR JORNADA BUTTON (No active shift) */
-            <div className="space-y-3 flex-1 flex flex-col justify-between">
+            <div className="space-y-3">
               <div className="flex items-center justify-between gap-2 border-b border-emerald-500/20 pb-2">
                 <div className="flex items-center space-x-1.5 text-emerald-400">
                   <Clock className="w-4 h-4 animate-pulse" />
@@ -689,7 +685,7 @@ export default function WorkerView({
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-4 mt-auto border-t border-slate-800 text-[11px] text-slate-400 shrink-0">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-3 mt-3 border-t border-slate-800 text-[11px] text-slate-400">
             <button
               onClick={() => {
                 setPrefilledTask(null);
@@ -710,7 +706,7 @@ export default function WorkerView({
       {/* Compañeros de esta tarea — para saber a quién preguntar por si
           compartir coche a la misma sede a cargar/descargar */}
       {taskCoworkers.length > 0 && (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 space-y-2.5 shrink-0 mt-4 sm:mt-5">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
           <div className="flex items-center gap-2 text-emerald-400">
             <Users className="w-4 h-4" />
             <span className="text-[11px] font-black uppercase tracking-wider">
@@ -740,10 +736,6 @@ export default function WorkerView({
         </div>
       )}
 
-      </div>
-
-      {/* Columna derecha: tus tareas o tus fichajes */}
-      <div className="space-y-4 sm:space-y-5 min-w-0 flex-1 flex flex-col h-full">
       {/* 2. Clean Segmented Navigation Tabs (Mis Tareas vs Mis Fichajes) */}
       <div className="flex items-center space-x-2 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 shrink-0">
         <button
@@ -772,7 +764,7 @@ export default function WorkerView({
       </div>
 
       {workerTab === 'tasks' && (
-      <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-3 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4 flex-1 flex flex-col">
+      <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-3 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
         
         {/* Header & View Mode Switcher */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3 shrink-0">
@@ -1006,7 +998,6 @@ export default function WorkerView({
       {workerTab === 'history' && (
         <HistorialFichajes fichajes={myEntries} duracionDeSalida={duracionDeSalida} onAnadir={() => setIsEditModalOpen(true)} />
       )}
-      </div>
 
       {/* Clock In Modal for worker */}
       <ClockInModal

@@ -110,31 +110,31 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
           )}
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-3 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(13.5rem,1fr))] gap-3 sm:gap-3.5 text-xs">
           {workersList.map((w, idx) => {
             const isSelected = selectedWorkerFilter === w.name;
             return (
               <div 
                 key={idx} 
                 onClick={() => setSelectedWorkerFilter(isSelected ? null : w.name)}
-                className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex flex-col space-y-2 ${
+                className={`p-3.5 sm:p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-2.5 h-full ${
                   isSelected 
                     ? 'bg-amber-500/15 border-amber-500 ring-2 ring-amber-500/40 text-white shadow-lg shadow-amber-500/10' 
                     : 'bg-slate-950/80 border-slate-800/80 hover:border-amber-500/40 text-slate-200'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <div className="text-2xl">{w.avatar}</div>
+                  <div className="text-2xl sm:text-3xl">{w.avatar}</div>
                   {w.isPayroll ? (
-                    <span className="text-[10px] font-extrabold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Nómina</span>
+                    <span className="text-[10px] font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">Nómina</span>
                   ) : (
-                    <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">{tarifaCorta(w)}</span>
+                    <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">{tarifaCorta(w)}</span>
                   )}
                 </div>
 
-                <div className="min-w-0">
-                  <span className="font-extrabold text-white truncate text-xs block font-outfit">{w.name}</span>
-                  <span className="text-[11px] text-slate-400 block mt-0.5">{w.role}</span>
+                <div className="min-w-0 pt-0.5">
+                  <span className="font-extrabold text-white truncate text-xs sm:text-sm block font-outfit">{w.name}</span>
+                  <span className="text-[11px] text-slate-400 block mt-0.5 truncate">{w.role}</span>
                 </div>
               </div>
             );

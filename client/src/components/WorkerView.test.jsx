@@ -82,13 +82,14 @@ describe('WorkerView — aprovecha la pantalla', () => {
   beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 24, 10, 0, 0)); });
   afterEach(() => vi.useRealTimers());
 
-  it('en pantallas anchas va en dos columnas: lo tuyo y fichar a la izquierda, tus tareas a la derecha (antes, una sola de 1850 px)', () => {
+  it('la cabecera y el botón de fichar van arriba (apilados) para acceso directo y sin huecos vacíos', () => {
     pintar();
-    const raiz = screen.getByRole('heading', { level: 1 }).closest('div[class*="lg:grid"]');
-    expect(raiz).not.toBeNull();
-    const [izquierda, derecha] = raiz.children;
-    expect(within(izquierda).getByRole('heading', { level: 1 })).toBeInTheDocument();
-    expect(within(derecha).getByRole('button', { name: /^Tareas/ })).toBeInTheDocument();
+    const titulo = screen.getByRole('heading', { level: 1 });
+    const botonTareas = screen.getByRole('button', { name: /^Tareas/ });
+    expect(titulo).toBeInTheDocument();
+    expect(botonTareas).toBeInTheDocument();
+    const botonFichar = screen.getByRole('button', { name: /INICIAR JORNADA|para fichar|Sin tareas pendientes/ });
+    expect(botonFichar).toBeInTheDocument();
   });
 
   it('BUG evitado: un solo día se enseña a todo el ancho (antes ocupaba la mitad o la tercera parte y el resto quedaba vacío)', () => {
@@ -100,14 +101,8 @@ describe('WorkerView — aprovecha la pantalla', () => {
     expect(screen.getByRole('heading', { level: 3, name: /Desglose Completo/ }).closest('div').parentElement.querySelector('div.grid').className).toMatch(/md:grid-cols-2/);
   });
 
-  it('BUG evitado: las columnas y tarjetas estiran a la misma altura sin dejar espacio vacío por abajo (rejilla con flex-1 y sin items-start)', () => {
+  it('BUG evitado: las tarjetas de días en cuadrante estiran con h-full para mantener la simetría de alturas', () => {
     pintar();
-    const raiz = screen.getByRole('heading', { level: 1 }).closest('div[class*="lg:grid"]');
-    expect(raiz.className).toMatch(/flex-1/);
-    expect(raiz.className).not.toMatch(/items-start/);
-    const [izquierda, derecha] = raiz.children;
-    expect(izquierda.className).toMatch(/h-full/);
-    expect(derecha.className).toMatch(/h-full/);
     fireEvent.click(screen.getByRole('button', { name: /Toda la Semana/ }));
     const tarjetas = screen.getByRole('heading', { level: 3, name: /Desglose Completo/ }).closest('div').parentElement.querySelectorAll('div.grid > div');
     tarjetas.forEach(t => expect(t.className).toMatch(/h-full/));
