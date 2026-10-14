@@ -97,18 +97,18 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
 
   return (
     <Modal onCerrar={onClose} ancho="4xl" capa={100} disposicion="columna" botonCerrar={false}>
-      <div className="flex justify-between items-center p-6 border-b border-slate-800">
+      <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-800">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Truck className="w-6 h-6 text-amber-500" />
-            Gestión de Flota ({trucks.length})
+          <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2 font-outfit">
+            <Truck className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 shrink-0" />
+            <span>Gestión de Flota ({trucks.length})</span>
           </h2>
-          <p className="text-sm text-slate-400 mt-1">Configura camiones propios y de alquiler (con tareas de recogida/devolución automáticas).</p>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">Configura camiones propios y de alquiler (con tareas de recogida/devolución automáticas).</p>
         </div>
         <BotonCerrar onClick={onClose} />
       </div>
 
-      <div className="p-6 overflow-y-auto flex-1 space-y-4">
+      <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
         {uploadError && (
           <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-lg flex items-center gap-2 text-sm">
             <AlertCircle className="w-4 h-4" />

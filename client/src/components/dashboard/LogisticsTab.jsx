@@ -6,10 +6,12 @@ import Tarjeta from '../ui/Tarjeta';
 // Un evento de la flota: dónde es, con qué camión y en qué consiste.
 function TarjetaEvento({ lugar, camion, detalle }) {
   return (
-    <Tarjeta className="p-4 sm:p-5 space-y-2">
-      {lugar && <span className="font-extrabold text-amber-300 block text-base font-outfit"><MapPin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{lugar}</span>}
-      <span className="text-slate-200 block font-semibold">{camion}</span>
-      <p className="text-xs text-slate-400 leading-relaxed">{detalle}</p>
+    <Tarjeta className="p-4 sm:p-5 space-y-2 h-full flex flex-col justify-between">
+      <div>
+        {lugar && <span className="font-extrabold text-amber-300 block text-base font-outfit"><MapPin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{lugar}</span>}
+        <span className="text-slate-200 block font-semibold">{camion}</span>
+      </div>
+      <p className="text-xs text-slate-400 leading-relaxed flex-1 mt-1">{detalle}</p>
     </Tarjeta>
   );
 }

@@ -75,7 +75,7 @@ export default function FichajesTab({
           </span>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-lg font-extrabold text-white sm:text-xl">Historial de fichajes</h3>
+              <h3 className="text-lg font-extrabold text-white sm:text-xl font-outfit">Historial de fichajes</h3>
               {adminUnlocked ? (
                 <span className="rounded-full bg-amber-500 px-2.5 py-0.5 text-[11px] font-extrabold text-slate-950">CONTROL ADMINISTRATIVO</span>
               ) : (

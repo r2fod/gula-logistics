@@ -477,7 +477,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
               <div className="sticky top-0 z-20 bg-slate-900 px-3 py-2.5 sm:px-4 sm:py-3 border-b border-slate-800/80 rounded-t-2xl flex items-center justify-between gap-2 shadow-md">
                 <div className="flex items-center gap-2 min-w-0">
                   <Calendar className="w-4 h-4 text-amber-400 shrink-0" />
-                  <h4 className="text-sm font-extrabold text-amber-400 capitalize truncate">
+                  <h4 className="text-sm font-extrabold text-amber-400 capitalize truncate font-outfit">
                     {localWeek.schedule[dayKey].title}
                   </h4>
                   <span className="text-[11px] font-bold bg-slate-950 text-slate-400 px-2 py-0.5 rounded-md border border-slate-800 shrink-0">
@@ -622,7 +622,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
             <div className="sticky top-0 z-20 bg-slate-900 px-4 py-3 border-b border-rose-900/40 rounded-t-2xl flex items-center justify-between shadow-md">
               <div className="flex items-center gap-2 min-w-0">
                 <Calendar className="w-4 h-4 text-rose-400 shrink-0" />
-                <h4 className="text-sm font-extrabold text-rose-400 truncate">
+                <h4 className="text-sm font-extrabold text-rose-400 truncate font-outfit">
                   {localWeek.saturdaySpecial.title}
                 </h4>
                 <span className="text-[11px] font-bold bg-slate-950 text-slate-400 px-2 py-0.5 rounded-md border border-slate-800 shrink-0">
@@ -772,7 +772,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
             <div className="sticky top-0 z-20 bg-slate-900 px-4 py-3 border-b border-emerald-900/40 rounded-t-2xl flex items-center justify-between shadow-md">
               <div className="flex items-center gap-2 min-w-0">
                 <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
-                <h4 className="text-sm font-extrabold text-emerald-400 truncate">
+                <h4 className="text-sm font-extrabold text-emerald-400 truncate font-outfit">
                   {localWeek.sundayMonday.title}
                 </h4>
                 <span className="text-[11px] font-bold bg-slate-950 text-slate-400 px-2 py-0.5 rounded-md border border-slate-800 shrink-0">

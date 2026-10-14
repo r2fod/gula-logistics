@@ -401,7 +401,7 @@ export default function TeamBalancesTab({
               return (
                 <div 
                   key={worker.id}
-                  className={`border rounded-3xl p-4 sm:p-6 transition-all shadow-xl flex flex-col justify-between space-y-4 ${
+                  className={`border rounded-3xl p-4 sm:p-6 transition-all shadow-xl flex flex-col justify-between space-y-4 h-full ${
                     derivedStatusType === 'danger'
                       ? 'border-rose-500/40 bg-gradient-to-br from-slate-800 via-slate-800 to-rose-900/30'
                       : derivedStatusType === 'payroll'
@@ -409,7 +409,7 @@ export default function TeamBalancesTab({
                       : 'border-slate-700 bg-slate-800 hover:border-slate-600'
                   }`}
                 >
-                  <div>
+                  <div className="flex-1 flex flex-col">
                     {/* flex-wrap: en tarjetas estrechas (3 columnas a ~1024 px) el saldo baja de línea en vez de salirse */}
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="flex min-w-0 items-center space-x-3">
@@ -726,7 +726,7 @@ export default function TeamBalancesTab({
                     )}
                   </div>
 
-                  <div className="pt-3 border-t border-slate-800 flex items-center justify-end">
+                  <div className="pt-3 border-t border-slate-800 flex items-center justify-end mt-auto">
                     <button
                       onClick={() => setEnviandoSaldo({ ficha: worker, saldo, turnos: [...dynamicShifts].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)), turnosHoras: hours?.shifts || [] })}
                       className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center justify-center space-x-2 shadow-lg shadow-emerald-600/20 transition-all active:scale-95"

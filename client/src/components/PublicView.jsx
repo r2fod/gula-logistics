@@ -200,7 +200,7 @@ export default function PublicView({
             {trucks.map((truck, i) => (
               <div 
                 key={i} 
-                className="group relative bg-slate-900/70 border border-slate-800 hover:border-amber-500/40 rounded-2xl p-3.5 sm:p-5 backdrop-blur-md transition-all hover:-translate-y-1 shadow-lg shadow-slate-950/50 flex flex-col justify-between"
+                className="group relative bg-slate-900/70 border border-slate-800 hover:border-amber-500/40 rounded-2xl p-3.5 sm:p-5 backdrop-blur-md transition-all hover:-translate-y-1 shadow-lg shadow-slate-950/50 flex flex-col justify-between h-full"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -260,24 +260,26 @@ export default function PublicView({
             {filteredTeam.map((item, idx) => (
               <div 
                 key={idx}
-                className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 sm:p-6 backdrop-blur-md space-y-3"
+                className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 sm:p-6 backdrop-blur-md space-y-3 flex flex-col justify-between h-full"
               >
-                <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-amber-400">
-                    <Users className="w-5 h-5" />
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-amber-400">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300">
+                      {item.role}
+                    </span>
                   </div>
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300">
-                    {item.role}
-                  </span>
-                </div>
 
-                <div>
-                  <h4 className="text-lg font-bold text-white font-outfit">
-                    {item.role}
-                  </h4>
-                  <p className="text-sm text-slate-300 mt-2 font-medium bg-slate-950/50 p-3 rounded-xl border border-slate-800/60">
-                    {item.members}
-                  </p>
+                  <div>
+                    <h4 className="text-lg font-bold text-white font-outfit">
+                      {item.role}
+                    </h4>
+                    <p className="text-sm text-slate-300 mt-2 font-medium bg-slate-950/50 p-3 rounded-xl border border-slate-800/60">
+                      {item.members}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}

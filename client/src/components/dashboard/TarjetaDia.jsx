@@ -6,9 +6,9 @@ import { Calendar } from 'lucide-react';
 // se ven y se marcan igual.
 export default function TarjetaDia({ titulo, insignia = null, colorInsignia = 'text-amber-300', className = '', children }) {
   return (
-    <div className={`bg-slate-900/90 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-4 ${className}`}>
-      <div>
-        <div className="flex flex-wrap items-start justify-between gap-y-2 gap-x-2 mb-4 pb-3 border-b border-slate-800/80">
+    <div className={`bg-slate-900/90 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-xl backdrop-blur-xl flex flex-col justify-between space-y-4 h-full ${className}`}>
+      <div className="flex-1 flex flex-col">
+        <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-2 mb-4 pb-3 border-b border-slate-800/80">
           <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-outfit whitespace-nowrap shrink-0">
             <Calendar className="text-amber-400 w-4 h-4 shrink-0" /> {titulo}
           </h3>
@@ -18,7 +18,7 @@ export default function TarjetaDia({ titulo, insignia = null, colorInsignia = 't
             </span>
           )}
         </div>
-        {children}
+        <div className="flex-1">{children}</div>
       </div>
     </div>
   );

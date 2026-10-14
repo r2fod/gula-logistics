@@ -17,22 +17,24 @@ export default function KpiCard({ titulo, valor, formato, icono: Icono, color = 
 
   return (
     <div
-      className={`relative overflow-hidden min-w-0 bg-slate-900 border border-slate-800 rounded-2xl p-3.5 sm:p-5 shadow-lg animate-aparecer motion-reduce:animate-none transition-[border-color,transform] duration-300 hover:border-slate-700 sm:hover:-translate-y-0.5 ${className}`}
+      className={`relative overflow-hidden min-w-0 bg-slate-900 border border-slate-800 rounded-2xl p-3.5 sm:p-5 shadow-lg animate-aparecer motion-reduce:animate-none transition-[border-color,transform] duration-300 hover:border-slate-700 sm:hover:-translate-y-0.5 flex flex-col justify-between h-full ${className}`}
       style={{ animationDelay: `${retraso}ms` }}
     >
       <div aria-hidden="true" className={`pointer-events-none absolute -top-10 -right-10 h-28 w-28 rounded-full blur-2xl ${c.brillo}`} />
-      <div className="relative flex items-start justify-between gap-2">
-        <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 leading-snug">{titulo}</h4>
-        {Icono && (
-          <span className={`shrink-0 grid place-items-center h-8 w-8 rounded-xl border ${c.icono}`}>
-            <Icono className="h-4 w-4" aria-hidden="true" />
-          </span>
-        )}
+      <div>
+        <div className="relative flex items-start justify-between gap-2">
+          <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 leading-snug">{titulo}</h4>
+          {Icono && (
+            <span className={`shrink-0 grid place-items-center h-8 w-8 rounded-xl border ${c.icono}`}>
+              <Icono className="h-4 w-4" aria-hidden="true" />
+            </span>
+          )}
+        </div>
+        <p className={`relative mt-1 sm:mt-3 truncate text-xl sm:text-2xl xl:text-3xl font-extrabold tabular-nums tracking-tight ${c.valor}`}>
+          {formato(mostrado)}
+        </p>
       </div>
-      <p className={`relative mt-1 sm:mt-3 truncate text-xl sm:text-2xl xl:text-3xl font-extrabold tabular-nums tracking-tight ${c.valor}`}>
-        {formato(mostrado)}
-      </p>
-      {pie && <div className="relative mt-1.5 text-[11px] sm:text-xs text-slate-500 leading-snug">{pie}</div>}
+      {pie && <div className="relative mt-2 text-[11px] sm:text-xs text-slate-500 leading-snug">{pie}</div>}
     </div>
   );
 }

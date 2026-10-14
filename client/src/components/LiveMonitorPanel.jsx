@@ -292,7 +292,7 @@ export default function LiveMonitorPanel({
           return (
             <div 
               key={worker.name}
-              className={`relative overflow-hidden rounded-3xl p-4 sm:p-5 border transition-all duration-300 shadow-lg flex flex-col justify-between space-y-4 ${
+              className={`relative overflow-hidden rounded-3xl p-4 sm:p-5 border transition-all duration-300 shadow-lg flex flex-col justify-between space-y-4 h-full ${
                 worker.isZombie
                   ? 'bg-slate-900/90 border-amber-500/60 shadow-amber-500/10 ring-1 ring-amber-500/40'
                   : worker.isClockedIn
@@ -307,84 +307,86 @@ export default function LiveMonitorPanel({
                 }`}></div>
               )}
 
-              <div>
-                {/* Header Info */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl shrink-0 shadow-inner">
-                      {worker.avatar}
+              <div className="flex-1 flex flex-col justify-between space-y-4">
+                <div>
+                  {/* Header Info */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl shrink-0 shadow-inner">
+                        {worker.avatar}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-extrabold text-white text-base font-outfit">{worker.name}</h4>
+                        <p className="text-[11px] text-slate-400 leading-snug">{worker.role}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <h4 className="font-extrabold text-white text-base font-outfit">{worker.name}</h4>
-                      <p className="text-[11px] text-slate-400 leading-snug">{worker.role}</p>
-                    </div>
-                  </div>
 
-                  {/* Status Badge */}
-                  {worker.isZombie ? (
-                    <span
-                      className="px-2.5 py-1 text-[11px] font-extrabold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center space-x-1 shrink-0"
-                      title="Lleva más de 16h fichado sin fichar salida — probablemente se olvidó. Revisar y cerrar desde el editor de fichajes."
-                    >
-                      <span><AlertTriangle className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />REVISAR</span>
-                    </span>
-                  ) : worker.isClockedIn ? (
-                    <span className="px-2.5 py-1 text-[11px] font-extrabold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1 shrink-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                      <span>EN TURNO</span>
-                    </span>
-                  ) : (
-                    <span className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700 shrink-0">
-                      ⚪ DESCANSO
-                    </span>
-                  )}
-                </div>
-
-                {/* Individual Worker Shift Progress Bar */}
-                <div className="mt-4 p-3 rounded-2xl bg-slate-950/90 border border-slate-800/80 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400 font-semibold flex items-center space-x-1">
-                      <Clock className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Avance de Jornada:</span>
-                    </span>
-                    <span className="font-mono font-extrabold text-emerald-400">
-                      {worker.isClockedIn ? `${shiftProgressPercent}%` : '0%'}
-                    </span>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <BarraProgreso
-                    porcentaje={worker.isClockedIn ? Math.max(8, shiftProgressPercent) : 0}
-                    pista="h-2 bg-slate-900 border border-slate-800"
-                    relleno={`transition-all duration-500 ${worker.isClockedIn ? 'bg-gradient-to-r from-emerald-500 to-amber-400' : 'bg-slate-800'}`}
-                    etiqueta={`Avance de jornada de ${worker.name}`}
-                  />
-
-                  <div className="flex justify-between items-center text-[11px] text-slate-400 font-medium">
-                    <span className="tabular-nums">{worker.isClockedIn ? <EnVivo>{(ahora) => duracionEnCurso(worker.clockEntry, ahora)}</EnVivo> : '0h 00m'}</span>
-                    <span>Objetivo ~8h</span>
-                  </div>
-
-                  {mostrarDinero && worker.isClockedIn && (
-                    <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1.5">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-300/80">
-                        {worker.isPayroll ? 'Valoración en curso' : 'Lleva ganado'}
+                    {/* Status Badge */}
+                    {worker.isZombie ? (
+                      <span
+                        className="px-2.5 py-1 text-[11px] font-extrabold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center space-x-1 shrink-0"
+                        title="Lleva más de 16h fichado sin fichar salida — probablemente se olvidó. Revisar y cerrar desde el editor de fichajes."
+                      >
+                        <span><AlertTriangle className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />REVISAR</span>
                       </span>
-                      <span className="whitespace-nowrap font-mono text-sm font-extrabold tabular-nums text-emerald-300" aria-live="off">
-                        <EnVivo>{(ahora) => formatearEuros(costeEnCurso({
-                          entrada: worker.clockEntry,
-                          ahora,
-                          tarifa: tarifaDe(worker),
-                          ficha: fichaDePersona(worker.name, saldos, workersList.map(w => w.name)),
-                          turnosPrevios: turnosCerrados[worker.name] || [],
-                        }).coste)}</EnVivo>
+                    ) : worker.isClockedIn ? (
+                      <span className="px-2.5 py-1 text-[11px] font-extrabold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span>EN TURNO</span>
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700 shrink-0">
+                        ⚪ DESCANSO
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Individual Worker Shift Progress Bar */}
+                  <div className="mt-4 p-3 rounded-2xl bg-slate-950/90 border border-slate-800/80 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400 font-semibold flex items-center space-x-1">
+                        <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>Avance de Jornada:</span>
+                      </span>
+                      <span className="font-mono font-extrabold text-emerald-400">
+                        {worker.isClockedIn ? `${shiftProgressPercent}%` : '0%'}
                       </span>
                     </div>
-                  )}
+
+                    {/* Progress Bar */}
+                    <BarraProgreso
+                      porcentaje={worker.isClockedIn ? Math.max(8, shiftProgressPercent) : 0}
+                      pista="h-2 bg-slate-900 border border-slate-800"
+                      relleno={`transition-all duration-500 ${worker.isClockedIn ? 'bg-gradient-to-r from-emerald-500 to-amber-400' : 'bg-slate-800'}`}
+                      etiqueta={`Avance de jornada de ${worker.name}`}
+                    />
+
+                    <div className="flex justify-between items-center text-[11px] text-slate-400 font-medium">
+                      <span className="tabular-nums">{worker.isClockedIn ? <EnVivo>{(ahora) => duracionEnCurso(worker.clockEntry, ahora)}</EnVivo> : '0h 00m'}</span>
+                      <span>Objetivo ~8h</span>
+                    </div>
+
+                    {mostrarDinero && worker.isClockedIn && (
+                      <div className="flex items-center justify-between gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1.5">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-300/80">
+                          {worker.isPayroll ? 'Valoración en curso' : 'Lleva ganado'}
+                        </span>
+                        <span className="whitespace-nowrap font-mono text-sm font-extrabold tabular-nums text-emerald-300" aria-live="off">
+                          <EnVivo>{(ahora) => formatearEuros(costeEnCurso({
+                            entrada: worker.clockEntry,
+                            ahora,
+                            tarifa: tarifaDe(worker),
+                            ficha: fichaDePersona(worker.name, saldos, workersList.map(w => w.name)),
+                            turnosPrevios: turnosCerrados[worker.name] || [],
+                          }).coste)}</EnVivo>
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Current Task Box */}
-                <div className="mt-3 space-y-1.5">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block">
                       Actividad / Tarea Asignada
@@ -405,56 +407,57 @@ export default function LiveMonitorPanel({
                 </div>
               </div>
 
-              {/* Location Badge */}
-              <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
-                <span className="flex items-center space-x-1 text-slate-300 font-medium min-w-0 flex-1">
-                  <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span className="min-w-0 break-words">{worker.location}</span>
-                </span>
-
-                {worker.isPayroll ? (
-                  <span className="text-[11px] font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 shrink-0">
-                    Nómina{mostrarDinero && ` (${formatearEuros(tarifaDe(worker))}/h)`}
+              {/* Pie de tarjeta: ubicación y acción agrupados al fondo */}
+              <div className="mt-auto space-y-2 pt-3 border-t border-slate-800/80">
+                <div className="flex items-center justify-between text-[11px] text-slate-400">
+                  <span className="flex items-center space-x-1 text-slate-300 font-medium min-w-0 flex-1">
+                    <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span className="min-w-0 break-words">{worker.location}</span>
                   </span>
-                ) : (
-                  <span className="text-[11px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
-                    Extra{mostrarDinero && ` (${formatearEuros(tarifaDe(worker))}/h)`}
-                  </span>
-                )}
-              </div>
 
-              {/* Direct Task Action Control Button */}
-              <div className="pt-2">
-                <button
-                  onClick={() => {
-                    if (worker.isClockedIn) {
-                      if (onClockEntryCreated) onClockEntryCreated(crearFichaje({
-                        trabajador: worker,
-                        tipo: 'salida',
-                        note: `Finalizada tarea: ${worker.currentTask}`
-                      }));
-                    } else {
-                      if (onOpenClockModal) onOpenClockModal(worker.name);
-                    }
-                  }}
-                  className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-all shadow-md active:scale-95 ${
-                    worker.isClockedIn
-                      ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/20'
-                      : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
-                  }`}
-                >
-                  {worker.isClockedIn ? (
-                    <>
-                      <Square className="w-3.5 h-3.5 fill-current" />
-                      <span>Finalizar Tarea Activa</span>
-                    </>
+                  {worker.isPayroll ? (
+                    <span className="text-[11px] font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 shrink-0">
+                      Nómina{mostrarDinero && ` (${formatearEuros(tarifaDe(worker))}/h)`}
+                    </span>
                   ) : (
-                    <>
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      <span>Iniciar Nueva Tarea</span>
-                    </>
+                    <span className="text-[11px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
+                      Extra{mostrarDinero && ` (${formatearEuros(tarifaDe(worker))}/h)`}
+                    </span>
                   )}
-                </button>
+                </div>
+
+                <div>
+                  <button
+                    onClick={() => {
+                      if (worker.isClockedIn) {
+                        if (onClockEntryCreated) onClockEntryCreated(crearFichaje({
+                          trabajador: worker,
+                          tipo: 'salida',
+                          note: `Finalizada tarea: ${worker.currentTask}`
+                        }));
+                      } else {
+                        if (onOpenClockModal) onOpenClockModal(worker.name);
+                      }
+                    }}
+                    className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-all shadow-md active:scale-95 ${
+                      worker.isClockedIn
+                        ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/20'
+                        : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'
+                    }`}
+                  >
+                    {worker.isClockedIn ? (
+                      <>
+                        <Square className="w-3.5 h-3.5 fill-current" />
+                        <span>Finalizar Tarea Activa</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>Iniciar Nueva Tarea</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
             </div>
