@@ -401,7 +401,7 @@ export default function WorkerView({
   const isTaskDone = (dayKey, task) => isTaskEffectivelyDone(activeWeekData, dayKey, task, currentTime);
 
   return (
-    <div className="space-y-4 sm:space-y-5 lg:space-y-0 animate-fadeIn w-full max-w-full overflow-x-hidden lg:grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] lg:gap-5 lg:items-start">
+    <div className="space-y-4 sm:space-y-5 lg:space-y-0 animate-fadeIn w-full max-w-full 2xl:max-w-[1800px] 2xl:mx-auto overflow-x-hidden lg:grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] lg:gap-5 lg:items-start">
       {lecturaFichajes === 'ninguna' && <AvisoFichajesPrivados vista="trabajador" className="lg:col-span-2" />}
 
       {/* Columna izquierda (desde 1024 px): quién eres, tus horas y fichar. Antes, a 1920 px

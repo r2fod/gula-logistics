@@ -80,6 +80,8 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
       tasks: sharedTasks.filter(({ task }) => !targetDayOf(task)),
     },
   ].filter(g => g.tasks.length > 0 || (g.dynamicKey && dynamicTasksByDay[g.dynamicKey]?.length > 0));
+  // Con domingo y lunes a la vez, en pantalla ancha van cada uno en su mitad (apilados dejaban media pantalla vacía).
+  const ladoALado = sharedGroups.length > 1;
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -108,7 +110,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
           )}
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-9 gap-3 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-3 text-xs">
           {workersList.map((w, idx) => {
             const isSelected = selectedWorkerFilter === w.name;
             return (
@@ -208,7 +210,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs sm:text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(18rem,1fr))] gap-4 text-xs sm:text-sm">
             {(activeWeekData.saturdaySpecial.weddings || []).map((w, idx) => {
               if (!esTareaActiva(w)) return null;
               
@@ -255,17 +257,19 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
           {/* Una sola lista guarda domingo Y lunes: se separan aquí por el
               "Día Específico" (targetDay) de cada tarea. Las que no lo tienen
               van aparte, para que se vea cuáles faltan por asignar día. */}
+          <div className={`space-y-4 ${ladoALado ? 'lg:grid lg:grid-cols-2 lg:gap-5 lg:space-y-0' : ''}`}>
           {sharedGroups.map(group => (
             <div key={group.key} className="space-y-2.5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-lg border ${group.chip}`}>{group.title}</span>
                 {group.hint && <span className="text-[11px] text-slate-500">{group.hint}</span>}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 text-xs sm:text-sm text-slate-300">
+              <div className={`grid grid-cols-1 md:grid-cols-2 ${ladoALado ? 'lg:grid-cols-1' : ''} gap-3.5 text-xs sm:text-sm text-slate-300`}>
                 {group.tasks.map(({ task, idx }) => renderSharedTask(task, idx))}
               </div>
             </div>
           ))}
+          </div>
         </section>
       )}
     </div>

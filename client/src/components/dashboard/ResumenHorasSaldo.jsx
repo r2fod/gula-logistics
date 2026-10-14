@@ -74,7 +74,7 @@ export default function ResumenHorasSaldo({ nombre, enNomina = false, turnoAbier
   return (
     <section aria-label="Tus horas y tu saldo" className="mt-3 flex flex-wrap gap-2">
       <Dato icono={Clock} etiqueta="Horas" tono="text-sky-300" pie={turnoAbierto ? 'Con el turno en curso' : null}>
-        <span className="flex flex-wrap gap-x-4 gap-y-1">
+        <span className="grid grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] gap-x-4 gap-y-1">
           {[[semana, 'semana'], [mes, formatMonthName(mes.rango.desde)]].map(([p, texto]) => (
             p.abiertoDentro
               ? <EnVivo key={texto}>{(momento) => <Horas valor={formatearHoras(p.cerradas + horasAbiertas(momento))} texto={texto} />}</EnVivo>
