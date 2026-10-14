@@ -401,18 +401,18 @@ export default function WorkerView({
   const isTaskDone = (dayKey, task) => isTaskEffectivelyDone(activeWeekData, dayKey, task, currentTime);
 
   return (
-    <div className="space-y-4 sm:space-y-5 lg:space-y-0 animate-fadeIn w-full max-w-full 2xl:max-w-[1800px] 2xl:mx-auto overflow-x-hidden lg:grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] lg:gap-5 lg:items-start">
+    <div className="space-y-4 sm:space-y-5 lg:space-y-0 animate-fadeIn w-full max-w-full 2xl:max-w-[1800px] 2xl:mx-auto overflow-x-hidden lg:grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] lg:gap-5 flex-1">
       {lecturaFichajes === 'ninguna' && <AvisoFichajesPrivados vista="trabajador" className="lg:col-span-2" />}
 
       {/* Columna izquierda (desde 1024 px): quién eres, tus horas y fichar. Antes, a 1920 px
           todo iba en una sola columna de 1850 px con el botón de fichar estirado de lado a lado. */}
-      <div className="space-y-4 sm:space-y-5 min-w-0">
+      <div className="space-y-4 sm:space-y-5 min-w-0 flex flex-col h-full">
 
       {/* 1. Worker Personal Profile Header Card - Compact & Clean */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-xl relative overflow-hidden flex-1 flex flex-col">
         <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-stretch justify-between gap-3">
+        <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-stretch justify-between gap-3 shrink-0">
           <div className="flex items-center space-x-3 min-w-0">
             <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-3xl shadow-inner shrink-0">
               {currentWorkerObj.avatar}
@@ -489,7 +489,7 @@ export default function WorkerView({
           equipo={workersList}
         />
         {/* 🎯 HERO ACTION CARD: IMMEDIATE TASK (0 SCROLL REQUIRED!) */}
-        <div className={`mt-3 rounded-2xl p-3 sm:p-5 border transition-all ${
+        <div className={`mt-3 rounded-2xl p-3 sm:p-5 border transition-all flex-1 flex flex-col justify-between ${
           activeShift
             ? 'bg-gradient-to-r from-rose-950/60 via-slate-950 to-rose-950/40 border-rose-500/50 shadow-xl shadow-rose-950/30'
             : immediateTask
@@ -498,7 +498,7 @@ export default function WorkerView({
         }`}>
           {activeShift ? (
             /* ACTIVE SHIFT: Live Clock-Out Button */
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1 flex flex-col justify-between">
               {/* Cada pieza en una línea: si no caben juntas (móvil estrecho o letra grande), el
                   cronómetro baja entero en vez de partirse ("3h 48m" / "02s"). */}
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-rose-500/20 pb-2">
@@ -613,7 +613,7 @@ export default function WorkerView({
             </div>
           ) : (
             /* INICIAR JORNADA BUTTON (No active shift) */
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1 flex flex-col justify-between">
               <div className="flex items-center justify-between gap-2 border-b border-emerald-500/20 pb-2">
                 <div className="flex items-center space-x-1.5 text-emerald-400">
                   <Clock className="w-4 h-4 animate-pulse" />
@@ -689,7 +689,7 @@ export default function WorkerView({
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-4 mt-2 border-t border-slate-800 text-[11px] text-slate-400">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-4 mt-auto border-t border-slate-800 text-[11px] text-slate-400 shrink-0">
             <button
               onClick={() => {
                 setPrefilledTask(null);
@@ -710,7 +710,7 @@ export default function WorkerView({
       {/* Compañeros de esta tarea — para saber a quién preguntar por si
           compartir coche a la misma sede a cargar/descargar */}
       {taskCoworkers.length > 0 && (
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 space-y-2.5">
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3.5 space-y-2.5 shrink-0 mt-4 sm:mt-5">
           <div className="flex items-center gap-2 text-emerald-400">
             <Users className="w-4 h-4" />
             <span className="text-[11px] font-black uppercase tracking-wider">
@@ -743,9 +743,9 @@ export default function WorkerView({
       </div>
 
       {/* Columna derecha: tus tareas o tus fichajes */}
-      <div className="space-y-4 sm:space-y-5 min-w-0">
+      <div className="space-y-4 sm:space-y-5 min-w-0 flex-1 flex flex-col h-full">
       {/* 2. Clean Segmented Navigation Tabs (Mis Tareas vs Mis Fichajes) */}
-      <div className="flex items-center space-x-2 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800">
+      <div className="flex items-center space-x-2 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 shrink-0">
         <button
           onClick={() => setWorkerTab('tasks')}
           className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
@@ -772,10 +772,10 @@ export default function WorkerView({
       </div>
 
       {workerTab === 'tasks' && (
-      <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-3 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
+      <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-3 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4 flex-1 flex flex-col">
         
         {/* Header & View Mode Switcher */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3 shrink-0">
           <div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span className="whitespace-nowrap text-[10px] font-extrabold bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full uppercase tracking-wider">
@@ -818,11 +818,13 @@ export default function WorkerView({
         </div>
 
         {viewModeType === 'graph' ? (
-          <TaskFlowGraphView activeWeekData={activeWeekData} workersList={workersList} onToggleTask={onToggleTask} restrictToWorkerName={currentWorkerObj.name} />
+          <div className="flex-1 flex flex-col min-h-0">
+            <TaskFlowGraphView activeWeekData={activeWeekData} workersList={workersList} onToggleTask={onToggleTask} restrictToWorkerName={currentWorkerObj.name} />
+          </div>
         ) : (
           <>
             {/* HORIZONTAL SCROLLABLE DAY PILLS BAR */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 pt-1 -mx-1 px-1">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 pt-1 -mx-1 px-1 shrink-0">
               <button
                 onClick={() => setSelectedDayKey(todayKey)}
                 className={`px-3 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all shrink-0 flex items-center gap-1.5 border ${
@@ -885,8 +887,8 @@ export default function WorkerView({
             </div>
 
             {/* DETAILED TASKS & WEDDINGS BREAKDOWN ACCORDING TO SELECTED DAY */}
-            <div className="space-y-4 pt-4 border-t border-slate-800">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="space-y-4 pt-4 border-t border-slate-800 flex-1 flex flex-col">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
                 <h3 className="text-base sm:text-lg font-extrabold text-white font-outfit flex items-center space-x-2">
                   <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
                   <span>
@@ -900,21 +902,25 @@ export default function WorkerView({
                 </span>
               </div>
 
-              {/* Un solo día: a todo el ancho (antes ocupaba la mitad o la tercera parte y el resto quedaba vacío). */}
-              <div className={`grid grid-cols-1 gap-3 sm:gap-4 ${displayedDays.length > 1 ? 'md:grid-cols-2 2xl:grid-cols-3' : ''}`}>
+              {/* Un solo día: a todo el ancho. Dos días: 2 columnas que llenan la fila. Tres o más: hasta 3 columnas */}
+              <div className={`grid grid-cols-1 gap-3 sm:gap-4 ${
+                displayedDays.filter(d => selectedDayKey !== 'all' || d.totalCount > 0).length > 1 
+                  ? (displayedDays.filter(d => selectedDayKey !== 'all' || d.totalCount > 0).length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-2 2xl:grid-cols-3') 
+                  : ''
+              } flex-1 items-stretch`}>
                 {displayedDays.map((dayGroup) => {
                   if (dayGroup.totalCount === 0 && selectedDayKey === 'all') return null;
 
                   return (
                     <div 
                       key={dayGroup.key} 
-                      className={`bg-slate-950 border p-4 sm:p-5 rounded-2xl space-y-3 sm:space-y-4 transition-all ${
+                      className={`bg-slate-950 border p-4 sm:p-5 rounded-2xl space-y-3 sm:space-y-4 transition-all flex flex-col h-full ${
                         dayGroup.weddings.length > 0
                           ? 'border-amber-500/40 bg-gradient-to-br from-slate-950 via-slate-950 to-amber-950/20'
                           : 'border-slate-800'
                       }`}
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5 shrink-0">
                         <div>
                           <h4 className="whitespace-nowrap font-extrabold text-amber-300 text-sm sm:text-base font-outfit">
                             <Calendar className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{dayGroup.title}
@@ -929,7 +935,7 @@ export default function WorkerView({
 
                       {/* Tasks List */}
                       {dayGroup.tasks.length > 0 && (
-                        <ul className="space-y-2 text-xs text-slate-200">
+                        <ul className="space-y-2 text-xs text-slate-200 flex-1">
                           {dayGroup.tasks.map((task, idx) => (
                             <WorkerViewTaskItem
                               key={idx}
@@ -983,7 +989,7 @@ export default function WorkerView({
                       )}
 
                       {dayGroup.totalCount === 0 && (
-                        <p className="text-xs text-slate-500 italic text-center py-4">
+                        <p className="text-xs text-slate-500 italic text-center py-4 flex-1 flex items-center justify-center">
                           Sin tareas directas asignadas para este día. Estás en backup u operativa general de base.
                         </p>
                       )}

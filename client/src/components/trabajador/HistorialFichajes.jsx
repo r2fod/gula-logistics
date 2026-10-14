@@ -10,8 +10,8 @@ import { formatearHoras } from '../../data/formatoFinanciero';
 // o borrar es cosa del admin. `duracionDeSalida`: Map id de salida → horas de su turno.
 export default function HistorialFichajes({ fichajes = [], duracionDeSalida = new Map(), onAnadir }) {
   return (
-    <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+    <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4 flex-1 flex flex-col">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3 shrink-0">
         <h3 className="text-lg sm:text-xl font-extrabold text-white font-outfit flex items-center space-x-2">
           <Clock className="w-5 h-5 text-emerald-400 shrink-0" />
           <span>Mi Historial de Fichajes Registrados</span>
@@ -31,7 +31,7 @@ export default function HistorialFichajes({ fichajes = [], duracionDeSalida = ne
       </div>
 
       {fichajes.length === 0 ? (
-        <EstadoVacio icono={Clock} titulo="Aún no has registrado ningún fichaje de entrada o salida esta semana." className="py-8 bg-slate-950/60" />
+        <EstadoVacio icono={Clock} titulo="Aún no has registrado ningún fichaje de entrada o salida esta semana." className="py-8 bg-slate-950/60 flex-1 flex flex-col justify-center" />
       ) : (
         <>
           {/* Móvil: tarjetas */}

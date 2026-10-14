@@ -99,6 +99,19 @@ describe('WorkerView — aprovecha la pantalla', () => {
     fireEvent.click(screen.getByRole('button', { name: /Toda la Semana/ }));
     expect(screen.getByRole('heading', { level: 3, name: /Desglose Completo/ }).closest('div').parentElement.querySelector('div.grid').className).toMatch(/md:grid-cols-2/);
   });
+
+  it('BUG evitado: las columnas y tarjetas estiran a la misma altura sin dejar espacio vacío por abajo (rejilla con flex-1 y sin items-start)', () => {
+    pintar();
+    const raiz = screen.getByRole('heading', { level: 1 }).closest('div[class*="lg:grid"]');
+    expect(raiz.className).toMatch(/flex-1/);
+    expect(raiz.className).not.toMatch(/items-start/);
+    const [izquierda, derecha] = raiz.children;
+    expect(izquierda.className).toMatch(/h-full/);
+    expect(derecha.className).toMatch(/h-full/);
+    fireEvent.click(screen.getByRole('button', { name: /Toda la Semana/ }));
+    const tarjetas = screen.getByRole('heading', { level: 3, name: /Desglose Completo/ }).closest('div').parentElement.querySelectorAll('div.grid > div');
+    tarjetas.forEach(t => expect(t.className).toMatch(/h-full/));
+  });
 });
 
 describe('WorkerView — botón de fichar la entrada', () => {

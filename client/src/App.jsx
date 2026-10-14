@@ -570,7 +570,7 @@ export default function App() {
 
   if (trabajadorActivo) {
     return (
-      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans selection:bg-amber-500 selection:text-slate-950 relative isolate">
+      <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans selection:bg-amber-500 selection:text-slate-950 relative isolate flex flex-col">
         <BackgroundAnimation viewMode="worker" />
         <WorkerView
           workerName={trabajadorActivo}
