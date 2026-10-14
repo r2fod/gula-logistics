@@ -348,7 +348,7 @@ export default function TeamBalancesTab({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 items-start gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {(balancesData.workers || []).map((worker) => {
               const isExpanded = expandedWorkerId === worker.id;
 

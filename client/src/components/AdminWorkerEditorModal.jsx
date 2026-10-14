@@ -137,15 +137,15 @@ export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = 
 
           {onGuardarTarifas && <TarifasPorDefecto tarifas={tarifas} equipo={workersList} onGuardar={onGuardarTarifas} />}
 
-          {/* En columnas que se rellenan de arriba abajo: un grupo largo no deja huecos al lado. */}
-          <div className="-mb-5 gap-5 md:columns-2 xl:columns-3">
+          {/* Cada grupo, con sus personas en filas de la misma altura (en columnas libres, unas tarjetas quedaban más altas que otras). */}
+          <div className="space-y-5">
             {grupos.map(grupo => (
-              <section key={grupo.titulo} aria-label={grupo.titulo} className="mb-5 break-inside-avoid">
+              <section key={grupo.titulo} aria-label={grupo.titulo}>
                 <h3 className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0">
                   {grupo.titulo}
                   <span className="rounded-full bg-slate-800 px-1.5 py-0.5 text-[11px] font-semibold text-slate-300">{grupo.personas.length}</span>
                 </h3>
-                <ul className="space-y-2">
+                <ul className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
                   {grupo.personas.map(w => (
                     <FilaTrabajador
                       key={w.name}
