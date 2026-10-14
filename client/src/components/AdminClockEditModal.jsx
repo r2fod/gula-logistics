@@ -4,7 +4,7 @@ import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 import { Campo, Input, Selector, AreaTexto } from './ui/Campo';
 import { crearFichaje } from '../data/fichajes';
-import { tarifaDe } from '../data/tarifas';
+import { tarifaCorta, tarifaDe } from '../data/tarifas';
 import { valorDatetimeLocal } from '../utils/dateUtils';
 
 // Se monta de nuevo al abrir y con cada fichaje (`key`): el formulario sale de las
@@ -116,7 +116,7 @@ function FormularioFichaje({
           <Selector value={workerName} onChange={handleWorkerChange} className="w-full font-medium">
             {workersList.map((w) => (
               <option key={w.name} value={w.name}>
-                {w.avatar} {w.name} — {w.role} ({w.isPayroll ? 'Nómina 14€/h' : 'Extra 10€/h'})
+                {w.avatar} {w.name} — {w.role} ({w.isPayroll ? 'Nómina' : 'Extra'} {tarifaCorta(w)})
               </option>
             ))}
           </Selector>

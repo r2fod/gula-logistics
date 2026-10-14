@@ -180,6 +180,15 @@ describe('FinancialSummaryTab — desglose y comparación', () => {
     expect(within(tarjeta('Coste de personal')).getByText(/vs semana anterior/)).toBeTruthy();
   });
 
+  it('BUG evitado: la comparación cuenta lo que llevan los turnos abiertos, como el coste que enseña (antes, con solo un turno abierto, «-100 %»)', () => {
+    vi.setSystemTime(new Date(2026, 8, 21, 18, 0));
+    const conAnterior = [...shifts, ...turnos(['Luis', new Date(2026, 8, 10, 9, 0), new Date(2026, 8, 10, 10, 0), 'Inicio de Jornada'])]; // 10 € la semana anterior
+    const turnosAbiertos = { Eva: { workerName: 'Eva', type: 'entrada', isPayroll: false, rate: 10, timestamp: new Date(2026, 8, 21, 16, 0).toISOString() } }; // 2 h: 20 €
+    render(<FinancialSummaryTab shifts={conAnterior} workersList={[]} allWeeks={{ week_3: semana3 }} activeWeekData={semana3} turnosAbiertos={turnosAbiertos} />);
+    expect(within(tarjeta('Coste de personal')).getByText('55,00 €')).toBeTruthy(); // 35 fichado + 20 en curso
+    expect(within(tarjeta('Coste de personal')).getByText('+450,0 %')).toBeTruthy(); // 55 frente a 10
+  });
+
   it('sin datos del periodo anterior no inventa una comparación', () => {
     vi.setSystemTime(new Date(2026, 8, 21, 18, 0));
     renderTab();

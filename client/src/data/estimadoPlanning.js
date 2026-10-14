@@ -1,5 +1,6 @@
 import { esTareaActiva } from './taskPlanning';
 import { tramoDeHorario } from './horarios';
+import { tarifaDe } from './tarifas';
 
 // Horas y coste PREVISTOS según el planning de una semana (el horario de cada
 // tarea con gente asignada), no según fichajes: sirve para ver lo que se lleva
@@ -55,7 +56,7 @@ export function estimarHorasPlanning(semana, equipo = []) {
   const porPersona = Object.entries(horasPorPersona).map(([nombre, horas]) => {
     const w = equipo.find(p => p.name === nombre);
     const nomina = !!w?.isPayroll;
-    const tarifa = w?.rate || (nomina ? 14 : 10);
+    const tarifa = tarifaDe(w);
     return { nombre, horas, nomina, tarifa, coste: nomina ? 0 : horas * tarifa };
   }).sort((a, b) => b.horas - a.horas);
 

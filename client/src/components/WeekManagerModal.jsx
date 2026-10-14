@@ -89,7 +89,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
       // Todo fue bien, cerramos el modal porque ya se han añadido al listado
       resetAndClose();
     } else if (res.omitidas > 0) {
-      setErrorMsg(`No se ha creado ningún borrador (se han omitido ${res.omitidas} semanas, seguramente por estar vacías o ya existir). Revisa los avisos principales.`);
+      setErrorMsg(`No se ha creado ningún borrador (se han omitido ${res.omitidas} ${res.omitidas === 1 ? 'semana' : 'semanas'}, seguramente por estar ${res.omitidas === 1 ? 'vacía' : 'vacías'} o ya existir). Revisa los avisos principales.`);
     } else {
       setErrorMsg('No se detectaron semanas para crear a partir del calendario.');
     }
@@ -562,10 +562,10 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
           </button>
         </div>
         <div className="flex items-center justify-between text-[11px] text-slate-500">
-          <button type="button" onClick={handleSkipAndCreateBlank} disabled={!weekName.trim() || !dateRange.trim()} className="underline hover:text-slate-300 disabled:opacity-40 disabled:no-underline">
+          <button type="button" onClick={handleSkipAndCreateBlank} disabled={!weekName.trim() || !dateRange.trim()} className="py-2 underline hover:text-slate-300 disabled:opacity-40 disabled:no-underline">
             Prefiero saltarme esto y crearla en blanco
           </button>
-          <button type="button" onClick={resetAndClose} className="hover:text-slate-300">
+          <button type="button" onClick={resetAndClose} className="py-2 hover:text-slate-300">
             Cancelar
           </button>
         </div>

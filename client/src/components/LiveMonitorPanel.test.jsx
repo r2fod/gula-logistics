@@ -32,6 +32,13 @@ describe('LiveMonitorPanel — dinero en tiempo real', () => {
     expect(screen.getByText('Nómina (14,00 €/h)')).toBeInTheDocument();
   });
 
+  it('BUG evitado: quien está en turno sale el primero (en el móvil quedaba debajo de todos los que descansan)', () => {
+    const tres = [...equipo, { name: 'Eva', role: 'Base', avatar: '📦', rate: 10 }];
+    render(<LiveMonitorPanel workersList={tres} clockEntries={[entrada('Eva', 9, 0)]} />);
+    const nombres = [...document.querySelectorAll('h4')].map(h => h.textContent.trim()).filter(n => ['Ana', 'Luis', 'Eva'].includes(n));
+    expect(nombres).toEqual(['Eva', 'Ana', 'Luis']);
+  });
+
   it('BUG evitado: en la vista pública (sin mostrarDinero) no se ve dinero', () => {
     render(<LiveMonitorPanel workersList={equipo} clockEntries={[entrada('Ana', 9, 0)]} />);
     expect(screen.queryByText('Lleva ganado')).toBeNull();

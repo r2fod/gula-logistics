@@ -4,6 +4,7 @@ import InsigniaTipo from './InsigniaTipo';
 import { formatTimeShort, formatWeekdayShortDay } from '../../../utils/dateUtils';
 import { horaDeFichaje } from '../../../data/fichajes';
 import { formatearEuros, formatearHoras } from '../../../data/formatoFinanciero';
+import { tarifaDe } from '../../../data/tarifas';
 
 // Plantillas de columnas de escritorio (clases completas para que Tailwind las
 // detecte). Con o sin la columna de acciones del administrador. La cabecera de la
@@ -38,7 +39,7 @@ export default function FilaFichaje({ entrada, avatar, turno = null, enCurso = f
       </div>
 
       <p className="col-start-2 row-start-1 text-right text-xs font-bold tabular-nums text-amber-400 md:col-auto md:row-auto md:order-5">
-        {entrada.rate || 10} €/h
+        {tarifaDe(entrada)} €/h
       </p>
 
       <div className="col-span-2 flex min-w-0 items-center gap-2 md:col-auto md:order-3">

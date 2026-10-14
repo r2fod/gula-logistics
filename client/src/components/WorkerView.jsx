@@ -12,13 +12,13 @@ import { subscribeToPush } from '../data/pushService';
 import { crearFichaje } from '../data/fichajes';
 import { getWeddingTaskName } from '../data/eventNaming';
 import { formatTimeShort, formatWeekdayDay } from '../utils/dateUtils';
-import { formatearEuros } from '../data/formatoFinanciero';
 import HistorialFichajes from './trabajador/HistorialFichajes';
 import AvisoFichajesPrivados from './AvisoFichajesPrivados';
 import { useDialog } from '../contexts/DialogContext';
 import EnVivo from './ui/EnVivo';
+import LlevasGanado from './trabajador/LlevasGanado';
 import { useAhora } from '../hooks/useAhora';
-import { duracionEnCurso, costeEnCurso } from '../data/costeEnVivo';
+import { duracionEnCurso } from '../data/costeEnVivo';
 
 
 // Texto del botón de empezar la jornada: se elige uno al azar al abrir la
@@ -45,9 +45,7 @@ export default function WorkerView({
   isAdmin = false,
   onToggleTask,
   onClockEntryCreated,
-  onUpdateClockEntry,
   onDeleteClockEntry,
-  onToggleGeneralView,
   onOpenAdminDashboard
 }) {
   const { confirm } = useDialog();
@@ -418,7 +416,7 @@ export default function WorkerView({
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
-                <h1 className="text-lg sm:text-xl font-extrabold text-white tracking-tight font-['Outfit'] truncate">
+                <h1 className="text-lg sm:text-xl font-extrabold text-white tracking-tight font-outfit truncate">
                   Hola, {currentWorkerObj.name} 👋
                 </h1>
                 {activeShift ? (
@@ -434,10 +432,10 @@ export default function WorkerView({
                 )}
               </div>
 
-              {/* Cada dato en una línea y sin cortar; el "•" va delante del dato para no
+              {/* Sin cortar (un puesto largo pasa a otra línea); el "•" va delante del dato para no
                   quedarse colgando al final de una línea. */}
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-400 mt-0.5">
-                <span className="whitespace-nowrap font-semibold text-slate-300">{currentWorkerObj.role}</span>
+                <span className="min-w-0 break-words font-semibold text-slate-300">{currentWorkerObj.role}</span>
                 {currentWorkerObj.truck && (
                   <span className="whitespace-nowrap text-amber-300 font-medium before:mr-2 before:text-slate-500 before:content-['•']">{currentWorkerObj.truck}</span>
                 )}
@@ -513,24 +511,12 @@ export default function WorkerView({
               </div>
 
               <div>
-                <p className="text-sm sm:text-base font-extrabold text-white font-['Outfit']">
+                <p className="text-sm sm:text-base font-extrabold text-white font-outfit">
                   <Pin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{activeShift.taskName === 'JORNADA' ? 'Jornada iniciada' : (activeShift.taskName || 'Turno Operativo General')}
                 </p>
               </div>
 
-              {/* Lo que lleva ganado en este turno, subiendo en directo (no en nómina
-                  fija: no cobra por horas). Es aproximado — la tarifa del fichaje, sin
-                  la bolsa de horas ni el redondeo a la media hora al fichar la salida:
-                  lo que cuenta es lo de Saldos & Acuerdos. */}
-              {!currentWorkerObj.isPayroll && (
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2">
-                  <span className="whitespace-nowrap text-[11px] font-bold uppercase tracking-wider text-emerald-300/90">Llevas ganado</span>
-                  <span className="whitespace-nowrap font-mono text-base font-extrabold tabular-nums text-emerald-300">
-                    ≈ <EnVivo>{(ahora) => formatearEuros(costeEnCurso({ entrada: activeShift, ahora, tarifa: activeShift.rate || currentWorkerObj.rate || 10 }).coste)}</EnVivo>
-                  </span>
-                  <span className="w-full text-[11px] text-slate-400">A {formatearEuros(activeShift.rate || currentWorkerObj.rate || 10)}/h. Aproximado: el importe final se ajusta al fichar la salida.</span>
-                </div>
-              )}
+              {!currentWorkerObj.isPayroll && <LlevasGanado turno={activeShift} trabajador={currentWorkerObj} />}
 
               {/* Sub-tareas V2 */}
               {activeShift.taskName === 'JORNADA' && (
@@ -635,7 +621,7 @@ export default function WorkerView({
               </div>
 
               <div>
-                <h2 className="text-sm sm:text-base font-extrabold text-white font-['Outfit'] leading-snug">
+                <h2 className="text-sm sm:text-base font-extrabold text-white font-outfit leading-snug">
                   ¿Listo para empezar el día?
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
@@ -707,7 +693,7 @@ export default function WorkerView({
                 setTaskRef(null);
                 setIsClockModalOpen(true);
               }}
-              className="whitespace-nowrap hover:text-amber-400 text-slate-300 underline decoration-slate-700 hover:decoration-amber-400 transition-colors"
+              className="whitespace-nowrap py-2 hover:text-amber-400 text-slate-300 underline decoration-slate-700 hover:decoration-amber-400 transition-colors"
             >
               <Plus className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />O fichar otra tarea libre
             </button>
@@ -790,7 +776,7 @@ export default function WorkerView({
               </span>
               <span className="whitespace-nowrap text-[11px] text-slate-400">{activeWeekData?.meta?.dateRange}</span>
             </div>
-            <h2 className="text-base sm:text-xl font-extrabold text-white tracking-tight font-['Outfit'] mt-0.5 flex items-center space-x-2">
+            <h2 className="text-base sm:text-xl font-extrabold text-white tracking-tight font-outfit mt-0.5 flex items-center space-x-2">
               <Calendar className="w-5 h-5 text-amber-400" />
               <span>Cuadrante semanal</span>
             </h2>
@@ -894,7 +880,7 @@ export default function WorkerView({
             {/* DETAILED TASKS & WEDDINGS BREAKDOWN ACCORDING TO SELECTED DAY */}
             <div className="space-y-4 pt-4 border-t border-slate-800">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <h3 className="text-base sm:text-lg font-extrabold text-white font-['Outfit'] flex items-center space-x-2">
+                <h3 className="text-base sm:text-lg font-extrabold text-white font-outfit flex items-center space-x-2">
                   <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
                   <span>
                     {selectedDayKey === 'all' 
@@ -903,7 +889,7 @@ export default function WorkerView({
                   </span>
                 </h3>
                 <span className="text-[11px] sm:text-xs text-slate-400 font-semibold bg-slate-950 px-3 py-1 rounded-xl border border-slate-800 self-start sm:self-auto">
-                  {displayedDays.filter(d => d.totalCount > 0).length} días con asignación directa
+                  {(n => `${n} ${n === 1 ? 'día' : 'días'}`)(displayedDays.filter(d => d.totalCount > 0).length)} con asignación directa
                 </span>
               </div>
 
@@ -922,7 +908,7 @@ export default function WorkerView({
                     >
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
                         <div>
-                          <h4 className="whitespace-nowrap font-extrabold text-amber-300 text-sm sm:text-base font-['Outfit']">
+                          <h4 className="whitespace-nowrap font-extrabold text-amber-300 text-sm sm:text-base font-outfit">
                             <Calendar className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{dayGroup.title}
                           </h4>
                           <span className="text-[11px] text-slate-400 block mt-0.5">{dayGroup.badge}</span>

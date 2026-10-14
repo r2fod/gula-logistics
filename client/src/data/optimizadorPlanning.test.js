@@ -61,7 +61,7 @@ describe('asignarEquipo', () => {
     const tareas = [t('x', 'viernes', 9, 12, 2, conductores), t('y', 'viernes', 10, 11, 1, conductores)];
     const { asignados, avisos } = asignarEquipo({ tareas, equipo });
     expect(asignados.x.length + asignados.y.length).toBe(2);
-    expect(avisos.some(a => /solo \d de \d personas libres/.test(a))).toBe(true);
+    expect(avisos.some(a => /solo \d de \d personas? libres?/.test(a))).toBe(true);
   });
 
   it('descanso entre jornadas: quien cierra la boda a las 00:30 no abre el domingo a las 10:00 si hay otro', () => {

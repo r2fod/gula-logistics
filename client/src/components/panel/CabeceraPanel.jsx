@@ -41,7 +41,7 @@ export default function CabeceraPanel({
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
-              <h1 className="text-xs sm:text-base font-extrabold text-white tracking-tight font-['Outfit'] truncate">
+              <h1 className="text-xs sm:text-base font-extrabold text-white tracking-tight font-outfit truncate">
                 Panel de Control Gula Logística
               </h1>
               {adminUnlocked ? (
@@ -53,7 +53,7 @@ export default function CabeceraPanel({
                   {claves && <BotonAccion accion={claves} variante="cabecera" />}
                   <button
                     onClick={onSalir}
-                    className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1 transition-colors shrink-0"
+                    className="px-2.5 py-2 sm:px-1.5 sm:py-0.5 text-[11px] font-bold rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1 transition-colors shrink-0"
                   >
                     <span>Salir</span>
                   </button>
@@ -61,7 +61,7 @@ export default function CabeceraPanel({
               ) : (
                 <button
                   onClick={onDesbloquear}
-                  className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center gap-1 transition-colors shrink-0"
+                  className="px-2.5 py-2 sm:px-2 sm:py-0.5 text-[11px] font-bold rounded-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center gap-1 transition-colors shrink-0"
                 >
                   <KeyRound className="w-2.5 h-2.5 text-blue-400" />
                   <span>Admin Login</span>

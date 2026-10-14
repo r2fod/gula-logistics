@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Banknote, BarChart3, Bus, Clock, Edit3, Lightbulb, MessageCircle, Plus, ScrollText, Share2, Trash2, TrendingUp } from 'lucide-react';
+import { AlertTriangle, Banknote, BarChart3, Bus, Clock, Edit3, Lightbulb, MessageCircle, Plus, ScrollText, Share2, TrendingUp } from 'lucide-react';
 import { formatearEuros, formatearEurosConSigno, formatearHoras } from '../../data/formatoFinanciero';
 import { Input } from '../ui/Campo';
 import { useDialog } from '../../contexts/DialogContext';
@@ -10,7 +10,8 @@ import { conFecha, diasSugeridos, fechaDeConcepto, llevaFechaAparte } from '../.
 import EnVivo from '../ui/EnVivo';
 import { duracionEnCurso } from '../../data/costeEnVivo';
 import { saldoDeTrabajador } from '../../data/saldoTrabajador';
-import { turnoAbiertoDeFicha } from '../../data/saldosEquipo';
+import { personaDeFicha, turnoAbiertoDeFicha } from '../../data/saldosEquipo';
+import { tarifaDe } from '../../data/tarifas';
 import { aIso } from '../../data/fechasSemana';
 import EnviarSaldoModal from './saldos/EnviarSaldoModal';
 import PanelBolsa from './saldos/PanelBolsa';
@@ -132,7 +133,8 @@ export default function TeamBalancesTab({
       return { hours, purseHours, extraHours, amount, concept, dateLabel, isPurse: !otroMes, horasBolsa: otroMes ? purseHours : 0, includeTransport };
     }
 
-    const rate = worker.hourlyRate || (worker.statusType === 'payroll' ? 14 : 10);
+    // Sin tarifa en la ficha de Saldos, la de su ficha del equipo (antes, 10 aunque cobrara otra).
+    const rate = worker.hourlyRate || (worker.statusType === 'payroll' ? 14 : tarifaDe(personaDeFicha(worker, equipo)));
     const amount = hours * rate + transportAmount;
     const concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(hours)}h a ${rate}€/h${transportSuffix})`;
 
@@ -319,7 +321,7 @@ export default function TeamBalancesTab({
     <div className="space-y-6 animate-fadeIn">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
             <div>
-              <h3 className="text-xl font-extrabold text-white font-['Outfit'] flex items-center space-x-2">
+              <h3 className="text-xl font-extrabold text-white font-outfit flex items-center space-x-2">
                 <TrendingUp className="w-5 h-5 text-amber-400" />
                 <span>Control de Saldos & Acuerdos de Personal</span>
               </h3>
@@ -413,7 +415,7 @@ export default function TeamBalancesTab({
                         </div>
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="font-extrabold text-white text-lg font-['Outfit']">{worker.name}</h4>
+                            <h4 className="font-extrabold text-white text-lg font-outfit">{worker.name}</h4>
                             {derivedStatusType === 'success' && (
                               <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
                                 🟢 A favor
@@ -551,7 +553,7 @@ export default function TeamBalancesTab({
                             type="button"
                             onClick={() => onVerEnResumen(worker.name)}
                             aria-label={`Ver las horas de ${worker.name} por evento en el Resumen Financiero`}
-                            className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 focus:outline-none focus-visible:underline"
+                            className="flex items-center gap-1 py-1.5 text-[11px] font-semibold text-amber-400 hover:text-amber-300 focus:outline-none focus-visible:underline"
                           >
                             <BarChart3 className="h-3.5 w-3.5" aria-hidden="true" /> Ver sus horas por evento en el Resumen Financiero
                           </button>

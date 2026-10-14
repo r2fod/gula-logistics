@@ -51,7 +51,7 @@ describe('nombres con tildes y la ficha que mejor encaja', () => {
   it('igual gana a "empieza por" y este a "lo contiene"; sin parecido, null', () => {
     expect(parecidoNombre('Luis', 'luis')).toBe(3);
     expect(parecidoNombre('Luis', 'Luis Gula')).toBe(2);
-    expect(parecidoNombre('Luis', 'José Luis Gula')).toBe(1);
+    expect(parecidoNombre('Luis', 'Juan Luis Gula')).toBe(1);
     expect(elMasParecido([{ name: 'Eva' }], f => parecidoNombre('Pau', f.name))).toBeNull();
   });
 });

@@ -10,6 +10,8 @@ import { useAhora } from '../hooks/useAhora';
 import { costeEnCurso, duracionEnCurso } from '../data/costeEnVivo';
 import { fichaDePersona } from '../data/nombresTrabajadores';
 import { formatearEuros } from '../data/formatoFinanciero';
+import { tarifaDe as tarifaDeFicha } from '../data/tarifas';
+import { plano } from '../utils/texto';
 
 
 // `mostrarDinero` (panel de admin/socias, nunca la vista pública): lo que lleva
@@ -39,7 +41,7 @@ export default function LiveMonitorPanel({
     shifts.forEach(t => { (porPersona[t.workerName] = porPersona[t.workerName] || []).push(t); });
     return porPersona;
   }, [shifts]);
-  const tarifaDe = (worker) => worker.clockEntry?.rate || worker.rate || (worker.isPayroll ? 14 : 10);
+  const tarifaDe = (worker) => worker.clockEntry?.rate || tarifaDeFicha(worker);
 
   const parseTimeToMinutes = (str) => {
     const m = /(\d{1,2}):(\d{2})/.exec(str || '');
@@ -108,7 +110,7 @@ export default function LiveMonitorPanel({
   // nombre: antes iba escrito a mano para unas personas concretas y no servía para
   // nadie nuevo.
   const getWorkerLocation = (worker) => {
-    const rol = String(worker?.role || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const rol = plano(worker?.role);
     if (/conductor/.test(rol)) return 'En Ruta / Fincas Eventos';
     if (/limpieza/.test(rol)) return 'Almacén Base / Limpieza';
     return 'Almacén Base (Gula Ops)';
@@ -153,12 +155,15 @@ export default function LiveMonitorPanel({
   const activeCount = workerStatuses.filter(w => w.isClockedIn).length;
   const teamActivePercent = workersList.length > 0 ? Math.round((activeCount / workersList.length) * 100) : 0;
 
+  // Quien está en turno, arriba (en el móvil quedaba debajo de todos los que descansan);
+  // el resto, en el orden del equipo.
+  const esDeFlota = (w) => /conductor|flota/.test(plano(w.role));
   const filteredWorkers = workerStatuses.filter(w => {
     if (filterStatus === 'active') return w.isClockedIn;
-    if (filterStatus === 'trucks') return w.role.toLowerCase().includes('conductor') || w.role.toLowerCase().includes('flota');
-    if (filterStatus === 'base') return !w.role.toLowerCase().includes('conductor') && !w.role.toLowerCase().includes('flota');
+    if (filterStatus === 'trucks') return esDeFlota(w);
+    if (filterStatus === 'base') return !esDeFlota(w);
     return true;
-  });
+  }).sort((a, b) => Number(b.isClockedIn) - Number(a.isClockedIn));
 
   return (
     <div className="space-y-6">
@@ -177,7 +182,7 @@ export default function LiveMonitorPanel({
 
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <h3 className="text-base sm:text-2xl font-extrabold font-['Outfit'] text-white text-balance">
+                <h3 className="text-base sm:text-2xl font-extrabold font-outfit text-white text-balance">
                   Monitor de Actividad en Tiempo Real
                 </h3>
                 <span className="px-2 py-0.5 text-[10px] sm:text-[11px] font-extrabold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center space-x-1 shrink-0">
@@ -195,7 +200,7 @@ export default function LiveMonitorPanel({
           <div className="grid grid-cols-2 gap-2 w-full md:w-auto md:flex md:items-center md:space-x-3">
             <div className="bg-slate-950/80 px-3 sm:px-4 py-2 rounded-xl sm:rounded-2xl border border-slate-800 text-center">
               <span className="text-[10px] sm:text-[11px] text-slate-400 font-semibold block uppercase tracking-wider">Fichados Ahora</span>
-              <span className="text-lg sm:text-xl font-extrabold text-emerald-400 font-['Outfit']">
+              <span className="text-lg sm:text-xl font-extrabold text-emerald-400 font-outfit">
                 {activeCount} / {workersList.length}
               </span>
             </div>
@@ -310,7 +315,7 @@ export default function LiveMonitorPanel({
                       {worker.avatar}
                     </div>
                     <div className="min-w-0">
-                      <h4 className="font-extrabold text-white text-base font-['Outfit']">{worker.name}</h4>
+                      <h4 className="font-extrabold text-white text-base font-outfit">{worker.name}</h4>
                       <p className="text-[11px] text-slate-400 leading-snug">{worker.role}</p>
                     </div>
                   </div>

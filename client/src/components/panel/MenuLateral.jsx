@@ -32,7 +32,7 @@ export default function MenuLateral({ abierto, onCerrar, acciones, adminUnlocked
                 <Truck className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm font-extrabold text-white font-['Outfit']">Menú de Gestión</h3>
+                <h3 className="text-sm font-extrabold text-white font-outfit">Menú de Gestión</h3>
                 <p className="text-[11px] text-slate-400">Herramientas & Ajustes</p>
               </div>
             </div>

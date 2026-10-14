@@ -109,7 +109,7 @@ export function asignarEquipo({ tareas = [], equipo = [], restricciones = [], li
         .sort((a, b) => a.coste - b.coste)[0];
       if (!mejor) {
         const puestos = asignados[x.t.clave].length;
-        avisos.push(`${x.t.etiqueta}: solo ${puestos} de ${x.t.n} personas libres (disponibilidad, descansos o solapes).`);
+        avisos.push(`${x.t.etiqueta}: solo ${puestos} de ${x.t.n} ${x.t.n === 1 ? 'persona libre' : 'personas libres'} (disponibilidad, descansos o solapes).`);
         break;
       }
       poner(mejor.p, x.it);

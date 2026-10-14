@@ -6,8 +6,9 @@ import TarjetaDia from './TarjetaDia';
 import TareaDiaItem from './TareaDiaItem';
 import { rejillaDeDias } from './rejillaDias';
 import { formatearHoras } from '../../data/formatoFinanciero';
+import { tarifaCorta } from '../../data/tarifas';
 
-export default function ScheduleTab({ activeWeekData, workersList, onToggleTask, onUpdateWeek, vispera = null }) {
+export default function ScheduleTab({ activeWeekData, workersList, onToggleTask, vispera = null }) {
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
 
   // Auto-completion logic based on time
@@ -125,12 +126,12 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
                   {w.isPayroll ? (
                     <span className="text-[10px] font-extrabold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Nómina</span>
                   ) : (
-                    <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">10€/h</span>
+                    <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">{tarifaCorta(w)}</span>
                   )}
                 </div>
 
                 <div className="min-w-0">
-                  <span className="font-extrabold text-white truncate text-xs block font-['Outfit']">{w.name}</span>
+                  <span className="font-extrabold text-white truncate text-xs block font-outfit">{w.name}</span>
                   <span className="text-[11px] text-slate-400 block mt-0.5">{w.role}</span>
                 </div>
               </div>
@@ -199,7 +200,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
       {activeWeekData?.saturdaySpecial && (
         <section className="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 border border-amber-500/30 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-extrabold text-base sm:text-lg flex items-center gap-2 font-['Outfit'] text-white">
+            <h3 className="font-extrabold text-base sm:text-lg flex items-center gap-2 font-outfit text-white">
               <Sparkles className="text-amber-400 w-5 h-5" /> {activeWeekData.saturdaySpecial.title}
             </h3>
             <span className="text-[11px] bg-amber-500/20 text-amber-300 font-bold px-3 py-1 rounded-xl border border-amber-500/30">
@@ -224,7 +225,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
                       : 'bg-slate-950/90 border-slate-800 hover:border-amber-500/30'
                 }`}>
                   <div className="flex items-start justify-between">
-                    <span className={`font-extrabold block text-sm sm:text-base font-['Outfit'] ${isCompleted ? 'line-through' : !matchesFilter ? 'text-amber-500/50' : 'text-amber-300'}`}>
+                    <span className={`font-extrabold block text-sm sm:text-base font-outfit ${isCompleted ? 'line-through' : !matchesFilter ? 'text-amber-500/50' : 'text-amber-300'}`}>
                       {isCompleted && <Check className="w-4 h-4 inline mr-1 text-emerald-400" />}
                       {w.location}
                     </span>
@@ -247,7 +248,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
       {/* Sunday / Monday Section */}
       {activeWeekData?.sundayMonday && (
         <section className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-4 sm:p-6 shadow-xl space-y-4">
-          <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-['Outfit']">
+          <h3 className="font-extrabold text-white text-base flex items-center gap-2 font-outfit">
             <Calendar className="text-amber-400 w-4 h-4" /> {activeWeekData.sundayMonday.title}
           </h3>
 

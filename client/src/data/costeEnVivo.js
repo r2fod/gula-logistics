@@ -1,6 +1,7 @@
 import { bolsaDeFicha, mesDe, repartirBolsa, tieneBolsa } from './bolsaHoras';
 import { isZombieShift } from './shiftCalculations';
 import { fichaDePersona, mismoNombre } from './nombresTrabajadores';
+import { tarifaDe } from './tarifas';
 
 // Horas y dinero de un turno ABIERTO hasta `ahora`, para verlo subir en tiempo
 // real. Sin redondear: al fichar la salida el turno se paga a la media hora más
@@ -41,7 +42,7 @@ export function enCursoDelPeriodo(abiertos = [], { desde = null, hasta = null } 
     const { horas, coste } = costeEnCurso({
       entrada,
       ahora,
-      tarifa: entrada.rate || (entrada.isPayroll ? 14 : 10),
+      tarifa: tarifaDe(entrada),
       ficha: fichaDePersona(entrada.workerName, fichas || [], equipo.map(w => w.name)),
       turnosPrevios: turnos.filter(t => esSuyo(t.workerName)),
     });

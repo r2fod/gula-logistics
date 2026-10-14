@@ -6,6 +6,7 @@ import { useEnlaceSocias } from '../hooks/useEnlaceSocias';
 import { useEnlacesTrabajadores } from '../hooks/useEnlacesTrabajadores';
 import { useDialog } from '../contexts/DialogContext';
 import { formatDateLong } from '../utils/dateUtils';
+import { tarifaCorta } from '../data/tarifas';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
 
@@ -80,7 +81,7 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
                   {w.isPayroll ? (
                     <span className="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded border border-amber-500/30 shrink-0">Nómina</span>
                   ) : (
-                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 shrink-0">10€/h</span>
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 shrink-0">{tarifaCorta(w)}</span>
                   )}
                 </div>
                 <p className="text-xs text-slate-400 truncate" title={w.role}>{w.role}</p>
@@ -154,19 +155,21 @@ function EnlaceSocias() {
     if (await generar({ anularAnteriores: true })) await alert('Enlaces anteriores anulados. Envía el nuevo a las socias.', { type: 'success' });
   };
 
-  const boton = 'w-full sm:flex-1 py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap disabled:opacity-50';
+  // En el móvil, compacto (antes ocupaba media pantalla): Copiar y WhatsApp en una fila,
+  // «Anular anteriores» solo con su icono y sin la explicación larga.
+  const boton = 'min-w-0 sm:flex-1 py-2 px-2.5 sm:px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap disabled:opacity-50';
 
   return (
-    <div className="mb-5 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2.5">
+    <div className="mb-4 sm:mb-5 p-3 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2 sm:space-y-2.5">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-bold text-amber-400 flex items-center space-x-1.5 min-w-0">
           <ShieldCheck className="w-4 h-4 shrink-0" />
           <span className="truncate">Enlace para Socias (solo lectura)</span>
         </span>
-        <span className="text-[11px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full shrink-0">SOCIAS</span>
+        <span className="hidden sm:inline text-[11px] bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded-full shrink-0">SOCIAS</span>
       </div>
 
-      <div className="flex items-center bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-2 min-w-0">
+      <div className="flex items-center bg-slate-950/80 border border-slate-800 rounded-xl px-3 py-1.5 sm:py-2 min-w-0">
         <input
           id="enlace-socias"
           type="text"
@@ -185,10 +188,10 @@ function EnlaceSocias() {
         </div>
       )}
       {caduca && !error && (
-        <p className="text-[11px] text-slate-400">Ven la planificación y los saldos, sin poder cambiar nada. Caduca el {formatDateLong(caduca)}.</p>
+        <p className="text-[11px] text-slate-400"><span className="hidden sm:inline">Ven la planificación y los saldos, sin poder cambiar nada. </span>Caduca el {formatDateLong(caduca)}.</p>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-2 pt-1 w-full">
+      <div className="grid grid-cols-[1fr_1fr_auto] sm:flex gap-2 sm:pt-1 w-full">
         <button type="button" disabled={!enlace} onClick={() => copiar(enlace)} className={`${boton} bg-slate-800 hover:bg-slate-700 text-white border border-slate-700`}>
           {copiado ? (
             <>
@@ -198,17 +201,17 @@ function EnlaceSocias() {
           ) : (
             <>
               <Copy className="w-3.5 h-3.5" />
-              <span>Copiar Link Socias</span>
+              <span>Copiar <span className="hidden sm:inline">Link Socias</span></span>
             </>
           )}
         </button>
         <button type="button" disabled={!enlace} onClick={compartir} className={`${boton} bg-emerald-600 hover:bg-emerald-500 font-bold text-white shadow-md shadow-emerald-600/20`}>
           <MessageCircle className="w-3.5 h-3.5" />
-          <span>WhatsApp Socias</span>
+          <span>WhatsApp <span className="hidden sm:inline">Socias</span></span>
         </button>
-        <button type="button" disabled={cargando} onClick={anularAnteriores} className={`${boton} bg-slate-900 hover:bg-red-950/60 text-red-300 border border-red-900/50`}>
+        <button type="button" disabled={cargando} onClick={anularAnteriores} title="Anular anteriores" className={`${boton} bg-slate-900 hover:bg-red-950/60 text-red-300 border border-red-900/50`}>
           <RefreshCw className={`w-3.5 h-3.5 ${cargando ? 'animate-spin' : ''}`} />
-          <span>Anular anteriores</span>
+          <span className="sr-only sm:not-sr-only">Anular anteriores</span>
         </button>
       </div>
     </div>

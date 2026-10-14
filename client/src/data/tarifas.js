@@ -1,11 +1,15 @@
 import { fechaLocal } from './fechasSemana';
-import { formatearEuros } from './formatoFinanciero';
+import { formatearCantidad, formatearEuros } from './formatoFinanciero';
 import { mismoNombre } from './nombresTrabajadores';
 import { pairShiftsFromEntries } from './shiftCalculations';
 
 // Lo que cobra por hora alguien del equipo: lo de su ficha o, si no tiene, lo de siempre
 // (14 quien está en nómina fija, 10 el resto). Con ella se apuntan sus fichajes nuevos.
 export const tarifaDe = (persona) => Number(persona?.rate) || (persona?.isPayroll ? 14 : 10);
+
+// Su tarifa para una etiqueta: «12€/h», «12,5€/h». Antes las etiquetas decían «10€/h» a
+// todos, aunque su ficha dijera otra.
+export const tarifaCorta = (persona) => `${formatearCantidad(tarifaDe(persona))}€/h`;
 
 // Los fichajes de `nombre` que pasan a `tarifa` «desde el día X» (AAAA-MM-DD): los de ese
 // día en adelante que aún no la tienen, sin los de la papelera. El dinero de un turno sale

@@ -42,7 +42,6 @@ const CargandoPanel = () => (
     <BackgroundAnimation viewMode={pestanaDesdeUrl(window.location.search)} />
   </Cargando>
 );
-import { logisticsData as BASE_DATA } from './data/logisticsData';
 import {
   fetchClockEntriesFromAPI,
   accesoAFichajes,
@@ -72,12 +71,6 @@ import { semanaDeLaVispera } from './data/vispera';
 import { getWeekRange } from './data/taskPlanning';
 import { semanaPedidaEnEnlace } from './data/enlaces';
 import { parseWeekRange } from './data/taskPlanning';
-
-const BASE_WEEK_3 = {
-  id: "week_3",
-  name: "Semana 3",
-  ...BASE_DATA
-};
 
 import { useWorkers } from './hooks/useWorkers';
 import { useBalances } from './hooks/useBalances';
@@ -133,7 +126,6 @@ export default function App() {
   });
 
   const {
-    clockEntries,
     setClockEntries,
     activeClockEntries,
     deletedClockEntries,
@@ -202,7 +194,10 @@ export default function App() {
     return revisadas;
   };
   const ejecutarAnticipacion = async (force = false) => {
-    if (!getStoredAdminToken() || anticipacionEnCursoRef.current) return;
+    // Con motivo (lo enseña «Nueva semana»): antes, si ya se estaba leyendo el calendario
+    // al abrir el panel, el botón decía «No se devolvió respuesta del servidor».
+    if (!getStoredAdminToken()) return { ok: false, error: 'hace falta la sesión de admin.' };
+    if (anticipacionEnCursoRef.current) return { ok: false, error: 'ya se está leyendo; espera unos segundos y vuelve a intentarlo.' };
     const CLAVE = 'gula_anticipacion_v1';
     let ultima = 0;
     try { ultima = Number(localStorage.getItem(CLAVE) || 0); } catch { /* sin almacenamiento */ }
@@ -210,7 +205,7 @@ export default function App() {
     anticipacionEnCursoRef.current = true;
     try {
       const semanas = await fetchWeeksFromAPI();
-      if (!semanas) return { ok: false };
+      if (!semanas) return { ok: false, error: 'no se pudieron leer las semanas del servidor.' };
       // Solo lo usa el admin: se carga aparte (generador + optimizador) para no pesar en la vista del trabajador.
       const { anticiparSemanas } = await import('./data/anticipacion');
       await cargarFestivosLocales(); // el generador mueve los alquileres que caen en festivo
@@ -587,10 +582,7 @@ export default function App() {
           isAdmin={isAdmin}
           onToggleTask={(dayKey, taskIdx, weekId) => toggleTask(dayKey, taskIdx, weekId)}
           onClockEntryCreated={handleClockEntryCreated}
-          onUpdateClockEntry={handleUpdateClockEntry}
           onDeleteClockEntry={handleDeleteClockEntry}
-          onRestoreClockEntry={handleRestoreClockEntry}
-          deletedClockEntries={deletedClockEntries}
           onOpenAdminDashboard={() => {
             if (isAdmin) {
               // Ya autenticado: ir directo al panel, sin pedir contraseña
