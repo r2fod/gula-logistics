@@ -34,6 +34,13 @@ const pintar = (props = {}) =>
   render(<EnlacesWhatsAppModal abierto onCerrar={() => {}} workersList={equipo} {...props} />);
 
 describe('EnlacesWhatsAppModal', () => {
+  it('BUG evitado: cada trabajador enseña SU tarifa (antes «10€/h» a todos, aunque su ficha dijera 12)', () => {
+    pintar({ workersList: [{ ...equipo[0], rate: 12 }, { name: 'Eva', role: 'Apoyo', isPayroll: false }, equipo[1]] });
+    expect(screen.getByText('12€/h')).toBeInTheDocument();
+    expect(screen.getByText('10€/h')).toBeInTheDocument();
+    expect(screen.getByText('Nómina')).toBeInTheDocument();
+  });
+
   it('cerrado no pinta nada', () => {
     pintar({ abierto: false });
     expect(screen.queryByRole('dialog')).toBeNull();

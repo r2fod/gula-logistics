@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fusionarSaldosConEquipo, buscarPorNombreDeSaldo, turnoAbiertoDeFicha } from './saldosEquipo';
+import { fusionarSaldosConEquipo, buscarPorNombreDeSaldo, turnoAbiertoDeFicha, personaDeFicha } from './saldosEquipo';
 
 const equipo = [
   { name: 'Marta', role: 'Conductora', avatar: '🚛', isPayroll: false },
@@ -26,6 +26,16 @@ describe('fusionarSaldosConEquipo', () => {
     const { workers } = fusionarSaldosConEquipo(saldos, equipo);
     expect(workers[1]).toMatchObject({ id: 'elena', currentBalance: 0, status: 'Sin saldo', agreements: ['Nómina Fija (Control interno)'] });
     expect(workers[2]).toMatchObject({ id: 'nuevo-fichaje', avatar: '👤', agreements: ['Extra a 10,00 € / hora (Por Defecto)'], breakdown: [] });
+  });
+
+  it('BUG evitado: la ficha vacía de quien cobra otra tarifa dice la suya (antes, «Extra a 10,00 €» a todos)', () => {
+    const { workers } = fusionarSaldosConEquipo(saldos, [{ name: 'Eva', role: 'Apoyo', isPayroll: false, rate: 12 }]);
+    expect(workers[0].agreements).toEqual(['Extra a 12,00 € / hora (Por Defecto)']);
+  });
+
+  it('personaDeFicha: la del equipo que más se parece a la ficha («Marta Gula» → «Marta»), o null', () => {
+    expect(personaDeFicha({ name: 'Marta Gula' }, equipo)?.name).toBe('Marta');
+    expect(personaDeFicha({ name: 'Alguien que ya no está' }, equipo)).toBeNull();
   });
 
   it('solo devuelve a las personas del equipo actual y conserva el resto de campos', () => {

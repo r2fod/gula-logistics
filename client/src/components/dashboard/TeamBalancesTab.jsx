@@ -10,7 +10,8 @@ import { conFecha, diasSugeridos, fechaDeConcepto, llevaFechaAparte } from '../.
 import EnVivo from '../ui/EnVivo';
 import { duracionEnCurso } from '../../data/costeEnVivo';
 import { saldoDeTrabajador } from '../../data/saldoTrabajador';
-import { turnoAbiertoDeFicha } from '../../data/saldosEquipo';
+import { personaDeFicha, turnoAbiertoDeFicha } from '../../data/saldosEquipo';
+import { tarifaDe } from '../../data/tarifas';
 import { aIso } from '../../data/fechasSemana';
 import EnviarSaldoModal from './saldos/EnviarSaldoModal';
 import PanelBolsa from './saldos/PanelBolsa';
@@ -132,7 +133,8 @@ export default function TeamBalancesTab({
       return { hours, purseHours, extraHours, amount, concept, dateLabel, isPurse: !otroMes, horasBolsa: otroMes ? purseHours : 0, includeTransport };
     }
 
-    const rate = worker.hourlyRate || (worker.statusType === 'payroll' ? 14 : 10);
+    // Sin tarifa en la ficha de Saldos, la de su ficha del equipo (antes, 10 aunque cobrara otra).
+    const rate = worker.hourlyRate || (worker.statusType === 'payroll' ? 14 : tarifaDe(personaDeFicha(worker, equipo)));
     const amount = hours * rate + transportAmount;
     const concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(hours)}h a ${rate}€/h${transportSuffix})`;
 

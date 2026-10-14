@@ -23,6 +23,12 @@ const pintar = (props = {}) => {
 const boton = (nombre) => screen.getByRole('button', { name: nombre });
 
 describe('ClockInModal', () => {
+  it('BUG evitado: enseña la tarifa de su ficha (antes «Extra 10€/h» a todos, aunque cobrara 12)', () => {
+    pintar({ workersList: [{ name: 'Ana', role: 'Mozo', rate: 12 }, equipo[1]] });
+    expect(screen.getByText('Extra 12,00 € / hora')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /Ana — Extra 12€\/h/ })).toBeInTheDocument();
+  });
+
   it('BUG evitado: abrir la ventana de fichar (montada cerrada, como en App) no tumba la app', () => {
     const props = { onClose: vi.fn(), workersList: equipo, clockEntries: [], onClockEntryCreated: vi.fn() };
     const { rerender } = render(<ClockInModal {...props} isOpen={false} />);

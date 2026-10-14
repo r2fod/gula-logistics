@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Briefcase, Clock, Euro, Lock, Pin, Play, Square } from 'lucide-react';
 import { getActiveShiftForWorker } from '../data/shiftCalculations';
 import { crearFichaje } from '../data/fichajes';
+import { tarifaCorta, tarifaDe } from '../data/tarifas';
+import { formatearEuros } from '../data/formatoFinanciero';
 import { formatTime, formatDateLong, valorDatetimeLocal } from '../utils/dateUtils';
 import Modal from './ui/Modal';
 import CabeceraModal from './ui/CabeceraModal';
@@ -161,7 +163,7 @@ function VentanaFichar({
           >
             {workersList.map((w) => (
               <option key={w.name} value={w.name}>
-                {w.avatar} {w.name} — {w.isPayroll ? "Nómina Fija" : "Extra 10€/h"}
+                {w.avatar} {w.name} — {w.isPayroll ? "Nómina Fija" : `Extra ${tarifaCorta(w)}`}
               </option>
             ))}
           </Selector>
@@ -175,7 +177,7 @@ function VentanaFichar({
             </span>
           ) : (
             <span className="font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-              <Euro className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Extra 10,00 € / hora
+              <Euro className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Extra {formatearEuros(tarifaDe(currentWorkerObj))} / hora
             </span>
           )}
         </div>

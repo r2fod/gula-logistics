@@ -6,6 +6,7 @@ import TarjetaDia from './TarjetaDia';
 import TareaDiaItem from './TareaDiaItem';
 import { rejillaDeDias } from './rejillaDias';
 import { formatearHoras } from '../../data/formatoFinanciero';
+import { tarifaCorta } from '../../data/tarifas';
 
 export default function ScheduleTab({ activeWeekData, workersList, onToggleTask, onUpdateWeek, vispera = null }) {
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
@@ -125,7 +126,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
                   {w.isPayroll ? (
                     <span className="text-[10px] font-extrabold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">Nómina</span>
                   ) : (
-                    <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">10€/h</span>
+                    <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">{tarifaCorta(w)}</span>
                   )}
                 </div>
 

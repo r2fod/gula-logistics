@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fichajesACambiarDeTarifa, tarifaDe, tarifaEnFichaDeSaldos } from './tarifas';
+import { fichajesACambiarDeTarifa, tarifaCorta, tarifaDe, tarifaEnFichaDeSaldos } from './tarifas';
 
 // Horas locales (como las ve quien ficha), sin depender de la zona de la máquina.
 const a = (dia, hora, minuto = 0) => new Date(2026, 9, dia, hora, minuto).toISOString();
@@ -11,6 +11,12 @@ describe('tarifaDe', () => {
     expect(tarifaDe({ isPayroll: true })).toBe(14);
     expect(tarifaDe({})).toBe(10);
     expect(tarifaDe(undefined)).toBe(10);
+  });
+
+  it('para una etiqueta: «12€/h», con coma si lleva decimales', () => {
+    expect(tarifaCorta({ rate: 12 })).toBe('12€/h');
+    expect(tarifaCorta({ rate: 12.5 })).toBe('12,5€/h');
+    expect(tarifaCorta({})).toBe('10€/h');
   });
 });
 

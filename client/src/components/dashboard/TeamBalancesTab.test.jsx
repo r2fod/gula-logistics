@@ -168,6 +168,34 @@ describe('TeamBalancesTab — bolsa de horas por meses', () => {
 });
 
 
+describe('TeamBalancesTab — tarifa del turno a mano', () => {
+  it('BUG evitado: sin tarifa en su ficha de Saldos, el turno a mano va a la de su ficha del equipo (antes, 10 €/h aunque cobrara 12)', async () => {
+    const p = pintar({ equipo: [{ name: 'Ana', rate: 12, isPayroll: false }] });
+    fireEvent.click(screen.getByRole('button', { name: /Añadir concepto \/ horas manual/ }));
+    fireEvent.change(document.querySelector('input[type="date"]'), { target: { value: '2026-10-10' } });
+    const [ini, fin] = document.querySelectorAll('input[type="time"]');
+    fireEvent.change(ini, { target: { value: '09:00' } });
+    fireEvent.change(fin, { target: { value: '11:00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => expect(p.persistWorkerBalance).toHaveBeenCalled());
+    const [, cambios] = p.persistWorkerBalance.mock.calls[0];
+    expect(cambios.breakdown.at(-1)).toMatchObject({ amount: 24 });
+    expect(cambios.breakdown.at(-1).concept).toMatch(/2h a 12€\/h/);
+  });
+
+  it('con tarifa en su ficha de Saldos, manda esa', async () => {
+    const p = pintar({ balancesData: { workers: [{ ...ficha, hourlyRate: 11 }] }, equipo: [{ name: 'Ana', rate: 12, isPayroll: false }] });
+    fireEvent.click(screen.getByRole('button', { name: /Añadir concepto \/ horas manual/ }));
+    fireEvent.change(document.querySelector('input[type="date"]'), { target: { value: '2026-10-10' } });
+    const [ini, fin] = document.querySelectorAll('input[type="time"]');
+    fireEvent.change(ini, { target: { value: '09:00' } });
+    fireEvent.change(fin, { target: { value: '11:00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => expect(p.persistWorkerBalance).toHaveBeenCalled());
+    expect(p.persistWorkerBalance.mock.calls[0][1].breakdown.at(-1)).toMatchObject({ amount: 22 });
+  });
+});
+
 describe('TeamBalancesTab — fecha del turno a mano', () => {
   it('BUG evitado: de madrugada propone HOY en hora de aquí (antes, en UTC: el día anterior, y el 1 de mes caía en el mes anterior)', () => {
     const tzAntes = process.env.TZ;
