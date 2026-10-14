@@ -84,7 +84,7 @@ export default function PublicView({
               </div>
             </div>
 
-            <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight font-['Outfit']">
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight font-outfit">
               Planificación Operativa de Logística
             </h2>
 
@@ -99,13 +99,13 @@ export default function PublicView({
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800/80">
                 <p className="text-[11px] font-medium text-slate-400">Camiones Activos</p>
-                <p className="text-xl sm:text-2xl font-bold text-amber-400 mt-0.5 font-['Outfit']">
+                <p className="text-xl sm:text-2xl font-bold text-amber-400 mt-0.5 font-outfit">
                   {trucks.length} Vehículos
                 </p>
               </div>
               <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800/80">
                 <p className="text-[11px] font-medium text-slate-400">Progreso Tareas</p>
-                <p className="text-xl sm:text-2xl font-bold text-emerald-400 mt-0.5 font-['Outfit']">
+                <p className="text-xl sm:text-2xl font-bold text-emerald-400 mt-0.5 font-outfit">
                   {taskProgressPercent}%
                 </p>
               </div>
@@ -189,7 +189,7 @@ export default function PublicView({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Truck className="w-5 h-5 text-amber-400" />
-              <h3 className="text-xl font-bold text-white tracking-tight font-['Outfit']">
+              <h3 className="text-xl font-bold text-white tracking-tight font-outfit">
                 Camiones de la Flota Gula
               </h3>
             </div>
@@ -215,7 +215,7 @@ export default function PublicView({
                   </div>
 
                   <div>
-                    <h4 className="font-bold text-white text-lg font-['Outfit'] group-hover:text-amber-400 transition-colors">
+                    <h4 className="font-bold text-white text-lg font-outfit group-hover:text-amber-400 transition-colors">
                       {truck.name}
                     </h4>
                     <p className="text-xs text-slate-400 mt-1">Ruta & Asignaciones Operativas</p>
@@ -241,7 +241,7 @@ export default function PublicView({
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
             <div className="flex items-center space-x-2">
               <Users className="w-5 h-5 text-amber-400" />
-              <h3 className="text-xl font-bold text-white tracking-tight font-['Outfit']">
+              <h3 className="text-xl font-bold text-white tracking-tight font-outfit">
                 Equipo & Roles Asignados
               </h3>
             </div>
@@ -274,7 +274,7 @@ export default function PublicView({
                 </div>
 
                 <div>
-                  <h4 className="text-lg font-bold text-white font-['Outfit']">
+                  <h4 className="text-lg font-bold text-white font-outfit">
                     {item.role}
                   </h4>
                   <p className="text-sm text-slate-300 mt-2 font-medium bg-slate-950/50 p-3 rounded-xl border border-slate-800/60">

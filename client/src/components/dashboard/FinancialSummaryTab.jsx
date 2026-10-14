@@ -132,14 +132,15 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
 
   const serie = useMemo(() => serieDelPeriodo(turnos, rango), [turnos, rango]);
 
-  // Comparación con el periodo anterior (no tiene sentido en "todo").
-  const variacion = useMemo(() => {
+  // Comparación con el periodo anterior (no tiene sentido en "todo"), con lo apuntado a
+  // mano como el "Coste de personal" que se compara. `vivo`: lo que llevan los turnos
+  // abiertos, que ese coste también suma (antes no: con solo un turno abierto, «-100 %»).
+  const costeAnterior = useMemo(() => {
     if (modo === 'todo') return null;
-    // Con lo apuntado a mano, como el "Coste de personal" que se compara.
     const anterior = rangoDePeriodo(modo, moverPeriodo(modo, ancla, -1), allWeeks);
-    const aManoAnterior = conceptosDelPeriodo(saldos, anterior).total;
-    return variacionPorcentual(costeTotal(turnos) + conceptos.total, costeTotal(turnosDelPeriodo(turnosConTarifa, anterior)) + aManoAnterior);
-  }, [modo, ancla, allWeeks, turnosConTarifa, turnos, conceptos, saldos]);
+    return costeTotal(turnosDelPeriodo(turnosConTarifa, anterior)) + conceptosDelPeriodo(saldos, anterior).total;
+  }, [modo, ancla, allWeeks, turnosConTarifa, saldos]);
+  const variacionCon = (vivo = 0) => (costeAnterior === null ? null : variacionPorcentual(costeTotal(turnos) + conceptos.total + vivo, costeAnterior));
 
   // Lo apuntado a mano en Saldos en este periodo, y lo previsto por el planning
   // de la semana (solo en la vista de una semana).
@@ -171,7 +172,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
   const enNomina = balancesList.filter(w => w.isPayroll && w.totalHours > 0);
   const costeMedioHora = totalHoras > 0 ? totalCoste / totalHoras : 0;
 
-  const pieCoste = modo === 'todo' ? (
+  const pieCoste = (variacion) => (modo === 'todo' ? (
     <span>Extras + valoración de nómina</span>
   ) : variacion === null ? (
     <span>Sin datos {DATOS_ANTERIOR[modo]} para comparar</span>
@@ -183,7 +184,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
       </span>
       <span>vs {NOMBRE_ANTERIOR[modo]}</span>
     </span>
-  );
+  ));
 
   // Las cuatro cifras de arriba. `vivo` (enCursoDelPeriodo): lo que llevan ahora los
   // turnos abiertos del periodo, que se suma a lo ya fichado; null si no hay ninguno.
@@ -199,7 +200,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
           formato={formatearEuros}
           icono={Wallet}
           color="amber"
-          pie={pieCoste}
+          pie={pieCoste(variacionCon(extrasVivo + nominaVivo))}
           retraso={60}
         />
         <KpiCard

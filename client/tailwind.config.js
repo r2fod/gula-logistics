@@ -2,6 +2,9 @@ export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
+      // Los títulos. Con respaldo: sin él, si Outfit no carga (sin cobertura, primera
+      // visita lenta) salían con la letra de imprenta del navegador.
+      fontFamily: { outfit: ['Outfit', 'ui-sans-serif', 'system-ui', 'sans-serif'] },
       animation: {
         // Los @keyframes de estas animaciones están en index.css (Tailwind solo
         // emite los de config si se usa la clase; así también valen desde CSS).

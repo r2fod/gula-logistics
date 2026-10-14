@@ -62,7 +62,7 @@ export default function BaseDeDatos({ fichajes = [], borrados = [], equipo = [],
         />
         <Fila
           bien={!r.idsQueSobran.length}
-          titulo={r.idsQueSobran.length ? `${r.idsQueSobran.length} fichajes que sobran` : 'Ningún fichaje sobra'}
+          titulo={r.idsQueSobran.length ? `${r.idsQueSobran.length} ${r.idsQueSobran.length === 1 ? 'fichaje que sobra' : 'fichajes que sobran'}` : 'Ningún fichaje sobra'}
           detalle={r.idsQueSobran.length ? 'Turnos de 0 minutos, entradas dobles…: no cuentan; quitarlos no cambia nada.' : null}
           accion={r.idsQueSobran.length && onMoverAPapelera ? 'A la papelera' : null}
           onAccion={async () => { if (await confirmarMoverAPapelera(confirm, r.idsQueSobran.length)) onMoverAPapelera(r.idsQueSobran); }}

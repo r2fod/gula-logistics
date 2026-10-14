@@ -4,7 +4,7 @@
 
 @layer base {
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Outfit', ui-sans-serif, system-ui, sans-serif;
   }
 
   /* La app es oscura: los controles del propio navegador (icono del calendario y del

@@ -102,7 +102,7 @@ export default function PremiumDialog({
             <Icon className={`h-7 w-7 ${colorClasses.text}`} aria-hidden="true" />
           </div>
           
-          <h3 id={idTitulo} className="text-lg font-bold text-white font-['Outfit'] mb-2">
+          <h3 id={idTitulo} className="text-lg font-bold text-white font-outfit mb-2">
             {title}
           </h3>
           

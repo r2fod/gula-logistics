@@ -626,7 +626,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                   {localWeek.saturdaySpecial.title}
                 </h4>
                 <span className="text-[11px] font-bold bg-slate-950 text-slate-400 px-2 py-0.5 rounded-md border border-slate-800 shrink-0">
-                  {(localWeek.saturdaySpecial.weddings || []).length} eventos
+                  {(n => `${n} ${n === 1 ? 'evento' : 'eventos'}`)((localWeek.saturdaySpecial.weddings || []).length)}
                 </span>
               </div>
               <button 
@@ -776,7 +776,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                   {localWeek.sundayMonday.title}
                 </h4>
                 <span className="text-[11px] font-bold bg-slate-950 text-slate-400 px-2 py-0.5 rounded-md border border-slate-800 shrink-0">
-                  {(localWeek.sundayMonday.tasks || []).length} tareas
+                  {(n => `${n} ${n === 1 ? 'tarea' : 'tareas'}`)((localWeek.sundayMonday.tasks || []).length)}
                 </span>
               </div>
               <button 

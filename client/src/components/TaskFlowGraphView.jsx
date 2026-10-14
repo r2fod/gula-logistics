@@ -300,7 +300,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base sm:text-xl font-black font-['Outfit'] text-white">
+              <h2 className="text-base sm:text-xl font-black font-outfit text-white">
                 Grafo Interactivo de Tareas & Flujo
               </h2>
               <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[11px] font-extrabold uppercase shrink-0 leading-tight">
@@ -453,7 +453,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                         {selectedNodeObj.type}
                       </span>
                     </div>
-                    <h4 className="text-sm sm:text-base font-extrabold text-white truncate font-['Outfit'] mt-0.5">
+                    <h4 className="text-sm sm:text-base font-extrabold text-white truncate font-outfit mt-0.5">
                       {selectedNodeObj.label}
                     </h4>
                     {selectedNodeObj.sub && <p className="text-[11px] text-amber-200/80">{selectedNodeObj.sub}</p>}

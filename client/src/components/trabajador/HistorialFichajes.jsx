@@ -12,13 +12,13 @@ export default function HistorialFichajes({ fichajes = [], duracionDeSalida = ne
   return (
     <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-        <h3 className="text-lg sm:text-xl font-extrabold text-white font-['Outfit'] flex items-center space-x-2">
+        <h3 className="text-lg sm:text-xl font-extrabold text-white font-outfit flex items-center space-x-2">
           <Clock className="w-5 h-5 text-emerald-400 shrink-0" />
           <span>Mi Historial de Fichajes Registrados</span>
         </h3>
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-400 font-semibold bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 hidden sm:inline-block">
-            {fichajes.length} fichajes enviados
+            {fichajes.length} {fichajes.length === 1 ? 'fichaje enviado' : 'fichajes enviados'}
           </span>
           <button
             type="button"

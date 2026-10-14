@@ -7,7 +7,7 @@ import Tarjeta from '../ui/Tarjeta';
 function TarjetaEvento({ lugar, camion, detalle }) {
   return (
     <Tarjeta className="p-4 sm:p-5 space-y-2">
-      <span className="font-extrabold text-amber-300 block text-base font-['Outfit']"><MapPin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{lugar}</span>
+      <span className="font-extrabold text-amber-300 block text-base font-outfit"><MapPin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{lugar}</span>
       <span className="text-slate-200 block font-semibold">{camion}</span>
       <p className="text-xs text-slate-400 leading-relaxed">{detalle}</p>
     </Tarjeta>
@@ -20,7 +20,7 @@ export default function LogisticsTab({ activeWeekData, adminUnlocked, onUpdateWe
   return (
     <Tarjeta variante="panel" className="p-4 sm:p-6 space-y-4">
       <div className="flex justify-between items-center flex-wrap gap-4">
-        <h4 className="font-bold text-white text-lg flex items-center space-x-2 font-['Outfit']">
+        <h4 className="font-bold text-white text-lg flex items-center space-x-2 font-outfit">
           <Truck className="w-6 h-6 text-amber-400" />
           <span>Estado de la Flota & Eventos Clave ({activeWeekData?.meta?.week || "Semana 3"})</span>
         </h4>

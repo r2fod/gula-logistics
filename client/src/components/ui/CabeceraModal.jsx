@@ -58,7 +58,7 @@ export default function CabeceraModal({
       {caja}
       <div className="min-w-0">
         <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
-          <h3 className={`${compacta ? 'text-lg sm:text-xl' : 'text-xl'} font-bold font-['Outfit']`}>{titulo}</h3>
+          <h3 className={`${compacta ? 'text-lg sm:text-xl' : 'text-xl'} font-bold font-outfit`}>{titulo}</h3>
           {insignia}
         </div>
         {subtitulo && <p className={`${compacta ? 'text-[11px] sm:text-xs' : 'text-xs'} text-slate-400`}>{subtitulo}</p>}
