@@ -13,6 +13,8 @@ const ANCHOS = {
   '3xl': 'max-w-3xl',
   '4xl': 'max-w-4xl',
   '6xl': 'max-w-6xl',
+  // Casi todo el ancho de la pantalla (hasta 1600 px): editores con mucho contenido.
+  amplio: 'max-w-[min(96vw,1600px)]',
 };
 
 const CAPAS = { 50: 'z-50', 60: 'z-[60]', 100: 'z-[100]' };
@@ -41,7 +43,7 @@ const DISPOSICIONES = {
 // - abierto: false no pinta nada (por defecto true; los modales con estado
 //   propio suelen devolver `null` antes de llegar aquí).
 // - onCerrar: se llama con el botón "X" y con Escape.
-// - ancho: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | '6xl'.
+// - ancho: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | '6xl' | 'amplio'.
 // - capa: 50 | 60 | 100 (z-index; 60 y 100 para los que salen sobre otro modal).
 // - disposicion: 'pagina' (por defecto) | 'columna'.
 // - botonCerrar: false si el modal pinta su propio <BotonCerrar> en la cabecera.

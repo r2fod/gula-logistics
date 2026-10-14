@@ -339,7 +339,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
   };
 
   return (
-    <Modal onCerrar={onClose} ancho="6xl" disposicion="columna" botonCerrar={false}>
+    <Modal onCerrar={onClose} ancho="amplio" disposicion="columna" botonCerrar={false}>
       {/* Header */}
       <div className="p-3 sm:p-6 border-b border-slate-800 flex items-center justify-between shrink-0">
         <CabeceraModal
@@ -429,7 +429,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
       </div>
 
       {/* Content */}
-      <div ref={scrollContainerRef} className="overflow-y-auto px-4 sm:px-6 pb-6 pt-0 space-y-6 sm:space-y-8">
+      <div ref={scrollContainerRef} className="overflow-y-auto px-2 sm:px-6 pb-6 pt-0 space-y-6 sm:space-y-8">
         {/* Pax por evento: reparten el coste de las tareas compartidas entre eventos */}
         {(() => {
           const eventos = collectEventNames(localWeek).filter(n => !EVENT_CATEGORIES.includes(n));
@@ -474,7 +474,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
           return (
             <div key={dayKey} id={`editor-day-${dayKey}`} className="bg-slate-950/50 rounded-2xl border border-slate-800 shadow-lg scroll-mt-2 first:mt-4">
               {/* STICKY DAY HEADER - Never hides on scroll! */}
-              <div className="sticky top-0 z-20 bg-slate-900 px-4 py-3 border-b border-slate-800/80 rounded-t-2xl flex items-center justify-between shadow-md">
+              <div className="sticky top-0 z-20 bg-slate-900 px-3 py-2.5 sm:px-4 sm:py-3 border-b border-slate-800/80 rounded-t-2xl flex items-center justify-between gap-2 shadow-md">
                 <div className="flex items-center gap-2 min-w-0">
                   <Calendar className="w-4 h-4 text-amber-400 shrink-0" />
                   <h4 className="text-sm font-extrabold text-amber-400 capitalize truncate">
@@ -493,7 +493,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                 </button>
               </div>
               
-              <div className="p-2 sm:p-4 space-y-3">
+              <div className="p-1.5 sm:p-4 space-y-3">
                 {currentTasks.map((task, idx) => {
                   const timeValue = typeof task === 'object' ? (task.timeFrame || '') : '';
                   const locationValue = typeof task === 'object' ? (task.location || '') : '';
@@ -506,18 +506,18 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                   return (
                     <div 
                       key={idx} 
-                      className={`relative bg-slate-900/50 p-4 sm:p-5 rounded-2xl border transition-all ${
+                      className={`relative bg-slate-900/50 p-3 sm:p-5 rounded-2xl border transition-all ${
                         isActiveTask ? 'border-slate-700 hover:border-slate-600' : 'border-slate-800 opacity-50 grayscale hover:grayscale-0'
                       }`}
                     >
-                      <div className="absolute top-2 right-2 flex flex-col items-center gap-1">
+                      <div className="mb-2 flex justify-end">
                         <SelectorPosicion 
                           currentIndex={idx} 
                           totalItems={currentTasks.length} 
                           onChange={(targetIndex) => handleMoveTaskTo(dayKey, idx, targetIndex)}
                         />
                       </div>
-                      <div className="mb-4 pr-16 flex items-center gap-3">
+                      <div className="mb-4 flex items-center gap-3">
                       <div className="flex-1 min-w-0 space-y-2">
                         <EventoYTarea
                           tarea={task}
@@ -638,14 +638,14 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
               </button>
             </div>
 
-            <div className="p-2 sm:p-4 space-y-3">
+            <div className="p-1.5 sm:p-4 space-y-3">
               {(localWeek.saturdaySpecial.weddings || []).map((w, idx) => {
                 const isActiveWedding = w.active !== false;
                 return (
                 <div key={idx} className={`relative bg-slate-900 border rounded-xl p-2 sm:p-3 transition-all ${
                   isActiveWedding ? 'border-slate-800' : 'border-slate-800 opacity-50 grayscale hover:grayscale-0'
                 }`}>
-                  <div className="absolute top-2 right-2 flex flex-col items-center gap-1 z-10">
+                  <div className="mb-2 flex justify-end">
                     <SelectorPosicion 
                       currentIndex={idx} 
                       totalItems={(localWeek.saturdaySpecial.weddings || []).length} 
@@ -653,7 +653,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                     />
                   </div>
                   
-                  <div className="flex-1 min-w-0 space-y-3 pr-14">
+                  <div className="flex-1 min-w-0 space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Ubicación / Finca</label>
@@ -788,7 +788,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
               </button>
             </div>
 
-            <div className="p-2 sm:p-4 space-y-3">
+            <div className="p-1.5 sm:p-4 space-y-3">
               {(localWeek.sundayMonday.tasks || []).map((task, idx) => {
                 const timeValue = typeof task === 'object' ? (task.timeFrame || '') : '';
                 const locationValue = typeof task === 'object' ? (task.location || '') : '';
@@ -803,7 +803,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                   <div key={idx} className={`relative bg-slate-900 border rounded-xl p-2 sm:p-3 transition-all ${
                     isActiveTask ? 'border-slate-700' : 'border-slate-800 opacity-50 grayscale hover:grayscale-0'
                   }`}>
-                    <div className="absolute top-2 right-2 flex flex-col items-center gap-1 z-10">
+                    <div className="mb-2 flex justify-end">
                       <SelectorPosicion 
                         currentIndex={idx} 
                         totalItems={(localWeek.sundayMonday.tasks || []).length} 
@@ -811,7 +811,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                       />
                     </div>
 
-                    <div className="flex-1 min-w-0 space-y-2 pr-14">
+                    <div className="flex-1 min-w-0 space-y-2">
                       <EventoYTarea
                         tarea={task}
                         eventos={eventosDeLaSemana}
@@ -917,7 +917,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
       </div>
 
       {/* Footer */}
-      <div className="p-4 sm:p-6 border-t border-slate-800/60 bg-slate-900/50 shrink-0 rounded-b-2xl">
+      <div className="p-3 sm:p-6 border-t border-slate-800/60 bg-slate-900/50 shrink-0 rounded-b-2xl">
         <button 
           type="button"
           onClick={handleSave}
