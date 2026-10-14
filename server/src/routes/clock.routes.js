@@ -8,6 +8,7 @@ import { requireAdmin, esAdminVigente, rolVigente } from '../middleware/requireA
 import { limitePorIp } from '../middleware/limitePorIp.js';
 import { verifyToken } from '../utils/authToken.js';
 import { plano } from '../utils/texto.js';
+import { tarifaPorDefecto, tarifasDelDocumento } from '../utils/tarifas.js';
 
 const router = express.Router();
 
@@ -20,7 +21,6 @@ const limiteBorrar = limitePorIp({ max: 200, ventanaMs: DIEZ_MIN });
 // con la hora mal). El admin sí puede apuntar fechas antiguas a mano.
 const DIAS_ATRAS_MAX = 45;
 const HORAS_FUTURO_MAX = 12;
-const TARIFA_POR_DEFECTO = 10;
 
 // ¿Llega con el enlace personal de esa persona? (cabecera X-Enlace: el token del enlace
 // ?worker=…&t=…, cuyo `w` es el id de su ficha de Saldos: "Ana Gula" → ana-gula; las
@@ -61,11 +61,14 @@ async function firmaDelFichaje(req, workerName, equipo = []) {
   return { firmado: esSuEnlace(payload, workerName, equipo), exigido };
 }
 
-// El equipo guardado ([] sin base o sin equipo: entonces no se comprueba nada con él).
-async function equipoGuardado() {
-  if (mongoose.connection.readyState !== 1) return [];
-  return (await TeamRoster.findOne({ key: 'roster' }))?.workers || [];
+// El equipo guardado y sus tarifas por defecto ([] y {} sin base o sin equipo: entonces
+// no se comprueba nada con él).
+async function rosterGuardado() {
+  if (mongoose.connection.readyState !== 1) return { workers: [], tarifas: {} };
+  const doc = await TeamRoster.findOne({ key: 'roster' });
+  return { workers: doc?.workers || [], tarifas: tarifasDelDocumento(doc) };
 }
+const equipoGuardado = async () => (await rosterGuardado()).workers;
 
 // Por qué no vale un fichaje que llega sin sesión, o null si vale. Sin equipo guardado
 // (o sin base) no se comprueba el nombre: mejor guardar que perder un fichaje.
@@ -152,7 +155,7 @@ router.post('/', limiteFichar, async (req, res) => {
   try {
     const newEntryData = { ...req.body };
     const admin = await esAdminVigente(req);
-    const equipo = await equipoGuardado();
+    const { workers: equipo, tarifas } = await rosterGuardado();
     const persona = equipo.find(w => plano(w.name) === plano(newEntryData.workerName)) || null;
     const motivo = motivoParaRechazar(newEntryData, admin, equipo, persona);
     if (motivo) return res.status(400).json({ error: motivo });
@@ -190,9 +193,12 @@ router.post('/', limiteFichar, async (req, res) => {
     }
     // Sin sesión de admin, la tarifa y si es de nómina son las de su ficha del equipo,
     // no las que mande el móvil: con un POST directo cualquiera se ponía hasta 100 €/h.
-    // Sin tarifa en la ficha, la de por defecto (como crearFichaje en el cliente).
+    // Sin tarifa en la ficha, la por defecto de la base (TeamRoster.tarifas); si tampoco
+    // hay, el fichaje se guarda sin tarifa (no se pierde) y se valora al leerlo con la que
+    // haya entonces: nunca se inventa una en el código ni vale la que mande el móvil.
     if (!admin && persona) {
-      newEntryData.rate = Number(persona.rate) > 0 ? Number(persona.rate) : TARIFA_POR_DEFECTO;
+      const suya = Number(persona.rate) > 0 ? Number(persona.rate) : tarifaPorDefecto(tarifas, persona.isPayroll);
+      if (suya) newEntryData.rate = suya; else delete newEntryData.rate;
       newEntryData.isPayroll = !!persona.isPayroll;
     }
 

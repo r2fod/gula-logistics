@@ -100,8 +100,7 @@ export default function WorkerView({
     role: "Operativa Logística",
     avatar: "👤",
     truck: "Flota Gula",
-    isPayroll: false,
-    rate: 10
+    isPayroll: false
   };
 
   useEffect(() => {

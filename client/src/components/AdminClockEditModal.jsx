@@ -30,7 +30,7 @@ function FormularioFichaje({
   const [type, setType] = useState(() => entry?.type || 'entrada');
   const [dateTimeLocal, setDateTimeLocal] = useState(() => valorDatetimeLocal(entry?.timestamp || new Date()));
   // Uno nuevo sale con la tarifa de la persona que ya viene elegida (antes, siempre 10:
-  // el fichaje olvidado de quien cobra otra tarifa se apuntaba a 10 €/h).
+  // el fichaje olvidado de quien cobra otra tarifa se apuntaba con la de todos).
   const [rate, setRate] = useState(() => entry?.rate || tarifaDe(workersList.find(w => w.name === workerName)));
   const [note, setNote] = useState(() => entry?.note || entry?.taskName || '');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -53,7 +53,7 @@ function FormularioFichaje({
       tipo: type,
       fecha: dateObj,
       id: entry ? entry.id : crypto.randomUUID(),
-      rate: Number(rate),
+      rate: Number(rate) > 0 ? Number(rate) : undefined, // 0 no vale: sin tarifa, la por defecto de la base
       taskName: note.trim() || (type === 'entrada' ? 'Inicio de Jornada Operativa' : 'Cierre de Jornada'),
       note: note.trim(),
       editedByAdmin: isAdmin,

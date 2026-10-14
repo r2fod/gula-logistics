@@ -266,7 +266,7 @@ describe('resolveTaskEvalDay', () => {
 
 describe('getTaskPastStatus / isTaskPast — bugs reales del 20/09', () => {
   const GRACE = 45;
-  const devolucionLunes = { text: 'Devolución Camión Albacar', timeFrame: '13:00 - 13:30' };
+  const devolucionLunes = { text: 'Devolución Camión Norte', timeFrame: '13:00 - 13:30' };
   const recogidaDomingo = { text: 'Recogida Finca Sur', timeFrame: '15:00 - 17:00', targetDay: 'Domingo' };
   const recogidaSinEtiqueta = { text: 'Recogida Finca Sur', timeFrame: '15:00 - 17:00' };
 
@@ -341,7 +341,7 @@ describe('clearWeekCompletion', () => {
       schedule: { martes: { title: 'Martes', tasks: [{ text: 'a', completed: true }, 'plano'] } },
       saturdaySpecial: { weddings: [{ location: 'Finca', completed: true }] },
       sundayMonday: { title: 'D/L', tasks: [{ text: 'b', completed: true, targetDay: 'Lunes' }] },
-      trucks: [{ name: 'Albacar', pickupCompleted: true, returnCompleted: true }],
+      trucks: [{ name: 'Norte', pickupCompleted: true, returnCompleted: true }],
     };
     const limpia = clearWeekCompletion(original);
     expect(limpia.schedule.martes.tasks).toEqual([{ text: 'a', completed: false }, 'plano']);

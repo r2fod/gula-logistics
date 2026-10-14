@@ -190,10 +190,10 @@ describe('revisarBorradorConGemini — el calendario crea, Gemini mejora, el adm
 
 describe('«¿hay … en el planning? si no, añádelo» — comprobar antes de tocar', () => {
   afterEach(() => vi.unstubAllGlobals());
-  const FRASE = 'Consulta si hay en el planning algo como recoger furgo albacar y recoger generador 7k y si no esta agregalo asignando alguien preguntandote a quien quieres asignar';
+  const FRASE = 'Consulta si hay en el planning algo como recoger furgo norte y recoger generador 7k y si no esta agregalo asignando alguien preguntandote a quien quieres asignar';
   const conRecogidas = (extra = []) => {
     const s = semana();
-    s.schedule.miercoles.tasks = [{ id: 'mi1', text: 'Logística - recoger furgo albacar', timeFrame: '09:00 - 10:00', assigned: ['Luis'] }, ...extra];
+    s.schedule.miercoles.tasks = [{ id: 'mi1', text: 'Logística - recoger furgo norte', timeFrame: '09:00 - 10:00', assigned: ['Luis'] }, ...extra];
     return s;
   };
 
@@ -209,7 +209,7 @@ describe('«¿hay … en el planning? si no, añádelo» — comprobar antes de 
     const r = await resolverPeticion({ peticion: FRASE, apiKey: 'k', semana: s, equipo });
     expect(fetchMock).not.toHaveBeenCalled();
     expect(r).toMatchObject({ via: 'local', generatedJson: null });
-    expect(r.resumen).toMatch(/✅ «recoger furgo albacar» ya está: .*\(Luis\)/);
+    expect(r.resumen).toMatch(/✅ «recoger furgo norte» ya está: .*\(Luis\)/);
     expect(r.resumen).toMatch(/✅ «recoger generador 7k» ya está: .*\(Ana\)/);
   });
 
@@ -230,7 +230,7 @@ describe('«¿hay … en el planning? si no, añádelo» — comprobar antes de 
     expect(r.sugerencias.map(x => x.item.texto)).toEqual(['recoger generador 7k']);
     const prompt = JSON.parse(fetchMock.mock.calls[0][1].body).contents[0].parts[0].text;
     expect(prompt).toContain('Añade SOLO estas tareas');
-    expect(prompt).not.toContain('recoger furgo albacar»'); // la que ya está no se le pide
+    expect(prompt).not.toContain('recoger furgo norte»'); // la que ya está no se le pide
   });
 });
 

@@ -37,11 +37,9 @@ export default function PublicView({
     setTimeout(() => setCopiedLink(false), 3000);
   };
 
-  const trucks = (data.trucks && data.trucks.length > 0) ? data.trucks : [
-    { name: "Camión Gula", tag: "Propio (Gula)", status: "Operativo — Propiedad Gula Logística" },
-    { name: "Camión Covey", tag: "Alquiler Covey", status: "Operativo — Vehículo de Alquiler" },
-    { name: "Camión Albacar", tag: "Alquiler Albacar", status: "Operativo — Vehículo de Alquiler" }
-  ];
+  // La flota sale de la semana (Gestionar Flota, en Mongo): el código no lleva camiones
+  // ni empresas de alquiler.
+  const trucks = data.trucks || [];
   // Desde el equipo real (equipoRoles.js), no del texto que se copiaba en cada semana.
   const team = equipoPorRoles(workersList);
 

@@ -16,7 +16,7 @@ const VACIAS = new Set(['el', 'la', 'los', 'las', 'de', 'del', 'un', 'una', 'y',
 const raiz = (w) => w.slice(0, 6); // generadores y generador → «genera»
 
 // Clave de una tarea para reconocerla en otras semanas aunque se escriba distinto:
-// «Boda X - Recoger camión Albacar» y «Logística - recoger furgo albacar» → «recog albac».
+// «Boda X - Recoger camión Norte» y «Logística - recoger furgo norte» → «recog albac».
 export function claveDeTarea(texto) {
   const { specificTaskName, explicit } = parseEventAndTask(texto);
   const palabras = plano(explicit ? specificTaskName : texto).split(/[^a-z0-9]+/).filter(w => w && !VACIAS.has(w));

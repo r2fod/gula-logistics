@@ -19,6 +19,8 @@ import {
   guardarTokenTrabajador,
   tokenTrabajador,
   olvidarTokenTrabajador,
+  fetchRosterFromAPI,
+  saveTarifasToAPI,
 } from './apiService';
 
 // Fichaje mínimo de prueba: entra si el worker/type/timestamp bastan para
@@ -391,3 +393,33 @@ describe('enlace personal del trabajador (ve su saldo)', () => {
     window.history.replaceState({}, '', '/');
   });
 });
+
+describe('equipo y tarifas por defecto (de la base)', () => {
+  it('fetchRosterFromAPI devuelve el equipo y las tarifas; sin tarifas guardadas, {}', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ workers: [{ name: 'Ana' }], tarifas: { extra: 12 } }) });
+    expect(await fetchRosterFromAPI()).toEqual({ workers: [{ name: 'Ana' }], tarifas: { extra: 12 } });
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ workers: [] }) });
+    expect(await fetchRosterFromAPI()).toEqual({ workers: [], tarifas: {} });
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+    expect(await fetchRosterFromAPI()).toBeNull();
+  });
+
+  it('saveTarifasToAPI manda SOLO las tarifas (no toca el equipo), con la sesión de admin, y devuelve las guardadas', async () => {
+    setStoredAdminToken('ADMIN', Date.now() + 60000);
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, tarifas: { extra: 12, transporte: 8 } }) });
+    expect(await saveTarifasToAPI({ extra: 12, transporte: 8 })).toEqual({ extra: 12, transporte: 8 });
+    const [url, opciones] = fetch.mock.calls[0];
+    expect(url).toMatch(/\/roster$/);
+    expect(opciones.method).toBe('PUT');
+    expect(opciones.headers.Authorization).toBe('Bearer ADMIN');
+    expect(JSON.parse(opciones.body)).toEqual({ tarifas: { extra: 12, transporte: 8 } });
+  });
+
+  it('si el servidor no las acepta (sesión, valores) o no hay red, null', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 400 });
+    expect(await saveTarifasToAPI({ extra: 999 })).toBeNull();
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    expect(await saveTarifasToAPI({ extra: 10 })).toBeNull();
+  });
+});
+

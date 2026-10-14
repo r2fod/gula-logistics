@@ -77,7 +77,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
     // 2. Trucks Nodes — de activeWeekData.trucks (Mongo), no de una lista fija.
     const truckColorByTag = (tag = '') => {
       if (/propio/i.test(tag)) return 'border-emerald-500 text-emerald-400 bg-emerald-500/10';
-      if (/albacar/i.test(tag)) return 'border-purple-500 text-purple-400 bg-purple-500/10';
+      if (/alquiler/i.test(tag)) return 'border-purple-500 text-purple-400 bg-purple-500/10';
       return 'border-blue-500 text-blue-400 bg-blue-500/10';
     };
     const trucks = (activeWeekData?.trucks || []).map(t => ({

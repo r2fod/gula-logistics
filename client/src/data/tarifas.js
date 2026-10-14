@@ -1,15 +1,18 @@
 import { fechaLocal } from './fechasSemana';
-import { formatearCantidad, formatearEuros } from './formatoFinanciero';
+import { formatearEuros } from './formatoFinanciero';
 import { mismoNombre } from './nombresTrabajadores';
 import { pairShiftsFromEntries } from './shiftCalculations';
+import { tarifaDe } from './tarifasPorDefecto';
 
-// Lo que cobra por hora alguien del equipo: lo de su ficha o, si no tiene, lo de siempre
-// (14 quien está en nómina fija, 10 el resto). Con ella se apuntan sus fichajes nuevos.
-export const tarifaDe = (persona) => Number(persona?.rate) || (persona?.isPayroll ? 14 : 10);
+// `tarifaDe` y `tarifaCorta` (la de su ficha o la por defecto de la base) viven en
+// tarifasPorDefecto.js, sin dependencias, para que también las use shiftCalculations.
+export { tarifaDe, tarifaCorta, tarifaPorDefecto, transporteDia, sinTarifa } from './tarifasPorDefecto';
 
-// Su tarifa para una etiqueta: «12€/h», «12,5€/h». Antes las etiquetas decían «10€/h» a
-// todos, aunque su ficha dijera otra.
-export const tarifaCorta = (persona) => `${formatearCantidad(tarifaDe(persona))}€/h`;
+// El acuerdo con el que nace la ficha de Saldos de alguien fuera de nómina: «Extra a X € /
+// hora (Por Defecto)»; sin tarifa en ninguna parte, lo dice (no se inventa una).
+export const textoAcuerdoExtra = (persona) => (tarifaDe(persona) > 0
+  ? `Extra a ${formatearEuros(tarifaDe(persona))} / hora (Por Defecto)`
+  : 'Extra (sin tarifa: ponla en la ficha de la persona o por defecto en Gestionar equipo)');
 
 // Los fichajes de `nombre` que pasan a `tarifa` «desde el día X» (AAAA-MM-DD): los de ese
 // día en adelante que aún no la tienen, sin los de la papelera. El dinero de un turno sale
@@ -26,7 +29,7 @@ export function fichajesACambiarDeTarifa(fichajes = [], nombre, desdeIso, tarifa
 
 // Lo que cambia en la ficha de Saldos de alguien al cambiarle la tarifa: con `hourlyRate`
 // se valoran los turnos apuntados a mano, y su acuerdo «Extra a X € / hora» dice la nueva.
-const ACUERDO_TARIFA = /^Extra a [\d.,]+\s€ \/ hora/;
+const ACUERDO_TARIFA = /^Extra (a [\d.,]+\s€ \/ hora|\(sin tarifa)/;
 export const tarifaEnFichaDeSaldos = (ficha, tarifa) => ({
   hourlyRate: tarifa,
   agreements: (ficha?.agreements || []).map(acuerdo => (ACUERDO_TARIFA.test(acuerdo) ? `Extra a ${formatearEuros(tarifa)} / hora` : acuerdo)),

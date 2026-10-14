@@ -13,15 +13,20 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 const router = express.Router();
 
+// Quién envía los avisos (un correo mailto: o una dirección https): de VAPID_SUBJECT en
+// Render; sin él, la dirección pública del propio servidor (Render la pone sola). El
+// código no lleva ningún correo ni contacto.
+const asuntoVapid = process.env.VAPID_SUBJECT || process.env.RENDER_EXTERNAL_URL;
+
 try {
-  if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && asuntoVapid) {
     webpush.setVapidDetails(
-      process.env.VAPID_SUBJECT || 'mailto:info@gulalogistics.com',
+      asuntoVapid,
       process.env.VAPID_PUBLIC_KEY,
       process.env.VAPID_PRIVATE_KEY
     );
   } else {
-    console.warn('⚠️ VAPID keys missing. Push notifications will be disabled.');
+    console.warn('⚠️ Faltan VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY o VAPID_SUBJECT: los avisos push quedan desactivados.');
   }
 } catch (e) {
   console.warn('⚠️ Error setting VAPID details:', e.message);

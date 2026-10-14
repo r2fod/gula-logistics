@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { initialBalancesData } from '../data/balancesData';
 import { saveWorkerBalanceToAPI, hasRealBalancesData } from '../data/apiService';
 import { fichaDePersona } from '../data/nombresTrabajadores';
-import { tarifaEnFichaDeSaldos } from '../data/tarifas';
+import { tarifaEnFichaDeSaldos, textoAcuerdoExtra } from '../data/tarifas';
 
 // Antes esto leía y escribía en 'gula_balances_v1', una clave DISTINTA de
 // 'gula_balances_data_v1' que usa fetchBalancesFromAPI (apiService.js) para
@@ -44,9 +44,7 @@ export function useBalances(workersList, setWorkersList) {
       status: "Sin saldo",
       statusType: "neutral",
       currentBalance: 0.00,
-      agreements: [
-        "Extra a 10,00 € / hora (Por Defecto)"
-      ],
+      agreements: [textoAcuerdoExtra(newWorker)],
       breakdown: [
         { concept: "Alta inicial en el sistema", amount: 0.00, isPositive: true }
       ],

@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 const plano = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '');
 const escapar = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const CORREOS_PERMITIDOS = /@(example\.(com|org|net)|[a-z0-9-]+\.(test|invalid|example)|anthropic\.com|gulalogistics\.com)$/i;
+const CORREOS_PERMITIDOS = /@(example\.(com|org|net)|[a-z0-9-]+\.(test|invalid|example)|anthropic\.com)$/i;
 
 const PATRONES = [
   { motivo: 'teléfono', re: /(?<![\d.,:/-])(?:\+34[ -]?)?[6-9]\d{2}[ -]?\d{3}[ -]?\d{3}(?![\d.,:/-])/g, vale: (m) => /^\d(\d)\1{7}$/.test(m.replace(/\D/g, '').slice(-9)) }, // 600 000 000: de ejemplo

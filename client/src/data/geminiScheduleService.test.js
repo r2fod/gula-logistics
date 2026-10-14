@@ -267,14 +267,14 @@ describe('buildWeekPrompt — recogidas y devoluciones de alquiler', () => {
       ...base, dayLabel,
       events: [],
       rentals: [
-        { day: 'viernes', text: 'Recoger generadores 7K y furgo Albacar', time: '18:00' },
+        { day: 'viernes', text: 'Recoger generadores 7K y furgo Norte', time: '18:00' },
         { day: 'martes', text: ' Devolver material Alquileres Norte ', time: '' },
         { day: 'martes', text: '   ', time: '10:00' },
         { day: 'nunca', text: 'Fantasma', time: '' },
       ],
     });
     expect(p).toContain('- Martes 22: Devolver material Alquileres Norte.');
-    expect(p).toContain('- Viernes 25: Recoger generadores 7K y furgo Albacar (18:00).');
+    expect(p).toContain('- Viernes 25: Recoger generadores 7K y furgo Norte (18:00).');
     expect(p.indexOf('Martes 22: Devolver')).toBeLessThan(p.indexOf('Viernes 25: Recoger'));
     expect(p).not.toContain('Fantasma');
     expect(p).toContain('Logística Preparación');

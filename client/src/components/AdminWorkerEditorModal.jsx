@@ -6,6 +6,7 @@ import BotonCerrar from './ui/BotonCerrar';
 import { Campo, Input } from './ui/Campo';
 import FichaTrabajador from './equipo/FichaTrabajador';
 import FilaTrabajador from './equipo/FilaTrabajador';
+import TarifasPorDefecto from './equipo/TarifasPorDefecto';
 import SelectorIcono from './equipo/SelectorIcono';
 import { gruposDeEquipo } from '../data/equipoRoles';
 import { tarifaDe } from '../data/tarifas';
@@ -21,8 +22,9 @@ const ROL_INICIAL = 'Conductor Extra';
 //
 // `onUpdateWorker(nombre, cambios)` → true si se guardó (ver FichaTrabajador). Si con la
 // ficha cambia la tarifa: `onTarifaCambiada(nombre, tarifa)` (va a su ficha de Saldos) y,
-// con `clockEntries` y `onCambiarTarifa`, sus fichajes desde el día que se pida.
-export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = [], onAddWorker, onRemoveWorker, onUpdateWorker = null, clockEntries = [], onCambiarTarifa = null, onTarifaCambiada = null }) {
+// con `clockEntries` y `onCambiarTarifa`, sus fichajes desde el día que se pida. Con
+// `onGuardarTarifas(tarifas)` → true, el admin pone las tarifas por defecto (en Mongo).
+export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = [], onAddWorker, onRemoveWorker, onUpdateWorker = null, clockEntries = [], onCambiarTarifa = null, onTarifaCambiada = null, tarifas = {}, onGuardarTarifas = null }) {
   const { alert } = useDialog();
   const [editando, setEditando] = useState(null); // nombre con la ficha abierta
   const [confirmRemove, setConfirmRemove] = useState(null); // nombre pendiente de confirmar
@@ -68,7 +70,7 @@ export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = 
       return;
     }
 
-    onAddWorker({ name: trimmedName, role: role.trim(), truck: 'No Asignado', avatar, isPayroll: false, rate: 10 });
+    onAddWorker({ name: trimmedName, role: role.trim(), truck: 'No Asignado', avatar, isPayroll: false, rate: tarifaDe({ isPayroll: false }) || undefined });
     cerrarFormulario();
   };
 
@@ -132,6 +134,8 @@ export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = 
               <UserPlus className="h-4 w-4" aria-hidden="true" /> Añadir persona al equipo
             </button>
           )}
+
+          {onGuardarTarifas && <TarifasPorDefecto tarifas={tarifas} equipo={workersList} onGuardar={onGuardarTarifas} />}
 
           {/* En columnas que se rellenan de arriba abajo: un grupo largo no deja huecos al lado. */}
           <div className="-mb-5 gap-5 md:columns-2 xl:columns-3">

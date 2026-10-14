@@ -1,6 +1,7 @@
 import { bolsaDeFicha, mesDe, repartirBolsa, tieneBolsa } from './bolsaHoras';
 import { costeEnCurso } from './costeEnVivo';
 import { isZombieShift } from './shiftCalculations';
+import { tarifaDe } from './tarifasPorDefecto';
 
 // Saldo de una persona: la MISMA cuenta en Saldos & Acuerdos y en la vista del propio
 // trabajador.
@@ -24,7 +25,7 @@ export function saldoDeTrabajador({ ficha, horas = null, abierto = null }) {
   const olvidado = !!abierto && isZombieShift(abierto);
   const cobraEnDirecto = !!abierto && !olvidado && !enNomina;
   const enCurso = (ahora) => (cobraEnDirecto
-    ? costeEnCurso({ entrada: abierto, ahora, tarifa: abierto.rate || ficha?.hourlyRate || 10, ficha, turnosPrevios: turnos }).coste
+    ? costeEnCurso({ entrada: abierto, ahora, tarifa: abierto.rate || ficha?.hourlyRate || tarifaDe(abierto), ficha, turnosPrevios: turnos }).coste
     : 0);
   return { costes, fichado, cerrado: (Number(ficha?.currentBalance) || 0) + fichado, enNomina, olvidado, cobraEnDirecto, enCurso };
 }

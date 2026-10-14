@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Banknote, BarChart3, Bus, Clock, Edit3, Lightbulb, MessageCircle, Plus, ScrollText, Share2, TrendingUp } from 'lucide-react';
-import { formatearEuros, formatearEurosConSigno, formatearHoras } from '../../data/formatoFinanciero';
+import { formatearCantidad, formatearEuros, formatearEurosConSigno, formatearHoras } from '../../data/formatoFinanciero';
 import { Input } from '../ui/Campo';
 import { useDialog } from '../../contexts/DialogContext';
 import { estadoBolsa, tieneBolsa } from '../../data/bolsaHoras';
@@ -11,7 +11,7 @@ import EnVivo from '../ui/EnVivo';
 import { duracionEnCurso } from '../../data/costeEnVivo';
 import { saldoDeTrabajador } from '../../data/saldoTrabajador';
 import { personaDeFicha, turnoAbiertoDeFicha } from '../../data/saldosEquipo';
-import { tarifaDe } from '../../data/tarifas';
+import { tarifaDe, transporteDia } from '../../data/tarifas';
 import { aIso } from '../../data/fechasSemana';
 import EnviarSaldoModal from './saldos/EnviarSaldoModal';
 import PanelBolsa from './saldos/PanelBolsa';
@@ -33,6 +33,9 @@ export default function TeamBalancesTab({
   equipo = []
 }) {
   const { alert, confirm } = useDialog();
+  // La ayuda de transporte por día la pone el admin (Gestionar equipo → Tarifas por defecto);
+  // sin importe, no se ofrece ni se suma nada (0).
+  const transporte = transporteDia() || 0;
   const [enviandoSaldo, setEnviandoSaldo] = useState(null); // { ficha, saldo, turnos, turnosHoras } del WhatsApp
   const [expandedWorkerId, setExpandedWorkerId] = useState(null);
   const [addingConceptFor, setAddingConceptFor] = useState(null);
@@ -76,7 +79,7 @@ export default function TeamBalancesTab({
   };
 
   // Si otro trabajador con ayuda de transporte ya tiene un turno con el
-  // +10€ metido ese mismo día, es buena señal de que pudieron ir en el
+  // transporte metido ese mismo día, es buena señal de que pudieron ir en el
   // mismo coche — solo un aviso, la decisión de si de verdad compartieron
   // coche la sabe quien está guardando esto, no la puede adivinar la app.
   const findOtherTransportBonusOnDate = (worker, dateLabel) => {
@@ -102,12 +105,12 @@ export default function TeamBalancesTab({
       ? newShiftDate
       : `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}`;
 
-    // Solo se ofrece incluir el +10€ si el trabajador tiene la ayuda de
-    // transporte activada (hasTransportBonus) Y no se ha desmarcado en el
-    // formulario (ej. porque hoy compartió coche con otro compañero).
-    const includeTransport = !!worker.hasTransportBonus && newShiftIncludeTransport;
-    const transportAmount = includeTransport ? 10 : 0;
-    const transportSuffix = includeTransport ? ' + 10€ transporte' : '';
+    // Solo se ofrece incluir el transporte si el trabajador tiene la ayuda activada
+    // (hasTransportBonus), hay un importe puesto Y no se ha desmarcado en el formulario
+    // (ej. porque hoy compartió coche con otro compañero).
+    const includeTransport = !!worker.hasTransportBonus && transporte > 0 && newShiftIncludeTransport;
+    const transportAmount = includeTransport ? transporte : 0;
+    const transportSuffix = includeTransport ? ` + ${formatearCantidad(transporte)}€ transporte` : '';
 
     if (worker.isSpecialPurse && worker.purseInfo) {
       const p = worker.purseInfo;
@@ -207,14 +210,14 @@ export default function TeamBalancesTab({
 
       // La bolsa (bolsaLine) y las horas extra tras bolsa se calculan aparte
       // arriba, sin pasar por preview.concept/preview.amount — así que el
-      // +10€ de transporte que sí lleva ese preview (para el aviso en
+      // transporte que sí lleva ese preview (para el aviso en
       // pantalla) se perdería al guardar si no se añade aquí como su propia
       // línea, aparte de las horas de bolsa (el transporte no consume horas
       // de la bolsa, es un concepto distinto).
       if (preview.includeTransport) {
         newBreakdown.push({
-          concept: `🕒 ${preview.dateLabel} — 10€ ayuda transporte`,
-          amount: 10,
+          concept: `🕒 ${preview.dateLabel} — ${formatearCantidad(transporte)}€ ayuda transporte`,
+          amount: transporte,
           isPositive: true,
           tipo: 'transporte',
           date: newShiftDate
@@ -439,7 +442,7 @@ export default function TeamBalancesTab({
                             {worker.hasTransportBonus && (
                               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 flex items-center space-x-1">
                                 <Bus className="w-3 h-3" />
-                                <span>+10€ transport/día</span>
+                                <span>{transporte > 0 ? `+${formatearCantidad(transporte)}€ transport/día` : 'Transporte'}</span>
                               </span>
                             )}
                           </div>
@@ -630,7 +633,12 @@ export default function TeamBalancesTab({
                                         tamano="xs" fondo="medio" borde="marcado" className="flex-1 min-w-0 [color-scheme:dark]"
                                       />
                                     </div>
-                                    {worker.hasTransportBonus && (
+                                    {worker.hasTransportBonus && transporte <= 0 && (
+                                      <div role="status" className="text-[11px] text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg p-2">
+                                        <AlertTriangle className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Falta el importe de la ayuda de transporte: ponlo en Gestionar equipo → Tarifas por defecto.
+                                      </div>
+                                    )}
+                                    {worker.hasTransportBonus && transporte > 0 && (
                                       <label className="flex items-center gap-2 text-[11px] text-slate-300 bg-slate-900 border border-slate-700 rounded-lg p-2 cursor-pointer">
                                         <input
                                           type="checkbox"
@@ -639,10 +647,10 @@ export default function TeamBalancesTab({
                                           className="accent-amber-500"
                                         />
                                         <Bus className="w-3.5 h-3.5 text-blue-300 shrink-0" />
-                                        <span>Incluir +10€ ayuda transporte este día</span>
+                                        <span>Incluir +{formatearCantidad(transporte)}€ ayuda transporte este día</span>
                                       </label>
                                     )}
-                                    {worker.hasTransportBonus && newShiftIncludeTransport && (() => {
+                                    {worker.hasTransportBonus && transporte > 0 && newShiftIncludeTransport && (() => {
                                       const other = findOtherTransportBonusOnDate(worker, computeShiftPreview(worker)?.dateLabel);
                                       return other ? (
                                         <div className="text-[11px] text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-lg p-2">

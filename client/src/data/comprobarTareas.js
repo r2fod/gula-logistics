@@ -4,7 +4,7 @@ import { tareasActivas } from './checklistSemana';
 import { tipoDeTarea, personasPorTipo } from './aprendizajeFichajes';
 import { personaDelFichaje } from './nombresTrabajadores';
 
-// «¿Hay en el planning recoger furgo Albacar y recoger generador 7K? Si no está,
+// «¿Hay en el planning recoger furgo Norte y recoger generador 7K? Si no está,
 // añádelo»: se comprueba aquí, sin gastar Gemini, y solo lo que falte se le pide.
 // Antes la frase iba entera a Gemini y, por «GENERAdor», se rehacía la semana entera.
 
@@ -14,13 +14,13 @@ const VERBOS = {
   cargar: /\bcarg/, carga: /\bcarg/, descargar: /descarg/, descarga: /descarg/, montar: /mont/, desmontar: /desmont/,
   limpiar: /limpi/, preparar: /prepar/,
 };
-// Palabras que no distinguen una tarea de otra («furgo» y «camión» Albacar son lo mismo).
+// Palabras que no distinguen una tarea de otra («furgo» y «camión» Norte son lo mismo).
 const GENERICAS = new Set(['el', 'la', 'los', 'las', 'de', 'del', 'un', 'una', 'unos', 'unas', 'al', 'furgo', 'furgoneta', 'camion', 'material', 'todo', 'toda']);
 // Donde acaba lo que hay que hacer: «… y si no está», «asignando…».
 const CORTE = new Set(['y', 'e', 'si', 'para', 'asignando', 'preguntandote', 'usando', 'a', 'que', 'con', 'en', 'por', 'sin', 'o']);
 const raiz = (palabra) => (palabra.length > 5 ? palabra.slice(0, -2) : palabra); // generadores ⊃ generad
 
-// Las tareas que nombra un texto ya pasado por `plano`: «recoger furgo albacar y recoger
+// Las tareas que nombra un texto ya pasado por `plano`: «recoger furgo norte y recoger
 // generador 7k» → [{ texto, verbo, claves }].
 function itemsDeTexto(p) {
   const palabras = p.split(/[^a-z0-9]+/).filter(Boolean);

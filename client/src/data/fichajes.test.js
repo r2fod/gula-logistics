@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { usarTarifasPorDefecto } from './tarifasPorDefecto';
 import { crearFichaje, horaDeFichaje, fechaDeFichaje, fichajesDeLaSemana, ultimaModificacion, fusionarCambiosFichajes, quienFichaConEnlace } from './fichajes';
 
 const trabajador = { name: 'Ana', role: 'Conductora', isPayroll: false, rate: 12 };
@@ -26,8 +27,17 @@ describe('crearFichaje', () => {
     expect(new Date(f.timestamp).getTime()).toBeGreaterThanOrEqual(antes);
   });
 
-  it('sin tarifa propia, 10 €/h', () => {
-    expect(crearFichaje({ trabajador: { ...trabajador, rate: undefined }, tipo: 'entrada' }).rate).toBe(10);
+  it('sin tarifa propia, la por defecto de la base según esté en nómina o no', () => {
+    usarTarifasPorDefecto({ extra: 11, nomina: 15 });
+    expect(crearFichaje({ trabajador: { ...trabajador, rate: undefined, isPayroll: false }, tipo: 'entrada' }).rate).toBe(11);
+    expect(crearFichaje({ trabajador: { ...trabajador, rate: undefined, isPayroll: true }, tipo: 'entrada' }).rate).toBe(15);
+  });
+
+  it('BUG evitado: sin tarifa propia ni por defecto no inventa una (antes, 10 en el código) ni manda 0 (el servidor lo rechaza): el fichaje va sin tarifa', () => {
+    usarTarifasPorDefecto({});
+    const f = crearFichaje({ trabajador: { ...trabajador, rate: undefined }, tipo: 'entrada' });
+    expect(f.rate).toBeUndefined();
+    expect(JSON.parse(JSON.stringify(f))).not.toHaveProperty('rate');
   });
 
   it('los campos de más se añaden y pueden pisar a los de base (id y tarifa del editor de admin)', () => {

@@ -19,7 +19,7 @@ const ROSTER = [
 ];
 const PLANTILLA = {
   team: [{ role: 'Flota', members: 'Bruno, Carlos y Diego' }],
-  trucks: [{ name: 'Camión Gula', tag: 'PROPIO' }, { name: 'Camión Covey', tag: 'ALQUILER' }, { name: 'Camión Albacar', tag: 'ALQUILER' }],
+  trucks: [{ name: 'Camión Gula', tag: 'PROPIO' }, { name: 'Camión Sur', tag: 'ALQUILER' }, { name: 'Camión Norte', tag: 'ALQUILER' }],
 };
 const APUNTES = [
   { id: '1', fecha: '2026-09-22', tipo: 'corporativo', titulo: 'CAFE + COMIDA ACME', pax: 35, sitio: 'Calle Ejemplo, 3', hora: '08:30' },
@@ -29,7 +29,7 @@ const APUNTES = [
   { id: '5', fecha: '2026-09-25', tipo: 'boda', titulo: 'Boda Ana Y Luis', sitio: 'Molino Uno' },
   { id: '6', fecha: '2026-09-25', tipo: 'recogida', titulo: 'Recoger generadores 7K, furgo 18:00' },
   { id: '7', fecha: '2026-09-26', tipo: 'boda', titulo: 'Boda Marta e Ivan', pax: 300, sitio: 'Finca Sur' },
-  { id: '8', fecha: '2026-09-09', hasta: '2026-10-19', tipo: 'recogida', titulo: 'Camión Covey' },
+  { id: '8', fecha: '2026-09-09', hasta: '2026-10-19', tipo: 'recogida', titulo: 'Camión Sur' },
   { id: '9', fecha: '2026-09-23', tipo: 'tarea', titulo: 'VISITA TECNICA' },
   { id: '10', fecha: '2026-09-26', tipo: 'cerrado', titulo: 'Día completo' },
 ];
@@ -124,7 +124,7 @@ describe('generarBorrador — semana del 22 al 27', () => {
     const texto = JSON.stringify(week);
     expect(texto).not.toContain('VISITA TECNICA');
     expect(texto).not.toContain('Día completo');
-    expect(tareas.some(t => /Covey/.test(t.text || ''))).toBe(false);
+    expect(tareas.some(t => /Sur/.test(t.text || ''))).toBe(false);
   });
 
   it('INVARIANTES: todo con "Evento - Tarea", eventos válidos, ids únicos, equipo del roster, nada completado, sin solapes', () => {
@@ -267,7 +267,7 @@ describe('generarBorrador — disponibilidad y límites de horas', () => {
 
 describe('generarBorrador — recogidas de alquiler del mismo día', () => {
   const APUNTES_RECOGIDAS = [
-    { id: 'r1', fecha: '2026-09-23', tipo: 'recogida', titulo: 'recoger furgo albacar' },
+    { id: 'r1', fecha: '2026-09-23', tipo: 'recogida', titulo: 'recoger furgo norte' },
     { id: 'r2', fecha: '2026-09-23', tipo: 'recogida', titulo: 'recoger generador 7k' },
   ];
   // Un conductor que solo puede desde las 15:30 entre semana (su ficha del equipo).
@@ -278,7 +278,7 @@ describe('generarBorrador — recogidas de alquiler del mismo día', () => {
     const { week } = generar(APUNTES_RECOGIDAS);
     const recogidas = week.schedule.miercoles.tasks.filter(t => /recoger/i.test(t.text));
     expect(recogidas).toHaveLength(1);
-    expect(recogidas[0].text).toBe('Logística Preparación - recoger furgo albacar y recoger generador 7k');
+    expect(recogidas[0].text).toBe('Logística Preparación - recoger furgo norte y recoger generador 7k');
     expect(recogidas[0].timeFrame).toBe('09:00 - 10:30');
     expect(recogidas[0].assigned).toHaveLength(1);
   });

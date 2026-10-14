@@ -7,6 +7,7 @@
 import { parseEventAndTask } from './eventNaming';
 import { fechaDeFichaje, horaDeFichaje } from './fichajes';
 import { mismoNombre, personaDelFichaje } from './nombresTrabajadores';
+import { tarifaDe } from './tarifasPorDefecto';
 
 export const ZOMBIE_SHIFT_HOURS = 16;
 
@@ -55,8 +56,8 @@ export function getActiveShiftForWorker(entries = [], workerName) {
 // Empareja fichajes de entrada/salida en turnos con duración y coste —
 // misma lógica que antes vivía duplicada en PartnerDashboardView.jsx
 // (agregación por trabajador) y PayrollReportModal.jsx (lista de turnos).
-// Quien está en nómina fija se valora a 14 €/h por defecto; el resto, 10 €/h de extra,
-// salvo que el propio fichaje traiga su propia `rate`. Devuelve también
+// El fichaje trae su propia `rate`; sin ella, la tarifa por defecto de la base según esté
+// en nómina fija o no (tarifasPorDefecto.js). Devuelve también
 // `activeShifts` (entradas sin salida emparejada aún) para saber quién
 // sigue fichado en este momento.
 export function pairShiftsFromEntries(entries = []) {
@@ -103,8 +104,8 @@ export function pairShiftsFromEntries(entries = []) {
       const rawDuration = Math.max(0, totalDiffMs / (1000 * 60 * 60));
       const isAnomalous = rawDuration > HORAS_TURNO_LARGO;
 
-      // Se paga a la media hora más cercana (para cerrar en billetes de 5€
-      // o 10€ a la tarifa base, no en céntimos): *2 desplaza cada media
+      // Se paga a la media hora más cercana (para cerrar en cifras redondas,
+      // no en céntimos): *2 desplaza cada media
       // hora a un entero, se redondea al entero más cercano y /2 vuelve a
       // la escala de horas. 2h31m está más cerca de 2.5h que de 3h -> 2.5h;
       // 2h45m está justo en el punto medio entre 2.5h y 3h -> sube a 3h.
@@ -119,7 +120,7 @@ export function pairShiftsFromEntries(entries = []) {
       // sus fichajes reales ya traen isPayroll:true, así que quitarlo no
       // cambia nada hoy — solo evita que el código, no el dato, decida.
       const isSalaried = !!isPayroll;
-      const hourlyRate = rate || (isSalaried ? 14 : 10);
+      const hourlyRate = tarifaDe({ rate, isPayroll: isSalaried });
       const cost = durationHours * hourlyRate;
 
       // Finalize subtasks for V2
@@ -220,7 +221,7 @@ export function aggregateShiftsByWorker(shifts, workersList = []) {
       role: w.role,
       avatar: w.avatar,
       isPayroll: w.isPayroll,
-      rate: w.rate || (w.isPayroll ? 14 : 10),
+      rate: tarifaDe(w),
       totalHours: 0,
       totalCost: 0,
       completedShifts: 0,

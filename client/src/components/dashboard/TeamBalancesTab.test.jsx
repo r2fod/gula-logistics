@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within, waitFor, act } from '../../test/render';
 import TeamBalancesTab from './TeamBalancesTab';
+import { usarTarifasPorDefecto } from '../../data/tarifasPorDefecto';
 
 const ficha = {
   id: 'ana', name: 'Ana', role: 'Conductora', avatar: '🚚', statusType: 'success', currentBalance: 25,
@@ -193,6 +194,41 @@ describe('TeamBalancesTab — tarifa del turno a mano', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
     await waitFor(() => expect(p.persistWorkerBalance).toHaveBeenCalled());
     expect(p.persistWorkerBalance.mock.calls[0][1].breakdown.at(-1)).toMatchObject({ amount: 22 });
+  });
+});
+
+describe('TeamBalancesTab — la ayuda de transporte sale de la base, no del código', () => {
+  const conTransporte = { ...ficha, hasTransportBonus: true, hourlyRate: 10 };
+  const apuntarTurno2h = () => {
+    fireEvent.click(screen.getByRole('button', { name: /Añadir concepto \/ horas manual/ }));
+    fireEvent.change(document.querySelector('input[type="date"]'), { target: { value: '2026-10-10' } });
+    const [ini, fin] = document.querySelectorAll('input[type="time"]');
+    fireEvent.change(ini, { target: { value: '09:00' } });
+    fireEvent.change(fin, { target: { value: '11:00' } });
+  };
+
+  it('el importe del transporte es el que puso el admin (en la casilla, en el texto y en lo que suma)', async () => {
+    usarTarifasPorDefecto({ extra: 10, transporte: 12 });
+    const p = pintar({ balancesData: { workers: [conTransporte] } });
+    expect(screen.getByText('+12€ transport/día')).toBeInTheDocument();
+    apuntarTurno2h();
+    expect(screen.getByLabelText(/Incluir \+12€ ayuda transporte este día/)).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => expect(p.persistWorkerBalance).toHaveBeenCalled());
+    const [, cambios] = p.persistWorkerBalance.mock.calls[0];
+    expect(cambios.breakdown.at(-1)).toMatchObject({ amount: 2 * 10 + 12 });
+    expect(cambios.breakdown.at(-1).concept).toContain('+ 12€ transporte');
+  });
+
+  it('BUG evitado: sin importe de transporte en la base no se inventa uno (antes, 10 € en el código): no se ofrece, se avisa y no suma nada', async () => {
+    usarTarifasPorDefecto({ extra: 10 });
+    const p = pintar({ balancesData: { workers: [conTransporte] } });
+    apuntarTurno2h();
+    expect(screen.queryByLabelText(/ayuda transporte este día/)).toBeNull();
+    expect(screen.getByText(/Falta el importe de la ayuda de transporte/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => expect(p.persistWorkerBalance).toHaveBeenCalled());
+    expect(p.persistWorkerBalance.mock.calls[0][1].breakdown.at(-1)).toMatchObject({ amount: 20 });
   });
 });
 

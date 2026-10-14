@@ -50,7 +50,7 @@ const WorkerBalanceSchema = new mongoose.Schema({
   status: { type: String, default: 'Neutral' },
   statusType: { type: String, default: 'neutral' }, // success | danger | neutral | payroll
   currentBalance: { type: Number, default: 0 },
-  hourlyRate: { type: Number, default: 10 },
+  hourlyRate: { type: Number },
   agreements: [{ type: String }],
   breakdown: [BreakdownItemSchema],
   hasTransportBonus: { type: Boolean, default: false },

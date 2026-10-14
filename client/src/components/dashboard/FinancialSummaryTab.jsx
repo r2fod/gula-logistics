@@ -33,7 +33,7 @@ const NOMBRE_ANTERIOR = { semana: 'semana anterior', mes: 'mes anterior', anio: 
 const DATOS_ANTERIOR = { semana: 'de la semana anterior', mes: 'del mes anterior', anio: 'del año anterior' };
 const PASO_FILA = 45; // ms entre fila y fila al aparecer
 
-// "a 10,00 € / hora" si todos cobran lo mismo; null si hay tarifas distintas.
+// "a X,00 € / hora" si todos cobran lo mismo; null si hay tarifas distintas.
 const tarifaComun = (personal) => {
   const tarifas = [...new Set(personal.map(w => w.rate).filter(Boolean))];
   return tarifas.length === 1 ? `a ${formatearEuros(tarifas[0])} / hora` : null;
