@@ -34,7 +34,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
     const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
 
     return (
-      <div key={idx} className={`p-4 rounded-2xl border leading-relaxed transition-all ${
+      <div key={idx} className={`p-3 sm:p-4 rounded-2xl border leading-relaxed transition-all ${
         isCompleted
           ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 line-through opacity-60'
           : !matchesFilter 

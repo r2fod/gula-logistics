@@ -16,7 +16,8 @@ Lo imprescindible:
   marca con «privacidad-ok» en esa línea.
 - Los datos reales (nombres, tarifas, saldos, contactos, empresas de alquiler) viven SOLO en
   la base de datos: el código no lleva valores por defecto de ellos. No hay lista de nombres
-  reales en ningún sitio (ni en el repo ni en secretos de GitHub): no la crees.
+  reales en ningún sitio (ni en el repo ni en secretos de GitHub): el filtro los lee del
+  equipo en la base (`/api/roster`) cada vez. No crees ninguna lista.
 
 ## Lo demás
 - Idioma: español (código, comentarios, interfaz y commits).

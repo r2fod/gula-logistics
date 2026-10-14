@@ -9,5 +9,3 @@ client/.env.local
 client/api_data.json
 api_data.json
 
-# Lista de nombres reales para el filtro de privacidad (scripts/privacidad.mjs): solo en el ordenador
-.privacidad-nombres.txt

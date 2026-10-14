@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act, fireEvent } from '../test/render';
+import { render, screen, act, fireEvent, within } from '../test/render';
 
 vi.mock('../data/pushService', () => ({ subscribeToPush: vi.fn().mockResolvedValue(null) }));
 vi.mock('./TaskFlowGraphView', () => ({ default: () => null }));
@@ -75,6 +75,29 @@ describe('WorkerView', () => {
     expect(screen.queryByText('Llevas ganado')).toBeNull();
     expect(screen.queryByText(/^\d+h \d\dm \d\ds$/)).toBeNull();
     expect(screen.queryByText('Fichar salida')).toBeNull();
+  });
+});
+
+describe('WorkerView — aprovecha la pantalla', () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 24, 10, 0, 0)); });
+  afterEach(() => vi.useRealTimers());
+
+  it('en pantallas anchas va en dos columnas: lo tuyo y fichar a la izquierda, tus tareas a la derecha (antes, una sola de 1850 px)', () => {
+    pintar();
+    const raiz = screen.getByRole('heading', { level: 1 }).closest('div[class*="lg:grid"]');
+    expect(raiz).not.toBeNull();
+    const [izquierda, derecha] = raiz.children;
+    expect(within(izquierda).getByRole('heading', { level: 1 })).toBeInTheDocument();
+    expect(within(derecha).getByRole('button', { name: /^Tareas/ })).toBeInTheDocument();
+  });
+
+  it('BUG evitado: un solo día se enseña a todo el ancho (antes ocupaba la mitad o la tercera parte y el resto quedaba vacío)', () => {
+    pintar();
+    fireEvent.click(screen.getByRole('button', { name: /^Hoy/ }));
+    const rejilla = screen.getByRole('heading', { level: 3, name: /Tareas Asignadas para/ }).closest('div').parentElement.querySelector('div.grid');
+    expect(rejilla.className).not.toMatch(/md:grid-cols-2/);
+    fireEvent.click(screen.getByRole('button', { name: /Toda la Semana/ }));
+    expect(screen.getByRole('heading', { level: 3, name: /Desglose Completo/ }).closest('div').parentElement.querySelector('div.grid').className).toMatch(/md:grid-cols-2/);
   });
 });
 
