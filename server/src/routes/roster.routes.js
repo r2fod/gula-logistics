@@ -2,23 +2,26 @@ import express from 'express';
 import mongoose from 'mongoose';
 import { TeamRoster } from '../models/TeamRoster.model.js';
 import { requireAdmin } from '../middleware/requireAdmin.js';
+import { tarifasDelDocumento, tarifasValidas } from '../utils/tarifas.js';
 
 const router = express.Router();
 
-// El equipo vive en Mongo (se edita desde la app). Sin conexión, en memoria. No hay
-// lista por defecto en el código: el repo es público y llevaba nombres y tarifas reales.
+// El equipo y sus tarifas por defecto viven en Mongo (se editan desde la app). Sin
+// conexión, en memoria. No hay lista ni tarifas por defecto en el código: el repo es
+// público y llevaba nombres y tarifas reales.
 let memoryRoster = [];
+let memoryTarifas = {};
 
-// GET /api/roster - Obtener lista de trabajadores activos
+// GET /api/roster - Obtener lista de trabajadores activos y las tarifas por defecto
 router.get('/', async (req, res) => {
   try {
     if (mongoose.connection.readyState === 1) {
       const rosterDoc = await TeamRoster.findOne({ key: 'roster' });
       // Base nueva sin equipo: lista vacía (el admin lo añade). Un GET público no escribe.
-      return res.json({ workers: rosterDoc?.workers || [] });
+      return res.json({ workers: rosterDoc?.workers || [], tarifas: tarifasDelDocumento(rosterDoc) });
     }
     // Fallback if DB is disconnected
-    return res.json({ workers: memoryRoster });
+    return res.json({ workers: memoryRoster, tarifas: memoryTarifas });
   } catch (error) {
     console.error('Error al obtener roster:', error);
     res.status(500).json({ error: 'Failed to fetch team roster' });
@@ -40,23 +43,36 @@ const limpiarTrabajador = (w) => ({
     .map(r => ({ dia: r.dia, tipo: r.tipo, desde: r.tipo === 'solo' ? r.desde : '', hasta: r.tipo === 'solo' ? r.hasta : '' })),
 });
 
+// Cambia el equipo, las tarifas por defecto o las dos: solo lo que llega (guardar el
+// equipo no toca las tarifas y al revés).
 router.put('/', requireAdmin, async (req, res) => {
   try {
-    if (!Array.isArray(req.body?.workers)) {
+    const { workers: enviados, tarifas: tarifasEnviadas } = req.body || {};
+    if (enviados === undefined && tarifasEnviadas === undefined) {
+      return res.status(400).json({ error: 'Se esperaba un array de trabajadores o las tarifas por defecto' });
+    }
+    if (enviados !== undefined && !Array.isArray(enviados)) {
       return res.status(400).json({ error: 'Se esperaba un array de trabajadores' });
     }
-    const workers = req.body.workers.map(limpiarTrabajador);
+    const tarifas = tarifasEnviadas === undefined ? undefined : tarifasValidas(tarifasEnviadas);
+    if (tarifas === null) {
+      return res.status(400).json({ error: 'Las tarifas deben ser números mayores que 0 y de 100 como mucho (extra, nomina, transporte)' });
+    }
+    const cambios = {};
+    if (enviados !== undefined) cambios.workers = enviados.map(limpiarTrabajador);
+    if (tarifas !== undefined) cambios.tarifas = tarifas;
 
     if (mongoose.connection.readyState === 1) {
       const rosterDoc = await TeamRoster.findOneAndUpdate(
         { key: 'roster' },
-        { workers },
+        cambios,
         { new: true, upsert: true }
       );
-      return res.json({ success: true, workers: rosterDoc.workers });
+      return res.json({ success: true, workers: rosterDoc.workers, tarifas: tarifasDelDocumento(rosterDoc) });
     } else {
-      memoryRoster = [...workers];
-      return res.json({ success: true, workers: memoryRoster });
+      if (cambios.workers) memoryRoster = [...cambios.workers];
+      if (cambios.tarifas) memoryTarifas = { ...cambios.tarifas };
+      return res.json({ success: true, workers: memoryRoster, tarifas: memoryTarifas });
     }
   } catch (error) {
     console.error('Error al actualizar roster:', error);

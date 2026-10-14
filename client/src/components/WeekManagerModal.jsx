@@ -471,7 +471,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
                     aria-label="Qué hay que recoger o devolver"
                     value={r.text}
                     onChange={(e) => updateRental(r.id, 'text', e.target.value)}
-                    placeholder="Qué (ej. Recoger generadores 7K y furgo Albacar)"
+                    placeholder="Qué (ej. Recoger generadores 7K y furgo Norte)"
                     tamano="sm" acento="amber-suave" fondo="medio" className="min-w-0 flex-1"
                   />
                   <button

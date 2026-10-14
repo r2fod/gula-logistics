@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { usarTarifasPorDefecto } from './tarifasPorDefecto';
 import {
   sortEntriesByTimestamp,
   getActiveShiftForWorker,
@@ -70,6 +71,25 @@ describe('getActiveShiftForWorker', () => {
   it('devuelve null sin trabajador o sin fichajes', () => {
     expect(getActiveShiftForWorker([], 'Lara')).toBeNull();
     expect(getActiveShiftForWorker([entry()], '')).toBeNull();
+  });
+});
+
+describe('pairShiftsFromEntries — tarifa por defecto de la base', () => {
+  const turno = (extra = {}) => pairShiftsFromEntries([
+    entry({ id: '1', workerName: 'Carlos', type: 'entrada', timestamp: '2026-09-10T08:00:00.000Z', ...extra }),
+    entry({ id: '2', workerName: 'Carlos', type: 'salida', timestamp: '2026-09-10T10:00:00.000Z', ...extra }),
+  ]).shifts[0];
+
+  it('un fichaje sin tarifa se valora con la por defecto de la base (según nómina), no con una del código', () => {
+    usarTarifasPorDefecto({ extra: 11, nomina: 16 });
+    expect(turno().cost).toBe(22);
+    expect(turno({ isPayroll: true }).cost).toBe(32);
+  });
+
+  it('BUG evitado: sin tarifa en el fichaje ni en la base el turno sale a 0 (antes, el código inventaba 10 o 14)', () => {
+    usarTarifasPorDefecto({});
+    expect(turno().cost).toBe(0);
+    expect(turno({ rate: 12 }).cost).toBe(24); // el que sí la trae, igual
   });
 });
 

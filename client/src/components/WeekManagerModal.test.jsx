@@ -160,11 +160,11 @@ describe('WeekManagerModal — recogidas y devoluciones de alquiler', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Quitar esta recogida o devolución' })[1]);
     expect(screen.getAllByLabelText('Día de la recogida o devolución')).toHaveLength(1);
 
-    fireEvent.change(screen.getByLabelText('Qué hay que recoger o devolver'), { target: { value: 'Recoger generadores 7K y furgo Albacar' } });
+    fireEvent.change(screen.getByLabelText('Qué hay que recoger o devolver'), { target: { value: 'Recoger generadores 7K y furgo Norte' } });
     fireEvent.change(screen.getByLabelText('Hora de la recogida o devolución'), { target: { value: '18:00' } });
 
     fireEvent.click(screen.getByRole('button', { name: /Generar Planificación Inteligente/ }));
     await waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
-    expect(generate.mock.calls[0][0].prompt).toContain('- Viernes 25: Recoger generadores 7K y furgo Albacar (18:00).');
+    expect(generate.mock.calls[0][0].prompt).toContain('- Viernes 25: Recoger generadores 7K y furgo Norte (18:00).');
   });
 });

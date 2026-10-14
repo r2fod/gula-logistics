@@ -190,9 +190,16 @@ describe('POST /api/clock — fichar con el enlace personal', () => {
     const datos = { workerName: 'Carlos', type: 'entrada', timestamp: '2026-09-19T08:00:00.000Z', rate: 99, isPayroll: true };
     const sinSesion = await request(buildApp()).post('/api/clock').send({ id: 't1', ...datos });
     expect(sinSesion.body).toMatchObject({ rate: 10, isPayroll: false });
-    // Sin tarifa en su ficha, la de por defecto: tampoco vale la que mande el móvil.
+    // Sin tarifa en su ficha, la por defecto DE LA BASE (según nómina): tampoco vale la que mande el móvil.
+    TeamRoster.findOne.mockResolvedValue({ workers: [{ name: 'Carlos' }], tarifas: { extra: 12, nomina: 15 } });
+    expect((await request(buildApp()).post('/api/clock').send({ id: 't3', ...datos })).body).toMatchObject({ rate: 12, isPayroll: false });
+    TeamRoster.findOne.mockResolvedValue({ workers: [{ name: 'Carlos', isPayroll: true }], tarifas: { extra: 12, nomina: 15 } });
+    expect((await request(buildApp()).post('/api/clock').send({ id: 't4', ...datos })).body).toMatchObject({ rate: 15, isPayroll: true });
+    // Ni en su ficha ni en la base: el fichaje se guarda igual (no se pierde), sin tarifa; el código no inventa una.
     TeamRoster.findOne.mockResolvedValue({ workers: [{ name: 'Carlos' }] });
-    expect((await request(buildApp()).post('/api/clock').send({ id: 't3', ...datos })).body.rate).toBe(10);
+    const sinNada = await request(buildApp()).post('/api/clock').send({ id: 't5', ...datos });
+    expect(sinNada.status).toBe(201);
+    expect(sinNada.body.rate).toBeUndefined();
     // El admin sí puede apuntar otra tarifa a mano.
     const admin = await request(buildApp()).post('/api/clock')
       .set('Authorization', `Bearer ${signToken({ role: 'admin', v: 1 })}`).send({ id: 't2', ...datos });

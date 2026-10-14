@@ -1,7 +1,8 @@
 # Filtro de privacidad en cada subida: el repo es PÚBLICO. Si algo lleva nombres reales,
 # teléfonos, correos o claves, esta comprobación sale en rojo (y GitHub avisa por correo).
-# Los nombres vienen del secreto PRIVACIDAD_NOMBRES (Settings → Secrets → Actions); sin
-# él solo se buscan teléfonos, correos y claves. El registro nunca enseña lo encontrado.
+# Los nombres del equipo se leen de la base de datos (GET /api/roster): no hay secreto ni
+# lista que mantener. Si Render está dormido, se espera a que despierte; sin respuesta,
+# solo se buscan teléfonos, correos y claves. El registro nunca enseña lo encontrado.
 name: Privacidad
 
 on:
@@ -20,5 +21,3 @@ jobs:
         run: node --test scripts/
       - name: Revisar todo el repo
         run: node scripts/privacidad.mjs --todo
-        env:
-          PRIVACIDAD_NOMBRES: ${{ secrets.PRIVACIDAD_NOMBRES }}

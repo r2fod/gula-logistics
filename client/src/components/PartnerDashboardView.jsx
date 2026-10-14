@@ -16,6 +16,7 @@ import AvisoDeshacerIa from './panel/AvisoDeshacerIa';
 import BackgroundAnimation from './BackgroundAnimation';
 import AvisoTurnosLargos from './dashboard/fichajes/AvisoTurnosLargos';
 import AvisoFestivos from './planning/AvisoFestivos';
+import AvisoSinTarifa from './equipo/AvisoSinTarifa';
 import SemanaBorradorBanner from './SemanaBorradorBanner';
 import RevisionIaBorrador from './panel/RevisionIaBorrador';
 import CabeceraPanel from './panel/CabeceraPanel';
@@ -263,6 +264,8 @@ export default function PartnerDashboardView({
           <button type="button" onClick={onCerrarAnticipacionAviso} aria-label="Cerrar aviso" className="shrink-0 text-emerald-300 hover:text-white font-bold">✕</button>
         </div>
       )}
+
+      {adminUnlocked && <AvisoSinTarifa equipo={workersList} onAbrirEquipo={onOpenWorkerEditor} />}
 
       {adminUnlocked && activeTab !== 'fichajes' && (
         <AvisoTurnosLargos fichajes={clockEntries} onRevisar={() => handleTabClick('fichajes')} />

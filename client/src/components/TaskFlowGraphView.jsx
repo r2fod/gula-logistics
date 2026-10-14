@@ -77,7 +77,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
     // 2. Trucks Nodes — de activeWeekData.trucks (Mongo), no de una lista fija.
     const truckColorByTag = (tag = '') => {
       if (/propio/i.test(tag)) return 'border-emerald-500 text-emerald-400 bg-emerald-500/10';
-      if (/albacar/i.test(tag)) return 'border-purple-500 text-purple-400 bg-purple-500/10';
+      if (/alquiler/i.test(tag)) return 'border-purple-500 text-purple-400 bg-purple-500/10';
       return 'border-blue-500 text-blue-400 bg-blue-500/10';
     };
     const trucks = (activeWeekData?.trucks || []).map(t => ({
@@ -538,7 +538,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6 w-full max-w-full">
             
             {/* COLUMN 1: DÍAS / HITOS */}
-            <div className={`space-y-3 ${mobileColumn !== 'all' && mobileColumn !== 'days' ? 'hidden md:block' : 'block'}`}>
+            <div className={`space-y-3 md:rounded-2xl md:border md:border-slate-800/80 md:bg-slate-950/40 md:p-3 ${mobileColumn !== 'all' && mobileColumn !== 'days' ? 'hidden md:block' : 'block'}`}>
               <div className="flex items-center space-x-2 text-xs font-black uppercase text-blue-400 tracking-wider pb-2 border-b border-slate-800">
                 <Calendar className="w-4 h-4" />
                 <span>1. Días & Hitos</span>
@@ -571,7 +571,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
             </div>
 
             {/* COLUMN 2: TAREAS & ACTIVIDADES */}
-            <div className={`space-y-3 md:col-span-1 ${mobileColumn !== 'all' && mobileColumn !== 'tasks' ? 'hidden md:block' : 'block'}`}>
+            <div className={`space-y-3 md:col-span-1 md:rounded-2xl md:border md:border-slate-800/80 md:bg-slate-950/40 md:p-3 ${mobileColumn !== 'all' && mobileColumn !== 'tasks' ? 'hidden md:block' : 'block'}`}>
               <div className="flex items-center space-x-2 text-xs font-black uppercase text-amber-400 tracking-wider pb-2 border-b border-slate-800">
                 <Clock className="w-4 h-4" />
                 <span>2. Tareas & Operaciones ({taskNodes.length})</span>
@@ -633,7 +633,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
             </div>
 
             {/* COLUMN 3: FLOTA & CAMIONES */}
-            <div className={`space-y-3 ${mobileColumn !== 'all' && mobileColumn !== 'trucks' ? 'hidden md:block' : 'block'}`}>
+            <div className={`space-y-3 md:rounded-2xl md:border md:border-slate-800/80 md:bg-slate-950/40 md:p-3 ${mobileColumn !== 'all' && mobileColumn !== 'trucks' ? 'hidden md:block' : 'block'}`}>
               <div className="flex items-center space-x-2 text-xs font-black uppercase text-emerald-400 tracking-wider pb-2 border-b border-slate-800">
                 <Truck className="w-4 h-4" />
                 <span>3. Flota de Camiones</span>
@@ -667,7 +667,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
             </div>
 
             {/* COLUMN 4: TRABAJADORES & ROLES */}
-            <div className={`space-y-3 ${mobileColumn !== 'all' && mobileColumn !== 'workers' ? 'hidden md:block' : 'block'}`}>
+            <div className={`space-y-3 md:rounded-2xl md:border md:border-slate-800/80 md:bg-slate-950/40 md:p-3 ${mobileColumn !== 'all' && mobileColumn !== 'workers' ? 'hidden md:block' : 'block'}`}>
               <div className="flex items-center space-x-2 text-xs font-black uppercase text-purple-400 tracking-wider pb-2 border-b border-slate-800">
                 <Users className="w-4 h-4" />
                 <span>4. Personal Asignado</span>

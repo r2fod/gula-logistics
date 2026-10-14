@@ -7,7 +7,7 @@ import Tarjeta from '../ui/Tarjeta';
 function TarjetaEvento({ lugar, camion, detalle }) {
   return (
     <Tarjeta className="p-4 sm:p-5 space-y-2">
-      <span className="font-extrabold text-amber-300 block text-base font-outfit"><MapPin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{lugar}</span>
+      {lugar && <span className="font-extrabold text-amber-300 block text-base font-outfit"><MapPin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{lugar}</span>}
       <span className="text-slate-200 block font-semibold">{camion}</span>
       <p className="text-xs text-slate-400 leading-relaxed">{detalle}</p>
     </Tarjeta>
@@ -42,7 +42,7 @@ export default function LogisticsTab({ activeWeekData, adminUnlocked, onUpdateWe
         onUpdateWeek={onUpdateWeek}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 text-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(18rem,1fr))] gap-3 sm:gap-6 text-sm">
         {(activeWeekData?.saturdaySpecial?.weddings || []).map((w, idx) => (
           <TarjetaEvento key={`boda-${idx}`} lugar={w.location} camion={w.truck} detalle={w.details} />
         ))}

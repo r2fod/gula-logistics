@@ -14,8 +14,10 @@ Lo imprescindible:
   (GitHub Actions, «Privacidad»). Si te para, **cambia el dato por uno inventado**; no lo
   saltes (`--no-verify`) ni lo desactives. Un nombre inventado que coincida con uno real se
   marca con «privacidad-ok» en esa línea.
-- La lista de nombres reales está fuera del repo (`.privacidad-nombres.txt` en la copia
-  principal y el secreto `PRIVACIDAD_NOMBRES` de GitHub): no la copies a ningún archivo del repo.
+- Los datos reales (nombres, tarifas, saldos, contactos, empresas de alquiler) viven SOLO en
+  la base de datos: el código no lleva valores por defecto de ellos. No hay lista de nombres
+  reales en ningún sitio (ni en el repo ni en secretos de GitHub): el filtro los lee del
+  equipo en la base (`/api/roster`) cada vez. No crees ninguna lista.
 
 ## Lo demás
 - Idioma: español (código, comentarios, interfaz y commits).

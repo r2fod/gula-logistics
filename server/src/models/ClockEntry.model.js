@@ -18,7 +18,7 @@ const ClockEntrySchema = new mongoose.Schema({
   workerName: { type: String, required: true, index: true },
   role: { type: String, default: '' },
   isPayroll: { type: Boolean, default: false },
-  rate: { type: Number, default: 10 },
+  rate: { type: Number }, // la de su ficha del equipo; sin ella, la por defecto de la base (TeamRoster.tarifas)
   type: { type: String, enum: ['entrada', 'salida', 'pausa_inicio', 'pausa_fin', 'fichaje'], required: true },
   timestamp: { type: String, required: true },
   timeFormatted: { type: String, default: '' },

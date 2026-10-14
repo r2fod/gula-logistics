@@ -1,8 +1,6 @@
 import { formatDate, formatTime } from '../utils/dateUtils';
 import { sumarDias } from './fechasSemana';
-
-// Tarifa por hora si quien ficha no trae la suya.
-const TARIFA_POR_DEFECTO = 10;
+import { tarifaDe } from './tarifasPorDefecto';
 
 // Crea el registro de un fichaje. Es el ÚNICO sitio que decide cómo se ve por
 // dentro: quien ficha (nombre, rol, si es de nómina y su tarifa), la hora exacta
@@ -26,7 +24,8 @@ export function crearFichaje({ trabajador, tipo, fecha = new Date(), ...extra })
     workerName: trabajador.name,
     role: trabajador.role,
     isPayroll: trabajador.isPayroll,
-    rate: trabajador.rate || TARIFA_POR_DEFECTO,
+    // La suya o la por defecto de la base; sin ninguna, sin tarifa (el servidor rechaza 0).
+    rate: tarifaDe(trabajador) || undefined,
     type: tipo,
     timestamp: fecha.toISOString(),
     timeFormatted: formatTime(fecha),

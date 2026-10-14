@@ -24,7 +24,7 @@ export default function PanelBolsa({ ficha, turnos = [], admin = false, abierto 
     : (p.consumedHours / p.totalHours) * 100;
 
   return (
-    <div className="mt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
+    <div className="mt-4 p-3 sm:p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3">
       <div className="flex items-center justify-between gap-2 text-xs">
         <span className="font-extrabold text-amber-300 flex items-center space-x-1 min-w-0">
           <Clock className="w-4 h-4 text-amber-400 shrink-0" />

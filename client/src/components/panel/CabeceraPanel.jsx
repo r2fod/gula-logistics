@@ -33,15 +33,17 @@ export default function CabeceraPanel({
     <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-3 sm:px-4 sm:py-3 rounded-2xl shadow-xl flex flex-col gap-3 w-full max-w-full overflow-hidden">
       {/* Fila superior: título y selector de semana */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 w-full">
-        <div className="flex items-center gap-2.5 min-w-0 max-w-full flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-2.5 min-w-0 max-w-full">
           <div className="icono-camion w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-500 p-0.5 shadow-lg shadow-amber-500/20 shrink-0">
             <div className="w-full h-full bg-slate-950 rounded-[9px] flex items-center justify-center text-amber-400">
               <Truck className="w-4 h-4" />
             </div>
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
+            {/* En el móvil el título ocupa su línea y ADMIN, Clave y Salir van juntos en la siguiente
+                (antes, Salir caía solo a otra línea); desde sm, todo en una. */}
             <div className="flex flex-wrap items-center gap-1.5">
-              <h1 className="text-xs sm:text-base font-extrabold text-white tracking-tight font-outfit truncate">
+              <h1 className="text-xs sm:text-base font-extrabold text-white tracking-tight font-outfit truncate basis-full sm:basis-auto min-w-0">
                 Panel de Control Gula Logística
               </h1>
               {adminUnlocked ? (

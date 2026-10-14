@@ -6,19 +6,22 @@
 //   node scripts/privacidad.mjs --todo          todos los archivos del repo (GitHub Actions)
 //   node scripts/privacidad.mjs --mensaje FILE  el mensaje del commit (hook commit-msg)
 //
-// Los nombres NO pueden estar en el repo: se leen de `.privacidad-nombres.txt` (en la raíz
-// de la copia principal, fuera de git) o de la variable PRIVACIDAD_NOMBRES (secreto de
-// GitHub). Uno por línea; los de 3 letras o menos solo cuentan con mayúscula («Bo», no «bo»).
-// Una línea con «privacidad-ok» se salta (nombres inventados que coinciden con uno real).
+// Los nombres reales NO están en el repo ni en ningún archivo o secreto: salen de la base
+// de datos cada vez (GET /api/roster, público: es el equipo), así no hay lista que
+// mantener. Se guardan en `.git/` (nunca se sube) para los commits sin red o con el
+// servidor dormido; en Actions se espera lo que tarde en despertar. Sin nombres (ni red ni
+// caché) solo se buscan teléfonos, correos y claves. Los de 3 letras o menos solo cuentan
+// con mayúscula («Bo», no «bo»), y no cuentan los nombres inventados de siempre (Ana,
+// Luis, Eva…). Una línea con «privacidad-ok» se salta.
 // Nunca imprime lo encontrado, solo dónde: los registros de Actions de un repo público se ven.
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const plano = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '');
 const escapar = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const CORREOS_PERMITIDOS = /@(example\.(com|org|net)|[a-z0-9-]+\.(test|invalid|example)|anthropic\.com|gulalogistics\.com)$/i;
+const CORREOS_PERMITIDOS = /@(example\.(com|org|net)|[a-z0-9-]+\.(test|invalid|example)|anthropic\.com)$/i;
 
 const PATRONES = [
   { motivo: 'teléfono', re: /(?<![\d.,:/-])(?:\+34[ -]?)?[6-9]\d{2}[ -]?\d{3}[ -]?\d{3}(?![\d.,:/-])/g, vale: (m) => /^\d(\d)\1{7}$/.test(m.replace(/\D/g, '').slice(-9)) }, // 600 000 000: de ejemplo
@@ -65,23 +68,47 @@ export function revisarTexto(texto, nombres = []) {
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
 
-export function leerNombres() {
-  const delEntorno = (process.env.PRIVACIDAD_NOMBRES || '').split(/[\n,]/);
-  let delArchivo = [];
+const API_POR_DEFECTO = 'https://gula-logistics.onrender.com/api'; // pública: ya está en los workflows
+// Los nombres inventados que usan los tests y los ejemplos del repo (Ana, Luis, Eva…): una
+// persona real que se llame igual no se puede distinguir de ellos, así que no cuentan.
+const EJEMPLOS = new Set(['ana', 'luis', 'eva', 'carlos', 'elena', 'bruno', 'pau', 'diego', 'mariana', 'lara', 'marta', 'rafael', 'tomas', 'sofia', 'sara', 'nico', 'marcos', 'juan']);
+
+const rutaDeCache = () => resolve(git('rev-parse', '--git-common-dir').trim(), 'privacidad-nombres.json');
+const leerCache = (ruta) => { try { return existsSync(ruta) ? JSON.parse(readFileSync(ruta, 'utf8')).nombres || [] : []; } catch { return []; } };
+const guardarCache = (ruta, nombres) => { try { writeFileSync(ruta, JSON.stringify({ nombres, en: new Date().toISOString() })); } catch { /* sin caché: se pedirá otra vez */ } };
+
+// Los nombres del equipo, de la base: { nombres, origen: 'base' | 'caché' | 'ninguno' }.
+// Nunca falla: sin red ni caché, `ninguno` (el resto del filtro sigue funcionando).
+export async function nombresDelEquipo({ env = process.env, llamar = fetch, cache = null } = {}) {
+  let rutaCache = cache;
+  if (rutaCache === null) { try { rutaCache = rutaDeCache(); } catch { rutaCache = ''; } }
+  const base = String(env.PRIVACIDAD_API || API_POR_DEFECTO).replace(/\/+$/, '');
   try {
-    const raiz = dirname(resolve(git('rev-parse', '--git-common-dir').trim()));
-    const archivo = join(raiz, '.privacidad-nombres.txt');
-    if (existsSync(archivo)) delArchivo = readFileSync(archivo, 'utf8').split('\n').filter(l => !l.trim().startsWith('#'));
-  } catch { /* fuera de git: solo la variable */ }
-  return [...new Set([...delEntorno, ...delArchivo].map(s => s.trim()).filter(Boolean))];
+    const res = await llamar(`${base}/roster`, { signal: AbortSignal.timeout(env.CI ? 90000 : 5000) });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const equipo = (await res.json()).workers;
+    if (!Array.isArray(equipo)) throw new Error('respuesta inesperada');
+    const nombres = [...new Set(equipo.map(w => String(w?.name || '').trim()).filter(n => n.length > 1))];
+    if (rutaCache) guardarCache(rutaCache, nombres);
+    return { nombres, origen: 'base' };
+  } catch {
+    const guardados = rutaCache ? leerCache(rutaCache) : [];
+    return { nombres: guardados, origen: guardados.length ? 'caché' : 'ninguno' };
+  }
 }
+
+// Sin los nombres inventados de siempre.
+// Solo el nombre suelto: «Luis García» (nombre y apellido) sí se busca.
+export const sinEjemplos = (nombres) => nombres.filter(n => !EJEMPLOS.has(plano(n).trim().toLowerCase()));
 
 const IGNORAR = /(^|\/)(package-lock\.json|node_modules\/|dist\/)|\.(png|jpe?g|gif|webp|ico|pdf|woff2?|ttf|zip)$/i;
 
-function principal(argv) {
-  const nombres = leerNombres();
+async function principal(argv) {
+  const { nombres: delEquipo, origen } = await nombresDelEquipo();
+  const nombres = sinEjemplos(delEquipo);
   const avisos = [];
-  if (!nombres.length) console.warn('privacidad: sin lista de nombres (.privacidad-nombres.txt o PRIVACIDAD_NOMBRES): solo se buscan teléfonos, correos y claves.');
+  if (origen === 'ninguno') console.warn('privacidad: no se pudieron leer los nombres del equipo de la base (sin red y sin caché): solo se buscan teléfonos, correos y claves.');
+  else console.log(`privacidad: ${delEquipo.length} nombres del equipo (${origen === 'base' ? 'de la base de datos' : 'de la última vez que hubo red'}).`);
 
   if (argv[0] === '--mensaje') {
     revisarTexto(readFileSync(argv[1], 'utf8'), nombres).forEach(h => avisos.push(`mensaje del commit, línea ${h.linea}: ${h.motivo}`));
@@ -102,4 +129,4 @@ function principal(argv) {
   }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) principal(process.argv.slice(2));
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await principal(process.argv.slice(2));

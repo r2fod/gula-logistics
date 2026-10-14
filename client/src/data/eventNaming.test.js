@@ -19,8 +19,8 @@ describe('parseEventAndTask', () => {
   });
 
   it('fichaje de boda de sábado: Boda + primera parte del lugar, sin camión ni dirección', () => {
-    expect(getEventName('Boda: El Mirador Este  (Camión Gula + Camion Albacar)')).toBe('Boda El Mirador Este');
-    expect(getEventName('Boda: Camino Ejemplo, 1, 00000 Villa Ejemplo, España   (Camión Albacar (Alquiler))')).toBe('Boda Camino Ejemplo');
+    expect(getEventName('Boda: El Mirador Este  (Camión Gula + Camion Norte)')).toBe('Boda El Mirador Este');
+    expect(getEventName('Boda: Camino Ejemplo, 1, 00000 Villa Ejemplo, España   (Camión Norte (Alquiler))')).toBe('Boda Camino Ejemplo');
   });
 
   it('un texto que empieza por Boda/Evento usa ese nombre como evento', () => {
@@ -30,7 +30,7 @@ describe('parseEventAndTask', () => {
 
   it('categorías generales: limpieza, carga, y logística por defecto', () => {
     expect(inferCategory('Limpieza y recogida final del servicio')).toBe('Limpieza Eventos');
-    expect(inferCategory('Carga de material — Camión Covey')).toBe('Logística Carga');
+    expect(inferCategory('Carga de material — Camión Sur')).toBe('Logística Carga');
     expect(inferCategory('Descarga y montaje de estructura')).toBe('Logística Preparación'); // "descarga" no es "carga"
     expect(inferCategory('Devolución Alquileres Norte')).toBe('Logística Preparación');
     expect(inferCategory('Algo sin palabras clave')).toBeNull();

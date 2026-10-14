@@ -28,7 +28,7 @@ export function tipoDeConcepto(item = {}, importe = item?.amount) {
   if (item && typeof item === 'object' && TIPOS_CONCEPTO[item.tipo]) return item.tipo;
   const texto = String(concepto || '').trim();
   if (/^valor acumulado horas bolsa/i.test(texto)) return 'bolsa';
-  if (texto.startsWith('🕒') && /\d h a |\dh a /.test(texto)) return 'turno'; // aunque lleve "+ 10€ transporte"
+  if (texto.startsWith('🕒') && /\d h a |\dh a /.test(texto)) return 'turno'; // aunque lleve "+ X€ transporte"
   if (/transporte/i.test(texto)) return 'transporte';
   if (texto.startsWith('🕒')) return 'turno';
   if (Number(importe) < 0 && PAGO.test(texto)) return 'pago';
@@ -51,7 +51,7 @@ const fechaGuardada = (item) => {
   return item.date;
 };
 
-// Horas que dice el texto de un turno o de la bolsa apuntados a mano ("… 3.5h a 10€/h",
+// Horas que dice el texto de un turno o de la bolsa apuntados a mano ("… 3.5h a X€/h",
 // "… 3,5 h …"); 0 en los demás conceptos (transporte, ajustes, pagos).
 export function horasDeConcepto(item = {}) {
   const tipo = tipoDeConcepto(item);

@@ -1,6 +1,5 @@
 import { elMasParecido, fichaDePersona, mismoNombre, parecidoNombre } from './nombresTrabajadores';
-import { formatearEuros } from './formatoFinanciero';
-import { tarifaDe } from './tarifas';
+import { textoAcuerdoExtra } from './tarifas';
 
 // Ficha de Saldos de alguien del equipo que aún no tiene ninguna en Mongo.
 const fichaVacia = (worker) => ({
@@ -11,7 +10,7 @@ const fichaVacia = (worker) => ({
   status: 'Sin saldo',
   statusType: 'neutral',
   currentBalance: 0.0,
-  agreements: [worker.isPayroll ? 'Nómina Fija (Control interno)' : `Extra a ${formatearEuros(tarifaDe(worker))} / hora (Por Defecto)`],
+  agreements: [worker.isPayroll ? 'Nómina Fija (Control interno)' : textoAcuerdoExtra(worker)],
   breakdown: [],
 });
 

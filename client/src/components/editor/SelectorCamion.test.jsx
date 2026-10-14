@@ -13,11 +13,12 @@ describe('SelectorCamion', () => {
     expect(screen.getByRole('combobox')).toHaveValue('Furgo Sur');
   });
 
-  it('sin flota guardada, los de siempre; elegir uno avisa con su nombre', () => {
+  it('BUG evitado: sin flota guardada no inventa camiones (antes, tres fijos con empresas de alquiler escritas en el código); elegir uno avisa con su nombre', () => {
     const onCambiar = vi.fn();
-    render(<SelectorCamion flota={[]} onCambiar={onCambiar} />);
-    expect(screen.getAllByRole('option').map(o => o.textContent)).toEqual(['Sin camión / no aplica', 'Camión Gula', 'Camión Covey', 'Camión Albacar']);
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Camión Covey' } });
-    expect(onCambiar).toHaveBeenCalledWith('Camión Covey');
+    const { rerender } = render(<SelectorCamion flota={[]} onCambiar={onCambiar} />);
+    expect(screen.getAllByRole('option').map(o => o.textContent)).toEqual(['Sin camión / no aplica']);
+    rerender(<SelectorCamion flota={[{ name: 'Camión Sur' }]} onCambiar={onCambiar} />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Camión Sur' } });
+    expect(onCambiar).toHaveBeenCalledWith('Camión Sur');
   });
 });

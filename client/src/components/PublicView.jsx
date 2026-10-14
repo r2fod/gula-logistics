@@ -37,11 +37,9 @@ export default function PublicView({
     setTimeout(() => setCopiedLink(false), 3000);
   };
 
-  const trucks = (data.trucks && data.trucks.length > 0) ? data.trucks : [
-    { name: "Camión Gula", tag: "Propio (Gula)", status: "Operativo — Propiedad Gula Logística" },
-    { name: "Camión Covey", tag: "Alquiler Covey", status: "Operativo — Vehículo de Alquiler" },
-    { name: "Camión Albacar", tag: "Alquiler Albacar", status: "Operativo — Vehículo de Alquiler" }
-  ];
+  // La flota sale de la semana (Gestionar Flota, en Mongo): el código no lleva camiones
+  // ni empresas de alquiler.
+  const trucks = data.trucks || [];
   // Desde el equipo real (equipoRoles.js), no del texto que se copiaba en cada semana.
   const team = equipoPorRoles(workersList);
 
@@ -202,7 +200,7 @@ export default function PublicView({
             {trucks.map((truck, i) => (
               <div 
                 key={i} 
-                className="group relative bg-slate-900/70 border border-slate-800 hover:border-amber-500/40 rounded-2xl p-5 backdrop-blur-md transition-all hover:-translate-y-1 shadow-lg shadow-slate-950/50 flex flex-col justify-between"
+                className="group relative bg-slate-900/70 border border-slate-800 hover:border-amber-500/40 rounded-2xl p-3.5 sm:p-5 backdrop-blur-md transition-all hover:-translate-y-1 shadow-lg shadow-slate-950/50 flex flex-col justify-between"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -258,11 +256,11 @@ export default function PublicView({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-4 sm:gap-6">
             {filteredTeam.map((item, idx) => (
               <div 
                 key={idx}
-                className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 backdrop-blur-md space-y-3"
+                className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 sm:p-6 backdrop-blur-md space-y-3"
               >
                 <div className="flex items-center justify-between">
                   <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-amber-400">

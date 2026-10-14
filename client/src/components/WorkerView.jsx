@@ -100,8 +100,7 @@ export default function WorkerView({
     role: "Operativa Logística",
     avatar: "👤",
     truck: "Flota Gula",
-    isPayroll: false,
-    rate: 10
+    isPayroll: false
   };
 
   useEffect(() => {
@@ -402,14 +401,18 @@ export default function WorkerView({
   const isTaskDone = (dayKey, task) => isTaskEffectivelyDone(activeWeekData, dayKey, task, currentTime);
 
   return (
-    <div className="space-y-4 sm:space-y-5 animate-fadeIn w-full max-w-full overflow-x-hidden">
-      {lecturaFichajes === 'ninguna' && <AvisoFichajesPrivados vista="trabajador" />}
+    <div className="space-y-4 sm:space-y-5 lg:space-y-0 animate-fadeIn w-full max-w-full 2xl:max-w-[1800px] 2xl:mx-auto overflow-x-hidden lg:grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] lg:gap-5 lg:items-start">
+      {lecturaFichajes === 'ninguna' && <AvisoFichajesPrivados vista="trabajador" className="lg:col-span-2" />}
+
+      {/* Columna izquierda (desde 1024 px): quién eres, tus horas y fichar. Antes, a 1920 px
+          todo iba en una sola columna de 1850 px con el botón de fichar estirado de lado a lado. */}
+      <div className="space-y-4 sm:space-y-5 min-w-0">
 
       {/* 1. Worker Personal Profile Header Card - Compact & Clean */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xl relative overflow-hidden">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-stretch justify-between gap-3">
           <div className="flex items-center space-x-3 min-w-0">
             <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-3xl shadow-inner shrink-0">
               {currentWorkerObj.avatar}
@@ -442,7 +445,7 @@ export default function WorkerView({
               </div>
             </div>
           </div>
-          <div className="flex items-center space-x-2 shrink-0 self-end sm:self-auto w-full sm:w-auto justify-end mt-1 sm:mt-0">
+          <div className="flex items-center space-x-2 shrink-0 self-end sm:self-auto lg:self-end w-full sm:w-auto lg:w-full justify-end mt-1 sm:mt-0 lg:mt-0">
             {pushStatus !== 'granted' && pushStatus !== 'unsupported' && (
               <button
                 onClick={handleSubscribePush}
@@ -486,7 +489,7 @@ export default function WorkerView({
           equipo={workersList}
         />
         {/* 🎯 HERO ACTION CARD: IMMEDIATE TASK (0 SCROLL REQUIRED!) */}
-        <div className={`mt-3 rounded-2xl p-4 sm:p-5 border transition-all ${
+        <div className={`mt-3 rounded-2xl p-3 sm:p-5 border transition-all ${
           activeShift
             ? 'bg-gradient-to-r from-rose-950/60 via-slate-950 to-rose-950/40 border-rose-500/50 shadow-xl shadow-rose-950/30'
             : immediateTask
@@ -737,6 +740,10 @@ export default function WorkerView({
         </div>
       )}
 
+      </div>
+
+      {/* Columna derecha: tus tareas o tus fichajes */}
+      <div className="space-y-4 sm:space-y-5 min-w-0">
       {/* 2. Clean Segmented Navigation Tabs (Mis Tareas vs Mis Fichajes) */}
       <div className="flex items-center space-x-2 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800">
         <button
@@ -765,7 +772,7 @@ export default function WorkerView({
       </div>
 
       {workerTab === 'tasks' && (
-      <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
+      <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl sm:rounded-3xl p-3 sm:p-6 shadow-2xl backdrop-blur-xl space-y-4">
         
         {/* Header & View Mode Switcher */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
@@ -893,7 +900,8 @@ export default function WorkerView({
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4">
+              {/* Un solo día: a todo el ancho (antes ocupaba la mitad o la tercera parte y el resto quedaba vacío). */}
+              <div className={`grid grid-cols-1 gap-3 sm:gap-4 ${displayedDays.length > 1 ? 'md:grid-cols-2 2xl:grid-cols-3' : ''}`}>
                 {displayedDays.map((dayGroup) => {
                   if (dayGroup.totalCount === 0 && selectedDayKey === 'all') return null;
 
@@ -992,6 +1000,7 @@ export default function WorkerView({
       {workerTab === 'history' && (
         <HistorialFichajes fichajes={myEntries} duracionDeSalida={duracionDeSalida} onAnadir={() => setIsEditModalOpen(true)} />
       )}
+      </div>
 
       {/* Clock In Modal for worker */}
       <ClockInModal

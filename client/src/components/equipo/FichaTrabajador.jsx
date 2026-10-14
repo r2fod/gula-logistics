@@ -30,7 +30,7 @@ export default function FichaTrabajador({ trabajador, onGuardar, onCerrar, ficha
     role: trabajador.role || '',
     backup: trabajador.backup === true,
     nota: trabajador.nota || '',
-    tarifa: tarifaDe(trabajador),
+    tarifa: tarifaDe(trabajador) || '', // sin tarifa (ni la suya ni la por defecto): vacía, hay que ponerla
     disponibilidad: Array.isArray(trabajador.disponibilidad) ? trabajador.disponibilidad : [],
   };
   const [avatar, setAvatar] = useState(inicial.avatar);

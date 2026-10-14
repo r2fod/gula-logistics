@@ -33,7 +33,7 @@ const NOMBRE_ANTERIOR = { semana: 'semana anterior', mes: 'mes anterior', anio: 
 const DATOS_ANTERIOR = { semana: 'de la semana anterior', mes: 'del mes anterior', anio: 'del año anterior' };
 const PASO_FILA = 45; // ms entre fila y fila al aparecer
 
-// "a 10,00 € / hora" si todos cobran lo mismo; null si hay tarifas distintas.
+// "a X,00 € / hora" si todos cobran lo mismo; null si hay tarifas distintas.
 const tarifaComun = (personal) => {
   const tarifas = [...new Set(personal.map(w => w.rate).filter(Boolean))];
   return tarifas.length === 1 ? `a ${formatearEuros(tarifas[0])} / hora` : null;
@@ -238,7 +238,8 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
   return (
     <div className="w-full min-w-0 space-y-4 sm:space-y-6">
       {/* Periodo: semana (martes a lunes, como el planning), mes, año o todo */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-lg p-3 sm:p-4 animate-aparecer motion-reduce:animate-none">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-lg p-3 sm:p-4 animate-aparecer motion-reduce:animate-none lg:flex lg:items-center lg:gap-4">
+        <div className="min-w-0 lg:flex-1">
         <SelectorPeriodo
           modo={modo}
           etiqueta={rango.etiqueta}
@@ -247,7 +248,8 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
           onSiguiente={() => setAncla(moverPeriodo(modo, ancla, 1))}
           siguienteDeshabilitado={siguienteEsFuturo}
         />
-        <div className="mt-3 flex justify-end border-t border-slate-800 pt-3">
+        </div>
+        <div className="mt-3 flex justify-end border-t border-slate-800 pt-3 lg:mt-0 lg:shrink-0 lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0">
           <button
             type="button"
             onClick={copiarParaWhatsApp}

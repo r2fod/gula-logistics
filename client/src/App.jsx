@@ -80,7 +80,7 @@ import { useDialog } from './contexts/DialogContext';
 
 export default function App() {
   const { alert, confirm } = useDialog();
-  const { workersList, setWorkersList, handleRemoveWorker, handleUpdateWorker } = useWorkers();
+  const { workersList, setWorkersList, tarifas, handleRemoveWorker, handleUpdateWorker, handleGuardarTarifas } = useWorkers();
   const { balancesData, setBalancesData, handleAddWorker, handleTarifaEnSaldos } = useBalances(workersList, setWorkersList);
   
   // Modals
@@ -816,6 +816,8 @@ export default function App() {
           onAddWorker={handleAddWorker}
           onRemoveWorker={handleRemoveWorker}
           onUpdateWorker={handleUpdateWorker}
+          tarifas={tarifas}
+          onGuardarTarifas={handleGuardarTarifas}
           clockEntries={activeClockEntries}
           onCambiarTarifa={handleCambiarTarifa}
           onTarifaCambiada={handleTarifaEnSaldos}

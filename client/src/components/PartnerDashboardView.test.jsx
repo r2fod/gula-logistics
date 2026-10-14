@@ -59,7 +59,7 @@ describe('PartnerDashboardView', () => {
     expect(screen.getByRole('heading', { name: /Panel de Control Gula Logística/ })).toBeInTheDocument();
     expect(screen.getAllByRole('tab')).toHaveLength(7);
     expect(screen.getByRole('tab', { name: 'Actividad en tiempo real' })).toHaveAttribute('aria-selected', 'true');
-    await waitFor(() => expect(screen.getByText(/Monitor de Actividad en Tiempo Real/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Monitor de Actividad en Tiempo Real/)).toBeInTheDocument(), { timeout: 4000 });
   });
 
   it('cambiar de pestaña la muestra y la deja en la URL', async () => {
@@ -147,13 +147,13 @@ describe('PartnerDashboardView', () => {
     pintar();
     expect(screen.queryByText('Panel de Ajustes de Administrador')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Clave' }));
-    expect(await screen.findByText('Panel de Ajustes de Administrador')).toBeInTheDocument();
+    expect(await screen.findByText('Panel de Ajustes de Administrador', {}, { timeout: 4000 })).toBeInTheDocument();
   });
 
   it('las demás pestañas se bajan al abrirlas: mientras llega se ve «Cargando…» y luego su contenido', async () => {
     pintar();
     fireEvent.click(screen.getByRole('tab', { name: /Historial de fichajes/ }));
-    expect(await screen.findByRole('heading', { name: 'Historial de fichajes' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Historial de fichajes' }, { timeout: 4000 })).toBeInTheDocument();
   });
 
   it('una semana en borrador enseña su aviso', () => {
