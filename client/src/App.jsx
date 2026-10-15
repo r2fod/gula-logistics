@@ -93,6 +93,7 @@ export default function App() {
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
 
   const [activeWorker, setActiveWorker] = useState(null);
+  const [clockInWorker, setClockInWorker] = useState(null);
   // El enlace ?worker= se resuelve al abrir con la lista de equipo que haya en el
   // dispositivo; en un móvil nuevo esa lista es la de arranque y no trae a quien
   // entró hace poco, así que su enlace abría la vista pública hasta recargar. Ahora
@@ -102,6 +103,15 @@ export default function App() {
   const trabajadorActivo = activeWorker
     || (nombreEnlace && workersList.find(w => w.name.toLowerCase() === nombreEnlace.toLowerCase())?.name)
     || null;
+
+  const abrirModalFichar = (workerName) => {
+    setClockInWorker(typeof workerName === 'string' ? workerName : null);
+    setIsClockInModalOpen(true);
+  };
+  const cerrarModalFichar = () => {
+    setIsClockInModalOpen(false);
+    setClockInWorker(null);
+  };
 
   const {
     allWeeks,
@@ -333,19 +343,26 @@ export default function App() {
     // sigue en el roster actual (si lo quitaste del equipo, no se
     // restaura — sigue revocado).
     //
-    // Nunca en un dispositivo con sesión de admin real: si no, un admin que
-    // abra el enlace de un trabajador para probarlo queda "atrapado" en esa
-    // vista en cada carga siguiente sin parámetros, sin poder volver al
-    // panel — pasó de verdad con el enlace de un trabajador nuevo.
+    // Nunca en un dispositivo con sesión de admin real ni con enlace de socias:
+    // si no, un admin o socia que abra o pruebe el enlace de un trabajador
+    // queda "atrapado" en esa vista en cada carga siguiente, sin poder ver
+    // el panel de socias. Tampoco cuando se abre explícitamente ?socias o ?acceso=.
+    const hasSociasAcceso = hasSociasFlag || Boolean(accesoParam) || Boolean(getStoredSociasToken());
     if (workerParam) {
       const matched = workersList.find(w => w.name.toLowerCase() === workerParam.toLowerCase());
       if (matched) {
         setActiveWorker(matched.name);
-        if (!hasAdminSession) {
+        if (!hasAdminSession && !hasSociasAcceso) {
           try { localStorage.setItem('gula_last_worker_v1', matched.name); } catch { /* sin almacenamiento (modo privado): se sigue sin él */ }
         }
       }
-    } else if (!hasAdminSession) {
+    } else if (hasSociasFlag || accesoParam) {
+      // El usuario viene expresamente por el enlace de socias (?socias o ?socias&acceso=…):
+      // NUNCA restaurar al último trabajador visto en este dispositivo, ni dejarlo activo.
+      setActiveWorker(null);
+      try { localStorage.removeItem('gula_last_worker_v1'); } catch { /* sin almacenamiento */ }
+      setIsPartnerMode(true);
+    } else if (!hasAdminSession && !hasSociasAcceso && params.get('view') !== 'public') {
       try {
         const lastWorker = localStorage.getItem('gula_last_worker_v1');
         if (lastWorker) {
@@ -439,6 +456,9 @@ export default function App() {
   const [lecturaFichajes, setLecturaFichajes] = useState(null);
   useEffect(() => {
     const quienLee = () => {
+      if (getStoredAdminToken() || getStoredSociasToken() || new URLSearchParams(window.location.search).has('socias')) {
+        return null;
+      }
       if (trabajadorActivoRef.current) return trabajadorActivoRef.current;
       const delEnlace = new URLSearchParams(window.location.search).get('worker');
       if (delEnlace) return delEnlace;
@@ -584,8 +604,8 @@ export default function App() {
           onClockEntryCreated={handleClockEntryCreated}
           onDeleteClockEntry={handleDeleteClockEntry}
           onOpenAdminDashboard={() => {
-            if (isAdmin) {
-              // Ya autenticado: ir directo al panel, sin pedir contraseña
+            if (isAdmin || getStoredSociasToken()) {
+              // Ya autenticado (admin o socias): ir directo al panel, sin pedir contraseña
               // otra vez. isPartnerMode se calculó en false al montar si
               // se entró por un enlace de trabajador (?worker=...), así
               // que hay que reactivarlo a mano para no caer en la vista
@@ -641,18 +661,15 @@ export default function App() {
             lecturaFichajes={lecturaFichajes}
             semanas={allWeeks}
             onClockEntryCreated={handleClockEntryCreated}
-            onOpenClockModal={(workerName) => {
-              if (workerName) setActiveWorker(workerName);
-              setIsClockInModalOpen(true);
-            }}
+            onOpenClockModal={abrirModalFichar}
           />
         </div>
 
         <ClockInModal
           isOpen={isClockInModalOpen}
-          onClose={() => setIsClockInModalOpen(false)}
+          onClose={cerrarModalFichar}
           workersList={workersList}
-          initialWorkerName={trabajadorActivo}
+          initialWorkerName={clockInWorker || trabajadorActivo}
           clockEntries={currentWeekClockEntries}
           onClockEntryCreated={handleClockEntryCreated}
           isAdmin={isAdmin}
@@ -687,18 +704,15 @@ export default function App() {
             semanas={allWeeks}
             onOpenLogin={() => setIsAdminLoginOpen(true)}
             onClockEntryCreated={handleClockEntryCreated}
-            onOpenClockModal={(workerName) => {
-              if (workerName) setActiveWorker(workerName);
-              setIsClockInModalOpen(true);
-            }}
+            onOpenClockModal={abrirModalFichar}
           />
         </div>
 
         <ClockInModal
           isOpen={isClockInModalOpen}
-          onClose={() => setIsClockInModalOpen(false)}
+          onClose={cerrarModalFichar}
           workersList={workersList}
-          initialWorkerName={trabajadorActivo}
+          initialWorkerName={clockInWorker || trabajadorActivo}
           clockEntries={currentWeekClockEntries}
           onClockEntryCreated={handleClockEntryCreated}
           isAdmin={isAdmin}
@@ -745,10 +759,7 @@ export default function App() {
         onOpenTaskEditor={() => setIsTaskEditorModalOpen(true)}
         onLogoutAdmin={handleAdminLogout}
         onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
-        onOpenClockIn={(workerName) => {
-          if (workerName && typeof workerName === 'string') setActiveWorker(workerName);
-          setIsClockInModalOpen(true);
-        }}
+        onOpenClockIn={abrirModalFichar}
         onOpenGemini={() => setIsGeminiModalOpen(true)}
         onOpenShareModal={() => setIsShareModalOpen(true)}
         onOpenAddWeek={() => setIsWeekModalOpen(true)}
@@ -766,9 +777,9 @@ export default function App() {
 
       <ClockInModal
         isOpen={isClockInModalOpen}
-        onClose={() => setIsClockInModalOpen(false)}
+        onClose={cerrarModalFichar}
         workersList={workersList}
-        initialWorkerName={trabajadorActivo}
+        initialWorkerName={clockInWorker || trabajadorActivo}
         clockEntries={currentWeekClockEntries}
         onClockEntryCreated={handleClockEntryCreated}
         isAdmin={isAdmin}

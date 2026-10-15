@@ -112,6 +112,28 @@ describe('EnlacesWhatsAppModal', () => {
     expect(decodeURIComponent(url)).toContain('siempre el mismo');
   });
 
+  it('el botón de WhatsApp de un trabajador con teléfono abre wa.me directamente', () => {
+    const abrir = vi.spyOn(window, 'open').mockImplementation(() => null);
+    pintar({ workersList: [{ ...equipo[0], phone: '600000000' }] });
+    fireEvent.click(screen.getByRole('button', { name: /^WhatsApp$/ }));
+    const url = abrir.mock.calls[0][0];
+    expect(url).toMatch(/^https:\/\/wa\.me\/34600000000\?text=/);
+    expect(decodeURIComponent(url)).toContain('Hola Ana');
+    expect(decodeURIComponent(url)).toContain('?worker=Ana');
+  });
+
+  it('el botón de WhatsApp Socias abre WhatsApp con el enlace de solo lectura de socias', async () => {
+    crearToken.mockResolvedValue({ ok: true, token: 'token.socias.lectura', expiresAt: Date.now() + 1000 });
+    const abrir = vi.spyOn(window, 'open').mockImplementation(() => null);
+    pintar({ admin: true });
+    await screen.findByDisplayValue(/\?socias&acceso=token\.socias\.lectura$/);
+    fireEvent.click(screen.getByRole('button', { name: /WhatsApp Socias/i }));
+    const url = abrir.mock.calls[0][0];
+    expect(url).toMatch(/^https:\/\/api\.whatsapp\.com\/send\?text=/);
+    expect(decodeURIComponent(url)).toContain('Hola Socias');
+    expect(decodeURIComponent(url)).toContain('?socias&acceso=token.socias.lectura');
+  });
+
   it('la X cierra', () => {
     const onCerrar = vi.fn();
     pintar({ onCerrar });

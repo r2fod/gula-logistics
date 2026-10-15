@@ -28,11 +28,12 @@ export default function EnlacesWhatsAppModal({ abierto, onCerrar, workersList = 
   const tokenDe = (nombre) => tokenDeFicha(nombre, nombresEquipo);
   const fichaDe = (nombre) => fichaDeEquipo(nombre, nombresEquipo);
   const enlaceDe = (nombre) => enlaceTrabajador(nombre, admin ? tokenDe(nombre) : null);
+  const telefonoDe = (nombre) => fichaDe(nombre)?.phone || workersList.find(w => w.name?.toLowerCase() === nombre.toLowerCase())?.phone;
 
   const compartirTrabajador = (nombre) => {
     const conSaldo = admin && tokenDe(nombre);
     const texto = `🚚 Hola ${nombre}, aquí tienes tu planificación y fichaje de Gula Logística${conSaldo ? ' (y tus horas y lo que tienes pendiente de cobro)' : ''}: ${enlaceDe(nombre)}\n\nGuarda este enlace: es siempre el mismo y se actualiza solo cada semana.${conSaldo ? ' Es personal: no lo compartas.' : ''}`;
-    abrirEnPestanaNueva(enlaceWhatsApp(texto));
+    abrirEnPestanaNueva(enlaceWhatsApp(texto, telefonoDe(nombre)));
   };
 
   const anularEnlacesTrabajadores = async () => {
