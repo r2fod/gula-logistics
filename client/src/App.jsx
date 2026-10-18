@@ -69,7 +69,7 @@ import { aprenderDeFichajes } from './data/aprendizajeFichajes';
 import { aprenderDelPlanning } from './data/conocimientoPlanning';
 import { semanaDeLaVispera } from './data/vispera';
 import { getWeekRange } from './data/taskPlanning';
-import { semanaPedidaEnEnlace } from './data/enlaces';
+import { semanaPedidaEnEnlace, abreElPanelDeSocias } from './data/enlaces';
 import { parseWeekRange } from './data/taskPlanning';
 
 import { useWorkers } from './hooks/useWorkers';
@@ -361,7 +361,8 @@ export default function App() {
       // NUNCA restaurar al último trabajador visto en este dispositivo, ni dejarlo activo.
       setActiveWorker(null);
       try { localStorage.removeItem('gula_last_worker_v1'); } catch { /* sin almacenamiento */ }
-      setIsPartnerMode(true);
+      // Solo con acceso real: un ?socias viejo (sin acceso=) enseña el aviso, no un panel vacío.
+      if (abreElPanelDeSocias({ acceso: accesoParam, hayAdmin: hasAdminSession, haySociasGuardado: !!getStoredSociasToken() })) setIsPartnerMode(true);
     } else if (!hasAdminSession && !hasSociasAcceso && params.get('view') !== 'public') {
       try {
         const lastWorker = localStorage.getItem('gula_last_worker_v1');

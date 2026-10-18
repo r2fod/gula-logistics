@@ -35,6 +35,12 @@ export const enlaceTrabajador = (nombre, token = null) => construirEnlaceTrabaja
 // (crearTokenSociasEnAPI), nunca la sesión de admin; sin él el enlace no da acceso.
 export const enlaceSocias = (tokenSocias) => `${urlBase()}?socias${tokenSocias ? `&acceso=${encodeURIComponent(tokenSocias)}` : ''}`;
 
+// ¿Abre el panel un enlace de socias (`?socias`)? Solo con acceso REAL: el `acceso=` de ese
+// mismo enlace, un enlace de socias ya guardado en este navegador o una sesión de admin.
+// Un `?socias` suelto (un enlace viejo, sin `acceso=`) no abre nada: enseña el aviso de que
+// ya no da acceso, en vez de un panel vacío.
+export const abreElPanelDeSocias = ({ acceso = null, hayAdmin = false, haySociasGuardado = false } = {}) => Boolean(acceso || hayAdmin || haySociasGuardado);
+
 // Vista pública (sin saldos ni nóminas).
 export const enlaceVistaPublica = () => `${urlBase()}?view=public`;
 
