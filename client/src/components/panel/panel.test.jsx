@@ -73,6 +73,18 @@ describe('CabeceraPanel', () => {
     expect(props.onSalir).toHaveBeenCalled();
   });
 
+  it('BUG evitado: Clave y Salir son iguales (cuadrados de 36 px en el móvil, solo icono, y con nombre accesible); antes eran píldoras de distinto tamaño y Salir caía solo en otra línea', () => {
+    pintar();
+    const clave = screen.getByRole('button', { name: 'Clave' });
+    const salir = screen.getByRole('button', { name: 'Salir' });
+    for (const boton of [clave, salir]) {
+      expect(boton.className).toMatch(/\bh-9\b/);
+      expect(boton.className).toMatch(/\bw-9\b/);
+      expect(boton.querySelector('svg')).not.toBeNull();
+      expect(boton.querySelector('span')).toHaveClass('sr-only'); // el texto solo para lectores de pantalla en el móvil
+    }
+  });
+
   it('sin ser admin pide el acceso y no enseña las acciones de administración', () => {
     const fn = funciones();
     const { props } = pintar({ adminUnlocked: false, acciones: crearAcciones({ admin: false }, fn) });

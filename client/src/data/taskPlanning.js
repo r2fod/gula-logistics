@@ -33,6 +33,29 @@ export function resolveTaskIndexByText(weekData, dayKey, taskText) {
   return idx !== -1 ? idx : null;
 }
 
+// Lo mismo, pero a partir de la TAREA (la que se ve en pantalla). Por texto, dos tareas
+// de un día con el mismo texto (p. ej. dos «Recogida» a distinta hora y con distinta
+// gente) acababan en la primera: quien pulsaba la segunda marcaba o fichaba la otra y la
+// suya se quedaba sin poder marcarse. Primero la misma tarea (las listas de pantalla son
+// filtros de la real, así que es el mismo objeto), luego su id y, si la semana se acaba
+// de refrescar, la que coincide en texto, horario y asignados; solo después, el texto.
+export function resolveTaskIndex(weekData, dayKey, task) {
+  if (!task || typeof task !== 'object') return resolveTaskIndexByText(weekData, dayKey, task);
+  const list = getTaskListForDay(weekData, dayKey);
+  const porObjeto = list.indexOf(task);
+  if (porObjeto !== -1) return porObjeto;
+  if (task.id) {
+    const porId = list.findIndex(t => t && typeof t === 'object' && t.id === task.id);
+    if (porId !== -1) return porId;
+  }
+  const nombre = dayKey === 'sabado' ? getWeddingTaskName(task) : task.text;
+  const mismas = list.map((t, i) => [t, i]).filter(([t]) => t && typeof t === 'object'
+    && (dayKey === 'sabado' ? (getWeddingTaskName(t) === nombre || t.location === task.location) : t.text === nombre));
+  const exacta = mismas.find(([t]) => t.timeFrame === task.timeFrame && JSON.stringify(t.assigned || []) === JSON.stringify(task.assigned || []));
+  const elegida = exacta || mismas[0];
+  return elegida ? elegida[1] : null;
+}
+
 // Construye el fragmento de actualización con la forma correcta para
 // guardar de vuelta una lista de tareas ya modificada de un día, según si
 // es domingo/lunes (bajo la clave `sundayMonday`) o un día normal (bajo
@@ -348,13 +371,29 @@ export function getNextTaskStart(weekData, dayKey, task, now = new Date()) {
   const ambiguous = sharedList && !['domingo', 'lunes'].includes(String(task?.targetDay || '').toLowerCase());
   const days = ambiguous ? ['domingo', 'lunes'] : [resolveTaskEvalDay(dayKey, task)];
 
+  // Una tarea que empieza antes de las 07:00 es ambigua: «Domingo 02:30» puede ser la
+  // madrugada del propio domingo (la recogida de un evento del sábado por la noche) o la
+  // del lunes (la convención de hostelería: el día va de 07:00 a 06:59). Se aceptan las
+  // dos: vale la primera que no haya terminado. Sin esto, una recogida apuntada el
+  // domingo a las 02:30 se leía como del lunes y salía bloqueada («Podrás fichar el
+  // lunes…») justo cuando se hacía. El resto de horas, como siempre.
+  const deMadrugada = (() => {
+    const m = /^\s*(\d{1,2}):(\d{2})/.exec(timeFrame);
+    return !!m && Number(m[1]) < 7;
+  })();
+  const unDiaAntes = (fecha) => { const d = new Date(fecha); d.setDate(d.getDate() - 1); return d; };
+
   let best = null;
   for (const day of days) {
     const date = resolveTaskDate(range, day);
     const start = date && getTaskStartDateTime(weekData, day, { ...task, targetDay: day }, now);
     const end = date && parseEndDateTime(date, timeFrame);
-    if (!start || !end || end.getTime() <= now.getTime()) continue;
-    if (!best || start < best) best = start;
+    if (!start || !end) continue;
+    const lecturas = deMadrugada ? [[unDiaAntes(start), unDiaAntes(end)], [start, end]] : [[start, end]];
+    for (const [inicio, fin] of lecturas) {
+      if (fin.getTime() <= now.getTime()) continue;
+      if (!best || inicio < best) best = inicio;
+    }
   }
   return best;
 }

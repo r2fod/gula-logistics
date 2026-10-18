@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { construirEnlaceTrabajador, semanaPedidaEnEnlace, urlBase, enlaceTrabajador, enlaceSocias, enlaceVistaPublica, enlaceWhatsApp, abrirEnPestanaNueva, abrirEnPestanaNuevaAlLlegar, telefonoWhatsApp } from './enlaces';
+import { construirEnlaceTrabajador, semanaPedidaEnEnlace, abreElPanelDeSocias, urlBase, enlaceTrabajador, enlaceSocias, enlaceVistaPublica, enlaceWhatsApp, abrirEnPestanaNueva, abrirEnPestanaNuevaAlLlegar, telefonoWhatsApp } from './enlaces';
 
 const semana = (dateRange, status = 'Operativa Activa') => ({ meta: { dateRange, status } });
 const semanas = {
@@ -128,5 +128,18 @@ describe('WhatsApp a un teléfono', () => {
     expect(enlaceWhatsApp('Hola', '600000000')).toBe('https://wa.me/34600000000?text=Hola');
     expect(enlaceWhatsApp('Hola')).toBe('https://api.whatsapp.com/send?text=Hola');
     expect(enlaceWhatsApp('Hola', 'no es un teléfono')).toBe('https://api.whatsapp.com/send?text=Hola');
+  });
+});
+
+describe('abreElPanelDeSocias', () => {
+  it('BUG evitado: un ?socias viejo, sin acceso=, no abre un panel vacío (el aviso de «ya no da acceso» nunca llegaba a verse)', () => {
+    expect(abreElPanelDeSocias({})).toBe(false);
+    expect(abreElPanelDeSocias({ acceso: null, hayAdmin: false, haySociasGuardado: false })).toBe(false);
+  });
+
+  it('abre con el acceso del propio enlace, con un enlace de socias ya guardado o con sesión de admin', () => {
+    expect(abreElPanelDeSocias({ acceso: 'token.firmado' })).toBe(true);
+    expect(abreElPanelDeSocias({ haySociasGuardado: true })).toBe(true);
+    expect(abreElPanelDeSocias({ hayAdmin: true })).toBe(true);
   });
 });

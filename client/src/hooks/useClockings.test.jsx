@@ -13,9 +13,9 @@ import { useClockings } from './useClockings';
 import { deleteClockEntryInAPI, updateClockEntryInAPI, saveClockEntryToAPI } from '../data/apiService';
 
 const f = (id, extra = {}) => ({ id, workerName: 'Ana', type: 'entrada', timestamp: '2026-09-20T08:00:00.000Z', ...extra });
-const montar = (fichajes) => {
+const montar = (fichajes, marcar) => {
   localStorage.setItem('gula_clock_entries_v1', JSON.stringify(fichajes));
-  return renderHook(() => useClockings());
+  return renderHook(() => useClockings(marcar));
 };
 
 describe('useClockings', () => {
@@ -48,6 +48,32 @@ describe('useClockings', () => {
     await act(async () => { await result.current.handleMarcarRevisado(result.current.clockEntries[0]); });
     expect(updateClockEntryInAPI).toHaveBeenCalledWith(expect.objectContaining({ id: 'a', revisado: true }));
     expect(result.current.clockEntries[0].revisado).toBe(true);
+  });
+
+  it('BUG evitado: «Marcar como completada» (fichaje de tarea con su taskRef) marca la tarea en el planning (antes solo se guardaba el fichaje y la tarea seguía pendiente)', () => {
+    const marcar = vi.fn();
+    const { result } = montar([f('e', { taskName: 'JORNADA' })], marcar);
+    const taskRef = { dayKey: 'miercoles', taskIndex: 1, weekId: 'week_1', taskId: 'mi2', taskText: 'Evento - Carga' };
+    act(() => { result.current.handleClockEntryCreated(f('x', { type: 'fichaje', taskName: 'Evento - Carga', taskRef })); });
+    expect(marcar).toHaveBeenCalledTimes(1);
+    expect(marcar).toHaveBeenCalledWith(taskRef);
+  });
+
+  it('un fichaje sin tarea concreta (sin taskRef), una entrada o una salida de jornada no marcan nada', () => {
+    const marcar = vi.fn();
+    const { result } = montar([f('e', { taskName: 'JORNADA' })], marcar);
+    act(() => { result.current.handleClockEntryCreated(f('x', { type: 'fichaje', taskName: 'Algo libre' })); });
+    act(() => { result.current.handleClockEntryCreated(f('y', { type: 'entrada' })); });
+    act(() => { result.current.handleClockEntryCreated(f('z', { type: 'salida' })); });
+    expect(marcar).not.toHaveBeenCalled();
+  });
+
+  it('al fichar la salida de un turno con su tarea (entrada con taskRef) se marca, como siempre', () => {
+    const marcar = vi.fn();
+    const taskRef = { dayKey: 'martes', taskIndex: 0, weekId: 'week_1', taskId: 'm1', taskText: 'Evento - Carga' };
+    const { result } = montar([f('e', { taskRef })], marcar);
+    act(() => { result.current.handleClockEntryCreated(f('s', { type: 'salida', timestamp: '2026-09-20T12:00:00.000Z' })); });
+    expect(marcar).toHaveBeenCalledWith(taskRef);
   });
 
   it('si el servidor exige el enlace personal y este móvil no lo tiene, el fichaje se quita y se avisa', async () => {

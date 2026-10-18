@@ -143,3 +143,46 @@ describe('WorkerView — botón de fichar la entrada', () => {
     expect(botonEntrada()).toBeEnabled();
   });
 });
+
+describe('WorkerView — jornada abierta: la tarea en curso y «Marcar como completada»', () => {
+  const t = (h, m) => new Date(2026, 8, 24, h, m).toISOString();
+  const jueves = (extra = {}) => ({
+    ...semana,
+    schedule: { ...semana.schedule, jueves: { title: 'Jueves', tasks: [
+      { id: 'j1', text: 'Boda Dos - Montaje', timeFrame: '09:00 - 13:00', assigned: ['Ana'], ...extra },
+      { id: 'j2', text: 'Boda Dos - Limpieza', timeFrame: '14:00 - 16:00', assigned: ['Ana'] },
+    ] } },
+  });
+  const entrada = { id: 'e1', workerName: 'Ana', type: 'entrada', timestamp: t(9, 0), taskName: 'JORNADA' };
+  const pintarJornada = (semanaVista, fichajes, onClockEntryCreated = vi.fn()) => {
+    render(<WorkerView workerName="Ana" workersList={equipo} activeWeekData={semanaVista} clockEntries={fichajes} onClockEntryCreated={onClockEntryCreated} onToggleTask={vi.fn()} />);
+    return onClockEntryCreated;
+  };
+
+  beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 24, 10, 0, 0)); });
+  afterEach(() => vi.useRealTimers());
+
+  it('BUG evitado: «Tarea en curso» enseña la próxima tarea del planning (antes ponía «JORNADA») y marcarla manda su referencia', () => {
+    const onClockEntryCreated = pintarJornada(jueves(), [entrada]);
+    const bloque = screen.getByText('TAREA EN CURSO').closest('div.bg-slate-950');
+    expect(within(bloque).getByText('Boda Dos - Montaje')).toBeInTheDocument();
+    expect(within(bloque).queryByText('JORNADA')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Marcar como completada/ }));
+    const enviado = onClockEntryCreated.mock.calls[0][0];
+    expect(enviado).toMatchObject({ type: 'fichaje', taskName: 'Boda Dos - Montaje', taskRef: { dayKey: 'jueves', taskIndex: 0, taskId: 'j1' } });
+  });
+
+  it('BUG evitado: tras marcar una tarea el bloque sigue con la siguiente y «Finalizar jornada» no cambia (el turno dejaba de llamarse JORNADA y todo desaparecía)', () => {
+    const fichaje = { id: 'f1', workerName: 'Ana', type: 'fichaje', timestamp: t(9, 50), taskName: 'Boda Dos - Montaje', taskRef: { dayKey: 'jueves', taskIndex: 0, taskId: 'j1' } };
+    pintarJornada(jueves({ completed: true }), [entrada, fichaje]);
+    const bloque = screen.getByText('TAREA EN CURSO').closest('div.bg-slate-950');
+    expect(within(bloque).getByText('Boda Dos - Limpieza')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /FINALIZAR JORNADA/ })).toBeInTheDocument();
+  });
+
+  it('sin más tareas pendientes lo dice y la jornada se puede finalizar', () => {
+    pintarJornada({ ...semana, schedule: { martes: { title: 'Martes', tasks: [] } }, sundayMonday: { tasks: [] } }, [entrada]);
+    expect(screen.getByText(/Estás al día/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /FINALIZAR JORNADA/ })).toBeInTheDocument();
+  });
+});
