@@ -17,7 +17,7 @@ describe('WorkerViewWeddingCard', () => {
   it('BUG evitado: pulsar la boda la marca con su índice real (antes "resolveRealTaskIndex is not defined")', () => {
     const p = pintar();
     fireEvent.click(screen.getByText('Finca Sur'));
-    expect(p.resolveRealTaskIndex).toHaveBeenCalledWith('sabado', 'Boda: Finca Sur (Camión Uno)');
+    expect(p.resolveRealTaskIndex).toHaveBeenCalledWith('sabado', boda); // la boda, no su texto: dos con el mismo nombre no se confunden
     expect(p.onToggleTask).toHaveBeenCalledWith('sabado', 2);
   });
 

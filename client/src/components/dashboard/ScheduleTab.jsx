@@ -8,6 +8,14 @@ import { rejillaDeDias } from './rejillaDias';
 import { formatearHoras } from '../../data/formatoFinanciero';
 import { tarifaCorta } from '../../data/tarifas';
 
+// Una tarjeta que se marca o desmarca con un clic (o Enter/Espacio), como las de martes a
+// viernes. Antes las bodas del sábado y las tareas de domingo y lunes no se podían marcar
+// desde aquí: salían bloqueadas. `marcar` null = solo lectura.
+const alMarcar = (marcar, hecha) => (marcar ? {
+  role: 'button', tabIndex: 0, 'aria-pressed': hecha, onClick: marcar,
+  onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); marcar(); } },
+} : {});
+
 export default function ScheduleTab({ activeWeekData, workersList, onToggleTask, vispera = null }) {
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);
 
@@ -34,7 +42,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
     const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
 
     return (
-      <div key={idx} className={`p-3 sm:p-4 rounded-2xl border leading-relaxed transition-all ${
+      <div key={idx} {...alMarcar(onToggleTask && (() => onToggleTask('domingo', idx)), isCompleted)} className={`p-3 sm:p-4 rounded-2xl border leading-relaxed transition-all ${onToggleTask ? 'cursor-pointer' : ''} ${
         isCompleted
           ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 line-through opacity-60'
           : !matchesFilter 
@@ -219,7 +227,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
               const matchesFilter = !selectedWorkerFilter || wAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
 
               return (
-                <div key={idx} className={`p-4 sm:p-5 rounded-2xl border space-y-3 transition-all ${
+                <div key={idx} {...alMarcar(onToggleTask && (() => onToggleTask('sabado', idx)), isCompleted)} className={`p-4 sm:p-5 rounded-2xl border space-y-3 transition-all ${onToggleTask ? 'cursor-pointer' : ''} ${
                   isCompleted
                     ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 opacity-60'
                     : !matchesFilter 

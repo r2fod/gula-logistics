@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import ScheduleTab from './ScheduleTab';
 
 // Semana real de producción: martes 15 -> domingo 20, con el lunes 21 de cola.
@@ -134,5 +134,42 @@ describe('ScheduleTab — víspera (lunes anterior a la semana)', () => {
     vi.setSystemTime(new Date(2026, 8, 21, 20, 0));
     render(<ScheduleTab activeWeekData={semana([])} workersList={[]} onToggleTask={() => {}} onUpdateWeek={() => {}} />);
     expect(screen.queryByText('Víspera')).toBeNull();
+  });
+});
+
+describe('ScheduleTab — marcar tareas de sábado, domingo y lunes', () => {
+  const conBodas = () => ({
+    ...semana(tareas),
+    saturdaySpecial: { title: 'Sábado — Eventos', weddings: [{ location: 'Finca Sur', truck: 'Camión Uno', timeFrame: '10:00 - 03:00', assigned: ['Ana'], completed: false }] },
+  });
+
+  it('BUG evitado: las tareas de domingo y lunes se marcan con un clic (antes salían bloqueadas y solo se podían marcar de martes a viernes)', () => {
+    const onToggleTask = vi.fn();
+    render(<ScheduleTab activeWeekData={semana(tareas)} workersList={[]} onToggleTask={onToggleTask} />);
+    fireEvent.click(screen.getByText('Devolución camión'));
+    expect(onToggleTask).toHaveBeenCalledWith('domingo', 1); // su posición real en sundayMonday.tasks, no la del grupo
+  });
+
+  it('BUG evitado: una boda del sábado se marca con un clic', () => {
+    const onToggleTask = vi.fn();
+    render(<ScheduleTab activeWeekData={conBodas()} workersList={[]} onToggleTask={onToggleTask} />);
+    fireEvent.click(screen.getByText('Finca Sur'));
+    expect(onToggleTask).toHaveBeenCalledWith('sabado', 0);
+  });
+
+  it('también con el teclado (Enter y Espacio) y diciendo si está marcada', () => {
+    const onToggleTask = vi.fn();
+    render(<ScheduleTab activeWeekData={semana([{ ...tareas[0], completed: true }, tareas[1]])} workersList={[]} onToggleTask={onToggleTask} />);
+    const hecha = screen.getByText('Recogida en finca').closest('[role="button"]');
+    expect(hecha).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.keyDown(hecha, { key: 'Enter' });
+    fireEvent.keyDown(hecha, { key: ' ' });
+    expect(onToggleTask).toHaveBeenCalledTimes(2);
+  });
+
+  it('sin función de marcar (solo lectura) no se pintan como botones', () => {
+    render(<ScheduleTab activeWeekData={conBodas()} workersList={[]} />);
+    expect(screen.queryByRole('button', { name: /Finca Sur/ })).toBeNull();
+    expect(screen.getByText('Recogida en finca').closest('[role="button"]')).toBeNull();
   });
 });

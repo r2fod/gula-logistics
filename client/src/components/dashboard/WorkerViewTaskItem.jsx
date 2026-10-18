@@ -31,7 +31,7 @@ export default function WorkerViewTaskItem({
   const handleToggle = () => {
     if (onToggleTask) {
       const storageDayKey = toStorageDayKey(dayKey);
-      const taskIdx = resolveRealTaskIndex(storageDayKey, taskText);
+      const taskIdx = resolveRealTaskIndex(storageDayKey, task);
       if (taskIdx !== null) onToggleTask(storageDayKey, taskIdx);
     }
   };
@@ -39,7 +39,7 @@ export default function WorkerViewTaskItem({
   const handleClockIn = (e) => {
     e.stopPropagation();
     const storageDayKey = toStorageDayKey(dayKey);
-    const realTaskIndex = resolveRealTaskIndex(storageDayKey, taskText);
+    const realTaskIndex = resolveRealTaskIndex(storageDayKey, task);
     onClockIn(taskLabel, realTaskIndex !== null ? { dayKey: storageDayKey, taskIndex: realTaskIndex } : null);
   };
 

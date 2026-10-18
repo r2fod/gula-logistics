@@ -7,7 +7,7 @@ import WorkerViewTaskItem from './dashboard/WorkerViewTaskItem';
 import WorkerViewWeddingCard from './dashboard/WorkerViewWeddingCard';
 import ResumenHorasSaldo from './dashboard/ResumenHorasSaldo';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
-import { getTaskListForDay, resolveTaskIndexByText, isTaskEffectivelyDone, isTaskAssignedTo, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart, esTareaActiva, refDeTareaFichada } from '../data/taskPlanning';
+import { getTaskListForDay, resolveTaskIndex, isTaskEffectivelyDone, isTaskAssignedTo, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart, esTareaActiva, refDeTareaFichada } from '../data/taskPlanning';
 import { subscribeToPush } from '../data/pushService';
 import { crearFichaje } from '../data/fichajes';
 import { getWeddingTaskName } from '../data/eventNaming';
@@ -187,7 +187,8 @@ export default function WorkerView({
   // day.tasks de daysWithActivities) están filtradas por trabajador, así que
   // el índice que se ve ahí NUNCA es el índice real — hay que volver a
   // buscarlo por texto contra la lista completa antes de tocar el planning.
-  const resolveRealTaskIndex = (dayKey, taskText) => resolveTaskIndexByText(activeWeekData, dayKey, taskText);
+  // Se le pasa la TAREA (no su texto): dos con el mismo texto no se confunden (resolveTaskIndex).
+  const resolveRealTaskIndex = (dayKey, tarea) => resolveTaskIndex(activeWeekData, dayKey, tarea);
 
   // Build full activities per day
   const daysWithActivities = weekDays.map(day => {
@@ -208,18 +209,10 @@ export default function WorkerView({
   // Se recalcula cada minuto (no cada segundo) para que una tarea que ya
   // terminó deje de ser "la siguiente" sin tener que recargar.
   const minuteKey = Math.floor(currentTime.getTime() / 60000);
-  const immediateTask = useMemo(() => {
-    if (activeShift) {
-      return {
-        isShiftActive: true,
-        taskName: activeShift.taskName || 'Turno Activo General',
-        dayTitle: 'Turno en curso',
-        dayBadge: '🔴 En Directo',
-        timeFrame: null, // el tiempo que lleva se pinta en directo (EnVivo)
-        isWedding: false
-      };
-    }
-
+  // La próxima tarea de este trabajador, tenga o no el turno abierto. Con el turno abierto
+  // el bloque «Tarea en curso» enseña ESTA (antes enseñaba «JORNADA» y «Marcar como
+  // completada» no marcaba ninguna tarea).
+  const proximaTarea = useMemo(() => {
     // La SIGUIENTE tarea: la que empieza antes entre las que ni están
     // completadas ni han terminado ya (daysWithActivitiesForTotals excluye
     // 'lunes' para no contar dos veces la lista compartida domingo/lunes).
@@ -264,6 +257,7 @@ export default function WorkerView({
         dayTitle: day.title,
         dayBadge: 'Boda Fin de Semana',
         taskName: getWeddingTaskName(t),
+        taskIndex: resolveRealTaskIndex(day.key, t),
         timeFrame: t.timeFrame,
         location: t.location,
         rawTask: t,
@@ -274,7 +268,7 @@ export default function WorkerView({
     return {
       isShiftActive: false,
       dayKey: day.key,
-      taskIndex: resolveRealTaskIndex(day.key, text),
+      taskIndex: resolveRealTaskIndex(day.key, t),
       dayTitle: day.title,
       dayBadge: day.badge,
       taskName: text,
@@ -284,7 +278,22 @@ export default function WorkerView({
       rawTask: t,
       isWedding: false
     };
-  }, [daysWithActivities, activeShift, minuteKey]);
+  }, [daysWithActivities, minuteKey]);
+
+  // Con un turno abierto, la tarjeta de fichar enseña el turno; sin él, la próxima tarea.
+  const immediateTask = activeShift
+    ? {
+        isShiftActive: true,
+        taskName: activeShift.taskName || 'Turno Activo General',
+        dayTitle: 'Turno en curso',
+        dayBadge: '🔴 En Directo',
+        timeFrame: null, // el tiempo que lleva se pinta en directo (EnVivo)
+        isWedding: false
+      }
+    : proximaTarea;
+  // Un turno de jornada (se ficha la entrada de la jornada y luego se van marcando las tareas):
+  // su `taskName` pasa a ser el de la última tarea marcada, así que se mira su marca propia.
+  const esJornada = !!activeShift?.esJornada;
 
   // Compañeros de la MISMA tarea (no cualquiera fichado en algo sin
   // relación) — para saber a quién preguntar por compartir coche a la
@@ -511,14 +520,14 @@ export default function WorkerView({
 
               <div>
                 <p className="text-sm sm:text-base font-extrabold text-white font-outfit">
-                  <Pin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{activeShift.taskName === 'JORNADA' ? 'Jornada iniciada' : (activeShift.taskName || 'Turno Operativo General')}
+                  <Pin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{esJornada ? 'Jornada iniciada' : (activeShift.taskName || 'Turno Operativo General')}
                 </p>
               </div>
 
               {!currentWorkerObj.isPayroll && <LlevasGanado turno={activeShift} trabajador={currentWorkerObj} />}
 
               {/* Sub-tareas V2 */}
-              {activeShift.taskName === 'JORNADA' && (
+              {esJornada && (
                 <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 mt-2">
                   <div className="flex items-center justify-between gap-2 border-b border-emerald-500/20 pb-2 mb-2">
                     <div className="flex items-center space-x-1.5 text-emerald-400">
@@ -527,23 +536,24 @@ export default function WorkerView({
                     </div>
                   </div>
                   
-                  {immediateTask ? (
+                  {proximaTarea ? (
                     <>
-                      <p className="text-xs font-bold text-white mb-3">{immediateTask.taskName}</p>
+                      <p className="text-xs font-bold text-white mb-1">{proximaTarea.taskName}</p>
+                      {proximaTarea.timeFrame && <p className="text-[11px] text-slate-400 mb-3">{proximaTarea.timeFrame}</p>}
                       {(() => {
-                        const isLocked = immediateTask.dayKey && isDayInFuture(immediateTask.dayKey);
+                        const isLocked = proximaTarea.dayKey && isDayInFuture(proximaTarea.dayKey);
                         return (
                           <button
                             onClick={() => {
                               if (isLocked) return;
-                              const tRef = !immediateTask.isWedding && immediateTask.dayKey && immediateTask.taskIndex != null
-                                ? { dayKey: immediateTask.dayKey, taskIndex: immediateTask.taskIndex }
+                              const tRef = proximaTarea.dayKey && proximaTarea.taskIndex != null
+                                ? { dayKey: proximaTarea.dayKey, taskIndex: proximaTarea.taskIndex }
                                 : null;
 
                                 safeClockEntry(() => crearFichaje({
                                   trabajador: currentWorkerObj,
                                   tipo: 'fichaje',
-                                  taskName: immediateTask.taskName.trim(),
+                                  taskName: String(proximaTarea.taskName).trim(),
                                   note: '',
                                   taskRef: refDeTareaFichada(activeWeekData, tRef)
                                 }));
@@ -590,7 +600,7 @@ export default function WorkerView({
                 }`}
               >
                 <Square className="w-4 h-4 shrink-0" />
-                <span className="whitespace-nowrap">{activeShift.taskName === 'JORNADA' ? 'FINALIZAR JORNADA' : 'Fichar salida'}</span>
+                <span className="whitespace-nowrap">{esJornada ? 'FINALIZAR JORNADA' : 'Fichar salida'}</span>
               </button>
 
               {/* BOTÓN DESHACER: Disponible solo durante los primeros 15 min */}

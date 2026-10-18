@@ -203,7 +203,10 @@ export function pairShiftsFromEntries(entries = []) {
     
     activeShiftsOut[wName] = {
       ...active.startEntry,
-      taskName: currentTaskName
+      taskName: currentTaskName,
+      // `taskName` pasa a ser el de la última tarea fichada; esto dice si el turno se abrió
+      // como JORNADA (entrada general y luego tarea a tarea), que ya no se ve en `taskName`.
+      esJornada: active.startEntry.taskName === 'JORNADA'
     };
   }
 

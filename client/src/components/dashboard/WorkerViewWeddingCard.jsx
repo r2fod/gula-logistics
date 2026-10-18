@@ -26,14 +26,14 @@ export default function WorkerViewWeddingCard({
 
   const handleToggle = () => {
     if (onToggleTask) {
-      const realIdx = resolveRealTaskIndex('sabado', taskName);
+      const realIdx = resolveRealTaskIndex('sabado', wedding);
       if (realIdx !== null) onToggleTask('sabado', realIdx);
     }
   };
 
   const handleClockIn = (e) => {
     e.stopPropagation();
-    const realTaskIndex = resolveRealTaskIndex('sabado', taskName);
+    const realTaskIndex = resolveRealTaskIndex('sabado', wedding);
     onClockIn(taskName, realTaskIndex !== null ? { dayKey: 'sabado', taskIndex: realTaskIndex } : null);
   };
 

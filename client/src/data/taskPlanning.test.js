@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  getTaskListForDay, resolveTaskIndexByText, buildTaskListPatch, isTaskChronologicallyPast, isTaskTooEarlyToClockIn,
+  getTaskListForDay, resolveTaskIndexByText, resolveTaskIndex, buildTaskListPatch, isTaskChronologicallyPast, isTaskTooEarlyToClockIn,
   parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, getNextTaskStart, isTaskTooEarlyToStart, isTaskEffectivelyDone, isWeekFinished, getTaskText, isTaskAssignedTo, tareasDeLaFecha, refDeTareaFichada, indiceDeTareaFichada,
   esTareaActiva,
 } from './taskPlanning';
@@ -436,6 +436,73 @@ describe('getNextTaskStart — tareas sin etiquetar domingo/lunes', () => {
     expect(hhmm(getNextTaskStart(SEMANA_ACTUAL, 'domingo', { ...sofa, targetDay: 'Lunes' }, at(2026, 9, 20, 10, 0)))).toBe('21 9:00');
     expect(getNextTaskStart(SEMANA_ACTUAL, 'domingo', { ...sofa, targetDay: 'Domingo' }, at(2026, 9, 21, 1, 0))).toBeNull();
     expect(getNextTaskStart(SEMANA_ACTUAL, 'domingo', sofa, at(2026, 9, 21, 12, 0))).toBeNull();
+  });
+});
+
+describe('getNextTaskStart — tareas de madrugada (antes de las 07:00)', () => {
+  const recogida = { text: 'Evento - Recogida', timeFrame: '02:30 - 04:00', targetDay: 'Domingo' };
+  const hhmm = (d) => d && `${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+
+  it('BUG evitado: una recogida apuntada el domingo a las 02:30 se puede fichar la madrugada del domingo (se leía como del lunes y salía bloqueada justo cuando se hacía)', () => {
+    expect(hhmm(getNextTaskStart(SEMANA_ACTUAL, 'domingo', recogida, at(2026, 9, 19, 23, 0)))).toBe('20 2:30');
+    expect(isTaskTooEarlyToStart(SEMANA_ACTUAL, 'domingo', recogida, at(2026, 9, 20, 2, 24))).toBe(true);
+    expect(isTaskTooEarlyToStart(SEMANA_ACTUAL, 'domingo', recogida, at(2026, 9, 20, 2, 25))).toBe(false);
+    expect(isTaskTooEarlyToStart(SEMANA_ACTUAL, 'domingo', recogida, at(2026, 9, 20, 3, 10))).toBe(false); // ya empezada
+  });
+
+  it('la otra lectura (la madrugada del lunes, convención de hostelería) sigue valiendo cuando la del domingo ya terminó', () => {
+    expect(hhmm(getNextTaskStart(SEMANA_ACTUAL, 'domingo', recogida, at(2026, 9, 20, 5, 0)))).toBe('21 2:30');
+    expect(isTaskTooEarlyToStart(SEMANA_ACTUAL, 'domingo', recogida, at(2026, 9, 20, 12, 0))).toBe(true);
+    expect(isTaskTooEarlyToStart(SEMANA_ACTUAL, 'domingo', recogida, at(2026, 9, 21, 2, 26))).toBe(false);
+  });
+
+  it('una boda del sábado cuya recogida es de madrugada: se abre el domingo a las 02:25 y no antes', () => {
+    const boda = { location: 'Finca', truck: 'Camión', timeFrame: '02:30 - 04:00' };
+    const w = { ...SEMANA_ACTUAL, saturdaySpecial: { weddings: [boda] } };
+    expect(isTaskTooEarlyToStart(w, 'sabado', boda, at(2026, 9, 20, 2, 20))).toBe(true);
+    expect(isTaskTooEarlyToStart(w, 'sabado', boda, at(2026, 9, 20, 2, 26))).toBe(false);
+  });
+
+  it('las tareas que no empiezan de madrugada no cambian (09:00, 15:00…)', () => {
+    const tarde = { text: 'Descarga', timeFrame: '15:00 - 17:00', targetDay: 'Domingo' };
+    expect(hhmm(getNextTaskStart(SEMANA_ACTUAL, 'domingo', tarde, at(2026, 9, 20, 2, 30)))).toBe('20 15:00');
+  });
+});
+
+describe('resolveTaskIndex — la tarea que se ve, no su texto', () => {
+  const a = { id: 'd1', text: 'Evento - Recogida', timeFrame: '14:00 - 16:00', assigned: ['Ana'] };
+  const b = { id: 'd2', text: 'Evento - Recogida', timeFrame: '02:30 - 04:00', assigned: ['Luis', 'Eva'] };
+  const semanaConDos = { sundayMonday: { tasks: [a, b] } };
+
+  it('BUG evitado: de dos tareas con el mismo texto, pulsar la segunda marca la segunda (por texto siempre salía la primera y la suya no se podía marcar)', () => {
+    expect(resolveTaskIndexByText(semanaConDos, 'domingo', b.text)).toBe(0);
+    expect(resolveTaskIndex(semanaConDos, 'domingo', b)).toBe(1);
+    expect(resolveTaskIndex(semanaConDos, 'domingo', a)).toBe(0);
+  });
+
+  it('la lista de pantalla es un filtro de la real: sirve el mismo objeto aunque su posición sea otra', () => {
+    const visibles = semanaConDos.sundayMonday.tasks.filter(t => t.assigned.includes('Luis'));
+    expect(resolveTaskIndex(semanaConDos, 'domingo', visibles[0])).toBe(1);
+  });
+
+  it('si la semana se refrescó (otro objeto), por id; sin id, por texto + horario + asignados', () => {
+    expect(resolveTaskIndex(semanaConDos, 'domingo', { ...b })).toBe(1);
+    const sinId = (t) => { const { id, ...resto } = t; return resto; };
+    const refrescada = { sundayMonday: { tasks: [sinId(a), sinId(b)] } };
+    expect(resolveTaskIndex(refrescada, 'domingo', { ...sinId(b) })).toBe(1);
+  });
+
+  it('un texto plano o una tarea que ya no está: como siempre (por texto) o null', () => {
+    expect(resolveTaskIndex({ schedule: { martes: { tasks: ['Recoger sillas'] } } }, 'martes', 'Recoger sillas')).toBe(0);
+    expect(resolveTaskIndex(semanaConDos, 'domingo', { text: 'Otra cosa' })).toBeNull();
+  });
+
+  it('bodas del sábado: dos del mismo sitio a distinta hora no se confunden', () => {
+    const b1 = { location: 'Finca', truck: 'Camión', timeFrame: '10:00 - 14:00', assigned: ['Ana'] };
+    const b2 = { location: 'Finca', truck: 'Camión', timeFrame: '20:30 - 00:30', assigned: ['Luis'] };
+    const w = { saturdaySpecial: { weddings: [b1, b2] } };
+    expect(resolveTaskIndex(w, 'sabado', b2)).toBe(1);
+    expect(resolveTaskIndex(w, 'sabado', { ...b2 })).toBe(1);
   });
 });
 

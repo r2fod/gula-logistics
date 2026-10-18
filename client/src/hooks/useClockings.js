@@ -36,6 +36,12 @@ export function useClockings(markTaskCompleted) {
   });
 
   const handleClockEntryCreated = (newEntry) => {
+    // «Marcar como completada» de la tarea en curso (un fichaje de tarea dentro de la jornada,
+    // con su taskRef): la tarea se marca en el planning. Antes solo se guardaba el fichaje y
+    // la tarea seguía pendiente (y el botón, ahí): no había forma de marcarla desde el turno.
+    if (newEntry.type === 'fichaje' && newEntry.taskRef && markTaskCompleted) {
+      markTaskCompleted(newEntry.taskRef);
+    }
     setClockEntries(prev => {
       const updated = [...prev, newEntry];
       try {
