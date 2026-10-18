@@ -41,7 +41,8 @@ const ESTILOS = {
     menu: 'bg-slate-950 hover:bg-slate-800 text-slate-300 font-bold border border-slate-800',
   },
   claves: {
-    cabecera: 'px-2.5 py-2 sm:px-1.5 sm:py-0.5 text-[11px] rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold border border-slate-700 gap-1',
+    // Móvil: cuadrado de 36 px, solo el icono (igual que «Salir»); desde sm, la píldora con su texto.
+    cabecera: 'h-9 w-9 justify-center rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold border border-slate-700 text-[11px] [&>svg]:h-4 [&>svg]:w-4 sm:h-6 sm:w-auto sm:justify-start sm:gap-1 sm:rounded-full sm:px-2 sm:[&>svg]:h-3 sm:[&>svg]:w-3',
     menu: 'bg-slate-950 hover:bg-slate-800 text-slate-300 font-bold border border-slate-800',
   },
   semana: {
@@ -87,7 +88,8 @@ export default function BotonAccion({ accion, variante = 'barra', alPulsar }) {
       className={`${accion.claseIcono || ''} ${BASE[variante]} ${claseTono}`.trim()}
     >
       <Icono className={`${ICONO[variante]} shrink-0 ${accion.colorIcono || ''} ${animacion}`.trim()} aria-hidden="true" />
-      <span className={variante === 'barra' || variante === 'cabecera' ? 'whitespace-nowrap truncate max-w-[120px]' : 'whitespace-nowrap'}>{texto}</span>
+      {/* `soloIconoEnMovil`: en el móvil de la cabecera solo el icono (el texto sigue para lectores de pantalla). */}
+      <span className={`${variante === 'barra' || variante === 'cabecera' ? 'whitespace-nowrap truncate max-w-[120px]' : 'whitespace-nowrap'}${variante === 'cabecera' && accion.soloIconoEnMovil ? ' sr-only sm:not-sr-only' : ''}`}>{texto}</span>
     </button>
   );
 }

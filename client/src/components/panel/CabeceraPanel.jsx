@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldCheck, KeyRound, Truck, Menu, MoreHorizontal } from 'lucide-react';
+import { ShieldCheck, KeyRound, LogOut, Truck, Menu, MoreHorizontal } from 'lucide-react';
 import { esBorrador } from '../../data/anticipacion';
 import BotonAccion from './BotonAccion';
 import { accionesDe } from './acciones';
@@ -40,39 +40,49 @@ export default function CabeceraPanel({
             </div>
           </div>
           <div className="min-w-0 flex-1">
-            {/* En el móvil el título ocupa su línea y ADMIN, Clave y Salir van juntos en la siguiente
-                (antes, Salir caía solo a otra línea); desde sm, todo en una. */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <h1 className="text-xs sm:text-base font-extrabold text-white tracking-tight font-outfit truncate basis-full sm:basis-auto min-w-0">
+            {/* Móvil: título y subtítulo a la izquierda (ADMIN delante del subtítulo) y Clave y
+                Salir, cuadrados e iguales, a la derecha: todo en el alto de dos líneas (antes,
+                tres líneas y tres piezas de tamaños distintos). Desde sm, todo en una fila con el
+                subtítulo debajo. Cada pieza lleva su sitio en la rejilla del móvil; desde sm esas
+                clases no cuentan. */}
+            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-1.5 gap-y-0.5 sm:flex sm:flex-wrap sm:gap-y-0">
+              <h1 className="col-span-2 col-start-1 row-start-1 min-w-0 truncate text-[11px] min-[400px]:text-xs sm:text-base font-extrabold text-white tracking-tight font-outfit">
                 Panel de Control Gula Logística
               </h1>
               {adminUnlocked ? (
                 <>
-                  <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-amber-500 text-slate-950 flex items-center gap-1 shrink-0">
-                    <ShieldCheck className="w-2.5 h-2.5" />
+                  <span className="col-start-1 row-start-2 inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full bg-amber-500 px-2 text-[10px] font-extrabold text-slate-950 sm:h-6 sm:text-[11px]">
+                    <ShieldCheck className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                     <span>ADMIN</span>
                   </span>
-                  {claves && <BotonAccion accion={claves} variante="cabecera" />}
+                  {claves && (
+                    <div className="col-start-3 row-span-2 row-start-1 flex sm:contents">
+                      <BotonAccion accion={claves} variante="cabecera" />
+                    </div>
+                  )}
                   <button
                     onClick={onSalir}
-                    className="px-2.5 py-2 sm:px-1.5 sm:py-0.5 text-[11px] font-bold rounded-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1 transition-colors shrink-0"
+                    aria-label="Salir"
+                    title="Cerrar la sesión de administrador"
+                    className="col-start-4 row-span-2 row-start-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-rose-500/30 bg-rose-500/10 text-[11px] font-bold text-rose-400 transition-colors hover:bg-rose-500/20 sm:h-6 sm:w-auto sm:gap-1 sm:rounded-full sm:px-2"
                   >
-                    <span>Salir</span>
+                    <LogOut className="h-4 w-4 sm:h-3 sm:w-3" aria-hidden="true" />
+                    <span className="sr-only sm:not-sr-only">Salir</span>
                   </button>
                 </>
               ) : (
                 <button
                   onClick={onDesbloquear}
-                  className="px-2.5 py-2 sm:px-2 sm:py-0.5 text-[11px] font-bold rounded-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/30 flex items-center gap-1 transition-colors shrink-0"
+                  className="col-span-2 col-start-3 row-span-2 row-start-1 flex h-9 shrink-0 items-center justify-center gap-1 rounded-xl border border-blue-500/30 bg-blue-500/20 px-3 text-[11px] font-bold text-blue-300 transition-colors hover:bg-blue-500/30 sm:h-6 sm:rounded-full sm:px-2"
                 >
-                  <KeyRound className="w-2.5 h-2.5 text-blue-400" />
+                  <KeyRound className="w-3 h-3 text-blue-400" />
                   <span>Admin Login</span>
                 </button>
               )}
+              <p className={`min-w-0 truncate text-[11px] text-slate-500 sm:basis-full sm:overflow-visible sm:whitespace-normal ${adminUnlocked ? 'col-start-2' : 'col-span-2 col-start-1'} row-start-2`}>
+                {activeWeekData?.meta?.week || 'Semana 3'} · {activeWeekData?.meta?.dateRange}
+              </p>
             </div>
-            <p className="text-[11px] text-slate-500">
-              {activeWeekData?.meta?.week || 'Semana 3'} · {activeWeekData?.meta?.dateRange}
-            </p>
           </div>
         </div>
 

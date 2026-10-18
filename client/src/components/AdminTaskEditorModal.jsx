@@ -341,15 +341,16 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
   return (
     <Modal onCerrar={onClose} ancho="amplio" disposicion="columna" botonCerrar={false}>
       {/* Header */}
-      <div className="p-3 sm:p-6 border-b border-slate-800 flex items-center justify-between shrink-0">
+      <div className="p-3 sm:p-6 border-b border-slate-800 shrink-0">
+        {/* La X va como `acciones` de la cabecera: así el título no reserva sitio de más para ella y cabe en una línea en el móvil. */}
         <CabeceraModal
           icono={Edit3}
           degradado="amber-orange"
           compacta
           titulo="Editor Manual del Planning"
           subtitulo={`Modificando: ${localWeek.name || 'Semana'}`}
+          acciones={<BotonCerrar onClick={onClose} />}
         />
-        <BotonCerrar onClick={onClose} />
       </div>
 
       {/* Quick Day Jump Ribbon with Illuminated Active Day */}

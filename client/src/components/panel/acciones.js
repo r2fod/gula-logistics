@@ -71,7 +71,7 @@ export function crearAcciones({ admin = false, avisando = false, enlaceSociasCop
       lugares: ['barra', 'menu'], seccion: 'compartir', visible: !!alHacer.vistaPublica, onClick: alHacer.vistaPublica,
     },
     {
-      id: 'claves', etiqueta: 'Clave', etiquetaMenu: 'Claves y configuración', icono: KeyRound, claseIcono: 'icono-girar', colorIcono: 'text-slate-400', tono: 'claves',
+      id: 'claves', etiqueta: 'Clave', etiquetaMenu: 'Claves y configuración', icono: KeyRound, claseIcono: 'icono-girar', colorIcono: 'text-slate-400', tono: 'claves', soloIconoEnMovil: true,
       lugares: ['cabecera', 'menu'], seccion: 'configuracion', visible: admin, onClick: alHacer.claves,
     },
     {
