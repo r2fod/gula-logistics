@@ -38,5 +38,4 @@ _Solo lo que sigue abierto (actualizado el 14/10/2026). Lo resuelto se borra de 
 - [ ] `npm audit` del cliente: 7 avisos, todos de herramientas de build (nada llega al navegador): `vite`/`esbuild` (solo `npm run dev`) y `tailwindcss` 3 (`braces`/`micromatch`, de su vigilante de archivos). Arreglarlo es subir `vite` y `tailwindcss` de versión mayor, en rama aparte. `--legacy-peer-deps` sigue haciendo falta: `eslint-plugin-react` aún no admite ESLint 10.
 
 ## Visto una vez, sin reproducir
-- El enlace de socias enviado con el botón «WhatsApp Socias» «lleva a una trabajadora» (18/10): con el navegador, con una trabajadora recordada en el dispositivo y con la app abierta sin parámetros, el enlace abre el panel de socias, nunca su vista. Falta saber qué botón se pulsa y en qué dispositivo (móvil con la app instalada, WhatsApp, ordenador).
 - Salto espontáneo de pestaña en el panel (probablemente un clic accidental).
