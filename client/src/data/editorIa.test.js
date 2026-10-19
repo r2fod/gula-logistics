@@ -301,3 +301,50 @@ describe('preguntas, hoy y «nada que cambiar»', () => {
     expect(segundo.thinkingConfig).toBeUndefined();
   });
 });
+
+describe('acciones fuera del cuadrante y mover una tarea', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('«Eva nunca puede los lunes» es su disponibilidad fija: se propone sin Gemini, para confirmar', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const r = await resolverPeticion({ peticion: 'Eva nunca puede los lunes', apiKey: 'k', semana: semana(), equipo });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(r).toMatchObject({ via: 'local', generatedJson: null });
+    expect(r.acciones).toEqual([expect.objectContaining({ tipo: 'disponibilidad', ok: true, persona: 'Eva' })]);
+  });
+
+  it('una tarifa va a Gemini como acción del catálogo, comprobada y sin aplicar', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(respuesta({ acciones: [{ tipo: 'tarifa', persona: 'Luis', tarifa: 12 }] }));
+    vi.stubGlobal('fetch', fetchMock);
+    const r = await resolverPeticion({ peticion: 'Luis cobra 12 € la hora', apiKey: 'k', semana: semana(), equipo });
+    expect(r.via).toBe('acciones');
+    expect(r.acciones).toEqual([expect.objectContaining({ tipo: 'tarifa', ok: true, persona: 'Luis', tarifa: 12 })]);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).generationConfig.responseSchema.properties).toHaveProperty('acciones');
+  });
+
+  it('si Gemini no ve ninguna acción de la app, sigue como petición del cuadrante', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(respuesta({ acciones: [] }))
+      .mockResolvedValueOnce(respuesta({ cambios: [{ op: 'personas', t: 'T2', personas: ['Luis'] }] }));
+    vi.stubGlobal('fetch', fetchMock);
+    const r = await resolverPeticion({ peticion: 'Apunta a Luis solo en la descarga', apiKey: 'k', semana: semana(), equipo });
+    expect(r.via).toBe('cambios');
+    expect(r.generatedJson.schedule.martes.tasks[1].assigned).toEqual(['Luis']);
+  });
+
+  it('«mover» pasa la tarea entera a otro día (hora, gente, lugar) con un id de ese día; la hecha y el sábado no', () => {
+    const { mapa } = semanaEnLineas(semana());
+    const { plan, aplicados, ignorados } = aplicarCambios(semana(), [
+      { op: 'mover', t: 'T2', dia: 'jue' },
+      { op: 'horario', t: 'T2', horario: '10:00-13:00' }, // aunque venga después, se lleva el cambio
+      { op: 'mover', t: 'T1', dia: 'mie' }, // hecha
+      { op: 'mover', t: 'T4', dia: 'sab' }, // al sábado no
+    ], mapa);
+    expect(aplicados).toBe(2);
+    expect(ignorados).toBe(2);
+    expect(plan.schedule.martes.tasks.map(t => t.id)).toEqual(['m1']);
+    expect(plan.schedule.jueves.tasks).toEqual([expect.objectContaining({ text: 'Boda Uno - Descarga + Montaje Estructura', location: 'Finca Norte', assigned: ['Ana', 'Luis'], timeFrame: '10:00 - 13:00' })]);
+    expect(plan.schedule.jueves.tasks[0].id).toBeUndefined();
+  });
+});

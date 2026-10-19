@@ -80,7 +80,7 @@ import { useDialog } from './contexts/DialogContext';
 
 export default function App() {
   const { alert, confirm } = useDialog();
-  const { workersList, setWorkersList, tarifas, handleRemoveWorker, handleUpdateWorker, handleGuardarTarifas } = useWorkers();
+  const { workersList, setWorkersList, tarifas, handleRemoveWorker, handleUpdateWorker, handleUpdateWorkers, handleGuardarTarifas } = useWorkers();
   const { balancesData, setBalancesData, handleAddWorker, handleTarifaEnSaldos } = useBalances(workersList, setWorkersList);
   
   // Modals
@@ -808,6 +808,7 @@ export default function App() {
           workersList={workersList}
           aprendizaje={aprendizaje}
           semanas={allWeeks}
+          accionesApp={isAdmin ? { fichajes: activeClockEntries, guardarFichas: handleUpdateWorkers, cambiarTarifaFichajes: handleCambiarTarifa, usarSaldos: setBalancesData } : null}
         />
       </AlAbrir>
 

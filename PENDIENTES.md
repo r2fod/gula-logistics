@@ -21,6 +21,8 @@ _Solo lo que sigue abierto (actualizado el 14/10/2026). Lo resuelto se borra de 
 ## Asistente IA (27/09)
 - [ ] Memoria del asistente hecha (grafo visual, reglas propuestas → aprobar, aprendizaje de fichajes). Pendiente: probarlo con sesión de admin en producción (pestaña Memoria IA), que el asistente diga «Usa la clave del servidor» (la clave ya está en Render, 28/09), que Gemini genere horarios razonables con el aprendizaje y el botón «Deshacer» tras aplicar. Solo mide tramos "limpios": se aprende más si la gente ficha cada tarea al cambiar.
 
+- [ ] **Asistente que cambia la app** (19/10): probar con sesión de admin una petición de cada tipo («X cobra 12 € la hora desde el día 4», «apunta 10 € de transporte a X del sábado», «el 2 de noviembre es festivo», «X nunca puede los lunes», «pasa la recogida del martes al miércoles»): sale la tarjeta y al pulsar «Aplicar» queda hecho. Mejora de servidor pendiente (Gemini en la revisión): los apuntes de Saldos (la app y el asistente) reescriben la lista entera; si dos personas apuntan a la vez a la misma ficha, puede perderse uno. Lo seguro es un `POST /api/balances/:id/apuntes` con `$push`/`$inc` en Mongo.
+
 ## Planificador con disponibilidad (28/09)
 - [ ] Probar con sesión de admin: el recuadro «Disponibilidad» del Cuadrante (escribir "X no puede el jueves" y aplicar el reajuste), la revisión automática de Gemini en el próximo borrador (cambios y tokens en su recuadro) y el asistente (cuánto gasta cada petición).
 - [ ] **Rellenar en la ficha del equipo** (lo hace el admin, datos reales fuera del repo): quien solo puede a partir de las 15:00 y quien ayuda "solo si hace falta" cuando no está en cocina. El campo `team` antiguo de las semanas ya no se usa (queda en Mongo, sin efecto).

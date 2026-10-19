@@ -1,8 +1,9 @@
 import { elMasParecido, fichaDePersona, mismoNombre, parecidoNombre } from './nombresTrabajadores';
 import { textoAcuerdoExtra } from './tarifas';
 
-// Ficha de Saldos de alguien del equipo que aún no tiene ninguna en Mongo.
-const fichaVacia = (worker) => ({
+// Ficha de Saldos de alguien del equipo que aún no tiene ninguna en Mongo. Para crearla de
+// verdad se manda entera (el servidor no pone el nombre si falta).
+export const fichaDeSaldosNueva = (worker) => ({
   id: worker.name.toLowerCase().replace(/\s+/g, '-'),
   name: worker.name,
   role: worker.role,
@@ -21,7 +22,7 @@ export function fusionarSaldosConEquipo(balancesData, workersList) {
   const fichas = balancesData?.workers || [];
   return {
     ...balancesData,
-    workers: workersList.map((worker) => fichaDePersona(worker.name, fichas, workersList.map(w => w.name)) || fichaVacia(worker)),
+    workers: workersList.map((worker) => fichaDePersona(worker.name, fichas, workersList.map(w => w.name)) || fichaDeSaldosNueva(worker)),
   };
 }
 

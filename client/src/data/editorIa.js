@@ -6,6 +6,8 @@
 //
 // Qué camino sigue cada petición (elegirModo):
 //   · disponibilidad ("X no puede el jueves") → interpretarPeticion.js, 0 tokens;
+//   · algo de la app que no es el cuadrante (tarifa, Saldos, festivos, disponibilidad
+//     fija)                                   → acciones que se confirman (accionesIa.js);
 //   · un cambio concreto                     → 'cambios' (este archivo);
 //   · planificar o rehacer la semana          → 'completo' (generateScheduleWithGemini).
 import { esTareaActiva, getDayLabel } from './taskPlanning';
@@ -22,6 +24,7 @@ import { reajustarSemana } from './optimizadorPlanning';
 import { plano } from '../utils/texto';
 import { formatWeekdayDayMonth } from '../utils/dateUtils';
 import { buscarEnSemana, pideComprobarTareas, quienSueleHacerla, respuestaDeConocimiento, textoComprobacion } from './comprobarTareas';
+import { accionesDeDisponibilidadFija, pedirAcciones, pideAccionDeApp, validarAccion } from './accionesIa';
 
 const DIAS = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'];
 const ABREV = { martes: 'mar', miercoles: 'mie', jueves: 'jue', viernes: 'vie', sabado: 'sab', domingo: 'dom', lunes: 'lun' };
@@ -69,7 +72,7 @@ export function esquemaCambios(nombres = []) {
         items: {
           type: 'OBJECT',
           properties: {
-            op: { type: 'STRING', format: 'enum', enum: ['personas', 'horario', 'texto', 'quitar', 'nueva'] },
+            op: { type: 'STRING', format: 'enum', enum: ['personas', 'horario', 'texto', 'quitar', 'nueva', 'mover'] },
             t: { type: 'STRING', description: 'código de la tarea (T1…)' },
             dia: { type: 'STRING', format: 'enum', enum: Object.values(ABREV) },
             horario: TEXTO, texto: TEXTO, lugar: TEXTO,
@@ -105,13 +108,15 @@ export function promptDeCambios({ semana, equipo = [], restricciones = [], limit
       'Contesta en "respuesta", en español y corto (6 líneas como mucho), solo con lo que dicen estos datos; si con ellos no se puede saber, dilo. Nombra las tareas por su día, hora y texto, nunca por su código (T1…). No propongas cambios.',
     ] : [
       `Petición: ${peticion}`,
-      'Devuelve SOLO los cambios mínimos que pide la petición: no cambies horarios ni personas de otras tareas. Si piden añadir algo que ya está (aunque esté escrito distinto), no lo dupliques. op: personas (lista completa nueva), horario ("HH:MM-HH:MM"), texto, quitar, nueva (con dia, horario, texto, lugar y personas).',
+      'Devuelve SOLO los cambios mínimos que pide la petición: no cambies horarios ni personas de otras tareas. Si piden añadir algo que ya está (aunque esté escrito distinto), no lo dupliques. op: personas (lista completa nueva), horario ("HH:MM-HH:MM"), texto, quitar, nueva (con dia, horario, texto, lugar y personas), mover (t y dia: la pasa a otro día con su hora y su gente; el sábado no).',
     ]),
   ].filter(Boolean).join('\n');
 }
 
 // Aplica los cambios sobre una copia de la planificación. Lo que no se entiende o toca
-// una tarea HECHA se ignora y se cuenta.
+// una tarea HECHA se ignora y se cuenta. «mover» pasa la tarea entera (hora, gente, lugar,
+// teléfono…) a otro día de la semana, al final y con los demás cambios que lleve; el
+// sábado (bodas, con otra forma) no entra ni sale así.
 export function aplicarCambios(semana, cambios = [], mapa = {}) {
   const plan = JSON.parse(JSON.stringify({
     schedule: semana?.schedule || {}, saturdaySpecial: semana?.saturdaySpecial || { weddings: [] }, sundayMonday: semana?.sundayMonday || { tasks: [] },
@@ -121,6 +126,7 @@ export function aplicarCambios(semana, cambios = [], mapa = {}) {
   plan.sundayMonday.tasks = plan.sundayMonday.tasks || [];
   const listaDe = (lista) => (lista === 'sabado' ? plan.saturdaySpecial.weddings : lista === 'cola' ? plan.sundayMonday.tasks : plan.schedule[lista].tasks);
   const quitar = new Set();
+  const mover = [];
   let aplicados = 0;
   let ignorados = 0;
 
@@ -142,10 +148,18 @@ export function aplicarCambios(semana, cambios = [], mapa = {}) {
     else if (c.op === 'personas' && Array.isArray(c.personas)) tarea.assigned = c.personas;
     else if (c.op === 'horario' && c.horario) tarea.timeFrame = normalizarHorario(c.horario);
     else if (c.op === 'texto' && c.texto) { if (ref.lista === 'sabado') tarea.details = c.texto; else tarea.text = c.texto; }
+    else if (c.op === 'mover' && DIAS.includes(DE_ABREV[c.dia] || c.dia) && (DE_ABREV[c.dia] || c.dia) !== ref.dia && ref.lista !== 'sabado' && (DE_ABREV[c.dia] || c.dia) !== 'sabado') mover.push({ tarea, dia: DE_ABREV[c.dia] || c.dia });
     else { ignorados += 1; return; }
     aplicados += 1;
   });
 
+  mover.forEach(({ tarea, dia }) => {
+    quitar.add(tarea);
+    const movida = { ...tarea };
+    delete movida.id; // el del día nuevo (m1, j2…) lo pone completarPlanGenerado
+    if (dia === 'domingo' || dia === 'lunes') plan.sundayMonday.tasks.push({ ...movida, targetDay: dia === 'domingo' ? 'Domingo' : 'Lunes' });
+    else { delete movida.targetDay; plan.schedule[dia].tasks.push(movida); }
+  });
   DIAS.slice(0, 4).forEach(d => { plan.schedule[d].tasks = plan.schedule[d].tasks.filter(t => !quitar.has(t)); });
   plan.saturdaySpecial.weddings = plan.saturdaySpecial.weddings.filter(t => !quitar.has(t));
   plan.sundayMonday.tasks = plan.sundayMonday.tasks.filter(t => !quitar.has(t));
@@ -254,16 +268,19 @@ export function textoDeAyuda(equipo = []) {
     `• Disponibilidad, sin gastar Gemini: «${a} no puede el jueves», «${b} solo de 9 a 14 el viernes», «${a} descansa el fin de semana».`,
     `• Cambios concretos: «Pon a ${b} en la carga del jueves», «Mueve la recogida del miércoles a las 8:00».`,
     '• Preguntas sobre la semana: «¿Qué tareas tiene ' + a + ' el jueves?», «¿Quién hace la carga del viernes?».',
+    `• Cambios en la app (te los enseño y los aplicas tú): «${b} cobra 12 € la hora desde el día 4», «Apunta 10 € de transporte a ${a} del lunes», «El 8 de diciembre es festivo», «${a} nunca puede los lunes», «Pasa la recogida del martes al miércoles».`,
     '• Rehacer la semana: «Rehaz toda la semana repartiendo mejor las horas».',
     '• Reglas para siempre: «A partir de ahora, las bodas grandes llevan un apoyo más en la carga».',
   ].join('\n');
 }
 
 // El enrutador: cada petición por el camino que menos gasta.
-// → { generatedJson, errorMsg, via: 'local' | 'pregunta' | 'cambios' | 'completo', uso, resumen?, avisosExtra? }
+// → { generatedJson, errorMsg, via: 'local' | 'acciones' | 'pregunta' | 'cambios' | 'completo', uso, resumen?, avisosExtra?, acciones? }
+// `acciones`: lo que se propone hacer fuera del cuadrante, ya comprobado (validarAccion);
+// `fichajes` hace falta para decir cuántos cambian con una tarifa «desde el día X».
 // En 'local', generatedJson lleva además `disponibilidad` (lo que se ha entendido),
 // para guardarlo en la semana al aplicar.
-export async function resolverPeticion({ peticion, apiKey, semana, equipo = [], memorias = [], aprendizaje = null, semanas = {}, ahora = new Date() }) {
+export async function resolverPeticion({ peticion, apiKey, semana, equipo = [], memorias = [], aprendizaje = null, semanas = {}, ahora = new Date(), fichajes = [] }) {
   if (esPreguntaDeAyuda(peticion)) return { generatedJson: null, errorMsg: '', via: 'local', uso: null, resumen: textoDeAyuda(equipo) };
   // «¿Quién suele…?»: lo sabe la app (planning, grafo y fichajes), sin gastar Gemini.
   const sabe = respuestaDeConocimiento(peticion, { aprendizaje, semanas, equipo, semana });
@@ -286,6 +303,11 @@ export async function resolverPeticion({ peticion, apiKey, semana, equipo = [], 
     return { ...r, via: 'cambios', resumen, sugerencias: faltan.map(f => ({ item: f.item, suelen: f.suelen })) };
   }
 
+  // «Eva nunca puede los lunes»: su disponibilidad FIJA (ficha del equipo), sin Gemini.
+  const comprobar = (lista) => lista.map(a => validarAccion(a, { equipo, fichajes, ahora }));
+  const fija = accionesDeDisponibilidadFija(peticion, equipo);
+  if (fija) return { generatedJson: null, errorMsg: '', via: 'local', uso: null, acciones: comprobar(fija), resumen: 'Entendido sin gastar Gemini: es para todas las semanas (su ficha del equipo). Revísalo y pulsa «Aplicar».' };
+
   const nuevas = interpretarDisponibilidad(peticion, equipo, { semana, ahora });
   if (nuevas) {
     // En la semana solo se guardan las de la semana; las fijas del equipo cuentan igual.
@@ -298,6 +320,20 @@ export async function resolverPeticion({ peticion, apiKey, semana, equipo = [], 
       errorMsg: '', via: 'local', uso: null, avisosExtra: r.avisos,
       resumen: `Entendido sin gastar Gemini: ${textosAgrupados(nuevas).join('; ')}. ${cuantos ? `${cuantos} ${cuantos === 1 ? 'tarea cambia' : 'tareas cambian'} de persona.` : 'No hace falta cambiar a nadie.'}`,
     };
+  }
+
+  // Tarifa, Saldos o festivos: Gemini propone acciones del catálogo y el admin las aplica. Si
+  // no ve ninguna (era del cuadrante), sigue por el camino de siempre.
+  if (!esPregunta(peticion) && pideAccionDeApp(peticion)) {
+    try {
+      const { acciones, aclaracion, uso } = await pedirAcciones({ peticion, apiKey, equipo, semana, ahora });
+      if (acciones.length || aclaracion) {
+        return { generatedJson: null, errorMsg: '', via: 'acciones', uso, acciones: comprobar(acciones), resumen: aclaracion || 'Esto es lo que he entendido: revísalo y pulsa «Aplicar».' };
+      }
+    } catch (err) {
+      console.error(err);
+      return { generatedJson: null, errorMsg: `No se pudo entender con Gemini: ${err.message}. No se ha tocado nada.`, via: 'acciones' };
+    }
   }
 
   if (esPregunta(peticion)) {

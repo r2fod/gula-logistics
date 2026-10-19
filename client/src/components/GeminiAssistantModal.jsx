@@ -8,6 +8,8 @@ import { limitesDe, restriccionesDe, restriccionesDelEquipo } from '../data/disp
 import { useMemoriaIa } from '../hooks/useMemoriaIa';
 import { diffSemana, avisosDePropuesta } from '../data/diffSemana';
 import CambiosPropuestos from './asistente/CambiosPropuestos';
+import AccionesPropuestas from './asistente/AccionesPropuestas';
+import { accionesDeDisponibilidadFija, aplicarAcciones } from '../data/accionesIa';
 import AsignarNuevas from './asistente/AsignarNuevas';
 import { preferenciasDeCorrecciones } from '../data/comprobarTareas';
 import GastoGemini from './asistente/GastoGemini';
@@ -20,7 +22,9 @@ import { Campo, Input, AreaTexto } from './ui/Campo';
 // `aprendizaje` (App, aprenderDeFichajes): lo que se sabe de los fichajes reales,
 // que Gemini recibe junto con las reglas activas de la memoria. `semanas`: todas, para
 // saber quién hizo cada tarea otras semanas (al proponer quién va a una nueva).
-export default function GeminiAssistantModal({ isOpen, onClose, onApplyGeneratedSchedule, activeWeekData, workersList = [], aprendizaje = null, semanas = {} }) {
+// `accionesApp` (App, solo admin): lo que hace falta para aplicar lo que propone fuera del
+// cuadrante — { fichajes, guardarFichas, cambiarTarifaFichajes, usarSaldos } (accionesIa.js).
+export default function GeminiAssistantModal({ isOpen, onClose, onApplyGeneratedSchedule, activeWeekData, workersList = [], aprendizaje = null, semanas = {}, accionesApp = null }) {
   const [prompt, setPrompt] = useState('');
   const [apiKey, setApiKey] = useState(() => localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '');
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
@@ -31,6 +35,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
   const [errorMsg, setErrorMsg] = useState('');
   // Por dónde fue la última petición (sin Gemini, solo cambios o semana entera) y qué gastó.
   const [resultado, setResultado] = useState(null);
+  const [peticiones, setPeticiones] = useState(0); // cada respuesta, sus propias tarjetas
   
   const memoria = useMemoriaIa(isOpen);
   const claveEnServidor = useClaveIaServidor(isOpen);
@@ -63,6 +68,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
     setGeneratedJson(null);
     setPropuesta(null);
     setResultado(null);
+    setPeticiones(n => n + 1);
 
     // Cada petición por el camino que menos gasta (editorIa.js): disponibilidad sin
     // Gemini, cambios concretos en modo compacto, la semana entera solo si hace falta.
@@ -70,8 +76,9 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
     // Pase lo que pase, deja de «pensar»: antes un fallo fuera de Gemini la dejaba así.
     try {
       const [r, recuerdo] = await Promise.all([
-        resolverPeticion({ peticion: prompt, apiKey, semana: activeWeekData, equipo: workersList, memorias: memoria.activas, aprendizaje, semanas }),
-        pareceRegla(prompt) ? extraerMemoriaDelPrompt({ prompt, apiKey }) : Promise.resolve(null),
+        resolverPeticion({ peticion: prompt, apiKey, semana: activeWeekData, equipo: workersList, memorias: memoria.activas, aprendizaje, semanas, fichajes: accionesApp?.fichajes || [] }),
+        // «Eva nunca puede los lunes» va a su ficha (disponibilidad fija), no a una regla escrita.
+        pareceRegla(prompt) && !accionesDeDisponibilidadFija(prompt, workersList) ? extraerMemoriaDelPrompt({ prompt, apiKey }) : Promise.resolve(null),
       ]);
       setGeneratedJson(r.generatedJson);
       setDeGemini(r.generatedJson);
@@ -245,6 +252,15 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
           <p className="whitespace-pre-line leading-relaxed">{resultado.resumen}</p>
           {resultado.via === 'local' && <p className="mt-2 text-[11px] text-slate-500">0 tokens: contestado sin Gemini.</p>}
         </div>
+      )}
+
+      {/* Lo que propone cambiar fuera del cuadrante (tarifa, Saldos, festivos, disponibilidad fija) */}
+      {resultado?.acciones?.length > 0 && (
+        <AccionesPropuestas
+          key={peticiones}
+          acciones={resultado.acciones}
+          onAplicar={accionesApp ? (lista) => aplicarAcciones(lista, { equipo: workersList, ...accionesApp }) : null}
+        />
       )}
 
       {/* Regla propuesta: se recuerda solo si el admin dice que sí */}

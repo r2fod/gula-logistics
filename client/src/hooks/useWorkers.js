@@ -57,16 +57,22 @@ export function useWorkers() {
     saveRosterToAPI(updatedWorkers).catch(() => {});
   };
 
-  // Cambia la ficha de alguien (rol, tarifa, "solo si hace falta", nota, disponibilidad fija).
-  // Nunca el nombre: de él cuelgan sus fichajes y su saldo. → true si se guardó.
-  const handleUpdateWorker = (nombre, cambios) => {
-    const sinNombre = { ...cambios };
-    delete sinNombre.name;
-    const updatedWorkers = workersList.map(w => (w.name === nombre ? { ...w, ...sinNombre } : w));
+  // Cambia las fichas de varias personas en un solo guardado ({ nombre: cambios }): rol,
+  // tarifa, "solo si hace falta", nota, disponibilidad fija. Nunca el nombre: de él cuelgan
+  // sus fichajes y su saldo. De uno en uno, el segundo cambio partía de la lista de antes y
+  // pisaba al primero (el asistente puede cambiar a dos personas a la vez). → true si se guardó.
+  const handleUpdateWorkers = (cambiosPorNombre = {}) => {
+    const updatedWorkers = workersList.map(w => {
+      if (!cambiosPorNombre[w.name]) return w;
+      const sinNombre = { ...cambiosPorNombre[w.name] };
+      delete sinNombre.name;
+      return { ...w, ...sinNombre };
+    });
     setWorkersList(updatedWorkers);
     try { localStorage.setItem('gula_workers_v1', JSON.stringify(updatedWorkers)); } catch { /* sin almacenamiento */ }
     return saveRosterToAPI(updatedWorkers);
   };
+  const handleUpdateWorker = (nombre, cambios) => handleUpdateWorkers({ [nombre]: cambios });
 
   return {
     workersList,
@@ -74,6 +80,7 @@ export function useWorkers() {
     tarifas,
     handleRemoveWorker,
     handleUpdateWorker,
+    handleUpdateWorkers,
     handleGuardarTarifas
   };
 }
