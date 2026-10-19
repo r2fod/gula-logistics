@@ -3,6 +3,7 @@ import { getDayLabel } from './taskPlanning';
 import { tareasActivas } from './checklistSemana';
 import { tipoDeTarea, personasPorTipo } from './aprendizajeFichajes';
 import { personaDelFichaje } from './nombresTrabajadores';
+import { DIAS_SEMANA as DIAS } from './disponibilidad';
 
 // «¿Hay en el planning recoger furgo Norte y recoger generador 7K? Si no está,
 // añádelo»: se comprueba aquí, sin gastar Gemini, y solo lo que falte se le pide.
@@ -48,7 +49,6 @@ export function pideComprobarTareas(peticion) {
 
 // Un día en lo pedido («la carga del jueves») dice CUÁNDO es; no está en el texto de la
 // tarea. Antes se buscaba «jueves» en el texto y una carga del jueves «no estaba».
-const DIAS = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'];
 const diasDe = (item) => item.claves.filter(c => DIAS.includes(c));
 const sinDias = (item) => ({ ...item, claves: item.claves.filter(c => !DIAS.includes(c)) });
 

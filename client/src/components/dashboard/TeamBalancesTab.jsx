@@ -6,7 +6,7 @@ import { useDialog } from '../../contexts/DialogContext';
 import { estadoBolsa, tieneBolsa } from '../../data/bolsaHoras';
 import GrupoConceptos from './saldos/GrupoConceptos';
 import FormularioConcepto from './saldos/FormularioConcepto';
-import { conFecha, diasSugeridos, fechaDeConcepto, llevaFechaAparte } from '../../data/conceptosSaldos';
+import { conFecha, diasSugeridos, fechaDeConcepto, llevaFechaAparte, saldoDeApuntes } from '../../data/conceptosSaldos';
 import EnVivo from '../ui/EnVivo';
 import { duracionEnCurso } from '../../data/costeEnVivo';
 import { saldoDeTrabajador } from '../../data/saldoTrabajador';
@@ -165,7 +165,7 @@ export default function TeamBalancesTab({
       if (!preview.isPurse) {
         const newItem = { concept: preview.concept, amount: preview.amount, isPositive: true, tipo: 'turno', date: newShiftDate, ...(preview.horasBolsa ? { horasBolsa: preview.horasBolsa } : {}) };
         const newBreakdown = [...(worker.breakdown || []), newItem];
-        const newBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
+        const newBalance = saldoDeApuntes(newBreakdown);
 
         await persistWorkerBalance(worker.id, { breakdown: newBreakdown, currentBalance: newBalance });
         resetAddConceptForm();
@@ -225,7 +225,7 @@ export default function TeamBalancesTab({
       }
 
       updates.breakdown = newBreakdown;
-      updates.currentBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
+      updates.currentBalance = saldoDeApuntes(newBreakdown);
 
       await persistWorkerBalance(worker.id, updates);
       resetAddConceptForm();
@@ -259,7 +259,7 @@ export default function TeamBalancesTab({
       // del día al que corresponde (la elegida en el formulario; por defecto, hoy).
       const newItem = { concept: newConceptText.trim(), amount, isPositive: amount >= 0, tipo: newConceptMode === 'pago' ? 'pago' : 'ajuste', date: newShiftDate || aIso(new Date()) };
       const newBreakdown = [...(worker.breakdown || []), newItem];
-      const newBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
+      const newBalance = saldoDeApuntes(newBreakdown);
 
       await persistWorkerBalance(worker.id, { breakdown: newBreakdown, currentBalance: newBalance });
       resetAddConceptForm();
@@ -284,7 +284,7 @@ export default function TeamBalancesTab({
     try {
       const deletedItem = (worker.breakdown || [])[idx];
       const newBreakdown = (worker.breakdown || []).filter((_, i) => i !== idx);
-      const newBalance = newBreakdown.reduce((sum, it) => sum + it.amount, 0);
+      const newBalance = saldoDeApuntes(newBreakdown);
       const updates = { breakdown: newBreakdown, currentBalance: newBalance };
 
       // "Valor Acumulado Horas Bolsa" es una línea ÚNICA que se sobrescribe

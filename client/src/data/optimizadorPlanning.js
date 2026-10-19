@@ -16,11 +16,10 @@ import { mismoNombre, parecidoNombre } from './nombresTrabajadores';
 import { esTareaActiva, getWeekRange, resolveTaskDate } from './taskPlanning';
 import { getWeddingTaskName } from './eventNaming';
 import { formatearHoras } from './formatoFinanciero';
-import { LIMITES_POR_DEFECTO, NOMBRE_DIA, restriccionQueBloquea, textoRestriccion } from './disponibilidad';
+import { DIAS_SEMANA as DIAS, LIMITES_POR_DEFECTO, NOMBRE_DIA, restriccionQueBloquea, textoRestriccion } from './disponibilidad';
 import { tramoDeHorario } from './horarios';
 import { candidatosDePerfil, clasificarEquipo, esBackup as marcadoBackup } from './equipoRoles';
 
-const DIAS = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'];
 const DIA_IDX = Object.fromEntries(DIAS.map((d, i) => [d, i]));
 const PENALIZACION_BACKUP = 6; // horas: el "backup" solo entra cuando los demás van cargados
 

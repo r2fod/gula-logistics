@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
 import { esBackup } from '../../data/equipoRoles';
-import { textosAgrupados } from '../../data/disponibilidad';
+import { textosFijos } from '../../data/disponibilidad';
 
 // Etiqueta pequeña de la fila: si no cabe, pasa a otra línea (cortada no se leía el horario).
 // Las clases van completas para que Tailwind las detecte.
@@ -25,7 +25,7 @@ const botonIcono = 'grid h-9 w-9 shrink-0 place-items-center rounded-lg text-sla
 //
 // Props: trabajador, confirmando, onEditar, onQuitar, onConfirmarQuitar, onCancelarQuitar.
 export default function FilaTrabajador({ trabajador: w, confirmando = false, onEditar, onQuitar, onConfirmarQuitar, onCancelarQuitar }) {
-  const disponibilidad = textosAgrupados((w.disponibilidad || []).map(r => ({ ...r, persona: w.name, fija: true })), { conPersona: false });
+  const disponibilidad = textosFijos(w.disponibilidad, w.name);
 
   return (
     <li className={`rounded-2xl border transition-colors ${confirmando ? 'border-rose-500/40 bg-rose-500/5' : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'}`}>

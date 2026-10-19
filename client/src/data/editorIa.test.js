@@ -348,3 +348,13 @@ describe('acciones fuera del cuadrante y mover una tarea', () => {
     expect(plan.schedule.jueves.tasks[0].id).toBeUndefined();
   });
 });
+
+describe('preguntas: las órdenes que empiezan por «que» no lo son', () => {
+  it('BUG evitado: «Que Luis haga la carga del jueves» se tomaba por pregunta (Gemini contestaba y no cambiaba nada)', () => {
+    expect(esPregunta('Que Luis haga la carga del jueves')).toBe(false);
+    expect(esPregunta('cuando acabe la boda que Ana recoja el generador')).toBe(false);
+    expect(esPregunta('Qué tareas tiene Ana el jueves')).toBe(true); // con tilde, sí
+    expect(esPregunta('quien hace la carga del viernes')).toBe(true);
+    expect(esPregunta('que hay el sabado?')).toBe(true); // con «?», sí
+  });
+});

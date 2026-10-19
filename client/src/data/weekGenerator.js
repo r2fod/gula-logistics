@@ -23,7 +23,7 @@ import { EVENT_CATEGORIES } from './eventNaming';
 import { enlaceMaps, LUGAR_BASE } from './mapas';
 import { asignarEquipo } from './optimizadorPlanning';
 import { candidatosDePerfil, clasificarEquipo } from './equipoRoles';
-import { LIMITES_POR_DEFECTO, restriccionesDelEquipo } from './disponibilidad';
+import { DIAS_SEMANA as DIAS, LIMITES_POR_DEFECTO, restriccionesDelEquipo } from './disponibilidad';
 import { plano } from '../utils/texto';
 import { PREFIJO_ID, aIso, fechaLocal, formatearRango, sumarDias } from './fechasSemana';
 import { diaHabilCercano, festivoEn, festivosLocales } from './festivos';
@@ -31,7 +31,6 @@ import { diaHabilCercano, festivoEn, festivosLocales } from './festivos';
 // Se siguen exportando desde aquí (tests y quien ya los importaba).
 export { PREFIJO_ID, martesDeSemana, formatearRango, weekIdParaInicio } from './fechasSemana';
 
-const DIAS = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'];
 const JS_DIA = { 0: 'domingo', 1: 'lunes', 2: 'martes', 3: 'miercoles', 4: 'jueves', 5: 'viernes', 6: 'sabado' };
 const NOMBRE_DIA = { martes: 'Martes', miercoles: 'Miércoles', jueves: 'Jueves', viernes: 'Viernes', sabado: 'Sábado', domingo: 'Domingo', lunes: 'Lunes' };
 const [CAT_PREP, CAT_LIMPIEZA] = ['Logística Preparación', 'Limpieza Eventos'];

@@ -17,7 +17,7 @@ import { normalizarHorario } from './horarios';
 import { generateScheduleWithGemini, pedirJsonAGemini } from './geminiScheduleService';
 import { esMemoriaActiva } from './memoriaIa';
 import { textoAprendizajeParaPrompt } from './aprendizajeFichajes';
-import { LIMITES_POR_DEFECTO, limitesDe, restriccionesDe, restriccionesDelEquipo, restriccionesEfectivas, textosAgrupados } from './disponibilidad';
+import { DIAS_SEMANA as DIAS, LIMITES_POR_DEFECTO, limitesDe, restriccionesDe, restriccionesDelEquipo, restriccionesEfectivas, textosAgrupados } from './disponibilidad';
 import { descripcionParaIa } from './equipoRoles';
 import { interpretarDisponibilidad } from './interpretarPeticion';
 import { reajustarSemana } from './optimizadorPlanning';
@@ -26,7 +26,6 @@ import { formatWeekdayDayMonth } from '../utils/dateUtils';
 import { buscarEnSemana, pideComprobarTareas, quienSueleHacerla, respuestaDeConocimiento, textoComprobacion } from './comprobarTareas';
 import { accionesDeDisponibilidadFija, pedirAcciones, pideAccionDeApp, validarAccion } from './accionesIa';
 
-const DIAS = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'];
 const ABREV = { martes: 'mar', miercoles: 'mie', jueves: 'jue', viernes: 'vie', sabado: 'sab', domingo: 'dom', lunes: 'lun' };
 const DE_ABREV = Object.fromEntries(Object.entries(ABREV).map(([d, a]) => [a, d]));
 
@@ -144,11 +143,12 @@ export function aplicarCambios(semana, cambios = [], mapa = {}) {
     const ref = mapa[c?.t];
     if (!ref || ref.hecha) { ignorados += 1; return; }
     const tarea = listaDe(ref.lista)[ref.indice];
+    const destino = DE_ABREV[c.dia] || c.dia;
     if (c.op === 'quitar') quitar.add(tarea);
     else if (c.op === 'personas' && Array.isArray(c.personas)) tarea.assigned = c.personas;
     else if (c.op === 'horario' && c.horario) tarea.timeFrame = normalizarHorario(c.horario);
     else if (c.op === 'texto' && c.texto) { if (ref.lista === 'sabado') tarea.details = c.texto; else tarea.text = c.texto; }
-    else if (c.op === 'mover' && DIAS.includes(DE_ABREV[c.dia] || c.dia) && (DE_ABREV[c.dia] || c.dia) !== ref.dia && ref.lista !== 'sabado' && (DE_ABREV[c.dia] || c.dia) !== 'sabado') mover.push({ tarea, dia: DE_ABREV[c.dia] || c.dia });
+    else if (c.op === 'mover' && DIAS.includes(destino) && destino !== ref.dia && destino !== 'sabado' && ref.lista !== 'sabado') mover.push({ tarea, dia: destino });
     else { ignorados += 1; return; }
     aplicados += 1;
   });
@@ -231,9 +231,12 @@ export async function revisarBorradorConGemini({ semana, apiKey, equipo = [], me
 // ¿Pregunta algo sin pedir que se cambie? («¿Qué hay el sábado?», «¿cuántas horas tiene
 // Ana?»). Antes iba por el camino de los cambios y acababa en «no ha propuesto ningún
 // cambio». «¿Puedes poner a Ana…?» es un cambio pedido con educación, no una pregunta.
+// Sin «?», «que», «como» o «cuando» sin tilde empiezan órdenes («Que Luis haga la carga»):
+// solo cuentan con tilde; «quién», «cuánto» o «cuál» valen con o sin ella.
+const EMPIEZA_PREGUNTANDO = /^(qué|cómo|cuándo|dónde|por qué|quién|quiénes|quien|quienes|cuánt[oa]s?|cuant[oa]s?|cuál|cuáles|cual|cuales)(?=[\s,]|$)/;
 export function esPregunta(peticion) {
   const p = plano(peticion);
-  const pregunta = /[?¿]/.test(peticion) || /^\s*(que|cuanto|cuanta|cuantos|cuantas|quien|quienes|como|cuando|donde|cual|cuales|por que)\b/.test(p);
+  const pregunta = /[?¿]/.test(peticion) || EMPIEZA_PREGUNTANDO.test(String(peticion || '').trim().toLowerCase());
   return pregunta && !/\b(puedes|podrias|pon|ponle|ponlo|ponla|cambia|cambiale|mueve|quita|anade|asigna|rehaz|haz|crea|borra|elimina|sustituye|reorganiza|organiza|ajusta|planifica|genera)\b/.test(p);
 }
 

@@ -3,7 +3,7 @@ import { ArrowLeft, Plus, Save, X } from 'lucide-react';
 import Boton from '../ui/Boton';
 import { Campo, Input, Selector } from '../ui/Campo';
 import SelectorIcono from './SelectorIcono';
-import { agruparRestricciones, OPCIONES_DIA, restriccionesDeFormulario, textoGrupo, TIPOS_DISPONIBILIDAD } from '../../data/disponibilidad';
+import { gruposFijos, OPCIONES_DIA, restriccionesDeFormulario, textoGrupo, TIPOS_DISPONIBILIDAD } from '../../data/disponibilidad';
 import { aIso, fechaLocal } from '../../data/fechasSemana';
 import { formatearEuros } from '../../data/formatoFinanciero';
 import { fichajesACambiarDeTarifa, tarifaDe } from '../../data/tarifas';
@@ -144,7 +144,7 @@ export default function FichaTrabajador({ trabajador, onGuardar, onCerrar, ficha
           {disponibilidad.length > 0 ? (
             <ul className="flex flex-wrap gap-2">
               {/* Agrupadas por días: "desde las 15:00 de lunes a viernes" es una sola etiqueta. */}
-              {agruparRestricciones(disponibilidad.map(r => ({ ...r, persona: trabajador.name, fija: true }))).map(g => (
+              {gruposFijos(disponibilidad, trabajador.name).map(g => (
                 <li key={g.indices.join('-')} className="flex items-center gap-1 rounded-lg border border-sky-500/25 bg-sky-500/10 py-0.5 pl-2 pr-0.5 text-xs text-sky-200">
                   {textoGrupo(g, { conPersona: false })}
                   <button type="button" onClick={() => setDisponibilidad(d => d.filter((_, j) => !g.indices.includes(j)))} aria-label={`Quitar: ${textoGrupo(g, { conPersona: false })}`} className="rounded p-1 text-sky-300/70 hover:text-rose-300">

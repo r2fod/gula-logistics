@@ -238,6 +238,15 @@ export function getWeekRange(weekData, now = new Date()) {
   return parseWeekRange(weekData?.meta?.dateRange, now);
 }
 
+// El día (martes…domingo o el lunes de cola) en que cae `fecha` dentro de esa semana, por
+// fecha real; null si no cae en ella o la semana no tiene fechas legibles.
+export function diaDeLaFecha(weekData, fecha = new Date()) {
+  const range = getWeekRange(weekData, fecha);
+  if (!range) return null;
+  const dia = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()).getTime();
+  return Object.keys(JS_WEEKDAY).find(d => resolveTaskDate(range, d)?.getTime() === dia) || null;
+}
+
 // Fecha real (Date a las 00:00) de un dayKey dentro de la semana. 'lunes' es
 // el lunes que SIGUE al domingo de esa semana (la lista domingo/lunes es la
 // cola de la semana, no su inicio).

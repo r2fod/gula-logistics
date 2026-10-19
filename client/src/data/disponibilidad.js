@@ -113,6 +113,11 @@ function textoDias(dias, fija) {
   return `${fija ? 'los' : 'el'} ${nombres.length > 1 ? `${nombres.slice(0, -1).join(', ')} y ${nombres.at(-1)}` : nombres[0]}`;
 }
 
+// Las restricciones FIJAS de una persona (su ficha) agrupadas por días, como se enseñan:
+// «desde las 15:00 de lunes a viernes» es un grupo (ver textoGrupo).
+export const gruposFijos = (lista = [], persona = '') => agruparRestricciones((lista || []).map(r => ({ ...r, persona, fija: true })));
+export const textosFijos = (lista = [], persona = '') => gruposFijos(lista, persona).map(g => textoGrupo(g, { conPersona: false }));
+
 // Junta las que solo se diferencian en el día: [{ persona, tipo, desde, hasta, fija, nota, dias, ids }].
 export function agruparRestricciones(lista = []) {
   const grupos = new Map();

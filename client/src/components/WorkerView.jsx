@@ -7,7 +7,7 @@ import WorkerViewTaskItem from './dashboard/WorkerViewTaskItem';
 import WorkerViewWeddingCard from './dashboard/WorkerViewWeddingCard';
 import ResumenHorasSaldo from './dashboard/ResumenHorasSaldo';
 import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
-import { getTaskListForDay, resolveTaskIndex, isTaskEffectivelyDone, isTaskAssignedTo, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, getNextTaskStart, isTaskTooEarlyToStart, esTareaActiva, refDeTareaFichada } from '../data/taskPlanning';
+import { getTaskListForDay, resolveTaskIndex, isTaskEffectivelyDone, isTaskAssignedTo, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, diaDeLaFecha, getNextTaskStart, isTaskTooEarlyToStart, esTareaActiva, refDeTareaFichada } from '../data/taskPlanning';
 import { subscribeToPush } from '../data/pushService';
 import { crearFichaje } from '../data/fichajes';
 import { getWeddingTaskName } from '../data/eventNaming';
@@ -330,11 +330,7 @@ export default function WorkerView({
   // es la de hoy (el lunes ya se enseña la siguiente a quien acabó), no hay «hoy» en ella.
   // Antes se miraba solo el nombre del día: el lunes 19 marcaba «LUN 26 · HOY» y enseñaba
   // las tareas del lunes siguiente como si fueran de hoy. Sin fechas legibles, por nombre.
-  const rangoSemana = getWeekRange(activeWeekData, currentTime);
-  const hoySinHora = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate()).getTime();
-  const todayKey = rangoSemana
-    ? (['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'].find(d => resolveTaskDate(rangoSemana, d)?.getTime() === hoySinHora) || null)
-    : dayNames[currentTime.getDay()];
+  const todayKey = getWeekRange(activeWeekData, currentTime) ? diaDeLaFecha(activeWeekData, currentTime) : dayNames[currentTime.getDay()];
   const diaElegido = selectedDayKey === 'hoy' ? (todayKey || 'all') : selectedDayKey;
 
   // Para deshabilitar "Fichar" en un día que todavía no ha llegado (evita

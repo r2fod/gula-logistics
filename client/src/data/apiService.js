@@ -615,13 +615,15 @@ export function hasRealBalancesData(data) {
 /**
  * Fetch worker balances & agreements with resilient offline fallback
  */
-export async function fetchBalancesFromAPI() {
+// `soloServidor`: lo que hay AHORA en el servidor o null, nunca la copia del navegador
+// (para escribir encima: un apunte sobre una copia vieja borraría lo apuntado después).
+export async function fetchBalancesFromAPI({ soloServidor = false } = {}) {
   try {
     const res = await fetchConLimite(`${API_BASE}/balances`, { headers: { ...authHeaders() } });
     // Sin acceso (sin sesión, enlace caducado o anulado): ni la copia local.
     if (res.status === 401) {
       localStorage.removeItem(BALANCES_CACHE_KEY);
-      return initialBalancesData;
+      return soloServidor ? null : initialBalancesData;
     }
     if (res.ok) {
       const data = await res.json();
@@ -635,6 +637,7 @@ export async function fetchBalancesFromAPI() {
   } catch (err) {
     console.warn('Backend API balances fetch failed, using fallback:', err.message);
   }
+  if (soloServidor) return null;
 
   // Fallback to localStorage only if it contains real populated data
   try {

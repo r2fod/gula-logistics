@@ -4,11 +4,10 @@
 // aceptar un borrador; no cambia nada.
 import { PREFIJO_ID, aIso, fechaLocal, idLibreDeTarea, sumarDias } from './fechasSemana';
 import { diaHabilCercano, festivoEn, festivosLocales } from './festivos';
-import { NOMBRE_DIA } from './disponibilidad';
+import { DIAS_SEMANA as DIAS, NOMBRE_DIA } from './disponibilidad';
 import { buildTaskListPatch, esTareaActiva, getTaskListForDay, getTaskText, getWeekRange } from './taskPlanning';
 import { plano } from '../utils/texto';
 
-const DIAS = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'];
 // «Recoger sillas», «Devolver generador», «Devolución material»… pero no recoger el
 // propio evento al terminar («Recogida y vuelta a base», «Recogida del evento»).
 const ES_RECADO = /\b(devolver|devolucion|recoger|recogida)\b/;

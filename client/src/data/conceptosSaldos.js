@@ -12,6 +12,9 @@
 
 import { aIso } from './fechasSemana';
 
+// Lo que suma un desglose (lo apuntado a mano en una ficha de Saldos), al céntimo.
+export const saldoDeApuntes = (breakdown = []) => Math.round((breakdown || []).reduce((s, it) => s + (Number(it?.amount) || 0), 0) * 100) / 100;
+
 export const TIPOS_CONCEPTO = {
   turno: 'Turnos apuntados a mano',
   transporte: 'Ayuda de transporte',

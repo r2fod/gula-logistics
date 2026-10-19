@@ -1,6 +1,6 @@
 import { crearRestriccion, DIAS_SEMANA, diasDeOpcion, diasEntre } from './disponibilidad';
 import { plano } from '../utils/texto';
-import { getWeekRange, resolveTaskDate } from './taskPlanning';
+import { diaDeLaFecha } from './taskPlanning';
 
 // Entiende SIN Gemini (0 tokens) lo que se pide a menudo sobre el equipo:
 //   "Tomás no puede el jueves", "Ana descansa el sábado",
@@ -38,10 +38,7 @@ function diaRelativo(t, semana, ahora) {
   const sinFranja = t.replace(/\b(por|de|en) la manana\b/g, ' ');
   const salto = /\bpasado manana\b/.test(sinFranja) ? 2 : /\bhoy\b/.test(sinFranja) ? 0 : /\bmanana\b/.test(sinFranja) ? 1 : null;
   if (salto === null) return undefined;
-  const rango = getWeekRange(semana, ahora);
-  if (!rango) return null;
-  const fecha = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + salto).getTime();
-  return DIAS_SEMANA.find(d => resolveTaskDate(rango, d)?.getTime() === fecha) || null;
+  return diaDeLaFecha(semana, new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + salto));
 }
 
 // `semana` y `ahora` solo hacen falta para «hoy» y «mañana».

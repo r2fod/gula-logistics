@@ -1,5 +1,5 @@
 import { plano } from '../utils/texto';
-import { textosAgrupados } from './disponibilidad';
+import { textosFijos } from './disponibilidad';
 
 // El equipo por perfiles, según el ROL de cada persona. Lo usan el reparto de tareas
 // (optimizadorPlanning.js) y el bloque «Equipo» de la vista pública, que se construye
@@ -35,7 +35,7 @@ export function candidatosDePerfil(pools, perfil) {
 export function nombreConNotas(p) {
   const notas = [
     p.nota,
-    ...textosAgrupados((p.disponibilidad || []).map(r => ({ ...r, persona: p.name, fija: true })), { conPersona: false }),
+    ...textosFijos(p.disponibilidad, p.name),
     esBackup(p) && !p.nota ? 'solo si hace falta' : '',
   ].filter(Boolean);
   return notas.length ? `${p.name} (${notas.join('; ')})` : p.name;

@@ -185,3 +185,11 @@ describe('aplicarAcciones — los saldos se leen del servidor, nunca de la copia
     localStorage.clear();
   });
 });
+
+describe('qué es un festivo', () => {
+  it('BUG evitado: «la fiesta de Marta» (un evento) no es un festivo; «es fiesta» o «festivo», sí', () => {
+    expect(pideAccionDeApp('Pon a Luis en la carga de la fiesta de Marta')).toBe(false);
+    expect(pideAccionDeApp('el lunes es fiesta en el pueblo')).toBe(true);
+    expect(pideAccionDeApp('quita el festivo del 2 de noviembre')).toBe(true);
+  });
+});

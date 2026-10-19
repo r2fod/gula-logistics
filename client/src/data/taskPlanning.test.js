@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  diaDeLaFecha,
   getTaskListForDay, resolveTaskIndexByText, resolveTaskIndex, buildTaskListPatch, isTaskChronologicallyPast, isTaskTooEarlyToClockIn,
   parseWeekRange, resolveTaskDate, resolveTaskEvalDay, getTaskPastStatus, isTaskPast, ensureYearInDateRange, clearWeekCompletion, getDayLabel, getWeddingsBadge, getTaskStartDateTime, getNextTaskStart, isTaskTooEarlyToStart, isTaskEffectivelyDone, isWeekFinished, getTaskText, isTaskAssignedTo, tareasDeLaFecha, refDeTareaFichada, indiceDeTareaFichada,
   esTareaActiva,
@@ -690,5 +691,16 @@ describe('refDeTareaFichada / indiceDeTareaFichada (la salida marca la tarea cor
   it('un fichaje antiguo (solo día e índice) sigue funcionando como antes', () => {
     expect(indiceDeTareaFichada(semana([a, b]), { dayKey: 'martes', taskIndex: 1 })).toBe(1);
     expect(indiceDeTareaFichada(semana([a]), { dayKey: 'martes', taskIndex: 3 })).toBeNull();
+  });
+});
+
+describe('diaDeLaFecha', () => {
+  const semana = { meta: { dateRange: 'Del 20 al 25 de Octubre de 2026' } };
+  it('el día de la semana abierta en que cae una fecha (el lunes es el de cola); fuera de ella o sin fechas, null', () => {
+    expect(diaDeLaFecha(semana, new Date(2026, 9, 20, 9))).toBe('martes');
+    expect(diaDeLaFecha(semana, new Date(2026, 9, 25, 23))).toBe('domingo');
+    expect(diaDeLaFecha(semana, new Date(2026, 9, 26, 8))).toBe('lunes');
+    expect(diaDeLaFecha(semana, new Date(2026, 9, 19, 8))).toBeNull();
+    expect(diaDeLaFecha({ meta: { dateRange: 'por decidir' } }, new Date(2026, 9, 20))).toBeNull();
   });
 });

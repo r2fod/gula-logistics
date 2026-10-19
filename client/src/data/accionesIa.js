@@ -5,14 +5,14 @@
 // comprueba aquí (validarAccion), se enseña con su efecto exacto y se aplica cuando el admin
 // dice que sí (aplicarAcciones), con las mismas piezas que los botones de la app.
 import { pedirJsonAGemini } from './geminiScheduleService';
-import { getStoredAdminToken, saveWorkerBalanceToAPI } from './apiService';
-import { API_BASE, fetchConLimite } from './servidor';
+import { fetchBalancesFromAPI, saveWorkerBalanceToAPI } from './apiService';
 import { festivoEn, festivosLocales } from './festivos';
 import { guardarFestivosLocales } from './festivosGuardados';
 import { fichajesACambiarDeTarifa, tarifaDe, tarifaEnFichaDeSaldos, transporteDia } from './tarifas';
 import { fichaDeSaldosNueva } from './saldosEquipo';
+import { saldoDeApuntes } from './conceptosSaldos';
 import { fichaDePersona, mismoNombre } from './nombresTrabajadores';
-import { agruparRestricciones, OPCIONES_DIA, restriccionesDeFormulario, textoGrupo, TIPOS_DISPONIBILIDAD } from './disponibilidad';
+import { DIAS_SEMANA, OPCIONES_DIA, restriccionesDeFormulario, textosFijos, TIPOS_DISPONIBILIDAD } from './disponibilidad';
 import { interpretarDisponibilidad } from './interpretarPeticion';
 import { aIso, fechaLocal } from './fechasSemana';
 import { getDayLabel } from './taskPlanning';
@@ -23,7 +23,6 @@ import { plano } from '../utils/texto';
 export const TIPOS_ACCION = ['tarifa', 'apunte', 'festivo', 'disponibilidad'];
 const CLASES_APUNTE = { transporte: 'Transporte', pago: 'Pago', ajuste: 'Ajuste' };
 const DIAS_FIJA = OPCIONES_DIA.map(o => o.valor);
-const DIAS_SEMANA_ABIERTA = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'];
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 const HORA = /^([01]?\d|2[0-3]):[0-5]\d$/;
 const fechaValida = (f) => FECHA.test(String(f || '')) && !Number.isNaN(fechaLocal(f).getTime());
@@ -33,19 +32,11 @@ const redondear = (n) => Math.round(Number(n) * 100) / 100;
 const intentar = async (hacer) => { try { return !!(await hacer()); } catch { return false; } };
 const leerSinFallo = async (leer) => { try { return await leer(); } catch { return null; } };
 
-// Los saldos tal como están AHORA en el servidor, o null. Nunca la copia del navegador
-// (fetchBalancesFromAPI la usa si falla la red): un apunte escrito sobre una copia vieja
-// borraría lo que se apuntó después.
-async function saldosDelServidor() {
-  const token = getStoredAdminToken();
-  const res = await fetchConLimite(`${API_BASE}/balances`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-  return res.ok ? res.json() : null;
-}
 
 // ¿Pide algo de la app que no es el cuadrante? (tarifa, un apunte en Saldos, un festivo)
 const PIDE_TARIFA = /\btarifa\b|\bcobra(r|n)?\b|\d\s*(€|euros?)\s*(\/|la|por|a la)\s*h(ora)?\b/;
 const PIDE_APUNTE = /\b(apunta(le)?|anota(le)?|registra|suma(le)|resta(le)|descuenta(le)?|abona(le)?)\b|\b(le|les) (he|hemos|han) (pagado|dado|adelantado)\b|\b(adelanto|efectivo|bizum)\b/;
-const PIDE_FESTIVO = /\b(festivo|festiva|fiesta)\b/;
+const PIDE_FESTIVO = /\bfestiv[oa]s?\b|\b(es|sera|hay) fiesta\b|\bdia de fiesta\b/; // «la fiesta de Marta» es un evento
 export const pideAccionDeApp = (peticion) => {
   const p = plano(peticion);
   return PIDE_TARIFA.test(p) || PIDE_APUNTE.test(p) || PIDE_FESTIVO.test(p);
@@ -104,7 +95,7 @@ export function esquemaAcciones(nombres = []) {
 // Lo que se le manda: hoy y la semana abierta (para «el lunes», «ayer»), el equipo por su
 // nombre (nada de tarifas ni saldos: no le hacen falta) y el catálogo.
 export function promptDeAcciones({ peticion, equipo = [], semana = null, ahora = new Date() }) {
-  const dias = semana?.meta?.dateRange ? ` Semana abierta: ${semana.meta.dateRange} (${DIAS_SEMANA_ABIERTA.map(d => getDayLabel(semana, d, ahora)).join(', ')}).` : '';
+  const dias = semana?.meta?.dateRange ? ` Semana abierta: ${semana.meta.dateRange} (${DIAS_SEMANA.map(d => getDayLabel(semana, d, ahora)).join(', ')}).` : '';
   return [
     `Asistente de Gula Logística. Hoy es ${formatWeekdayDayMonth(ahora)} de ${ahora.getFullYear()} (${aIso(ahora)}).${dias}`,
     `Equipo: ${equipo.map(w => w.name).join(', ')}.`,
@@ -130,8 +121,6 @@ export async function pedirAcciones({ peticion, apiKey, equipo = [], semana = nu
   return { acciones: Array.isArray(json?.acciones) ? json.acciones : [], aclaracion: String(json?.aclaracion || '').trim(), uso };
 }
 
-const textoDisponibilidad = (persona, nuevas) => agruparRestricciones(nuevas.map(r => ({ ...r, persona, fija: true })))
-  .map(g => textoGrupo(g, { conPersona: false })).join('; ');
 
 // Comprueba una acción y prepara lo que hace falta para aplicarla y enseñarla:
 // → { tipo, ok, texto (su efecto, para la tarjeta), aviso?, error?, …lo que usa aplicarAcciones }.
@@ -206,8 +195,8 @@ export function validarAccion(a = {}, { equipo = [], fichajes = [], festivos = f
     const sustituye = (Array.isArray(persona.disponibilidad) ? persona.disponibilidad : []).filter(r => dias.has(r.dia));
     return {
       tipo: 'disponibilidad', ok: true, persona: persona.name, nuevas,
-      texto: `Disponibilidad fija de ${persona.name}: ${textoDisponibilidad(persona.name, nuevas)}`,
-      aviso: sustituye.length ? `Sustituye lo que tenía: ${textoDisponibilidad(persona.name, sustituye)}.` : '',
+      texto: `Disponibilidad fija de ${persona.name}: ${textosFijos(nuevas, persona.name).join('; ')}`,
+      aviso: sustituye.length ? `Sustituye lo que tenía: ${textosFijos(sustituye, persona.name).join('; ')}.` : '',
     };
   }
 
@@ -222,7 +211,7 @@ export function validarAccion(a = {}, { equipo = [], fichajes = [], festivos = f
 //   usarSaldos(datos) (la copia en pantalla). El resto tiene su valor de siempre.
 export async function aplicarAcciones(acciones = [], {
   equipo = [], guardarFichas, cambiarTarifaFichajes, usarSaldos = () => {},
-  leerSaldos = saldosDelServidor, guardarSaldo = saveWorkerBalanceToAPI,
+  leerSaldos = () => fetchBalancesFromAPI({ soloServidor: true }), guardarSaldo = saveWorkerBalanceToAPI,
   festivos = festivosLocales(), guardarFestivos = guardarFestivosLocales,
 } = {}) {
   const resultado = acciones.map(() => ({ ok: false, error: '' }));
@@ -274,7 +263,7 @@ export async function aplicarAcciones(acciones = [], {
         const breakdown = [...(base.breakdown || []), ...suyosApuntes.map(i => acciones[i].item)];
         const cambiosSaldo = {
           ...(ficha ? {} : base),
-          ...(suyosApuntes.length ? { breakdown, currentBalance: redondear(breakdown.reduce((s, it) => s + (Number(it.amount) || 0), 0)) } : {}),
+          ...(suyosApuntes.length ? { breakdown, currentBalance: saldoDeApuntes(breakdown) } : {}),
           ...(tarifa ? tarifaEnFichaDeSaldos(base, tarifa.tarifa) : {}),
         };
         const ok = await intentar(() => guardarSaldo(base.id, cambiosSaldo));

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tipoDeConcepto, fechaDeConcepto, conceptosDelPeriodo, horasDeConcepto, llevaFechaAparte, conFecha, diasSugeridos } from './conceptosSaldos';
+import { tipoDeConcepto, fechaDeConcepto, conceptosDelPeriodo, horasDeConcepto, llevaFechaAparte, conFecha, diasSugeridos, saldoDeApuntes } from './conceptosSaldos';
 import { rangoDePeriodo } from './periodosFinancieros';
 
 const ahora = new Date(2026, 8, 28, 12, 0);
@@ -163,5 +163,12 @@ describe('diasSugeridos (al poner fecha a un apunte)', () => {
     expect(diasSugeridos(sinFecha, { breakdown: [sinFecha] }, septiembre, ahora)).toHaveLength(12);
     const muchos = Array.from({ length: 12 }, (_, i) => turno(9, i + 1));
     expect(diasSugeridos(conDia, { breakdown: [conDia] }, muchos, ahora)).toEqual(['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12']);
+  });
+});
+
+describe('saldoDeApuntes', () => {
+  it('suma lo apuntado a mano, al céntimo, aunque algún importe venga como texto o falte', () => {
+    expect(saldoDeApuntes([{ amount: 0.1 }, { amount: 0.2 }, { amount: '10' }, {}])).toBe(10.3);
+    expect(saldoDeApuntes()).toBe(0);
   });
 });
