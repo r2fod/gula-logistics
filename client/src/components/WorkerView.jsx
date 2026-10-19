@@ -58,8 +58,9 @@ export default function WorkerView({
   const currentTime = useAhora(15000);
   const [startLabel] = useState(() => START_JORNADA_LABELS[Math.floor(Math.random() * START_JORNADA_LABELS.length)]);
   const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
-  const todayKeyInitial = dayNames[currentTime.getDay()];
-  const [selectedDayKey, setSelectedDayKey] = useState(todayKeyInitial);
+  // 'hoy' = el día de hoy de la semana que se ve, o toda la semana si hoy no cae en ella
+  // (se resuelve abajo, cuando ya se sabe qué semana es: diaElegido).
+  const [selectedDayKey, setSelectedDayKey] = useState('hoy');
   const [viewModeType, setViewModeType] = useState('calendar'); // 'calendar' | 'graph'
   const [workerTab, setWorkerTab] = useState('tasks'); // 'tasks' | 'history'
   // Solo para AÑADIR un fichaje manual olvidado (POST, sin admin) — nunca
@@ -325,8 +326,16 @@ export default function WorkerView({
     }));
 
 
-  const todayIndex = new Date().getDay();
-  const todayKey = dayNames[todayIndex];
+  // «Hoy» es el día de ESTA semana que cae hoy por fecha real; si la semana que se ve no
+  // es la de hoy (el lunes ya se enseña la siguiente a quien acabó), no hay «hoy» en ella.
+  // Antes se miraba solo el nombre del día: el lunes 19 marcaba «LUN 26 · HOY» y enseñaba
+  // las tareas del lunes siguiente como si fueran de hoy. Sin fechas legibles, por nombre.
+  const rangoSemana = getWeekRange(activeWeekData, currentTime);
+  const hoySinHora = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate()).getTime();
+  const todayKey = rangoSemana
+    ? (['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'].find(d => resolveTaskDate(rangoSemana, d)?.getTime() === hoySinHora) || null)
+    : dayNames[currentTime.getDay()];
+  const diaElegido = selectedDayKey === 'hoy' ? (todayKey || 'all') : selectedDayKey;
 
   // Para deshabilitar "Fichar" en un día que todavía no ha llegado (evita
   // fichar por error una tarea de dentro de varios días). Compara por
@@ -355,6 +364,10 @@ export default function WorkerView({
     return ordinal > todayOrdinal;
   };
 
+  // Con el turno abierto, la próxima tarea puede ser de otro día (hoy no le queda nada):
+  // entonces no es «en curso», es la próxima, y se dice de qué día.
+  const proximaEsOtroDia = !!proximaTarea?.dayKey && isDayInFuture(proximaTarea.dayKey);
+
   // Filtered days list based on selected tab. En "Todos" se usa la lista
   // sin 'lunes' (daysWithActivitiesForTotals) para no mostrar la misma
   // tarjeta de domingo/lunes duplicada dos veces seguidas — seleccionando
@@ -363,7 +376,7 @@ export default function WorkerView({
   // NUEVO COMPORTAMIENTO: Para que el trabajador no tenga que hacer scroll,
   // ordenamos los días colocando HOY y los días futuros primero, y enviamos
   // los días pasados (ya completados) al final.
-  const displayedDays = selectedDayKey === 'all'
+  const displayedDays = diaElegido === 'all'
     ? [...daysWithActivitiesForTotals].sort((a, b) => {
         const isPast = (dayKey) => dayKey !== todayKey && !isDayInFuture(dayKey);
         const aPast = isPast(a.key);
@@ -372,7 +385,7 @@ export default function WorkerView({
         if (!aPast && bPast) return -1;
         return 0;
       })
-    : daysWithActivities.filter(d => d.key === selectedDayKey);
+    : daysWithActivities.filter(d => d.key === diaElegido);
 
   // domingo y lunes comparten sundayMonday.tasks bajo un único bucket real
   // ('domingo' es la clave de storage) — toStorageDayKey evita repetir esa
@@ -532,14 +545,14 @@ export default function WorkerView({
                   <div className="flex items-center justify-between gap-2 border-b border-emerald-500/20 pb-2 mb-2">
                     <div className="flex items-center space-x-1.5 text-emerald-400">
                       <Target className="w-4 h-4" />
-                      <span className="text-[11px] font-black uppercase tracking-wider">TAREA EN CURSO</span>
+                      <span className="text-[11px] font-black uppercase tracking-wider">{proximaEsOtroDia ? 'PRÓXIMA TAREA' : 'TAREA EN CURSO'}</span>
                     </div>
                   </div>
                   
                   {proximaTarea ? (
                     <>
                       <p className="text-xs font-bold text-white mb-1">{proximaTarea.taskName}</p>
-                      {proximaTarea.timeFrame && <p className="text-[11px] text-slate-400 mb-3">{proximaTarea.timeFrame}</p>}
+                      {(proximaTarea.timeFrame || proximaEsOtroDia) && <p className="text-[11px] text-slate-400 mb-3">{[proximaEsOtroDia && getDayLabel(activeWeekData, proximaTarea.dayKey), proximaTarea.timeFrame].filter(Boolean).join(' · ')}</p>}
                       {(() => {
                         const isLocked = proximaTarea.dayKey && isDayInFuture(proximaTarea.dayKey);
                         return (
@@ -827,21 +840,23 @@ export default function WorkerView({
           <>
             {/* HORIZONTAL SCROLLABLE DAY PILLS BAR */}
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 pt-1 -mx-1 px-1 shrink-0">
+              {todayKey && (
               <button
                 onClick={() => setSelectedDayKey(todayKey)}
                 className={`px-3 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all shrink-0 flex items-center gap-1.5 border ${
-                  selectedDayKey === todayKey
+                  diaElegido === todayKey
                     ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
                     : 'bg-slate-950 text-slate-200 border-slate-800 hover:text-white'
                 }`}
               >
                 <span><Zap className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Hoy ({weekDays.find(d => d.key === todayKey)?.label || 'Hoy'})</span>
               </button>
+              )}
 
               <button
                 onClick={() => setSelectedDayKey('all')}
                 className={`px-3 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all shrink-0 border ${
-                  selectedDayKey === 'all'
+                  diaElegido === 'all'
                     ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
                     : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
                 }`}
@@ -850,7 +865,7 @@ export default function WorkerView({
               </button>
 
               {daysWithActivities.map((day) => {
-                const isSelected = selectedDayKey === day.key;
+                const isSelected = diaElegido === day.key;
                 const hasActivity = day.totalCount > 0;
                 const isSaturday = day.key === 'sabado';
                 const isToday = day.key === todayKey;
@@ -894,9 +909,9 @@ export default function WorkerView({
                 <h3 className="text-base sm:text-lg font-extrabold text-white font-outfit flex items-center space-x-2">
                   <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
                   <span>
-                    {selectedDayKey === 'all' 
+                    {diaElegido === 'all' 
                       ? 'Desglose Completo de tu Cuadrante Semanal' 
-                      : `Tareas Asignadas para ${weekDays.find(d => d.key === selectedDayKey)?.title}`}
+                      : `Tareas Asignadas para ${weekDays.find(d => d.key === diaElegido)?.title}`}
                   </span>
                 </h3>
                 <span className="text-[11px] sm:text-xs text-slate-400 font-semibold bg-slate-950 px-3 py-1 rounded-xl border border-slate-800 self-start sm:self-auto">
@@ -906,12 +921,12 @@ export default function WorkerView({
 
               {/* Un solo día: a todo el ancho. Dos días: 2 columnas que llenan la fila. Tres o más: hasta 3 columnas */}
               <div className={`grid grid-cols-1 gap-3 sm:gap-4 ${
-                displayedDays.filter(d => selectedDayKey !== 'all' || d.totalCount > 0).length > 1 
-                  ? (displayedDays.filter(d => selectedDayKey !== 'all' || d.totalCount > 0).length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-2 2xl:grid-cols-3') 
+                displayedDays.filter(d => diaElegido !== 'all' || d.totalCount > 0).length > 1 
+                  ? (displayedDays.filter(d => diaElegido !== 'all' || d.totalCount > 0).length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-2 2xl:grid-cols-3') 
                   : ''
               } flex-1 items-stretch`}>
                 {displayedDays.map((dayGroup) => {
-                  if (dayGroup.totalCount === 0 && selectedDayKey === 'all') return null;
+                  if (dayGroup.totalCount === 0 && diaElegido === 'all') return null;
 
                   return (
                     <div 

@@ -58,7 +58,7 @@ export default function DisponibilidadSemana({ semana, equipo = [], esBorrador =
 
   const anadirDesdeTexto = (e) => {
     e.preventDefault();
-    const entendidas = interpretarDisponibilidad(texto, equipo);
+    const entendidas = interpretarDisponibilidad(texto, equipo, { semana });
     if (!entendidas) { setMensaje({ tipo: 'error', texto: 'No lo he entendido. Prueba «Luis no puede el jueves» o «Ana solo de 9 a 14 el viernes», o usa las opciones de abajo.' }); return; }
     setTexto('');
     anadir(entendidas);

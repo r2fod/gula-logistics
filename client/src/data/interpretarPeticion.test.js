@@ -45,4 +45,37 @@ describe('interpretarDisponibilidad (sin Gemini, 0 tokens)', () => {
     expect(interpretarDisponibilidad('Tomás solo puede el jueves', equipo)).toBeNull();
     expect(interpretarDisponibilidad('Reorganiza las cargas del miércoles', equipo)).toBeNull();
   });
+
+  it('BUG evitado: «no puede hasta las 15» se guardaba como «no puede en todo el día»; y «a partir de las 18», igual', () => {
+    expect(leer('Tomás no puede hasta las 15:00 el jueves')).toEqual(['Tomás jueves solo 15:00 23:59']);
+    expect(leer('Ana no puede a partir de las 18 el viernes')).toEqual(['Ana viernes solo 06:00 18:00']);
+    expect(leer('Luis no está hasta las 10 el martes')).toEqual(['Luis martes solo 10:00 23:59']);
+  });
+
+  it('BUG evitado: «no puede de 9 a 14» se guardaba al revés («solo puede de 9 a 14»): ahora no se adivina', () => {
+    expect(interpretarDisponibilidad('Luis no puede de 9 a 14 el viernes', equipo)).toBeNull();
+  });
+
+  describe('hoy, mañana y pasado mañana (el lunes 19, con la semana del 20 al 25 abierta)', () => {
+    const semana = { meta: { dateRange: 'Del 20 al 25 de Octubre de 2026' } };
+    const ahora = new Date(2026, 9, 19, 10);
+    const conFecha = (texto, cuando = ahora) => (interpretarDisponibilidad(texto, equipo, { semana, ahora: cuando }) || []).map(({ persona, dia, tipo }) => `${persona} ${dia} ${tipo}`);
+
+    it('«mañana» es el martes 20 y «pasado mañana» el miércoles 21', () => {
+      expect(conFecha('Tomás no viene mañana')).toEqual(['Tomás martes no']);
+      expect(conFecha('Ana no puede pasado mañana')).toEqual(['Ana miercoles no']);
+      expect(conFecha('Luis no puede hoy', new Date(2026, 9, 22, 9))).toEqual(['Luis jueves no']);
+    });
+
+    it('«por la mañana» y «de la mañana» son una franja, no el día de mañana', () => {
+      expect(conFecha('Eva no puede el jueves por la mañana')).toEqual(['Eva jueves solo']);
+      expect(conFecha('Pau hasta las 11 de la mañana el viernes')).toEqual(['Pau viernes solo']);
+    });
+
+    it('si ese día cae fuera de la semana abierta, no se adivina', () => {
+      expect(conFecha('Tomás no puede hoy')).toEqual([]); // el lunes 19 es de la semana anterior
+      expect(interpretarDisponibilidad('Tomás no viene mañana', equipo)).toBeNull(); // sin semana
+    });
+  });
 });
+

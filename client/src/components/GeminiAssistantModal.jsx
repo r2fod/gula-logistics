@@ -67,21 +67,27 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
     // Cada petición por el camino que menos gasta (editorIa.js): disponibilidad sin
     // Gemini, cambios concretos en modo compacto, la semana entera solo si hace falta.
     // La regla para la memoria solo se busca si la frase suena a regla, y a la vez.
-    const [r, recuerdo] = await Promise.all([
-      resolverPeticion({ peticion: prompt, apiKey, semana: activeWeekData, equipo: workersList, memorias: memoria.activas, aprendizaje, semanas }),
-      pareceRegla(prompt) ? extraerMemoriaDelPrompt({ prompt, apiKey }) : Promise.resolve(null),
-    ]);
-    setGeneratedJson(r.generatedJson);
-    setDeGemini(r.generatedJson);
-    setResultado(r);
-    if (r.errorMsg) setErrorMsg(r.errorMsg);
+    // Pase lo que pase, deja de «pensar»: antes un fallo fuera de Gemini la dejaba así.
+    try {
+      const [r, recuerdo] = await Promise.all([
+        resolverPeticion({ peticion: prompt, apiKey, semana: activeWeekData, equipo: workersList, memorias: memoria.activas, aprendizaje, semanas }),
+        pareceRegla(prompt) ? extraerMemoriaDelPrompt({ prompt, apiKey }) : Promise.resolve(null),
+      ]);
+      setGeneratedJson(r.generatedJson);
+      setDeGemini(r.generatedJson);
+      setResultado(r);
+      if (r.errorMsg) setErrorMsg(r.errorMsg);
 
-    if (recuerdo) {
-      const regla = await memoria.proponer(recuerdo);
-      if (regla?.estado === 'propuesta') setPropuesta(regla);
+      if (recuerdo) {
+        const regla = await memoria.proponer(recuerdo);
+        if (regla?.estado === 'propuesta') setPropuesta(regla);
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(`Algo ha fallado al preparar la petición (${err.message}). No se ha tocado nada; prueba a escribirla de otra forma.`);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   // Lo que avisosDeSemana encontró en la propuesta se le devuelve a Gemini para que lo
@@ -90,17 +96,21 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
     setLoading(true);
     setErrorMsg('');
     const disponibilidad = generatedJson.disponibilidad;
-    const r = await editarConGemini({
-      peticion: promptCorreccion(avisos), apiKey, semana: { ...activeWeekData, ...generatedJson }, equipo: workersList,
-      restricciones: [...restriccionesDelEquipo(workersList), ...(disponibilidad || restriccionesDe(activeWeekData))], limites: limitesDe(activeWeekData), memorias: memoria.activas,
-    });
-    if (r.generatedJson) {
-      setGeneratedJson(disponibilidad ? { ...r.generatedJson, disponibilidad } : r.generatedJson);
-      setDeGemini(r.generatedJson);
-      setResultado({ ...r, via: 'cambios' });
+    try {
+      const r = await editarConGemini({
+        peticion: promptCorreccion(avisos), apiKey, semana: { ...activeWeekData, ...generatedJson }, equipo: workersList,
+        restricciones: [...restriccionesDelEquipo(workersList), ...(disponibilidad || restriccionesDe(activeWeekData))], limites: limitesDe(activeWeekData), memorias: memoria.activas,
+      });
+      if (r.generatedJson) {
+        setGeneratedJson(disponibilidad ? { ...r.generatedJson, disponibilidad } : r.generatedJson);
+        setDeGemini(r.generatedJson);
+        setResultado({ ...r, via: 'cambios' });
+      }
+      if (r.errorMsg) setErrorMsg(r.errorMsg);
+      else if (!r.generatedJson) setErrorMsg('Gemini no ha encontrado cómo corregirlo: revísalo a mano en el editor antes de aplicar.');
+    } finally {
+      setLoading(false);
     }
-    if (r.errorMsg) setErrorMsg(r.errorMsg);
-    setLoading(false);
   };
 
   const avisos = generatedJson ? avisosDePropuesta({

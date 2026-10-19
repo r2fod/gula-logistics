@@ -84,3 +84,25 @@ describe('el asistente sabe sin Gemini y aprende de las correcciones', () => {
     expect(preferenciasDeCorrecciones(antes, deGemini, deGemini)).toEqual([]);
   });
 });
+
+describe('el día de la pregunta dice cuándo, no forma parte del texto de la tarea', () => {
+  const conCargas = {
+    meta: { dateRange: 'Del 6 al 11 de Octubre de 2026' },
+    schedule: {
+      martes: { tasks: [{ id: 'm1', text: 'Boda Uno - Carga camión', timeFrame: '08:00 - 10:00', assigned: ['Ana'] }] },
+      miercoles: { tasks: [] }, jueves: { tasks: [{ id: 'j1', text: 'Logística Carga - Carga camión Sur', timeFrame: '16:00 - 18:00', assigned: ['Luis', 'Eva'] }] }, viernes: { tasks: [] },
+    },
+    saturdaySpecial: { weddings: [] }, sundayMonday: { tasks: [] },
+  };
+
+  it('BUG evitado: «la carga del jueves» buscaba «jueves» en el texto y decía que no estaba', () => {
+    const [item] = pideComprobarTareas('¿Está la carga del jueves en el planning?').items;
+    expect(buscarEnSemana(conCargas, item).map(e => [e.dia, e.personas])).toEqual([['jueves', ['Luis', 'Eva']]]);
+  });
+
+  it('BUG evitado: «¿quién hace la carga del jueves?» contestaba quién SUELE hacer cargas: ahora, quién la tiene esta semana', () => {
+    const r = respuestaDeConocimiento('¿Quién hace la carga del jueves?', { equipo, semana: conCargas });
+    expect(r).toMatch(/^✅ «carga del jueves» ya está: Jueves 8, 16:00 - 18:00 — «Logística Carga - Carga camión Sur» \(Luis, Eva\)\.$/);
+    expect(respuestaDeConocimiento('¿Quién suele hacer la carga del jueves?', { equipo, semanas: { a: conCargas }, semana: conCargas })).toMatch(/otras semanas/);
+  });
+});

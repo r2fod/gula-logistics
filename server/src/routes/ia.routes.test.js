@@ -27,7 +27,7 @@ describe('POST /api/ia/gemini', () => {
     expect(r.status).toBe(200);
     expect(r.body.candidates).toHaveLength(1);
     const [url, opciones] = google.mock.calls[0];
-    expect(url).toContain('gemini-2.5-flash');
+    expect(url).toContain('gemini-flash-latest');
     expect(url).not.toContain('CLAVE-DEL-SERVIDOR');
     expect(opciones.headers['x-goog-api-key']).toBe('CLAVE-DEL-SERVIDOR');
   });
@@ -38,7 +38,7 @@ describe('POST /api/ia/gemini', () => {
       .mockResolvedValueOnce({ status: 200, json: async () => ({ ok: 1 }) });
     vi.stubGlobal('fetch', google);
     expect((await request(app()).post('/api/ia/gemini').set('Authorization', admin()).send(cuerpo)).body).toEqual({ ok: 1 });
-    expect(google.mock.calls[1][0]).toContain('gemini-flash-latest');
+    expect(google.mock.calls[1][0]).toContain('gemini-flash-lite-latest');
     delete process.env.GEMINI_API_KEY;
     expect((await request(app()).post('/api/ia/gemini').set('Authorization', admin()).send(cuerpo)).status).toBe(503);
   });

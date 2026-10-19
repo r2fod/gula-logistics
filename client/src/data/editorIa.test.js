@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { elegirModo, pareceRegla, semanaEnLineas, aplicarCambios, promptDeCambios, editarConGemini, resolverPeticion, revisarBorradorConGemini } from './editorIa';
+import { elegirModo, pareceRegla, semanaEnLineas, aplicarCambios, promptDeCambios, editarConGemini, resolverPeticion, revisarBorradorConGemini, esPregunta } from './editorIa';
 import { generateScheduleWithGemini } from './geminiScheduleService';
 
 const equipo = [{ name: 'Ana', role: 'Conductora' }, { name: 'Luis', role: 'Apoyo logística' }, { name: 'Eva', role: 'Limpieza' }];
@@ -243,5 +243,61 @@ describe('el asistente contesta lo que ya sabe sin gastar Gemini', () => {
     const r = await resolverPeticion({ peticion: '¿Quién suele llevar el camión Norte?', apiKey: 'k', semana: semana(), equipo, aprendizaje });
     expect(fetchMock).not.toHaveBeenCalled();
     expect(r).toMatchObject({ via: 'local', generatedJson: null, resumen: 'Con el Camión Norte suelen ir: Luis (4 veces) (veces juntos en el planning).' });
+  });
+});
+
+describe('preguntas, hoy y «nada que cambiar»', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const semanaFutura = () => ({ ...semana(), meta: { dateRange: 'Del 20 al 25 de Octubre de 2026' } });
+
+  it('distingue una pregunta de un cambio pedido con educación', () => {
+    expect(esPregunta('¿Qué tareas tiene Ana el jueves?')).toBe(true);
+    expect(esPregunta('cuantas horas lleva Luis esta semana')).toBe(true);
+    expect(esPregunta('¿Puedes poner a Luis en la carga?')).toBe(false);
+    expect(esPregunta('¿Cambia la recogida a las 8?')).toBe(false);
+    expect(esPregunta('Pon a Luis en la carga')).toBe(false);
+  });
+
+  it('BUG evitado: una pregunta iba por «cambios» y acababa en «no ha propuesto ningún cambio»: ahora Gemini contesta en texto', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(respuesta({ respuesta: 'Ana: martes de 12:00 a 15:00, la descarga.' }));
+    vi.stubGlobal('fetch', fetchMock);
+    const r = await resolverPeticion({ peticion: '¿Qué tareas tiene Ana esta semana?', apiKey: 'k', semana: semana(), equipo });
+    expect(r).toMatchObject({ via: 'pregunta', generatedJson: null, errorMsg: '', resumen: 'Ana: martes de 12:00 a 15:00, la descarga.' });
+    const { generationConfig, contents } = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(generationConfig.responseSchema.properties).toHaveProperty('respuesta');
+    expect(contents[0].parts[0].text).toMatch(/Pregunta: ¿Qué tareas tiene Ana esta semana\?/);
+  });
+
+  it('BUG evitado: Gemini no sabía qué día es hoy («mañana» no tenía a qué referirse)', () => {
+    const texto = promptDeCambios({ semana: semanaFutura(), equipo, peticion: 'Pon a Luis en la carga de mañana', ahora: new Date(2026, 9, 19, 10) });
+    expect(texto).toMatch(/Hoy es lunes, 19 de octubre/);
+    expect(texto).toMatch(/mar=Martes 20/);
+  });
+
+  it('«X no viene mañana» se entiende sin Gemini con el día de mañana dentro de la semana abierta', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const r = await resolverPeticion({ peticion: 'Ana no viene mañana', apiKey: 'k', semana: semanaFutura(), equipo, ahora: new Date(2026, 9, 19, 10) });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(r.generatedJson.disponibilidad).toEqual([expect.objectContaining({ persona: 'Ana', dia: 'martes', tipo: 'no' })]);
+  });
+
+  it('si Gemini no propone cambios (una regla para siempre, o ya se cumple) no es un error: lo dice', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(respuesta({ cambios: [] })));
+    const r = await editarConGemini({ peticion: 'A partir de ahora las bodas grandes llevan un apoyo más', apiKey: 'k', semana: semana(), equipo });
+    expect(r).toMatchObject({ generatedJson: null, errorMsg: '', aplicados: 0 });
+    expect(r.resumen).toMatch(/no ve nada que cambiar/);
+  });
+
+  it('si el modelo no acepta el ajuste de razonamiento (400), lo repite CON el esquema y sin ese ajuste', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({}) })
+      .mockResolvedValueOnce(respuesta({ cambios: [{ op: 'personas', t: 'T2', personas: ['Luis'] }] }));
+    vi.stubGlobal('fetch', fetchMock);
+    const r = await editarConGemini({ peticion: 'Pon solo a Luis en la descarga', apiKey: 'k', semana: semana(), equipo });
+    expect(r.errorMsg).toBe('');
+    const segundo = JSON.parse(fetchMock.mock.calls[1][1].body).generationConfig;
+    expect(segundo.responseSchema).toBeDefined();
+    expect(segundo.thinkingConfig).toBeUndefined();
   });
 });

@@ -7,10 +7,11 @@ import { requireAdmin } from '../middleware/requireAdmin.js';
 const router = express.Router();
 const API = 'https://generativelanguage.googleapis.com/v1beta';
 
-// Los de siempre, por orden (el cliente usa la misma lista, GEMINI_MODELS). Google los
-// va retirando: si ninguno existe (404), se le pregunta cuáles tiene esta clave y se
+// Los de siempre, por orden (el cliente usa la misma lista, GEMINI_MODELS): primero los
+// alias que Google mantiene al día (`gemini-2.5-flash` da 404 a las claves nuevas desde
+// octubre de 2026). Si ninguno existe (404), se le pregunta cuáles tiene esta clave y se
 // elige el mejor Flash (modeloDescubierto). El que funciona se recuerda para la próxima.
-const MODELOS = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+const MODELOS = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash'];
 let modeloRecordado = null;
 export const olvidarModeloRecordado = () => { modeloRecordado = null; }; // para los tests
 

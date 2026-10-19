@@ -186,3 +186,34 @@ describe('WorkerView — jornada abierta: la tarea en curso y «Marcar como comp
     expect(screen.getByRole('button', { name: /FINALIZAR JORNADA/ })).toBeInTheDocument();
   });
 });
+
+describe('WorkerView — qué día es «hoy»', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('BUG evitado: el lunes 21 (cola de otra semana) marcaba «LUN 28 · HOY» y enseñaba sus tareas como de hoy', () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 21, 10, 0, 0));
+    pintar();
+    expect(screen.queryByText('HOY')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Hoy \(/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /Toda la Semana/ }).className).toMatch(/bg-amber-500/);
+  });
+
+  it('dentro de la semana, «hoy» es el día de la fecha de hoy', () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 28, 9, 0, 0)); // lunes 28 = la cola de esta semana
+    pintar();
+    expect(screen.getByRole('button', { name: /^Hoy \(/ }).className).toMatch(/bg-amber-500/);
+    expect(screen.getByText('HOY').closest('button')).toHaveTextContent(/28/);
+  });
+});
+
+describe('WorkerView — la tarea de otro día no está «en curso»', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('en turno sin nada más hoy, la siguiente del martes sale como «PRÓXIMA TAREA», con su día', () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 8, 21, 10, 0, 0)); // lunes 21, antes de la semana
+    pintar([{ id: 'e1', workerName: 'Ana', type: 'entrada', timestamp: new Date(2026, 8, 21, 9, 0, 0).toISOString(), taskName: 'JORNADA' }]);
+    expect(screen.getByText('PRÓXIMA TAREA')).toBeInTheDocument();
+    expect(screen.queryByText('TAREA EN CURSO')).toBeNull();
+    expect(screen.getByText('Martes 22 · 09:00 - 10:00')).toBeInTheDocument();
+  });
+});

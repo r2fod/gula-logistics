@@ -20,6 +20,7 @@ import { descripcionParaIa } from './equipoRoles';
 import { interpretarDisponibilidad } from './interpretarPeticion';
 import { reajustarSemana } from './optimizadorPlanning';
 import { plano } from '../utils/texto';
+import { formatWeekdayDayMonth } from '../utils/dateUtils';
 import { buscarEnSemana, pideComprobarTareas, quienSueleHacerla, respuestaDeConocimiento, textoComprobacion } from './comprobarTareas';
 
 const DIAS = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'];
@@ -84,12 +85,14 @@ export function esquemaCambios(nombres = []) {
 }
 
 // El prompt más corto que sigue dando a Gemini todo lo que necesita para decidir bien.
-export function promptDeCambios({ semana, equipo = [], restricciones = [], limites = LIMITES_POR_DEFECTO, memorias = [], aprendizaje = null, peticion }) {
+// Lleva el día de hoy («mañana» o «esta tarde» no tenían a qué referirse). Con
+// `pregunta`, pide una respuesta en texto en vez de cambios.
+export function promptDeCambios({ semana, equipo = [], restricciones = [], limites = LIMITES_POR_DEFECTO, memorias = [], aprendizaje = null, peticion, ahora = new Date(), pregunta = false }) {
   const { lineas } = semanaEnLineas(semana);
   const dias = DIAS.map(d => `${ABREV[d]}=${getDayLabel(semana, d)}`).join(', ');
   const reglas = memorias.filter(esMemoriaActiva).map(m => m.content);
   return [
-    `Planificador de Gula Logística (logística de bodas y eventos). Semana ${semana?.meta?.dateRange || ''} (${dias}).`,
+    `Planificador de Gula Logística (logística de bodas y eventos). Hoy es ${formatWeekdayDayMonth(ahora)}. Semana ${semana?.meta?.dateRange || ''} (${dias}).`,
     `Equipo: ${equipo.map(descripcionParaIa).join('; ')}.`,
     restricciones.length ? `No disponible: ${textosAgrupados(restricciones).join('; ')}.` : '',
     reglas.length ? `Preferencias: ${reglas.join('; ')}.` : '',
@@ -97,8 +100,13 @@ export function promptDeCambios({ semana, equipo = [], restricciones = [], limit
     `Reglas: recogidas con 1 persona salvo que se pida; nadie en dos tareas a la vez; máx ${limites.maxHorasDia} h/día y ${limites.descansoMinHoras} h de descanso entre jornadas; limpieza solo limpia; el jefe supervisa y no carga; texto "EVENTO - Tarea"; las HECHA no se tocan.`,
     'Tareas (código|día|horario|tarea|personas):',
     ...lineas,
-    `Petición: ${peticion}`,
-    'Devuelve SOLO los cambios mínimos que pide la petición: no cambies horarios ni personas de otras tareas. Si piden añadir algo que ya está (aunque esté escrito distinto), no lo dupliques. op: personas (lista completa nueva), horario ("HH:MM-HH:MM"), texto, quitar, nueva (con dia, horario, texto, lugar y personas).',
+    ...(pregunta ? [
+      `Pregunta: ${peticion}`,
+      'Contesta en "respuesta", en español y corto (6 líneas como mucho), solo con lo que dicen estos datos; si con ellos no se puede saber, dilo. Nombra las tareas por su día, hora y texto, nunca por su código (T1…). No propongas cambios.',
+    ] : [
+      `Petición: ${peticion}`,
+      'Devuelve SOLO los cambios mínimos que pide la petición: no cambies horarios ni personas de otras tareas. Si piden añadir algo que ya está (aunque esté escrito distinto), no lo dupliques. op: personas (lista completa nueva), horario ("HH:MM-HH:MM"), texto, quitar, nueva (con dia, horario, texto, lugar y personas).',
+    ]),
   ].filter(Boolean).join('\n');
 }
 
@@ -149,11 +157,11 @@ const eventosDe = (semana) => (semana?.events || []).map(e => e?.name).filter(Bo
 // Lo común a un cambio concreto y a la revisión de un borrador: prompt compacto,
 // respuesta con solo los cambios y aplicarlos sobre una copia. Lanza si Gemini falla.
 // `soloNuevas`: la petición es SOLO añadir tareas; cualquier otro cambio que proponga se descarta.
-async function pedirCambios({ peticion, apiKey, semana, equipo, restricciones, limites, memorias, aprendizaje = null, soloNuevas = false }) {
+async function pedirCambios({ peticion, apiKey, semana, equipo, restricciones, limites, memorias, aprendizaje = null, soloNuevas = false, ahora = new Date() }) {
   const { mapa } = semanaEnLineas(semana);
   const { json, uso } = await pedirJsonAGemini({
     apiKey,
-    texto: promptDeCambios({ semana, equipo, restricciones, limites, memorias, aprendizaje, peticion }),
+    texto: promptDeCambios({ semana, equipo, restricciones, limites, memorias, aprendizaje, peticion, ahora }),
     esquema: esquemaCambios(nombresPermitidos({ equipo, semana })),
     temperatura: 0.2,
     // Razonamiento acotado: suficiente para decidir cambios concretos, sin gastar de más.
@@ -166,11 +174,13 @@ async function pedirCambios({ peticion, apiKey, semana, equipo, restricciones, l
 }
 
 // Petición → cambios de Gemini → planificación completa y revisada.
-// Devuelve lo mismo que generateScheduleWithGemini, más { aplicados, ignorados }.
-export async function editarConGemini({ peticion, apiKey, semana, equipo = [], restricciones = [], limites = LIMITES_POR_DEFECTO, memorias = [], aprendizaje = null, soloNuevas = false }) {
+// Devuelve lo mismo que generateScheduleWithGemini, más { aplicados, ignorados }. Sin
+// cambios no es un error (una regla para siempre, o la semana ya lo cumple): se dice.
+export async function editarConGemini({ peticion, apiKey, semana, equipo = [], restricciones = [], limites = LIMITES_POR_DEFECTO, memorias = [], aprendizaje = null, soloNuevas = false, ahora = new Date() }) {
   try {
-    const { plan, aplicados, ignorados, uso } = await pedirCambios({ peticion, apiKey, semana, equipo, restricciones, limites, memorias, aprendizaje, soloNuevas });
-    if (!aplicados) throw new Error(ignorados ? 'los cambios que propuso no se pueden aplicar (tareas hechas o que no existen)' : 'no ha propuesto ningún cambio');
+    const { plan, aplicados, ignorados, uso } = await pedirCambios({ peticion, apiKey, semana, equipo, restricciones, limites, memorias, aprendizaje, soloNuevas, ahora });
+    if (!aplicados && !ignorados) return { generatedJson: null, errorMsg: '', uso, aplicados: 0, ignorados: 0, resumen: 'Gemini no ve nada que cambiar en esta semana con esa petición.' };
+    if (!aplicados) throw new Error('los cambios que propuso no se pueden aplicar (tareas hechas o que no existen)');
     return { generatedJson: completarPlanGenerado(plan, { original: semana, equipo, eventNames: eventosDe(semana) }), errorMsg: '', uso, aplicados, ignorados };
   } catch (err) {
     console.error(err);
@@ -189,7 +199,7 @@ export async function revisarBorradorConGemini({ semana, apiKey, equipo = [], me
   const restricciones = restriccionesEfectivas(semana, equipo);
   const limites = limitesDe(semana);
   try {
-    const { plan, aplicados, uso } = await pedirCambios({ peticion: PETICION_REVISION, apiKey, semana, equipo, restricciones, limites, memorias, aprendizaje });
+    const { plan, aplicados, uso } = await pedirCambios({ peticion: PETICION_REVISION, apiKey, semana, equipo, restricciones, limites, memorias, aprendizaje, ahora });
     if (!aplicados) return { generatedJson: null, aplicados: 0, uso, avisos: [], errorMsg: '' };
     const propuesta = { ...semana, ...completarPlanGenerado(plan, { original: semana, equipo, eventNames: eventosDe(semana) }) };
     const reparada = reajustarSemana(propuesta, { equipo, restricciones, limites, ahora });
@@ -204,6 +214,36 @@ export async function revisarBorradorConGemini({ semana, apiKey, equipo = [], me
   }
 }
 
+// ¿Pregunta algo sin pedir que se cambie? («¿Qué hay el sábado?», «¿cuántas horas tiene
+// Ana?»). Antes iba por el camino de los cambios y acababa en «no ha propuesto ningún
+// cambio». «¿Puedes poner a Ana…?» es un cambio pedido con educación, no una pregunta.
+export function esPregunta(peticion) {
+  const p = plano(peticion);
+  const pregunta = /[?¿]/.test(peticion) || /^\s*(que|cuanto|cuanta|cuantos|cuantas|quien|quienes|como|cuando|donde|cual|cuales|por que)\b/.test(p);
+  return pregunta && !/\b(puedes|podrias|pon|ponle|ponlo|ponla|cambia|cambiale|mueve|quita|anade|asigna|rehaz|haz|crea|borra|elimina|sustituye|reorganiza|organiza|ajusta|planifica|genera)\b/.test(p);
+}
+
+// Una pregunta sobre la semana: Gemini contesta en texto con los mismos datos que ve
+// para un cambio (la semana en líneas, equipo, disponibilidad…). No cambia nada.
+// → { generatedJson: null, errorMsg, uso, resumen }
+export async function responderConGemini({ peticion, apiKey, semana, equipo = [], restricciones = [], limites = LIMITES_POR_DEFECTO, memorias = [], aprendizaje = null, ahora = new Date() }) {
+  try {
+    const { json, uso } = await pedirJsonAGemini({
+      apiKey,
+      texto: promptDeCambios({ semana, equipo, restricciones, limites, memorias, aprendizaje, peticion, ahora, pregunta: true }),
+      esquema: { type: 'OBJECT', properties: { respuesta: { type: 'STRING' } }, required: ['respuesta'] },
+      temperatura: 0.2,
+      extras: { thinkingConfig: { thinkingBudget: 512 } },
+    });
+    const respuesta = String(json?.respuesta || '').trim();
+    if (!respuesta) throw new Error('no ha contestado');
+    return { generatedJson: null, errorMsg: '', uso, resumen: respuesta };
+  } catch (err) {
+    console.error(err);
+    return { generatedJson: null, errorMsg: `No se pudo contestar con Gemini: ${err.message}.` };
+  }
+}
+
 // "¿Qué puedes hacer?", "ayuda"…: se contesta aquí, sin gastar Gemini.
 const PREGUNTA_DE_AYUDA = /\b(que (puedes|sabes) hacer|ayuda|como (funcionas|funciona|te uso|se usa)|que haces|para que sirves|instrucciones)\b/;
 export const esPreguntaDeAyuda = (peticion) => PREGUNTA_DE_AYUDA.test(plano(peticion));
@@ -213,19 +253,20 @@ export function textoDeAyuda(equipo = []) {
     'Trabajo sobre la semana abierta y siempre te enseño los cambios antes de aplicarlos:',
     `• Disponibilidad, sin gastar Gemini: «${a} no puede el jueves», «${b} solo de 9 a 14 el viernes», «${a} descansa el fin de semana».`,
     `• Cambios concretos: «Pon a ${b} en la carga del jueves», «Mueve la recogida del miércoles a las 8:00».`,
+    '• Preguntas sobre la semana: «¿Qué tareas tiene ' + a + ' el jueves?», «¿Quién hace la carga del viernes?».',
     '• Rehacer la semana: «Rehaz toda la semana repartiendo mejor las horas».',
     '• Reglas para siempre: «A partir de ahora, las bodas grandes llevan un apoyo más en la carga».',
   ].join('\n');
 }
 
 // El enrutador: cada petición por el camino que menos gasta.
-// → { generatedJson, errorMsg, via: 'local' | 'cambios' | 'completo', uso, resumen?, avisosExtra? }
+// → { generatedJson, errorMsg, via: 'local' | 'pregunta' | 'cambios' | 'completo', uso, resumen?, avisosExtra? }
 // En 'local', generatedJson lleva además `disponibilidad` (lo que se ha entendido),
 // para guardarlo en la semana al aplicar.
 export async function resolverPeticion({ peticion, apiKey, semana, equipo = [], memorias = [], aprendizaje = null, semanas = {}, ahora = new Date() }) {
   if (esPreguntaDeAyuda(peticion)) return { generatedJson: null, errorMsg: '', via: 'local', uso: null, resumen: textoDeAyuda(equipo) };
   // «¿Quién suele…?»: lo sabe la app (planning, grafo y fichajes), sin gastar Gemini.
-  const sabe = respuestaDeConocimiento(peticion, { aprendizaje, semanas, equipo });
+  const sabe = respuestaDeConocimiento(peticion, { aprendizaje, semanas, equipo, semana });
   if (sabe) return { generatedJson: null, errorMsg: '', via: 'local', uso: null, resumen: sabe };
 
   const restricciones = restriccionesEfectivas(semana, equipo);
@@ -241,11 +282,11 @@ export async function resolverPeticion({ peticion, apiKey, semana, equipo = [], 
     const faltan = resultados.filter(r => !r.encontradas.length);
     if (!faltan.length || !comprobacion.anadir) return { generatedJson: null, errorMsg: '', via: 'local', uso: null, resumen };
     const peticionAcotada = `Añade SOLO estas tareas, que faltan en la semana (no cambies ni quites ninguna otra): ${faltan.map(f => `«${f.item.texto}»${f.suelen.lista.length ? ` (suelen hacerla: ${f.suelen.lista.slice(0, 3).map(p => p.nombre).join(', ')})` : ''}`).join('; ')}. Elige día y hora sensatos según el resto de la semana.`;
-    const r = await editarConGemini({ peticion: peticionAcotada, apiKey, semana, equipo, restricciones, limites, memorias, aprendizaje, soloNuevas: true });
+    const r = await editarConGemini({ peticion: peticionAcotada, apiKey, semana, equipo, restricciones, limites, memorias, aprendizaje, soloNuevas: true, ahora });
     return { ...r, via: 'cambios', resumen, sugerencias: faltan.map(f => ({ item: f.item, suelen: f.suelen })) };
   }
 
-  const nuevas = interpretarDisponibilidad(peticion, equipo);
+  const nuevas = interpretarDisponibilidad(peticion, equipo, { semana, ahora });
   if (nuevas) {
     // En la semana solo se guardan las de la semana; las fijas del equipo cuentan igual.
     const todas = [...restriccionesDe(semana), ...nuevas];
@@ -259,8 +300,11 @@ export async function resolverPeticion({ peticion, apiKey, semana, equipo = [], 
     };
   }
 
-  if (elegirModo(peticion, semana) === 'cambios') {
-    return { ...(await editarConGemini({ peticion, apiKey, semana, equipo, restricciones, limites, memorias, aprendizaje })), via: 'cambios' };
+  if (esPregunta(peticion)) {
+    return { ...(await responderConGemini({ peticion, apiKey, semana, equipo, restricciones, limites, memorias, aprendizaje, ahora })), via: 'pregunta' };
   }
-  return { ...(await generateScheduleWithGemini({ prompt: peticion, apiKey, activeWeekData: semana, roster: equipo, aiMemories: memorias, aprendizaje })), via: 'completo' };
+  if (elegirModo(peticion, semana) === 'cambios') {
+    return { ...(await editarConGemini({ peticion, apiKey, semana, equipo, restricciones, limites, memorias, aprendizaje, ahora })), via: 'cambios' };
+  }
+  return { ...(await generateScheduleWithGemini({ prompt: peticion, apiKey, activeWeekData: semana, roster: equipo, aiMemories: memorias, aprendizaje, ahora })), via: 'completo' };
 }

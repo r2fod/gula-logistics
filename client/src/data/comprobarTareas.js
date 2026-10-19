@@ -46,6 +46,12 @@ export function pideComprobarTareas(peticion) {
   return { items, anadir: /\b(si no|anade|anadelo|anadela|anadelas|agrega|agregalo|agregala|agregalas|pon|ponlo|ponla|crea|crealo|incluye|incluyelo)\b/.test(p) };
 }
 
+// Un día en lo pedido («la carga del jueves») dice CUÁNDO es; no está en el texto de la
+// tarea. Antes se buscaba «jueves» en el texto y una carga del jueves «no estaba».
+const DIAS = ['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes'];
+const diasDe = (item) => item.claves.filter(c => DIAS.includes(c));
+const sinDias = (item) => ({ ...item, claves: item.claves.filter(c => !DIAS.includes(c)) });
+
 // ¿Es esta tarea (texto del planning) la que se pide? Mismo verbo y todas sus palabras clave.
 export const coincideConTarea = (texto, item) => {
   const t = plano(texto);
@@ -54,8 +60,9 @@ export const coincideConTarea = (texto, item) => {
 
 // Las tareas de la semana que ya son eso: [{ dia, etiqueta, texto, horario, personas }].
 export function buscarEnSemana(semana, item) {
+  const dias = diasDe(item);
   return tareasActivas(semana)
-    .filter(x => coincideConTarea(x.texto, item))
+    .filter(x => (!dias.length || dias.includes(x.dia)) && coincideConTarea(x.texto, sinDias(item)))
     .map(x => ({ dia: x.dia, etiqueta: getDayLabel(semana, x.dia), texto: String(x.texto || '').trim(), horario: x.tarea.timeFrame || '', personas: x.tarea.assigned || [] }));
 }
 
@@ -66,7 +73,7 @@ export function quienSueleHacerla(item, { semanas = {}, aprendizaje = null, equi
   const delEquipo = (nombre) => !equipo.length || !!personaDelFichaje(equipo, nombre, w => w.name);
   const veces = new Map();
   Object.values(semanas || {}).forEach(s => tareasActivas(s)
-    .filter(x => coincideConTarea(x.texto, item))
+    .filter(x => coincideConTarea(x.texto, sinDias(item)))
     .forEach(x => (x.tarea.assigned || []).filter(delEquipo).forEach(n => veces.set(n, (veces.get(n) || 0) + 1))));
   const porPlanning = [...veces].map(([nombre, n]) => ({ nombre, veces: n })).sort((a, b) => b.veces - a.veces);
   if (porPlanning.length) return { lista: porPlanning, fuente: 'planning' };
@@ -115,8 +122,10 @@ const TIPOS_EN_PREGUNTA = [
 
 // «¿Quién suele llevar el camión Norte / recoger el generador / hacer las cargas?»: se
 // contesta con lo aprendido (planning, grafo y fichajes), sin gastar Gemini. null si no
-// es una pregunta así o no hay datos para contestarla.
-export function respuestaDeConocimiento(peticion, { aprendizaje = null, semanas = {}, equipo = [] } = {}) {
+// es una pregunta así o no hay datos para contestarla. «¿Quién HACE la carga del
+// jueves?» (sin «suele») es de `semana`: dónde está y quién va (antes contestaba quién
+// suele hacer cargas).
+export function respuestaDeConocimiento(peticion, { aprendizaje = null, semanas = {}, equipo = [], semana = null } = {}) {
   const p = plano(peticion);
   if (!/\bquien(es)?\b/.test(p) || !/\b(suele|suelen|lleva|llevan|hace|hacen|va|van|conduce|conducen|mejor|normalmente)\b/.test(p)) return null;
   const lista = (personas, unidad) => personas.slice(0, 4).map(x => `${x.nombre} (${x[unidad]}${unidad === 'horas' ? ' h' : x[unidad] === 1 ? ' vez' : ' veces'})`).join(', ');
@@ -128,6 +137,9 @@ export function respuestaDeConocimiento(peticion, { aprendizaje = null, semanas 
   if (camion) return `Con el ${camion.camion} suelen ir: ${lista(camion.personas, 'veces')} (veces juntos en el planning).`;
 
   const items = itemsDeTexto(p);
+  if (items.length && semana && !/\b(suele|suelen|normalmente|mejor)\b/.test(p)) {
+    return textoComprobacion(items.map(item => ({ item, encontradas: buscarEnSemana(semana, item), suelen: quienSueleHacerla(item, { semanas, aprendizaje, equipo }) })));
+  }
   if (items.length) {
     const lineas = items.map(item => {
       const { lista: personas, fuente } = quienSueleHacerla(item, { semanas, aprendizaje, equipo });

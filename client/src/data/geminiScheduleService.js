@@ -10,6 +10,7 @@ import { limitesDe } from './disponibilidad';
 import { textoAprendizajeParaPrompt } from './aprendizajeFichajes';
 import { esMemoriaActiva } from './memoriaIa';
 import { llamarGeminiEnServidor } from './apiService';
+import { formatWeekdayDayMonth } from '../utils/dateUtils';
 
 export const GEMINI_API_KEY_STORAGE_KEY = 'gula_gemini_api_key';
 
@@ -69,7 +70,7 @@ export function buildWeekPrompt({ weekName, dateRange, trucks = [], workers = []
   return parts.filter(Boolean).join(' ');
 }
 
-function buildSystemPrompt({ semana = null, roster = [], aiMemories = [], aprendizaje = null, disponibles = null }) {
+function buildSystemPrompt({ semana = null, roster = [], aiMemories = [], aprendizaje = null, disponibles = null, ahora = new Date() }) {
   // Construimos las reglas de negocio dinámicamente basadas en los roles de los trabajadores
   const workerRules = roster.length > 0 ? roster.map(w => {
     const role = w.role.toLowerCase();
@@ -106,7 +107,9 @@ function buildSystemPrompt({ semana = null, roster = [], aiMemories = [], aprend
     ? 'La semana está vacía: créala entera con lo que pide el usuario.'
     : `PLANIFICACIÓN ACTUAL (las tareas con "completed": true ya están hechas: déjalas exactamente igual):\n${JSON.stringify(plan)}`;
 
+  // Hoy: sin él, «mañana» o «esta tarde» no tenían a qué día referirse.
   return `Eres el Asistente Experto en Logística de "Gula Logística" (catering y eventos en Valencia).
+HOY: ${formatWeekdayDayMonth(ahora)} de ${ahora.getFullYear()}.
 ${contexto}
 
 REGLAS DE NEGOCIO IMPORTANTES:
@@ -126,14 +129,14 @@ Responde SOLO con JSON con esta forma: {"schedule":{"martes":{"tasks":[...]},"mi
 Cada tarea: {"id","text","location","timeFrame","assigned":["nombre exacto"],"truck","event"} ("truck" y "event" solo si hacen falta; en sundayMonday añade "targetDay"). Cada boda del sábado: {"location","truck","details","timeFrame","assigned","event"}. No escribas enlaces de Maps ni el estado de hecha: la app los pone sola.`;
 }
 
-// Modelos a probar por orden. El código llevaba `gemini-1.5-flash`, ya retirado
-// por Google: la llamada fallaba siempre y el fallback enseñaba una demo.
-// `gemini-2.5-flash` es el estable vigente (sin fecha de retirada anunciada) y
-// `gemini-flash-latest` es un alias al Flash más reciente, por si el primero
-// se retira; `gemini-2.5-flash-lite`, de reserva. Se pasa al siguiente si el modelo
-// no existe (404) o si Google dice que está saturado (503, pasa a menudo con Flash).
-// El servidor (ia.routes.js) usa la misma lista.
-export const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.5-flash-lite'];
+// Modelos a probar por orden. Google los retira (el código llevaba `gemini-1.5-flash` y
+// luego `gemini-2.5-flash`, que desde octubre de 2026 da 404 a las claves nuevas): van
+// primero los alias que Google mantiene apuntando al Flash más reciente
+// (`gemini-flash-latest`, y de reserva `gemini-flash-lite-latest`); `gemini-2.5-flash`
+// queda al final para claves antiguas. Se pasa al siguiente si el modelo no existe (404)
+// o si Google dice que está saturado (503, pasa a menudo con Flash). El servidor
+// (ia.routes.js) usa la misma lista.
+export const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash'];
 const PROBAR_OTRO_MODELO = [404, 503];
 
 // POST a Gemini probando GEMINI_MODELS por orden. La clave va en la cabecera, no en la URL, para que no
@@ -202,19 +205,25 @@ export function validateGeneratedSchedule(json) {
 // generaba la semana nueva y salía con los eventos de la anterior. Un dato
 // inventado que parece real es peor que un error claro.
 // Una llamada a Gemini que tiene que devolver JSON: con `esquema` y `extras` (p. ej. el
-// tope de razonamiento) y, si el modelo no los acepta (400), otra vez sin ellos.
+// tope de razonamiento) y, si el modelo no los acepta (400), otra vez sin los `extras`
+// (cada generación de Gemini pide el razonamiento de otra forma) y, si aún no, sin nada.
 // → { json, uso: { entrada, respuesta, pensamiento, total } } (tokens). Lanza un Error
 // con la pista de qué hacer si falla.
 export async function pedirJsonAGemini({ apiKey, texto, esquema = null, temperatura = 0.3, extras = {} }) {
   const clave = (apiKey || '').trim();
-  const conAjustes = !!esquema || Object.keys(extras).length > 0;
-  const cuerpo = (completo) => JSON.stringify({
+  const cuerpo = ({ conEsquema, conExtras }) => JSON.stringify({
     contents: [{ role: 'user', parts: [{ text: texto }] }],
-    generationConfig: { responseMimeType: 'application/json', temperature: temperatura, ...(completo && esquema ? { responseSchema: esquema } : {}), ...(completo ? extras : {}) },
+    generationConfig: { responseMimeType: 'application/json', temperature: temperatura, ...(conEsquema && esquema ? { responseSchema: esquema } : {}), ...(conExtras ? extras : {}) },
   });
+  const intentos = [{ conEsquema: true, conExtras: true }];
+  if (Object.keys(extras).length) intentos.push({ conEsquema: true, conExtras: false });
+  if (esquema) intentos.push({ conEsquema: false, conExtras: false });
 
-  let res = await llamarGemini(clave, cuerpo(true));
-  if (res?.status === 400 && conAjustes) res = await llamarGemini(clave, cuerpo(false));
+  let res = await llamarGemini(clave, cuerpo(intentos[0]));
+  for (const intento of intentos.slice(1)) {
+    if (res?.status !== 400) break;
+    res = await llamarGemini(clave, cuerpo(intento));
+  }
 
   if (!res?.ok) {
     const status = res?.status || 0;
@@ -249,8 +258,8 @@ export async function pedirJsonAGemini({ apiKey, texto, esquema = null, temperat
   };
 }
 
-export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData = null, eventNames = null, roster = [], aiMemories = [], aprendizaje = null, disponibles = null }) {
-  const systemPrompt = buildSystemPrompt({ semana: activeWeekData, roster, aiMemories, aprendizaje, disponibles });
+export async function generateScheduleWithGemini({ prompt, apiKey, activeWeekData = null, eventNames = null, roster = [], aiMemories = [], aprendizaje = null, disponibles = null, ahora = new Date() }) {
+  const systemPrompt = buildSystemPrompt({ semana: activeWeekData, roster, aiMemories, aprendizaje, disponibles, ahora });
   const nombres = nombresPermitidos({ equipo: roster, disponibles, semana: activeWeekData });
   const eventos = eventNames || (activeWeekData?.events || []).map(e => e?.name).filter(Boolean);
 
