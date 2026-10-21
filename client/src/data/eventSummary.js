@@ -9,20 +9,24 @@ import { splitEventNames, getEventShares } from './eventNaming';
 // anotado en el planning para ese fichaje, si lo hay.
 // Devuelve [{ eventName, pax, totalCost, totalHours, horasEstimadas, workers: { [nombre]: {name, avatar, cost, hours} } }]
 // ordenado por coste descendente.
+// A qué evento(s) va un trozo de un turno → { eventNames, paxLocal }. El evento anotado en
+// el planning manda sobre el deducido del texto; un trozo repartido por el planning
+// (repartoPorPlanning.js) ya trae su evento.
+export function eventosDelTrozo(subTask, resolveEvent = null) {
+  const ctx = subTask.eventoPlanificado
+    ? { event: subTask.eventoPlanificado, pax: subTask.paxPlanificado }
+    : (resolveEvent ? resolveEvent(subTask.taskName) : null);
+  const planned = typeof ctx === 'string' ? ctx : ctx?.event;
+  const names = splitEventNames(planned || subTask.eventName || 'Sin Asignar / Extra');
+  return { eventNames: names.length > 0 ? names : ['Sin Asignar / Extra'], paxLocal: ctx && typeof ctx === 'object' ? ctx.pax : null };
+}
+
 export function summarizeByEvent(shifts = [], workersList = [], paxByEvent = {}, resolveEvent = null) {
   const acc = {};
 
   shifts.forEach(shift => {
     (shift.subTasks || []).forEach(subTask => {
-      // El evento anotado en el planning manda sobre el deducido del texto.
-      // Un trozo repartido por el planning (repartoPorPlanning.js) ya trae su evento.
-      const ctx = subTask.eventoPlanificado
-        ? { event: subTask.eventoPlanificado, pax: subTask.paxPlanificado }
-        : (resolveEvent ? resolveEvent(subTask.taskName) : null);
-      const planned = typeof ctx === 'string' ? ctx : ctx?.event;
-      const paxLocal = ctx && typeof ctx === 'object' ? ctx.pax : null; // pax de la semana de la tarea
-      const names = splitEventNames(planned || subTask.eventName || 'Sin Asignar / Extra');
-      const eventNames = names.length > 0 ? names : ['Sin Asignar / Extra'];
+      const { eventNames, paxLocal } = eventosDelTrozo(subTask, resolveEvent); // pax de la semana de la tarea
       const shares = getEventShares(eventNames, paxLocal || paxByEvent);
 
       eventNames.forEach((eventName, i) => {

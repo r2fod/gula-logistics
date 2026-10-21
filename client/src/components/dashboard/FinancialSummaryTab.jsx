@@ -16,6 +16,9 @@ import GraficoEvolucion from './financiero/GraficoEvolucion';
 import DonutHoras from './financiero/DonutHoras';
 import ConceptosAMano from './financiero/ConceptosAMano';
 import PrevistoPlanning from './financiero/PrevistoPlanning';
+import DescargarExcel from './financiero/DescargarExcel';
+import { informeDeEventos } from '../../data/informeEventos';
+import { descargarArchivo } from '../../data/enlaces';
 import { aplicarTarifaDeBolsa } from '../../data/bolsaHoras';
 import { conceptosDelPeriodo } from '../../data/conceptosSaldos';
 import { estimarHorasPlanning } from '../../data/estimadoPlanning';
@@ -116,10 +119,18 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
   // Los pax son los de las semanas del periodo; el enlace tarea -> evento, el de todas.
   const paxByEvent = useMemo(() => buildPaxRegistry(semanasDelPeriodo(allWeeks, rango, ancla)), [allWeeks, rango, ancla]);
   const resolveEvent = useMemo(() => buildTaskContextResolver(allWeeks), [allWeeks]);
+  const repartidos = useMemo(() => repartirTiempoSinTarea(turnos, allWeeks, resolveEvent), [turnos, allWeeks, resolveEvent]);
   const eventsList = useMemo(
-    () => summarizeByEvent(repartirTiempoSinTarea(turnos, allWeeks, resolveEvent), workersList, paxByEvent, resolveEvent),
-    [turnos, allWeeks, workersList, paxByEvent, resolveEvent]
+    () => summarizeByEvent(repartidos, workersList, paxByEvent, resolveEvent),
+    [repartidos, workersList, paxByEvent, resolveEvent]
   );
+  // El informe de personal de los eventos elegidos, en Excel (el mismo reparto que aquí).
+  // El generador (y exceljs) solo se descarga al pulsar.
+  const descargarExcel = async (nombres) => {
+    const informes = informeDeEventos({ eventos: nombres, turnos: repartidos, equipo: workersList, paxByEvent, resolveEvent, semanas: allWeeks });
+    const { excelDeEventos, nombreDeArchivo } = await import('../../data/excelEventos');
+    descargarArchivo(await excelDeEventos(informes, { periodo: rango.etiqueta }), nombreDeArchivo(informes));
+  };
   const horasEstimadas = eventsList.reduce((acc, e) => acc + (e.horasEstimadas || 0), 0);
   // Lo apuntado a mano no es de ningún evento: va en su propia fila, para que el total
   // del desglose por evento sea el mismo que el de "Coste por trabajador".
@@ -310,6 +321,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
                   </span>
                 </p>
               )}
+              <DescargarExcel eventos={eventsList.map(evt => evt.eventName)} onDescargar={descargarExcel} />
               <ul className="flex-1">
                 {eventsList.map((evt, i) => (
                   <FilaDesglose

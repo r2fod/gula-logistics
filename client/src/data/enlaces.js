@@ -87,3 +87,15 @@ export async function abrirEnPestanaNuevaAlLlegar(obtenerUrl) {
     throw error;
   }
 }
+
+// Descarga un archivo hecho en el navegador (el Excel de un evento…) con ese nombre.
+export function descargarArchivo(blob, nombre) {
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = nombre;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+}

@@ -112,6 +112,7 @@ export function repartirTiempoSinTarea(shifts = [], weeksMap = {}, resolveEvent 
           specificTaskName: `Tiempo sin tarea repartido según el planning (${t.texto})`,
           eventoPlanificado: t.evento,
           paxPlanificado: t.pax,
+          tareaPlanificada: { texto: t.texto, inicio: t.inicio, fin: t.fin }, // para el informe en Excel
           estimado: true,
         });
       });
