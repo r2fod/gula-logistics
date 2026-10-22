@@ -85,3 +85,6 @@ export const formatDuration = (ms) => {
   if (h === 0) return `${m} min`;
   return m === 0 ? `${h} h` : `${h} h ${m} min`;
 };
+
+// ¿Las dos fechas caen el mismo día (en hora de aquí)?
+export const mismoDia = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();

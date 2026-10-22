@@ -30,6 +30,17 @@
 - IA (Gemini): revisar el JSON antes de aplicarlo a una semana (puede inventar asignaciones o camiones).
 - MCP de Gemini (`mcp__google-gemini__*`, solo si la sesión lo tiene): encargarle lo que hace mejor o más barato — probar los prompts del asistente (`data/editorIa.js`) con el Gemini real, una segunda opinión independiente antes de mergear dinero o auth, resumir textos enormes y buscar en Google. Antes, comprobar que responde (una pregunta corta); si falla, seguir sin él y decírselo al usuario. Nunca mandarle datos reales (nombres, teléfonos, saldos, claves): inventados, como en los tests. Lo que diga es una opinión: comprobarla antes de aplicarla.
 
+## ORQUESTACIÓN (subagentes)
+- La sesión principal orquesta: parte cada petición en tareas, decide quién hace cada una, junta los resultados, verifica (tests, build, navegador) y es la ÚNICA que hace commit, merge y push.
+- A un subagente (herramienta Agent), varios en paralelo si no dependen entre sí:
+  · búsquedas y análisis amplios («dónde se usa X», repasar un área entera): `Explore`;
+  · revisión independiente de un cambio antes de mergear (bugs y código repetido): `pr-review-toolkit:code-reviewer`; con dinero o auth, además la segunda opinión de Gemini;
+  · cambios grandes que no se tocan entre sí: uno por subagente, cada uno en su worktree (`isolation: "worktree"`);
+  · comprobaciones largas que no bloquean lo demás (la batería de una zona, una auditoría).
+- No a un subagente lo pequeño ni lo que depende del paso anterior (un arreglo, un texto, seguir con lo mismo): empieza en frío, cuesta más y pierde lo que ya se sabe.
+- Cada encargo, completo y por escrito: objetivo, archivos, qué NO tocar y cómo comprobarlo, más las normas de aquí (privacidad, solo español, en local nada que escriba en producción, sin commits). Lo que devuelve es un informe: se comprueba antes de darlo por bueno.
+- Al usuario se le dice qué se encargó a quién y qué salió.
+
 ## WORKFLOW
 - El planning vive en Mongo: `logisticsData.js` (cliente/servidor) es solo semilla. Cambiar una semana = `POST /api/logistics/weeks` con el objeto COMPLETO (reemplaza el documento; control por `updatedAt`, 409 si alguien guardó antes).
 - Dos checkouts: el worktree (rama de trabajo) y la copia principal (`main`, solo para merge + push; su ruta: `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`). Antes de fusionar, traer `origin/main` a la rama (otras sesiones trabajan en paralelo).

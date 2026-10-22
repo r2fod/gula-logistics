@@ -3,6 +3,7 @@ import { listarTareasPlanificadas } from './repartoPorPlanning';
 import { parseEventAndTask } from './eventNaming';
 import { mismoNombre } from './nombresTrabajadores';
 import { plano } from '../utils/texto';
+import { mismoDia } from '../utils/dateUtils';
 
 // Informe de horas y coste del personal de uno o varios eventos: lo que se descarga en
 // Excel desde el Resumen financiero (excelEventos.js). Es el MISMO reparto que el desglose
@@ -18,7 +19,6 @@ import { plano } from '../utils/texto';
 //   sinFichar: [{ nombre, rol, inicio, fin, tarea }] — en el planning del evento y sin
 //            ningún turno ese día (no suman: se ven para completarlos a mano).
 
-const mismoDia = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 const seSolapan = (a1, a2, b1, b2) => a1 < b2 && b1 < a2;
 const tareaCorta = (texto) => parseEventAndTask(texto).specificTaskName || String(texto || '').trim();
 

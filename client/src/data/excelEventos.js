@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import { formatDayMonthShort, formatWeekdayShortDay } from '../utils/dateUtils';
 import { plano } from '../utils/texto';
+import { alCentimo as redondear } from './formatoFinanciero';
 
 // El informe de horas y coste por evento (informeDeEventos) en un Excel cuidado: delante un
 // resumen por persona y, después, una hoja por evento con su personal (entrada, salida,
@@ -38,7 +39,6 @@ export function puestoDe(rol = '') {
 const diaCorto = (d) => `${formatWeekdayShortDay(d)} ${formatDayMonthShort(d).replace(/^\d+\s*/, '')}`.replace(/^./, c => c.toUpperCase());
 // Una hora como fracción del día (lo que Excel entiende por hora), sin líos de zona horaria.
 const horaExcel = (d) => (d.getHours() * 60 + d.getMinutes()) / 1440;
-const redondear = (n) => Math.round(Number(n || 0) * 100) / 100;
 
 // Nombre de hoja válido (≤ 31, sin []:*?/\) y sin repetir; entre comillas en las fórmulas.
 function nombreDeHoja(nombre, usados) {

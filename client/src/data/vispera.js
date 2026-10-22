@@ -1,5 +1,6 @@
 import { getWeekRange, resolveTaskDate, resolveTaskEvalDay, esTareaActiva } from './taskPlanning';
 import { esBorradorSemana } from './eventNaming';
+import { mismoDia } from '../utils/dateUtils';
 
 // La VÍSPERA de una semana: el lunes anterior a su martes. En Gula el lunes es la
 // cola de la semana anterior (sus tareas viven en su lista domingo/lunes), pero ese
@@ -7,7 +8,6 @@ import { esBorradorSemana } from './eventNaming';
 // de un evento del martes). Estas funciones enseñan ese lunes COMPLETO en la semana a la
 // que sirve, sin duplicar ni mover nada: las tareas siguen guardadas donde estaban.
 
-const mismoDia = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 const inicioHora = (task) => {
   const m = /^\s*(\d{1,2}):(\d{2})/.exec(typeof task?.timeFrame === 'string' ? task.timeFrame : '');
   return m ? Number(m[1]) * 60 + Number(m[2]) : Infinity; // sin horario, al final

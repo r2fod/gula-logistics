@@ -11,9 +11,10 @@
 // sin fecha solo se pueden colocar en "Todo" (no se inventa en qué semana cayeron).
 
 import { aIso } from './fechasSemana';
+import { alCentimo } from './formatoFinanciero';
 
 // Lo que suma un desglose (lo apuntado a mano en una ficha de Saldos), al céntimo.
-export const saldoDeApuntes = (breakdown = []) => Math.round((breakdown || []).reduce((s, it) => s + (Number(it?.amount) || 0), 0) * 100) / 100;
+export const saldoDeApuntes = (breakdown = []) => alCentimo((breakdown || []).reduce((s, it) => s + (Number(it?.amount) || 0), 0));
 
 export const TIPOS_CONCEPTO = {
   turno: 'Turnos apuntados a mano',

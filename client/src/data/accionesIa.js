@@ -16,7 +16,7 @@ import { DIAS_SEMANA, OPCIONES_DIA, restriccionesDeFormulario, textosFijos, TIPO
 import { interpretarDisponibilidad } from './interpretarPeticion';
 import { aIso, fechaLocal } from './fechasSemana';
 import { getDayLabel } from './taskPlanning';
-import { formatearEuros, formatearEurosConSigno } from './formatoFinanciero';
+import { alCentimo as redondear, formatearEuros, formatearEurosConSigno } from './formatoFinanciero';
 import { formatDayMonthShort, formatWeekdayDayMonth } from '../utils/dateUtils';
 import { plano } from '../utils/texto';
 
@@ -27,7 +27,6 @@ const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 const HORA = /^([01]?\d|2[0-3]):[0-5]\d$/;
 const fechaValida = (f) => FECHA.test(String(f || '')) && !Number.isNaN(fechaLocal(f).getTime());
 const diaCorto = (iso) => formatDayMonthShort(fechaLocal(iso));
-const redondear = (n) => Math.round(Number(n) * 100) / 100;
 // Una escritura o lectura que nunca lanza: lo que devuelva, o false/null si falla.
 const intentar = async (hacer) => { try { return !!(await hacer()); } catch { return false; } };
 const leerSinFallo = async (leer) => { try { return await leer(); } catch { return null; } };

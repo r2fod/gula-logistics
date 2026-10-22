@@ -1,6 +1,7 @@
 import { getTaskInterval, getWeekRange, esTareaActiva } from './taskPlanning';
 import { parseEventAndTask, EVENT_CATEGORIES, GENERAL_EVENT, paxDeSemana, esBorradorSemana, getWeddingTaskName } from './eventNaming';
 import { plano } from '../utils/texto';
+import { mismoDia } from '../utils/dateUtils';
 
 // Reparto del tiempo de jornada SIN TAREA entre los eventos del planning.
 //
@@ -24,7 +25,6 @@ import { plano } from '../utils/texto';
 // reparto sale del planning y no de un fichaje.
 
 const MINUTO = 60 * 1000;
-const mismoDia = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
 // Un texto sin pistas es "su propio evento" (así lo trata el desglose), pero
 // para repartir solo sirven eventos de verdad: los de la tarea, "Boda X",

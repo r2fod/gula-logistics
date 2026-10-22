@@ -15,6 +15,9 @@ export function formatearNumero(n, decimales = 2) {
 
 export const formatearEuros = (n) => `${formatearNumero(n, 2)} €`;
 
+// Un importe redondeado al céntimo (para guardar o sumar sin arrastrar decimales).
+export const alCentimo = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
 // Cantidad sin ceros de sobra y sin unidad: 3,5 · 242,5 · 12 · 0,75. Es la base
 // de las horas y de cualquier cifra que no sea dinero.
 export function formatearCantidad(n) {
