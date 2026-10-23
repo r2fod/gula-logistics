@@ -11,7 +11,7 @@ Logística de eventos y catering (bodas, banquetes, corporativos) en la zona de 
 - Flota: un camión propio y alquileres que cambian por semana (gestor de flota del panel; se puede adjuntar el PDF del contrato, que se guarda en la base y solo abre el admin).
 
 ## La semana
-- Va de **martes a domingo** y el **lunes siguiente es su cola** (devoluciones, limpieza, cargas). Domingo y lunes comparten una lista; cada tarea lleva "Día Específico" (sin él cuenta como lunes).
+- Va de **martes a domingo** y el **lunes siguiente es su cola** (devoluciones, limpieza, cargas). Domingo y lunes comparten una lista; cada tarea lleva "Día Específico" (sin él, para saber si ya pasó cuenta como lunes; para fichar vale domingo o lunes, la primera ocurrencia que no haya terminado).
 - La carga de un evento del martes se hace el lunes anterior y va en la cola de la semana anterior; el Cuadrante de la semana que empieza la enseña como "Lunes N · Víspera" (solo lectura; se edita en su semana).
 - `meta.dateRange` ("Del 22 al 27 de Septiembre de 2026") manda: de él salen los números de día y las fechas de cada tarea.
 - Las semanas se anticipan solas como **BORRADOR** (las 2 siguientes, desde el Calendario Gula) y no cuentan para nada hasta que un admin las acepta. Para el generador cuentan eventos —bodas, comuniones, corporativos, cumpleaños y producciones (rodajes: cada día que duran es un servicio)— con su pax y hora, y recogidas/devoluciones de alquiler; no visitas, reuniones ni días cerrados. En una semana ya creada, el Cuadrante tiene «Actualizar desde calendario»: enseña los eventos del calendario que faltan con sus tareas propuestas y solo añade lo que se deja marcado (lo que ya hay no se toca).
