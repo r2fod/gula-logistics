@@ -55,6 +55,18 @@ describe('GeminiAssistantModal — memoria', () => {
     expect(args.aprendizaje).toBe(aprendizaje);
   });
 
+  it('BUG evitado: «a partir de ahora Ana cobra 12 €» no se guarda como regla del planning (es de la app)', async () => {
+    extraer.mockClear();
+    render(<GeminiAssistantModal isOpen onClose={() => {}} onApplyGeneratedSchedule={() => {}} activeWeekData={{}} workersList={[{ name: 'Ana' }]} aprendizaje={aprendizaje} />);
+    await waitFor(() => expect(api.getAiMemories).toHaveBeenCalled());
+    await act(async () => {});
+    fireEvent.change(screen.getByPlaceholderText(/Escribe tu solicitud/), { target: { value: 'A partir de ahora Ana cobra 12 € la hora' } });
+    fireEvent.click(screen.getByRole('button', { name: /Enviar a Gemini/ }));
+    await waitFor(() => expect(generar).toHaveBeenCalled());
+    await act(async () => {});
+    expect(extraer).not.toHaveBeenCalled();
+  });
+
   it('BUG evitado: la regla se pide DESPUÉS y solo si la petición salió bien (a la vez gastaban el cupo: 429)', async () => {
     extraer.mockClear();
     let soltar;

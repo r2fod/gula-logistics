@@ -46,9 +46,16 @@ export function interpretarDisponibilidad(texto, equipo = [], { semana = null, a
   const t = ` ${plano(texto).replace(/[.,;!¡?¿]/g, ' ')} `;
   if (!PARECE_DISPONIBILIDAD.test(t)) return null;
   // Algo que cambia tareas ("y pon a Luis en su lugar") ya no es solo disponibilidad.
-  if (/\b(pon|cambia|mueve|quita|anade|asigna|sustituye)\b/.test(t)) return null;
+  // «… que lo haga Ana» / «lo cubre Luis» también.
+  if (/\b(pon|cambia|mueve|quita|anade|asigna|sustituye|que lo hagan?|que la hagan?|lo hacen?|la hacen?|lo cubren?|la cubren?|que lo cubran?|en su lugar)\b/.test(t)) return null;
 
-  const personas = equipo.map(w => w.name).filter(n => new RegExp(`\\b${plano(n.split(/\s+/)[0]).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(t));
+  // Solo quien se nombra ANTES de «no puede», «descansa»…: es de quien se habla. Antes
+  // cualquier nombre de la frase quedaba como no disponible.
+  const verbo = t.search(PARECE_DISPONIBILIDAD);
+  const personas = equipo.map(w => w.name).filter(n => {
+    const m = new RegExp(`\\b${plano(n.split(/\s+/)[0]).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).exec(t);
+    return m && m.index < verbo;
+  });
   if (!personas.length) return null;
 
   const relativo = diaRelativo(t, semana, ahora);

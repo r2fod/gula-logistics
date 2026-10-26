@@ -92,4 +92,20 @@ describe('Modal', () => {
     expect(panel.className).toContain('max-w-4xl');
     expect(panel.parentElement.className).toContain('z-[60]');
   });
+
+  it('BUG evitado: el foco entra en la ventana, Tab da la vuelta dentro y al cerrar vuelve a donde estaba (antes se quedaba detrás)', () => {
+    const { rerender } = render(<><button>Abrir</button><Modal abierto={false} onCerrar={() => {}} botonCerrar={false}><h3>Flota</h3><button>Uno</button><button>Dos</button></Modal></>);
+    const abrir = screen.getByRole('button', { name: 'Abrir' });
+    abrir.focus();
+    rerender(<><button>Abrir</button><Modal onCerrar={() => {}} botonCerrar={false}><h3>Flota</h3><button>Uno</button><button>Dos</button></Modal></>);
+    const panel = screen.getByRole('dialog', { name: 'Flota' }); // sin etiqueta, su título le da nombre
+    expect(document.activeElement).toBe(panel);
+    screen.getByRole('button', { name: 'Dos' }).focus();
+    fireEvent.keyDown(panel, { key: 'Tab' });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Uno' }));
+    fireEvent.keyDown(panel, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Dos' }));
+    rerender(<><button>Abrir</button><Modal abierto={false} onCerrar={() => {}} botonCerrar={false}><h3>Flota</h3></Modal></>);
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Abrir' }));
+  });
 });

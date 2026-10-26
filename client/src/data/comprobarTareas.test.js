@@ -106,3 +106,14 @@ describe('el día de la pregunta dice cuándo, no forma parte del texto de la ta
     expect(respuestaDeConocimiento('¿Quién suele hacer la carga del jueves?', { equipo, semanas: { a: conCargas }, semana: conCargas })).toMatch(/otras semanas/);
   });
 });
+
+describe('una orden no es una consulta', () => {
+  it('BUG evitado: «revisa el planning de esta semana y quita la carga del jueves» no se queda en comprobar', () => {
+    expect(pideComprobarTareas('Revisa el planning de esta semana y quita la carga del jueves')).toBeNull();
+    expect(pideComprobarTareas('¿Está la carga del jueves en el planning? Si no, ponla')).not.toBeNull();
+  });
+
+  it('BUG evitado: «pon a quien suele hacer la carga…» no se contesta como pregunta', () => {
+    expect(respuestaDeConocimiento('Pon a quien suele hacer la carga en la del jueves', {})).toBeNull();
+  });
+});

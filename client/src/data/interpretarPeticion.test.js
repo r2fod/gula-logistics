@@ -79,3 +79,14 @@ describe('interpretarDisponibilidad (sin Gemini, 0 tokens)', () => {
   });
 });
 
+
+describe('de quién se habla', () => {
+  it('BUG evitado: «Luis no puede el jueves, que lo haga Ana» no marca a Ana como no disponible (va a Gemini como cambio)', () => {
+    expect(interpretarDisponibilidad('Luis no puede el jueves, que lo haga Ana', equipo)).toBeNull();
+  });
+
+  it('BUG evitado: solo cuenta quien va antes de «no puede»; «Ana y Luis no pueden» siguen siendo los dos', () => {
+    expect(interpretarDisponibilidad('Luis no puede el jueves por la boda de Eva', equipo).map(r => r.persona)).toEqual(['Luis']);
+    expect(interpretarDisponibilidad('Ana y Luis no pueden el jueves', equipo).map(r => r.persona)).toEqual(['Ana', 'Luis']);
+  });
+});

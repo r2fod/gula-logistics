@@ -10,6 +10,7 @@ import { limitesDe } from './disponibilidad';
 import { textoAprendizajeParaPrompt } from './aprendizajeFichajes';
 import { esMemoriaActiva } from './memoriaIa';
 import { llamarGeminiEnServidor } from './apiService';
+import { fetchConLimite } from './servidor';
 import { formatWeekdayDayMonth } from '../utils/dateUtils';
 
 export const GEMINI_API_KEY_STORAGE_KEY = 'gula_gemini_api_key';
@@ -148,11 +149,12 @@ async function llamarGemini(apiKey, body) {
   if (!apiKey) return llamarGeminiEnServidor(body);
   let res = null;
   for (const model of GEMINI_MODELS) {
-    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    // Con tope (2 min por modelo): antes, si Google no contestaba, el asistente se quedaba «pensando» para siempre.
+    res = await fetchConLimite(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body
-    });
+    }, 2 * 60 * 1000);
     if (!PROBAR_OTRO_MODELO.includes(res.status)) break;
   }
   return res;

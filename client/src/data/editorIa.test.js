@@ -305,6 +305,8 @@ describe('preguntas, hoy y «nada que cambiar»', () => {
     expect(esPregunta('¿Qué tareas tiene Ana el jueves?')).toBe(true);
     expect(esPregunta('cuantas horas lleva Luis esta semana')).toBe(true);
     expect(esPregunta('¿Puedes poner a Luis en la carga?')).toBe(false);
+    expect(esPregunta('Que Ana haga la carga del jueves, ¿vale?')).toBe(false); // BUG evitado: la coletilla no la hace pregunta
+    expect(esPregunta('¿Quién hace la carga del jueves?')).toBe(true);
     expect(esPregunta('¿Cambia la recogida a las 8?')).toBe(false);
     expect(esPregunta('Pon a Luis en la carga')).toBe(false);
   });

@@ -36,9 +36,16 @@ function itemsDeTexto(p) {
   return items;
 }
 
+// ¿Ordena cambiar algo? (sin tildes, con plano). Una orden no es una consulta: «revisa el
+// planning y quita…» acababa en «comprobar» y no hacía nada. También la usa esPregunta.
+export const PIDE_CAMBIO = /\b(pon|ponle|ponlo|ponla|cambia|cambiale|mueve|quita|asigna|rehaz|haz|crea|borra|elimina|sustituye|reorganiza|organiza|ajusta|planifica|genera|separa|corrige|reparte)\b/;
+
 // ¿Pide comprobar si hay ciertas tareas? → { items: [{ texto, verbo, claves }], anadir } o null.
 export function pideComprobarTareas(peticion) {
-  const p = plano(peticion);
+  // «esta semana» no es «¿está…?».
+  const p = plano(peticion).replace(/\besta semana\b/g, 'semana');
+  // «Si no está, ponla» sí es una comprobación; una orden sin más, no.
+  if (PIDE_CAMBIO.test(p) && !/\bsi no\b/.test(p)) return null;
   const comprueba = /\b(hay|existe|existen|esta|estan|consulta|comprueba|mira|revisa|busca)\b/.test(p)
     && /\b(planning|planificacion|semana|cuadrante)\b|\bsi no (esta|estan|hay|existe)/.test(p);
   if (!comprueba) return null;
@@ -127,6 +134,8 @@ const TIPOS_EN_PREGUNTA = [
 // suele hacer cargas).
 export function respuestaDeConocimiento(peticion, { aprendizaje = null, semanas = {}, equipo = [], semana = null } = {}) {
   const p = plano(peticion);
+  // «Pon a quien suele hacer la carga…» es una orden, no una pregunta.
+  if (PIDE_CAMBIO.test(p)) return null;
   if (!/\bquien(es)?\b/.test(p) || !/\b(suele|suelen|lleva|llevan|hace|hacen|va|van|conduce|conducen|mejor|normalmente)\b/.test(p)) return null;
   const lista = (personas, unidad) => personas.slice(0, 4).map(x => `${x.nombre} (${x[unidad]}${unidad === 'horas' ? ' h' : x[unidad] === 1 ? ' vez' : ' veces'})`).join(', ');
 

@@ -9,7 +9,7 @@ import { useMemoriaIa } from '../hooks/useMemoriaIa';
 import { diffSemana, avisosDePropuesta } from '../data/diffSemana';
 import CambiosPropuestos from './asistente/CambiosPropuestos';
 import AccionesPropuestas from './asistente/AccionesPropuestas';
-import { accionesDeDisponibilidadFija, aplicarAcciones } from '../data/accionesIa';
+import { accionesDeDisponibilidadFija, aplicarAcciones, pideAccionDeApp } from '../data/accionesIa';
 import AsignarNuevas from './asistente/AsignarNuevas';
 import { preferenciasDeCorrecciones } from '../data/comprobarTareas';
 import GastoGemini from './asistente/GastoGemini';
@@ -26,7 +26,8 @@ import { Campo, Input, AreaTexto } from './ui/Campo';
 // cuadrante — { fichajes, guardarFichas, cambiarTarifaFichajes, usarSaldos } (accionesIa.js).
 export default function GeminiAssistantModal({ isOpen, onClose, onApplyGeneratedSchedule, activeWeekData, workersList = [], aprendizaje = null, semanas = {}, accionesApp = null }) {
   const [prompt, setPrompt] = useState('');
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || '');
+  // Sin almacenamiento (modo privado, bloqueado) no revienta: sin clave, usa la del servidor.
+  const [apiKey, setApiKey] = useState(() => { try { return localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY) || ''; } catch { return ''; } });
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [loading, setLoading] = useState(false);
   const [generatedJson, setGeneratedJson] = useState(null);
@@ -47,7 +48,7 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
 
   const handleSaveApiKey = (e) => {
     e.preventDefault();
-    localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, apiKey.trim());
+    try { localStorage.setItem(GEMINI_API_KEY_STORAGE_KEY, apiKey.trim()); } catch { /* sin almacenamiento: vale solo mientras siga abierta */ }
     setShowApiKeyInput(false);
   };
 
@@ -79,7 +80,8 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
     try {
       const r = await resolverPeticion({ peticion: prompt, apiKey, semana: activeWeekData, equipo: workersList, memorias: memoria.activas, aprendizaje, semanas, fichajes: accionesApp?.fichajes || [] });
       // «Eva nunca puede los lunes» va a su ficha (disponibilidad fija), no a una regla escrita.
-      const buscarRegla = !r.errorMsg && pareceRegla(prompt) && !accionesDeDisponibilidadFija(prompt, workersList);
+      // Ni lo que es de la app (tarifas, Saldos, festivos): no es una regla del planning.
+      const buscarRegla = !r.errorMsg && pareceRegla(prompt) && !accionesDeDisponibilidadFija(prompt, workersList) && !pideAccionDeApp(prompt);
       const recuerdo = buscarRegla ? await extraerMemoriaDelPrompt({ prompt, apiKey }) : null;
       setGeneratedJson(r.generatedJson);
       setDeGemini(r.generatedJson);

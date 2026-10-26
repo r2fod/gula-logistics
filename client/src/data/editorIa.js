@@ -23,7 +23,7 @@ import { interpretarDisponibilidad } from './interpretarPeticion';
 import { reajustarSemana } from './optimizadorPlanning';
 import { plano } from '../utils/texto';
 import { formatWeekdayDayMonth } from '../utils/dateUtils';
-import { buscarEnSemana, pideComprobarTareas, quienSueleHacerla, respuestaDeConocimiento, textoComprobacion } from './comprobarTareas';
+import { PIDE_CAMBIO, buscarEnSemana, pideComprobarTareas, quienSueleHacerla, respuestaDeConocimiento, textoComprobacion } from './comprobarTareas';
 import { accionesDeDisponibilidadFija, pedirAcciones, pideAccionDeApp, validarAccion } from './accionesIa';
 import { camionesParaElegir } from './flota';
 
@@ -261,10 +261,12 @@ export async function revisarBorradorConGemini({ semana, apiKey, equipo = [], me
 // Sin «?», «que», «como» o «cuando» sin tilde empiezan órdenes («Que Luis haga la carga»):
 // solo cuentan con tilde; «quién», «cuánto» o «cuál» valen con o sin ella.
 const EMPIEZA_PREGUNTANDO = /^(qué|cómo|cuándo|dónde|por qué|quién|quiénes|quien|quienes|cuánt[oa]s?|cuant[oa]s?|cuál|cuáles|cual|cuales)(?=[\s,]|$)/;
+// Una coletilla al final («…, ¿vale?», «¿ok?») no convierte una orden en pregunta.
 export function esPregunta(peticion) {
-  const p = plano(peticion);
-  const pregunta = /[?¿]/.test(peticion) || EMPIEZA_PREGUNTANDO.test(String(peticion || '').trim().toLowerCase());
-  return pregunta && !/\b(puedes|podrias|pon|ponle|ponlo|ponla|cambia|cambiale|mueve|quita|anade|asigna|rehaz|haz|crea|borra|elimina|sustituye|reorganiza|organiza|ajusta|planifica|genera)\b/.test(p);
+  const texto = String(peticion || '').replace(/[,\s]*¿?\s*(vale|ok|de acuerdo|s[ií]|porfa|por favor)\s*\?\s*$/i, '').trim();
+  const p = plano(texto);
+  const pregunta = /[?¿]/.test(texto) || EMPIEZA_PREGUNTANDO.test(texto.toLowerCase());
+  return pregunta && !/\b(puedes|podrias|anade)\b/.test(p) && !PIDE_CAMBIO.test(p);
 }
 
 // Una pregunta sobre la semana: Gemini contesta en texto con los mismos datos que ve
