@@ -7,6 +7,7 @@ import { formatTime } from '../utils/dateUtils';
 import BarraProgreso from './ui/BarraProgreso';
 import EnVivo from './ui/EnVivo';
 import { useAhora } from '../hooks/useAhora';
+import { useDialog } from '../contexts/DialogContext';
 import { costeEnCurso, duracionEnCurso } from '../data/costeEnVivo';
 import { fichaDePersona } from '../data/nombresTrabajadores';
 import { formatearEuros } from '../data/formatoFinanciero';
@@ -36,6 +37,8 @@ export default function LiveMonitorPanel({
 
   // Turnos cerrados y abiertos por trabajador, solo cuando cambian los fichajes.
   const { activeShifts, shifts } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
+  const { confirm } = useDialog();
+  const [cerrando, setCerrando] = useState(() => new Set()); // ids de entradas cuya salida ya se mandó
   const turnosCerrados = useMemo(() => {
     const porPersona = {};
     shifts.forEach(t => { (porPersona[t.workerName] = porPersona[t.workerName] || []).push(t); });
@@ -428,9 +431,15 @@ export default function LiveMonitorPanel({
 
                 <div>
                   <button
-                    onClick={() => {
+                    disabled={worker.isClockedIn && cerrando.has(worker.clockEntry?.id)}
+                    onClick={async () => {
                       if (worker.isClockedIn) {
-                        if (onClockEntryCreated) onClockEntryCreated(crearFichaje({
+                        // Ficha la salida de OTRA persona (vista pública): se pregunta, y el
+                        // botón se bloquea para que un doble toque no cree dos salidas.
+                        if (!onClockEntryCreated || cerrando.has(worker.clockEntry?.id)) return;
+                        if (!(await confirm(`¿Fichar la salida de ${worker.name}?`, { title: 'Finalizar tarea', confirmText: 'Fichar salida' }))) return;
+                        setCerrando(prev => new Set(prev).add(worker.clockEntry?.id));
+                        onClockEntryCreated(crearFichaje({
                           trabajador: worker,
                           tipo: 'salida',
                           note: `Finalizada tarea: ${worker.currentTask}`
@@ -439,7 +448,7 @@ export default function LiveMonitorPanel({
                         if (onOpenClockModal) onOpenClockModal(worker.name);
                       }
                     }}
-                    className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-all shadow-md active:scale-95 ${
+                    className={`w-full py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 transition-all shadow-md active:scale-95 disabled:opacity-60 ${
                       worker.isClockedIn
                         ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/20'
                         : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/20'

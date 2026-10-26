@@ -9,7 +9,7 @@ const createLocalStorageMock = () => {
     setItem: vi.fn((key, value) => { store[key] = value.toString(); }),
     removeItem: vi.fn((key) => { delete store[key]; }),
     clear: vi.fn(() => { store = {}; }),
-    length: 0,
+    get length() { return Object.keys(store).length; }, // como el de verdad (antes siempre 0)
     key: vi.fn((i) => Object.keys(store)[i] || null)
   };
 };

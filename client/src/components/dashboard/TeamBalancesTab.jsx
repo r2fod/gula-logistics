@@ -136,8 +136,9 @@ export default function TeamBalancesTab({
       return { hours, purseHours, extraHours, amount, concept, dateLabel, isPurse: !otroMes, horasBolsa: otroMes ? purseHours : 0, includeTransport };
     }
 
-    // Sin tarifa en la ficha de Saldos, la de su ficha del equipo (antes, 10 aunque cobrara otra).
-    const rate = worker.hourlyRate || (worker.statusType === 'payroll' ? 14 : tarifaDe(personaDeFicha(worker, equipo)));
+    // Sin tarifa en la ficha de Saldos, la de su ficha del equipo; sin ficha del equipo, la
+    // por defecto de su tipo (de la base: antes la de nómina era un 14 escrito aquí).
+    const rate = worker.hourlyRate || tarifaDe(personaDeFicha(worker, equipo) || { isPayroll: worker.statusType === 'payroll' });
     const amount = hours * rate + transportAmount;
     const concept = `🕒 ${dateLabel} (${newShiftStart} a ${newShiftEnd} - ${fmtHours(hours)}h a ${rate}€/h${transportSuffix})`;
 
@@ -280,9 +281,12 @@ export default function TeamBalancesTab({
   };
 
   const handleDeleteConcept = async (worker, idx) => {
+    const deletedItem = (worker.breakdown || [])[idx];
+    // Es dinero y no se puede deshacer: antes se borraba con un solo toque.
+    const reinicia = worker.isSpecialPurse && deletedItem?.concept?.startsWith('Valor Acumulado Horas Bolsa');
+    if (!(await confirm(`¿Borrar «${deletedItem?.concept || 'este apunte'}» de ${worker.name}?${reinicia ? '\n\nEs el acumulado de su bolsa de horas: la bolsa vuelve a empezar de cero.' : ''}`, { type: 'delete', title: 'Borrar apunte', confirmText: 'Borrar' }))) return;
     setSavingBalanceId(worker.id);
     try {
-      const deletedItem = (worker.breakdown || [])[idx];
       const newBreakdown = (worker.breakdown || []).filter((_, i) => i !== idx);
       const newBalance = saldoDeApuntes(newBreakdown);
       const updates = { breakdown: newBreakdown, currentBalance: newBalance };

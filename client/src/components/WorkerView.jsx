@@ -6,7 +6,7 @@ import AdminClockEditModal from './AdminClockEditModal';
 import WorkerViewTaskItem from './dashboard/WorkerViewTaskItem';
 import WorkerViewWeddingCard from './dashboard/WorkerViewWeddingCard';
 import ResumenHorasSaldo from './dashboard/ResumenHorasSaldo';
-import { getActiveShiftForWorker, pairShiftsFromEntries } from '../data/shiftCalculations';
+import { getActiveShiftForWorker, pairShiftsFromEntries, sortEntriesByTimestamp } from '../data/shiftCalculations';
 import { getTaskListForDay, resolveTaskIndex, isTaskEffectivelyDone, isTaskAssignedTo, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, diaDeLaFecha, getNextTaskStart, isTaskTooEarlyToStart, esTareaActiva, refDeTareaFichada } from '../data/taskPlanning';
 import { subscribeToPush } from '../data/pushService';
 import { crearFichaje } from '../data/fichajes';
@@ -19,6 +19,7 @@ import EnVivo from './ui/EnVivo';
 import LlevasGanado from './trabajador/LlevasGanado';
 import { useAhora } from '../hooks/useAhora';
 import { duracionEnCurso } from '../data/costeEnVivo';
+import { mismoNombre } from '../data/nombresTrabajadores';
 
 
 // Texto del botón de empezar la jornada: se elige uno al azar al abrir la
@@ -118,7 +119,9 @@ export default function WorkerView({
   // (ver getActiveShiftForWorker), si no un trabajador con 2+ fichajes
   // históricos queda con su primera entrada de siempre marcada como activa
   // para siempre y nunca puede desfichar.
-  const myEntries = clockEntries.filter(e => e.workerName.toLowerCase() === currentWorkerObj.name.toLowerCase());
+  // Lo más reciente arriba: un fichaje nuevo se añade al final de la lista y salía abajo
+  // del todo hasta la siguiente sincronización completa.
+  const myEntries = sortEntriesByTimestamp(clockEntries.filter(e => mismoNombre(e.workerName, currentWorkerObj.name))).reverse();
   const activeShift = getActiveShiftForWorker(clockEntries, currentWorkerObj.name);
 
   // Cuánto duró cada turno de la semana, emparejando entrada y salida como en Saldos

@@ -217,3 +217,17 @@ describe('WorkerView — la tarea de otro día no está «en curso»', () => {
     expect(screen.getByText('Martes 22 · 09:00 - 10:00')).toBeInTheDocument();
   });
 });
+
+describe('WorkerView — «Mis fichajes»', () => {
+  it('BUG evitado: lo más reciente sale arriba aunque llegue al final de la lista (un fichaje recién hecho salía abajo del todo)', () => {
+    const t = (d, h) => new Date(2026, 8, d, h, 0).toISOString();
+    pintar([
+      { id: 'b2', workerName: 'Ana', type: 'salida', timestamp: t(22, 12) },
+      { id: 'b1', workerName: 'Ana', type: 'entrada', timestamp: t(22, 9), taskName: 'JORNADA' },
+      { id: 'nuevo', workerName: 'Ana', type: 'entrada', timestamp: t(23, 9), taskName: 'JORNADA' }, // recién fichado: al final
+    ]);
+    fireEvent.click(screen.getByText(/^Fichajes \(3\)$/));
+    const tarjetas = [...document.querySelectorAll('.block.sm\\:hidden > div')];
+    expect(tarjetas[0].textContent).toMatch(/23/);
+  });
+});

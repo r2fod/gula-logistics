@@ -110,6 +110,7 @@ export function aplicarTarifaDeBolsa(turnos = [], fichas = []) {
     return {
       ...t,
       cost: coste,
+      conBolsa: true, // `rate` pasa a ser la media del turno: quien lo enseñe, que lo diga
       rate: horas > 0 ? coste / horas : t.rate,
       subTasks: (t.subTasks || []).map(st => ({ ...st, cost: horas > 0 ? (coste * (st.durationHours || 0)) / horas : 0 })),
     };

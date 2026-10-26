@@ -136,6 +136,21 @@ describe('retryPendingClockEntries', () => {
     expect(getPendingClockEntriesSnapshot()).toEqual([]);
   });
 
+  it('BUG evitado: un fichaje que entra en la cola MIENTRAS se reintenta no se pierde al acabar el reintento', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    await saveClockEntryToAPI(entry({ id: 'E1' }));
+    // El reintento de E1 se queda esperando; mientras, Ana ficha la salida sin red.
+    let soltar;
+    global.fetch = vi.fn(() => new Promise((resolve) => { soltar = resolve; }));
+    const reintento = retryPendingClockEntries();
+    await vi.waitFor(() => expect(soltar).toBeTypeOf('function'));
+    global.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    await saveClockEntryToAPI(entry({ id: 'S1', type: 'salida' }));
+    soltar({ ok: true, json: async () => entry({ id: 'E1' }) });
+    expect((await reintento).map(e => e.id)).toEqual(['E1']);
+    expect(getPendingClockEntriesSnapshot().map(e => e.id)).toEqual(['S1']);
+  });
+
   it('con la cola vacía, no hace ninguna petición', async () => {
     global.fetch = vi.fn();
     const synced = await retryPendingClockEntries();
@@ -324,10 +339,12 @@ describe('enlace de socias (solo lectura)', () => {
     setStoredAdminToken('ADMIN', Date.now() + 60000);
     setStoredSociasToken(tokenCon({ role: 'socias', exp: Date.now() + 60000 }));
     localStorage.setItem('gula_balances_data_v1', '{}');
+    localStorage.setItem('gula_mi_saldo_v1_ana', '{}');
     cerrarAccesosGuardados();
     expect(localStorage.getItem('gula_admin_token_v1')).toBeNull();
     expect(getStoredSociasToken()).toBeNull();
     expect(localStorage.getItem('gula_balances_data_v1')).toBeNull();
+    expect(localStorage.getItem('gula_mi_saldo_v1_ana')).toBeNull(); // BUG evitado: antes quedaba la de cada trabajador
   });
 });
 

@@ -312,7 +312,9 @@ export default function App() {
     try {
       const url = new URL(window.location.href);
       url.search = '';
-      window.history.pushState({}, '', url.pathname);
+      // replaceState: con pushState, «Atrás» devolvía el ?worker= y, en el siguiente
+      // repintado, la app saltaba sola a la vista de esa persona.
+      window.history.replaceState({}, '', url.pathname);
     } catch {
       // safe fallback
     }

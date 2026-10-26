@@ -1,6 +1,5 @@
 import express from 'express';
 import { logisticsData } from '../data/logisticsData.js';
-import { Logistics } from '../models/Logistics.model.js';
 import { LogisticsWeek } from '../models/LogisticsWeek.model.js';
 import mongoose from 'mongoose';
 import { requireAdmin } from '../middleware/requireAdmin.js';
@@ -26,7 +25,6 @@ const documentosEnMemoria = new Map();
 
 const router = express.Router();
 
-let currentMemoryData = { ...logisticsData };
 let currentMemoryWeeks = {
   week_3: {
     weekId: "week_3",
@@ -35,38 +33,6 @@ let currentMemoryWeeks = {
     ...logisticsData
   }
 };
-
-router.get('/', async (req, res) => {
-  try {
-    if (mongoose.connection.readyState === 1) {
-      const data = await Logistics.findOne().sort({ updatedAt: -1 });
-      if (data) return res.json(data);
-    }
-    res.json(currentMemoryData);
-  } catch (error) {
-    console.error('Error al obtener logística:', error);
-    res.json(currentMemoryData);
-  }
-});
-
-// POST /api/logistics/update - Legacy, sin caller en el cliente actual
-// (superado por /api/logistics/weeks) pero se mantiene por compatibilidad;
-// protegido igual que el resto de escrituras para no dejarlo abierto.
-router.post('/update', requireAdmin, async (req, res) => {
-  try {
-    const updatedData = req.body;
-    currentMemoryData = { ...currentMemoryData, ...updatedData };
-
-    if (mongoose.connection.readyState === 1) {
-      await Logistics.create(updatedData);
-    }
-
-    res.json({ success: true, data: currentMemoryData });
-  } catch (error) {
-    console.error('Error al actualizar logística:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
 
 // GET /api/logistics/weeks - Get all saved weekly schedules
 router.get('/weeks', async (req, res) => {
@@ -118,13 +84,10 @@ router.post('/weeks', requireAdmin, async (req, res) => {
       // una reasignación perdida). No se aborta todo el payload por un
       // conflicto en una semana: las demás se guardan igual.
       const conflicts = [];
-      // Se acumula la versión REAL y fresca de Mongo de cada semana tocada
-      // en esta petición (recién guardada, o la que ya había si hubo
-      // conflicto) — `currentMemoryWeeks` es solo una caché en memoria que
-      // ninguna otra ruta mantiene al día (GET /weeks lee Mongo directo sin
-      // tocarla), así que devolverla tal cual en una respuesta de conflicto
-      // podría enseñar una versión más vieja todavía que la que causó el
-      // conflicto en primer lugar.
+      // Se devuelve SOLO la versión fresca de Mongo de cada semana tocada (recién
+      // guardada, o la que ya había si hubo conflicto). Antes iba `currentMemoryWeeks`,
+      // una caché que nadie mantiene al día: el cliente la mezcla sobre su estado
+      // ({...semanas, ...data}) y otras semanas volvían a versiones viejas.
       const freshDocs = {};
       for (const [weekId, weekData] of Object.entries(weeksPayload)) {
         const existing = await LogisticsWeek.findOne({ weekId });
@@ -142,17 +105,16 @@ router.post('/weeks', requireAdmin, async (req, res) => {
         freshDocs[weekId] = saved;
       }
 
-      currentMemoryWeeks = { ...currentMemoryWeeks, ...freshDocs };
-
       if (conflicts.length > 0) {
         return res.status(409).json({
           success: false,
           conflict: true,
           conflicts,
           message: 'Alguien más ha guardado cambios en esta semana mientras la editabas. Recarga la página para ver la versión más reciente antes de repetir tu cambio, para no perder el otro.',
-          data: currentMemoryWeeks
+          data: freshDocs
         });
       }
+      return res.json({ success: true, data: freshDocs });
     } else {
       currentMemoryWeeks = { ...currentMemoryWeeks, ...weeksPayload };
     }

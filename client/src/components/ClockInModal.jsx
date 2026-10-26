@@ -28,7 +28,10 @@ function VentanaFichar({
   onClockEntryCreated,
   isAdmin
 }) {
-  const [selectedWorker, setSelectedWorker] = useState(initialWorkerName || workersList[0]?.name || '');
+  const [elegido, setSelectedWorker] = useState(initialWorkerName || workersList[0]?.name || '');
+  // Si se abrió con el equipo aún sin cargar (Render despertando), en cuanto llega se
+  // toma el primero: antes se fichaba sin nombre (o la ventana reventaba).
+  const selectedWorker = elegido || workersList[0]?.name || '';
   const [note, setNote] = useState(initialTaskName || '');
   const [currentTime, setCurrentTime] = useState(new Date());
   
@@ -53,7 +56,7 @@ function VentanaFichar({
   // es "el más reciente" — ver getActiveShiftForWorker).
   const activeShift = getActiveShiftForWorker(clockEntries, selectedWorker);
 
-  const currentWorkerObj = workersList.find(w => w.name === selectedWorker) || workersList[0];
+  const currentWorkerObj = workersList.find(w => w.name === selectedWorker) || workersList[0] || null;
 
   // Quien ficha: el elegido en el selector (con el rol y la tarifa de su ficha).
   const trabajadorElegido = { ...currentWorkerObj, name: selectedWorker };
@@ -169,6 +172,9 @@ function VentanaFichar({
           </Selector>
         </Campo>
 
+        {!currentWorkerObj ? (
+          <p role="status" className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 text-xs text-slate-400 text-center">Cargando equipo…</p>
+        ) : (
         <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
           <span className="text-slate-400">Tipo de Contrato:</span>
           {currentWorkerObj.isPayroll ? (
@@ -181,6 +187,7 @@ function VentanaFichar({
             </span>
           )}
         </div>
+        )}
 
         {/* Active Shift Status */}
         {activeShift ? (
@@ -240,9 +247,9 @@ function VentanaFichar({
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={handleClockIn}
-          disabled={!!activeShift || isProcessing}
+          disabled={!!activeShift || isProcessing || !currentWorkerObj}
           className={`py-3.5 px-4 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
-            (activeShift || isProcessing)
+            (activeShift || isProcessing || !currentWorkerObj)
               ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
               : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20'
           }`}

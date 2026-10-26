@@ -1,4 +1,5 @@
 import { getWeddingTaskName } from './eventNaming';
+import { mismoNombre, nombreEnTexto } from './nombresTrabajadores';
 
 // El domingo y el lunes comparten UNA sola lista de tareas (sundayMonday.tasks)
 // en vez de vivir cada uno en schedule.domingo/schedule.lunes — de hecho
@@ -204,8 +205,11 @@ export function parseWeekRange(dateRange, now = new Date()) {
   if (typeof dateRange !== 'string') return null;
   const text = dateRange.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 
-  const yearMatch = text.match(/\b(20\d{2})\b/);
-  const body = yearMatch ? text.replace(yearMatch[0], ' ') : text;
+  // El año que cuenta es el ÚLTIMO (el del final del rango): con «… de 2026 al 3 de Enero
+  // de 2027» se tomaba 2026 como final y toda la semana caía un año antes.
+  const anios = [...text.matchAll(/\b(20\d{2})\b/g)];
+  const yearMatch = anios.at(-1) || null;
+  const body = text.replace(/\b20\d{2}\b/g, ' ');
 
   const numbers = [...body.matchAll(/\b(\d{1,2})\b/g)].map(m => Number(m[1]));
   const months = [...body.matchAll(new RegExp(`\\b(${MONTH_WORDS})\\b`, 'g'))].map(m => MONTHS[m[1]]);
@@ -606,13 +610,15 @@ export function indiceDeTareaFichada(weekData, ref) {
 // el nombre exacto del equipo (sin distinguir mayúsculas). Solo si la tarea no trae
 // `assigned` (dato antiguo) se busca el nombre en su texto y en los datos de la boda.
 export function isTaskAssignedTo(task, workerName) {
-  const nombre = String(workerName || '').toLowerCase();
-  if (!nombre) return false;
-  if (task && typeof task === 'object' && Array.isArray(task.assigned) && task.assigned.length > 0) {
-    return task.assigned.some((a) => String(a).toLowerCase() === nombre);
+  if (!String(workerName || '').trim()) return false;
+  // Con `assigned` (aunque esté vacío) manda esa lista: una tarea sin nadie no es de
+  // quien salga en su texto («Boda Mariana - Carga» no es de Ana).
+  if (task && typeof task === 'object' && Array.isArray(task.assigned)) {
+    return task.assigned.some((a) => mismoNombre(a, workerName));
   }
+  // Tareas antiguas sin `assigned`: el nombre como palabra en su texto, no «lo contiene».
   const texto = task && typeof task === 'object'
     ? [task.text, task.location, task.details, task.truck].filter(Boolean).join(' ')
     : String(task || '');
-  return texto.toLowerCase().includes(nombre);
+  return nombreEnTexto(workerName, texto);
 }

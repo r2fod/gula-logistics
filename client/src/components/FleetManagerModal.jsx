@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2, Upload, FileText, Truck, AlertCircle } from 'lucide-react';
 import { uploadRentalPdf, urlLocalDeDocumento } from '../data/apiService';
 import { abrirEnPestanaNuevaAlLlegar } from '../data/enlaces';
@@ -38,6 +38,29 @@ function SelectorDiaAlquiler({ semana, uso, valor, onCambiar, festivos }) {
         </p>
       )}
     </>
+  );
+}
+
+// Campo que guarda al salir de él (o con Enter), no en cada tecla: cada guardado manda la
+// semana entera y, con uno por letra, el segundo chocaba con el primero (409) y se perdían
+// letras. Si la semana cambia desde fuera mientras no se edita, se pone al día; si la
+// ventana se cierra con el campo a medias (Escape), se guarda igual.
+function InputAlSalir({ valor, onGuardar, ...props }) {
+  // El borrador recuerda de qué valor partió: si la semana cambia desde fuera, manda ella.
+  const [borrador, setBorrador] = useState({ base: valor, texto: valor });
+  const texto = borrador.base === valor ? borrador.texto : valor;
+  const guardar = () => { if (texto !== valor) onGuardar(texto); };
+  const alCerrar = useRef(guardar);
+  useEffect(() => { alCerrar.current = guardar; });
+  useEffect(() => () => alCerrar.current(), []);
+  return (
+    <Input
+      {...props}
+      value={texto}
+      onChange={(e) => setBorrador({ base: valor, texto: e.target.value })}
+      onBlur={guardar}
+      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+    />
   );
 }
 
@@ -122,10 +145,10 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium text-slate-400 mb-1">Nombre / Matrícula</label>
-                  <Input
+                  <InputAlSalir
                     type="text"
-                    value={truck.name}
-                    onChange={(e) => handleUpdateTruck(idx, 'name', e.target.value)}
+                    valor={truck.name}
+                    onGuardar={(v) => handleUpdateTruck(idx, 'name', v)}
                     redondeo="lg" fondo="medio" borde="marcado"
                   />
                 </div>
@@ -178,19 +201,19 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-xs font-medium text-slate-400 mb-1">Fecha de inicio</label>
-                        <Input
+                        <InputAlSalir
                           type="date"
-                          value={truck.continuousStart || ''}
-                          onChange={(e) => handleUpdateTruck(idx, 'continuousStart', e.target.value)}
+                          valor={truck.continuousStart || ''}
+                          onGuardar={(v) => handleUpdateTruck(idx, 'continuousStart', v)}
                           redondeo="lg" fondo="medio" borde="marcado"
                         />
                       </div>
                       <div>
                         <label className="block text-xs font-medium text-slate-400 mb-1">Fecha de fin</label>
-                        <Input
+                        <InputAlSalir
                           type="date"
-                          value={truck.continuousEnd || ''}
-                          onChange={(e) => handleUpdateTruck(idx, 'continuousEnd', e.target.value)}
+                          valor={truck.continuousEnd || ''}
+                          onGuardar={(v) => handleUpdateTruck(idx, 'continuousEnd', v)}
                           redondeo="lg" fondo="medio" borde="marcado"
                         />
                       </div>
@@ -207,10 +230,10 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
                       </div>
                       <div>
                         <label className="block text-[11px] text-slate-500 mb-1">Hora (Ej: 10:00)</label>
-                        <Input
+                        <InputAlSalir
                           type="time"
-                          value={truck.pickupTime || ''}
-                          onChange={(e) => handleUpdateTruck(idx, 'pickupTime', e.target.value)}
+                          valor={truck.pickupTime || ''}
+                          onGuardar={(v) => handleUpdateTruck(idx, 'pickupTime', v)}
                           tamano="2xs" redondeo="lg" fondo="medio" borde="marcado"
                         />
                       </div>
@@ -226,10 +249,10 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
                       </div>
                       <div>
                         <label className="block text-[11px] text-slate-500 mb-1">Hora límite</label>
-                        <Input
+                        <InputAlSalir
                           type="time"
-                          value={truck.returnTime || ''}
-                          onChange={(e) => handleUpdateTruck(idx, 'returnTime', e.target.value)}
+                          valor={truck.returnTime || ''}
+                          onGuardar={(v) => handleUpdateTruck(idx, 'returnTime', v)}
                           tamano="2xs" redondeo="lg" fondo="medio" borde="marcado"
                         />
                       </div>

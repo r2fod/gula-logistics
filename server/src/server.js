@@ -16,6 +16,7 @@ import rosterRoutes from './routes/roster.routes.js';
 import aiMemoryRoutes from './routes/aiMemory.routes.js';
 import iaRoutes from './routes/ia.routes.js';
 import { usarCuerposJson, erroresDeCuerpo } from './middleware/cuerpoJson.js';
+import { esperarBaseDeDatos } from './middleware/esperarBaseDeDatos.js';
 
 dotenv.config();
 
@@ -65,7 +66,9 @@ if (process.env.MONGODB_URI) {
   console.log('Modo backend local sin MONGODB_URI (Respaldo en memoria local activo)');
 }
 
-// Rutas de API para datos sensibles
+// Rutas de API para datos sensibles: ninguna sin base (ver esperarBaseDeDatos.js).
+const conBase = esperarBaseDeDatos();
+app.use('/api', (req, res, next) => (req.path === '/health' ? next() : conBase(req, res, next)));
 app.use('/api/auth', authRoutes);
 app.use('/api/logistics', logisticsRoutes);
 app.use('/api/clock', clockRoutes);

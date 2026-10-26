@@ -47,6 +47,15 @@ export function mismoNombre(a, b) {
   return !!x && x === normalizarNombre(b);
 }
 
+// ¿Sale `nombre` como palabra(s) entera(s) en `texto` («Vacaciones Ana», «Ana y Luis»)?
+// "Lo contiene" no vale: «Vacaciones Mariana» también marcaba de vacaciones a Ana.
+export function nombreEnTexto(nombre, texto) {
+  const n = normalizarNombre(nombre);
+  if (!n) return false;
+  const escapado = n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^a-z0-9])${escapado}($|[^a-z0-9])`).test(normalizarNombre(texto));
+}
+
 // De `lista`, la persona a la que corresponde un nombre de fichaje o de planning:
 // igual o su nombre seguido de más ("Marta" → "Marta Gula"), o null. "Lo contiene" no
 // basta: las horas de "Mariana" (ya fuera del equipo) iban a "Ana".

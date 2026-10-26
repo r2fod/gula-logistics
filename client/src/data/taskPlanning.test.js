@@ -209,6 +209,11 @@ describe('parseWeekRange', () => {
   const now = at(2026, 9, 20, 20, 17);
   const ymd = (d) => d && `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 
+  it('BUG evitado: con año en las dos puntas («… de 2026 al 3 de Enero de 2027») no cae un año antes', () => {
+    const r = parseWeekRange('Del 29 de Diciembre de 2026 al 3 de Enero de 2027', now);
+    expect([ymd(r.start), ymd(r.end)]).toEqual(['2026-12-29', '2027-1-3']);
+  });
+
   it('lee "Del 15 al 20 de Septiembre de 2026"', () => {
     const r = parseWeekRange('Del 15 al 20 de Septiembre de 2026', now);
     expect([ymd(r.start), ymd(r.end)]).toEqual(['2026-9-15', '2026-9-20']);
@@ -635,6 +640,12 @@ describe('isTaskAssignedTo', () => {
     const boda = { location: 'Finca Norte', truck: 'Camión Gula', details: 'Conduce Ana' };
     expect(isTaskAssignedTo(boda, 'Ana')).toBe(true);
     expect(isTaskAssignedTo(boda, 'Luis')).toBe(false);
+  });
+
+  it('BUG evitado: una tarea sin nadie asignado no es de quien salga en su texto, y «Mariana» no es Ana', () => {
+    expect(isTaskAssignedTo({ text: 'Boda Ana - Carga', assigned: [] }, 'Ana')).toBe(false);
+    expect(isTaskAssignedTo({ text: 'Boda Mariana - Carga' }, 'Ana')).toBe(false);
+    expect(isTaskAssignedTo({ text: 'Cargar', assigned: ['Sofía'] }, 'sofia')).toBe(true);
   });
 
   it('sin nombre no coincide con nadie', () => {

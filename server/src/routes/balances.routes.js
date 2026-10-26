@@ -44,28 +44,6 @@ router.get('/mio', requireTrabajador, async (req, res) => {
   }
 });
 
-// POST /api/balances/seed - Seed financial balances to MongoDB Atlas (Admin only)
-// Accepts an optional { workers: [...] } body to migrate real data one time
-// without ever committing it to the repo; defaults to the neutral placeholder.
-router.post('/seed', requireAdmin, async (req, res) => {
-  try {
-    const workersToSeed = Array.isArray(req.body?.workers) && req.body.workers.length > 0
-      ? req.body.workers
-      : initialBalancesData.workers;
-
-    if (mongoose.connection.readyState === 1) {
-      await WorkerBalance.deleteMany({});
-      const created = await WorkerBalance.insertMany(workersToSeed);
-      return res.json({ success: true, message: `${created.length} registros financieros migrados a MongoDB Atlas` });
-    }
-    memoryBalancesData = { ...memoryBalancesData, workers: workersToSeed };
-    return res.json({ success: true, message: 'Seeding completado en memoria local' });
-  } catch (error) {
-    console.error('Error seeding balances:', error);
-    return res.status(500).json({ error: error.message });
-  }
-});
-
 // PUT /api/balances/:id - Update specific worker balance or add breakdown item (Admin only)
 router.put('/:id', requireAdmin, async (req, res) => {
   try {

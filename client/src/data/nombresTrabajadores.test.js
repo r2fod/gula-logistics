@@ -73,3 +73,14 @@ describe('la ficha de cada persona, mirando a todo el equipo', () => {
     expect(personaDelFichaje(['Ana'], 'Mariana')).toBeNull();
   });
 });
+
+describe('nombreEnTexto', () => {
+  it('el nombre como palabra entera, sin tildes ni mayúsculas; «lo contiene» no vale', async () => {
+    const { nombreEnTexto } = await import('./nombresTrabajadores');
+    expect(nombreEnTexto('Ana', 'Vacaciones ANA')).toBe(true);
+    expect(nombreEnTexto('Sofía', 'Libra sofia y Luis')).toBe(true);
+    expect(nombreEnTexto('Ana', 'Vacaciones Mariana')).toBe(false);
+    expect(nombreEnTexto('Luis', 'Juan Luis Gula')).toBe(true);
+    expect(nombreEnTexto('', 'Ana')).toBe(false);
+  });
+});

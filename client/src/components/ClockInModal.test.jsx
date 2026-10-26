@@ -113,6 +113,18 @@ describe('ClockInModal', () => {
     expect(onClockEntryCreated.mock.calls[0][0].workerName).toBe('Ana');
   });
 
+  it('BUG evitado: abierta con el equipo aún vacío no revienta: dice que está cargando y no deja fichar; al llegar, ficha con el primero', async () => {
+    const onClockEntryCreated = vi.fn().mockResolvedValue(undefined);
+    const props = { onClose: vi.fn(), clockEntries: [], onClockEntryCreated };
+    const { rerender } = render(<ClockInModal {...props} isOpen workersList={[]} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Cargando equipo…');
+    expect(boton(/Fichar Entrada/)).toBeDisabled();
+    rerender(<ClockInModal {...props} isOpen workersList={equipo} />);
+    fireEvent.click(boton(/Fichar Entrada/));
+    await waitFor(() => expect(onClockEntryCreated).toHaveBeenCalled());
+    expect(onClockEntryCreated.mock.calls[0][0].workerName).toBe('Ana');
+  });
+
   it('abre con el trabajador de ese momento y con la tarea que se pulsó (no con los del primer montaje)', () => {
     const props = { onClose: vi.fn(), workersList: equipo, clockEntries: [], onClockEntryCreated: vi.fn() };
     const { rerender } = render(<ClockInModal {...props} isOpen={false} initialWorkerName="Ana" />);

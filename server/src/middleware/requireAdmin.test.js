@@ -59,7 +59,7 @@ describe('requireAdmin', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('deja pasar un token admin válido cuando Mongo no está conectado (no puede comprobar revocación)', async () => {
+  it('sin MONGODB_URI (desarrollo) deja pasar un token admin válido: no hay base con la que comprobar revocación', async () => {
     const token = signToken({ role: 'admin', v: 1 });
     const req = { headers: { authorization: `Bearer ${token}` } };
     const res = mockRes();
@@ -70,6 +70,20 @@ describe('requireAdmin', () => {
     expect(next).toHaveBeenCalledOnce();
     expect(req.admin).toMatchObject({ role: 'admin', v: 1 });
     expect(AdminConfig.findOne).not.toHaveBeenCalled();
+  });
+
+  it('BUG evitado: con base configurada pero sin conectar, falla cerrado (503): un token anulado no vuelve a servir', async () => {
+    process.env.MONGODB_URI = 'mongodb://de-test-no-real';
+    try {
+      const req = { headers: { authorization: `Bearer ${signToken({ role: 'admin', v: 1 })}` } };
+      const res = mockRes();
+      const next = vi.fn();
+      await requireAdmin(req, res, next);
+      expect(next).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(503);
+    } finally {
+      delete process.env.MONGODB_URI;
+    }
   });
 
   it('deja pasar un token admin cuya versión coincide con la de AdminConfig', async () => {

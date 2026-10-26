@@ -214,7 +214,9 @@ export default function PartnerDashboardView({
     return v ? { ...v, fichados: fichadosDelDia(paidShifts, v.fecha) } : null;
   }, [allWeeks, activeWeekData, paidShifts]);
 
-  const actualizarSemana = (weekId, partialUpdate) => {
+  // Siempre sobre la semana activa: lo que tenga estado propio de una semana (propuestas,
+  // revisiones) lleva `key={activeWeekId}` para no aplicarse a otra al cambiar de semana.
+  const actualizarSemana = (_weekId, partialUpdate) => {
     if (onUpdateWeek) onUpdateWeek({ ...activeWeekData, ...partialUpdate });
   };
 
@@ -292,7 +294,7 @@ export default function PartnerDashboardView({
           }}
           onRegenerar={onRegenerateDraft ? () => onRegenerateDraft(activeWeekId) : undefined}
           onEliminar={onEliminarSemana ? () => onEliminarSemana(activeWeekId) : undefined}
-          extra={<RevisionIaBorrador semana={activeWeekData} equipo={workersList} aprendizaje={aprendizaje} onGuardar={(parcial) => actualizarSemana(activeWeekId, parcial)} />}
+          extra={<RevisionIaBorrador key={activeWeekId} semana={activeWeekData} equipo={workersList} aprendizaje={aprendizaje} onGuardar={(parcial) => actualizarSemana(activeWeekId, parcial)} />}
         />
       )}
 
@@ -368,6 +370,7 @@ export default function PartnerDashboardView({
 
       {activeTab === 'schedule' && adminUnlocked && (
         <DisponibilidadSemana
+          key={activeWeekId}
           semana={activeWeekData}
           equipo={workersList}
           esBorrador={esBorrador(activeWeekData)}

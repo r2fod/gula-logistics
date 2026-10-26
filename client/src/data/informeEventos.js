@@ -41,7 +41,7 @@ export function informeDeEventos({ eventos = [], turnos = [], equipo = [], paxBy
       const tareas = [...new Set(trozos.map(st => tareaCorta(st.tareaPlanificada?.texto || st.taskName)).filter(Boolean))];
       const planificados = trozos.map(st => st.tareaPlanificada).filter(Boolean);
       const persona = ficha(s.workerName);
-      const bolsa = suyo.totalHours > 0 && Math.abs(suyo.totalCost - suyo.totalHours * s.rate) > 0.01;
+      const bolsa = !!s.conBolsa; // aplicarTarifaDeBolsa (ya cambió `rate` por la media)
       return [{
         nombre: persona?.name || s.workerName,
         rol: persona?.role || '',

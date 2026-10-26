@@ -1,4 +1,5 @@
 import { splitEventNames, getEventShares } from './eventNaming';
+import { personaDelFichaje } from './nombresTrabajadores';
 
 // Desglose de costes por evento a partir de los turnos ya emparejados
 // (subTasks de pairShiftsFromEntries). Si una tarea es de VARIOS eventos
@@ -40,7 +41,7 @@ export function summarizeByEvent(shifts = [], workersList = [], paxByEvent = {},
 
         const workerName = shift.workerName || 'Desconocido';
         if (!acc[key].workers[workerName]) {
-          const roster = workersList.find(w => w.name?.toLowerCase().includes(workerName.toLowerCase() || ''));
+          const roster = personaDelFichaje(workersList, workerName, w => w?.name); // no «lo contiene»: Ana no es Mariana
           acc[key].workers[workerName] = { name: workerName, avatar: roster?.avatar || '👤', cost: 0, hours: 0 };
         }
         acc[key].workers[workerName].cost += cost;

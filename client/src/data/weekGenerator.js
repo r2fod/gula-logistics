@@ -25,6 +25,7 @@ import { asignarEquipo } from './optimizadorPlanning';
 import { candidatosDePerfil, clasificarEquipo } from './equipoRoles';
 import { DIAS_SEMANA as DIAS, LIMITES_POR_DEFECTO, restriccionesDelEquipo } from './disponibilidad';
 import { plano } from '../utils/texto';
+import { nombreEnTexto } from './nombresTrabajadores';
 import { PREFIJO_ID, aIso, fechaLocal, formatearRango, sumarDias } from './fechasSemana';
 import { diaHabilCercano, festivoEn, festivosLocales } from './festivos';
 
@@ -141,8 +142,7 @@ function extraerVacaciones(apuntes, roster) {
   // vacaciones: el título lleva el nombre de la persona; `hasta` marca el rango.
   const mapa = []; // { nombre, desde, hasta }
   apuntes.filter(a => a.tipo === 'vacaciones').forEach(a => {
-    const t = plano(a.titulo);
-    roster.forEach(p => { if (t.includes(plano(p.name))) mapa.push({ nombre: p.name, desde: a.fecha, hasta: a.hasta || a.fecha }); });
+    roster.forEach(p => { if (nombreEnTexto(p.name, a.titulo)) mapa.push({ nombre: p.name, desde: a.fecha, hasta: a.hasta || a.fecha }); });
   });
   return mapa;
 }

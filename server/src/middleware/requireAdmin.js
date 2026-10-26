@@ -16,9 +16,13 @@ const tokenDe = (req) => {
 };
 
 // Por qué ya no vale un token bien firmado (anulado al subir su versión), o null.
-// Sin base no se puede comprobar y vale; si la base falla, lanza.
+// Sin base configurada (desarrollo) no se puede comprobar y vale; con base configurada
+// pero sin conexión, o si la consulta falla, lanza: un token anulado no vuelve a servir.
 async function motivoDeAnulacion(payload) {
-  if (mongoose.connection.readyState !== 1) return null;
+  if (mongoose.connection.readyState !== 1) {
+    if (process.env.MONGODB_URI) throw new Error('Base de datos no disponible');
+    return null;
+  }
   const config = await AdminConfig.findOne({ configKey: 'admin' });
   if (config && payload.role === 'trabajador') {
     if (payload.tv !== (config.trabajadoresVersion || 1)) {

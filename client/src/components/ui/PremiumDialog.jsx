@@ -1,5 +1,6 @@
-import React, { useEffect, useId } from 'react';
+import React, { useId } from 'react';
 import { AlertTriangle, CheckCircle, Info, X, Trash2 } from 'lucide-react';
+import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 
 export default function PremiumDialog({
   title,
@@ -11,17 +12,11 @@ export default function PremiumDialog({
   onCancel,
 }) {
   const idTitulo = useId();
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        onCancel();
-      } else if (e.key === 'Enter') {
-        onConfirm();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onConfirm, onCancel]);
+  // Escape cierra SOLO este aviso (la misma pila que las ventanas: antes cerraba también
+  // la de debajo). Enter ya no se escucha en toda la página: el foco entra en el aviso y
+  // Enter pulsa el botón que lo tiene. Antes confirmaba aunque el foco estuviera en
+  // «Cancelar» o en el botón de detrás, que además se volvía a pulsar.
+  useCerrarConEscape(true, onCancel);
 
   // Determine icon and colors based on type
   let Icon = Info;
@@ -46,33 +41,31 @@ export default function PremiumDialog({
       bg: 'bg-amber-500/10',
       border: 'border-amber-500/20',
       text: 'text-amber-400',
-      shadow: 'shadow-amber-500/10',
       btn: 'bg-amber-500 hover:bg-amber-400 text-slate-950',
     },
     rose: {
       bg: 'bg-rose-500/10',
       border: 'border-rose-500/20',
       text: 'text-rose-400',
-      shadow: 'shadow-rose-500/10',
       btn: 'bg-rose-500 hover:bg-rose-400 text-slate-950',
     },
     emerald: {
       bg: 'bg-emerald-500/10',
       border: 'border-emerald-500/20',
       text: 'text-emerald-400',
-      shadow: 'shadow-emerald-500/10',
       btn: 'bg-emerald-500 hover:bg-emerald-400 text-slate-950',
     },
     blue: {
       bg: 'bg-blue-500/10',
       border: 'border-blue-500/20',
       text: 'text-blue-400',
-      shadow: 'shadow-blue-500/10',
       btn: 'bg-blue-500 hover:bg-blue-400 text-slate-950',
     },
   }[colorTheme];
 
   const isAlert = type === 'alert' || type === 'error' || type === 'success' || type === 'info';
+  // Al abrir, el foco va al botón principal; si borra algo, a «Cancelar».
+  const focoEnCancelar = !isAlert && type === 'delete';
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -83,7 +76,7 @@ export default function PremiumDialog({
       />
       
       <div 
-        className={`relative w-full max-w-sm transform overflow-hidden rounded-3xl bg-slate-900 border border-slate-800 p-6 text-left align-middle shadow-2xl transition-all shadow-${colorClasses.shadow} animate-in fade-in zoom-in-95 duration-200`}
+        className={`relative w-full max-w-sm transform overflow-hidden rounded-3xl bg-slate-900 border border-slate-800 p-6 text-left align-middle shadow-2xl animate-entrarVentana motion-reduce:animate-none`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={idTitulo}
@@ -118,6 +111,7 @@ export default function PremiumDialog({
             type="button"
             className={`inline-flex w-full justify-center rounded-xl px-4 py-2.5 text-sm font-bold shadow-sm transition-colors sm:w-auto ${colorClasses.btn}`}
             onClick={onConfirm}
+            autoFocus={!focoEnCancelar}
           >
             {confirmText}
           </button>
@@ -126,6 +120,7 @@ export default function PremiumDialog({
               type="button"
               className="mt-3 inline-flex w-full justify-center rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-bold text-slate-300 shadow-sm hover:bg-slate-700 hover:text-white transition-colors sm:mt-0 sm:w-auto"
               onClick={onCancel}
+              autoFocus={focoEnCancelar}
             >
               {cancelText}
             </button>

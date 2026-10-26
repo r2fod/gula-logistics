@@ -175,6 +175,14 @@ describe('generarBorrador — casos límite', () => {
     expect(JSON.stringify(week)).not.toContain('"Bruno"');
   });
 
+  it('BUG evitado: las vacaciones de «Brunolara» no dejan a Bruno sin trabajo (antes, «lo contiene»)', () => {
+    const conPrimo = [...ROSTER, { name: 'Brunolara', role: 'Ayudante Logística' }];
+    const conVacas = [...APUNTES, { id: 'v', fecha: '2026-09-22', hasta: '2026-09-27', tipo: 'vacaciones', titulo: 'Vacaciones Brunolara' }];
+    const { week } = generar(conVacas, conPrimo);
+    expect(JSON.stringify(week)).toContain('"Bruno"');
+    expect(JSON.stringify(week)).not.toContain('"Brunolara"');
+  });
+
   it('si no alcanza la gente, asigna menos y AVISA en vez de romper', () => {
     const solo = ROSTER.filter(p => ['Bruno', 'Óscar', 'Lara'].includes(p.name));
     const { week, resumen } = generar(APUNTES, solo);

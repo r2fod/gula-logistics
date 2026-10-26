@@ -9,6 +9,7 @@ vi.mock('../../data/apiService', () => ({
   fetchMiSaldoFromAPI: (...a) => fetchMio(...a),
   tokenTrabajador: (...a) => token(...a),
   olvidarTokenTrabajador: (...a) => olvidar(...a),
+  MI_SALDO_CACHE_PREFIJO: 'gula_mi_saldo_v1_',
 }));
 const { default: ResumenHorasSaldo } = await import('./ResumenHorasSaldo');
 const { REFRESCO_SALDO_MS } = await import('../../hooks/useMiSaldo');
@@ -26,6 +27,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date(2026, 8, 30, 12, 0));
   fetchMio.mockReset(); token.mockReset(); olvidar.mockReset();
+  localStorage.clear();
 });
 afterEach(() => { vi.useRealTimers(); });
 
@@ -85,6 +87,15 @@ describe('ResumenHorasSaldo (vista del trabajador)', () => {
     expect(screen.queryByText('Por cobrar')).toBeNull();
     expect(screen.getByText(/pide tu enlace personal/)).toBeInTheDocument();
     expect(fetchMio).not.toHaveBeenCalled();
+  });
+
+  it('BUG evitado: sin enlace (caducado o móvil compartido) no enseña la copia guardada del saldo y la borra', async () => {
+    localStorage.setItem('gula_mi_saldo_v1_ana', JSON.stringify({ id: 'ana', name: 'Ana', currentBalance: 50 }));
+    token.mockReturnValue(null);
+    pintar();
+    await esperarRed();
+    expect(screen.queryByText('Por cobrar')).toBeNull();
+    expect(localStorage.getItem('gula_mi_saldo_v1_ana')).toBeNull();
   });
 
   it('BUG evitado: con enlace pero sin ficha en el servidor (404) le dice qué pasa (antes, el hueco vacío)', async () => {

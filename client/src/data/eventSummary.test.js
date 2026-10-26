@@ -19,6 +19,11 @@ describe('summarizeByEvent', () => {
     });
   });
 
+  it('BUG evitado: el avatar de Ana no es el de Mariana (antes, «lo contiene»)', () => {
+    const [e] = summarizeByEvent([turno('Ana', [sub('Boda Eva', 1, 10)])], [{ name: 'Mariana', avatar: '🎻' }, { name: 'Ana', avatar: '🚚' }]);
+    expect(e.workers.Ana.avatar).toBe('🚚');
+  });
+
   it('los totales no cambian: la suma por evento es la del turno', () => {
     const lista = summarizeByEvent([
       turno('Ana', [sub('Boda Ana y Luis y Boda Marta', 3, 30), sub('Boda Marta', 1, 10)]),

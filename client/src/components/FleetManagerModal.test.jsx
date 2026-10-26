@@ -71,3 +71,26 @@ describe('FleetManagerModal — el día de recogida y de devolución, con festiv
   });
 });
 
+
+describe('FleetManagerModal — guardar la matrícula', () => {
+  it('BUG evitado: escribir no guarda la semana en cada letra (chocaban entre sí con 409); guarda una vez al salir del campo', () => {
+    const onUpdateWeek = vi.fn();
+    render(<FleetManagerModal isOpen onClose={vi.fn()} activeWeekData={semana()} onUpdateWeek={onUpdateWeek} />);
+    const campo = screen.getByDisplayValue('Camión Alquiler');
+    fireEvent.change(campo, { target: { value: 'Camión A' } });
+    fireEvent.change(campo, { target: { value: 'Camión AB' } });
+    expect(onUpdateWeek).not.toHaveBeenCalled();
+    fireEvent.blur(campo);
+    expect(onUpdateWeek).toHaveBeenCalledTimes(1);
+    expect(onUpdateWeek.mock.calls[0][1].trucks[0].name).toBe('Camión AB');
+  });
+
+  it('si la ventana se cierra con el campo a medias, lo escrito se guarda igual', () => {
+    const onUpdateWeek = vi.fn();
+    const { unmount } = render(<FleetManagerModal isOpen onClose={vi.fn()} activeWeekData={semana()} onUpdateWeek={onUpdateWeek} />);
+    fireEvent.change(screen.getByDisplayValue('Camión Alquiler'), { target: { value: 'Camión Z' } });
+    unmount();
+    expect(onUpdateWeek).toHaveBeenCalledTimes(1);
+    expect(onUpdateWeek.mock.calls[0][1].trucks[0].name).toBe('Camión Z');
+  });
+});

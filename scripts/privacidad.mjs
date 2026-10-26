@@ -89,6 +89,9 @@ export async function nombresDelEquipo({ env = process.env, llamar = fetch, cach
     const equipo = (await res.json()).workers;
     if (!Array.isArray(equipo)) throw new Error('respuesta inesperada');
     const nombres = [...new Set(equipo.map(w => String(w?.name || '').trim()).filter(n => n.length > 1))];
+    // Un equipo vacío es un fallo (base recién despierta o caída), no «nadie que vigilar»:
+    // no pisa la caché y se usa la última lista buena.
+    if (!nombres.length) throw new Error('equipo vacío');
     if (rutaCache) guardarCache(rutaCache, nombres);
     return { nombres, origen: 'base' };
   } catch {

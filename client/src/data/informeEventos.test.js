@@ -5,6 +5,7 @@ import { repartirTiempoSinTarea } from './repartoPorPlanning';
 import { buildPaxRegistry, buildTaskContextResolver } from './eventNaming';
 import { summarizeByEvent } from './eventSummary';
 import { usarTarifasPorDefecto } from './tarifasPorDefecto';
+import { aplicarTarifaDeBolsa } from './bolsaHoras';
 
 // Semana inventada del 13 al 18 de octubre de 2026 (lunes 19 de cola) con dos bodas.
 const semanas = {
@@ -73,9 +74,10 @@ describe('informeDeEventos — el personal de cada evento, turno a turno', () =>
     expect(uno.sinFichar).toEqual([]);
   });
 
-  it('con bolsa de horas el €/hora es el medio del turno, para que horas × €/hora dé su coste', () => {
+  it('BUG evitado: con bolsa de horas (la de verdad, que cambia `rate`) la fila lo marca; el €/hora es el medio del turno', () => {
     const datos = preparar([...turno('Luis', 15, 11, 15)]);
-    datos.turnos = datos.turnos.map(s => ({ ...s, subTasks: s.subTasks.map(st => ({ ...st, cost: st.cost * 0.8 })) })); // como aplicarTarifaDeBolsa
+    const bolsa = { totalHours: 10, consumedHours: 0, hourlyRate: 8, extraRateAfter80h: 12 };
+    datos.turnos = aplicarTarifaDeBolsa(datos.turnos, [{ name: 'Luis', isSpecialPurse: true, purseInfo: bolsa }]);
     const [fila] = informeDeEventos({ eventos: ['Boda Uno'], ...datos })[0].filas;
     expect(fila.bolsa).toBe(true);
     expect(fila.tarifa).toBeCloseTo(8, 6);

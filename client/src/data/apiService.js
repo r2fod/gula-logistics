@@ -134,13 +134,22 @@ export function tokenTrabajador(nombre) {
   return params.get('t') && mismoNombre(params.get('worker'), nombre) ? params.get('t') : null;
 }
 
-// Cierra cualquier acceso de este navegador (admin y socias) y borra la copia
-// local de los saldos, para que no queden en un dispositivo compartido.
+// Copia del saldo de cada trabajador en su móvil (useMiSaldo): `<prefijo><nombre>`.
+export const MI_SALDO_CACHE_PREFIJO = 'gula_mi_saldo_v1_';
+
+// Cierra cualquier acceso de este navegador (admin y socias) y borra las copias
+// locales de los saldos, para que no queden en un dispositivo compartido.
 export function cerrarAccesosGuardados() {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
   localStorage.removeItem(SOCIAS_TOKEN_STORAGE_KEY);
   localStorage.removeItem(BALANCES_CACHE_KEY);
-  localStorage.removeItem('gula_mi_saldo_v1');
+  // Todas las de cada trabajador (antes se borraba una clave que ya no se usaba).
+  const copias = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const clave = localStorage.key(i);
+    if (clave?.startsWith(MI_SALDO_CACHE_PREFIJO.slice(0, -1))) copias.push(clave);
+  }
+  copias.forEach(k => localStorage.removeItem(k));
 }
 
 // La sesión de admin manda; si no la hay, el enlace de socias (solo sirve para
@@ -514,8 +523,8 @@ export async function retryPendingClockEntries() {
   const pending = getPendingClockEntries();
   if (pending.length === 0) return [];
 
-  const stillPending = [];
   const synced = [];
+  const fuera = new Set(); // guardados o rechazados para siempre
   for (const entry of pending) {
     try {
       const res = await fetchConLimite(`${API_BASE}/clock`, {
@@ -525,20 +534,20 @@ export async function retryPendingClockEntries() {
       });
       if (res.ok) {
         synced.push(entry);
+        fuera.add(entry.id);
       } else if (res.status !== 401 && await rechazoDefinitivo(res)) {
         // No va a entrar nunca: fuera de la cola. Antes se reintentaba cada 20 s para
         // siempre y gastaba el límite por IP de todos los que fichan desde esa red.
         // Un 401 por falta del enlace NO: tras anular los enlaces, en cuanto la persona
         // abre el nuevo este reintento ya lo lleva y entra (se perdería su salida).
         console.warn('Fichaje pendiente rechazado por el servidor, sale de la cola:', entry.id);
-      } else {
-        stillPending.push(entry);
+        fuera.add(entry.id);
       }
-    } catch {
-      stillPending.push(entry);
-    }
+    } catch { /* sigue en la cola */ }
   }
-  setPendingClockEntries(stillPending);
+  // La cola se vuelve a leer: mientras se reintentaba (hasta 60 s por petición) pudo
+  // entrar otro fichaje sin red. Pisarla con la lista del principio lo perdía.
+  setPendingClockEntries(getPendingClockEntries().filter(e => !fuera.has(e.id)));
   return synced;
 }
 

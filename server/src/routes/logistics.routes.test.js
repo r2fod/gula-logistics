@@ -12,9 +12,6 @@ vi.mock('../models/ClockEntry.model.js', () => ({
 vi.mock('../models/Documento.model.js', () => ({
   Documento: { create: vi.fn(), findOne: vi.fn() },
 }));
-vi.mock('../models/Logistics.model.js', () => ({
-  Logistics: { findOne: vi.fn(), create: vi.fn() },
-}));
 // requireAdmin consulta AdminConfig para la revocación por cambio de
 // contraseña; la simulamos "sin config" para que ese chequeo no interfiera
 // con estos tests (ver requireAdmin.test.js para su cobertura dedicada).
@@ -121,6 +118,17 @@ describe('POST /api/logistics/weeks (reemplazo de documento completo)', () => {
 
     expect(res.status).toBe(200);
     expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalled();
+  });
+  it('BUG evitado: devuelve SOLO las semanas guardadas, no la caché en memoria con versiones viejas de otras', async () => {
+    LogisticsWeek.findOne.mockResolvedValue(null);
+    LogisticsWeek.findOneAndUpdate.mockResolvedValue({ weekId: 'week_9', name: 'Semana 9' });
+    const res = await request(buildApp())
+      .post('/api/logistics/weeks')
+      .set('Authorization', adminAuthHeader())
+      .send({ week_9: { weekId: 'week_9', name: 'Semana 9', schedule: {} } });
+
+    expect(res.status).toBe(200);
+    expect(Object.keys(res.body.data)).toEqual(['week_9']);
   });
 });
 
@@ -426,11 +434,11 @@ describe('DELETE /api/logistics/weeks/:weekId (solo borradores)', () => {
   });
 });
 
-describe('POST /api/logistics/update (legacy)', () => {
-  it('ahora también requiere admin', async () => {
+describe('Rutas antiguas retiradas', () => {
+  it('GET /api/logistics y POST /update ya no existen (nadie las usaba)', async () => {
     const app = buildApp();
-    const res = await request(app).post('/api/logistics/update').send({ foo: 'bar' });
-    expect(res.status).toBe(401);
+    expect((await request(app).get('/api/logistics')).status).toBe(404);
+    expect((await request(app).post('/api/logistics/update').send({ foo: 'bar' })).status).toBe(404);
   });
 });
 

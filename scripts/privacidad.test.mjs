@@ -73,3 +73,10 @@ test('no cuentan los nombres inventados de siempre (Ana, Luis…); los demás, s
   assert.deepEqual(sinEjemplos(['Ana', 'Luis García', 'Telmo', 'Íñigo Gula', 'Sofía']), ['Luis García', 'Telmo', 'Íñigo Gula']); // el nombre suelto; con apellido, sí se busca
 });
 
+
+test('BUG evitado: un equipo vacío (base recién despierta) no pisa la caché ni deja el filtro sin nombres', async () => {
+  const cache = cacheTemporal();
+  writeFileSync(cache, JSON.stringify({ nombres: ['Telmo'] }));
+  assert.deepEqual(await nombresDelEquipo({ env: {}, llamar: respuesta([]), cache }), { nombres: ['Telmo'], origen: 'caché' });
+  assert.deepEqual(JSON.parse(readFileSync(cache, 'utf8')).nombres, ['Telmo']);
+});

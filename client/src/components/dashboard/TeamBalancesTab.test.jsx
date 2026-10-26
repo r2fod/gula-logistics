@@ -37,11 +37,35 @@ describe('TeamBalancesTab — desglose separado', () => {
   it('BUG evitado: borrar un concepto a mano borra ESE concepto (antes el índice se calculaba restando los fichajes)', async () => {
     const p = pintar();
     fireEvent.click(screen.getByRole('button', { name: 'Eliminar concepto manual: Rotura de copas' }));
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Borrar apunte' })).getByRole('button', { name: 'Borrar' }));
     await waitFor(() => expect(p.persistWorkerBalance).toHaveBeenCalled());
     const [id, cambios] = p.persistWorkerBalance.mock.calls[0];
     expect(id).toBe('ana');
     expect(cambios.breakdown.map(b => b.concept)).toEqual(['🕒 16/09 (17:00 a 20:30 - 3.5h a 10€/h)']);
     expect(cambios.currentBalance).toBe(35);
+  });
+
+  it('BUG evitado: borrar un apunte a mano pide confirmación (antes, un toque y fuera); cancelando no se toca nada', async () => {
+    const p = pintar();
+    fireEvent.click(screen.getByRole('button', { name: 'Eliminar concepto manual: Rotura de copas' }));
+    const aviso = await screen.findByRole('dialog', { name: 'Borrar apunte' });
+    expect(aviso).toHaveTextContent('Rotura de copas');
+    fireEvent.click(within(aviso).getByRole('button', { name: 'Cancelar' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Borrar apunte' })).toBeNull());
+    expect(p.persistWorkerBalance).not.toHaveBeenCalled();
+  });
+
+  it('BUG evitado: sin tarifa en Saldos ni ficha del equipo, un turno a mano de alguien en nómina va a la tarifa de nómina de la base (antes, un 14 escrito en el código)', async () => {
+    usarTarifasPorDefecto({ extra: 10, nomina: 13 });
+    const p = pintar({ balancesData: { workers: [{ ...ficha, statusType: 'payroll' }] } });
+    fireEvent.click(screen.getByRole('button', { name: /Añadir concepto \/ horas manual/ }));
+    fireEvent.change(document.querySelector('input[type="date"]'), { target: { value: '2026-09-20' } });
+    const [ini, fin] = document.querySelectorAll('input[type="time"]');
+    fireEvent.change(ini, { target: { value: '09:00' } });
+    fireEvent.change(fin, { target: { value: '11:00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => expect(p.persistWorkerBalance).toHaveBeenCalled());
+    expect(p.persistWorkerBalance.mock.calls[0][1].breakdown.at(-1)).toMatchObject({ amount: 26 });
   });
 
   it('borrar un turno fichado pide confirmación y borra sus fichajes', async () => {

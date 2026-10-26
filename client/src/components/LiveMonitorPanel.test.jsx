@@ -75,3 +75,22 @@ describe('LiveMonitorPanel — tareas desactivadas', () => {
     expect(document.body.textContent).not.toContain('Carga del lunes que viene');
   });
 });
+
+describe('LiveMonitorPanel — «Finalizar Tarea Activa» (vista pública)', () => {
+  it('BUG evitado: pide confirmación antes de fichar la salida de otra persona y un doble toque no crea dos salidas', async () => {
+    const { fireEvent, within, waitFor } = await import('../test/render');
+    const onClockEntryCreated = vi.fn();
+    render(<LiveMonitorPanel workersList={equipo} clockEntries={[entrada('Ana', 9, 0)]} onClockEntryCreated={onClockEntryCreated} />);
+    const boton = screen.getByRole('button', { name: /Finalizar Tarea Activa/ });
+    fireEvent.click(boton);
+    const aviso = await screen.findByRole('dialog', { name: 'Finalizar tarea' });
+    expect(aviso).toHaveTextContent('¿Fichar la salida de Ana?');
+    expect(onClockEntryCreated).not.toHaveBeenCalled();
+    fireEvent.click(within(aviso).getByRole('button', { name: 'Fichar salida' }));
+    await waitFor(() => expect(onClockEntryCreated).toHaveBeenCalledTimes(1));
+    expect(onClockEntryCreated.mock.calls[0][0]).toMatchObject({ workerName: 'Ana', type: 'salida' });
+    expect(boton).toBeDisabled();
+    fireEvent.click(boton);
+    expect(screen.queryByRole('dialog', { name: 'Finalizar tarea' })).toBeNull();
+  });
+});
