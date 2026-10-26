@@ -434,6 +434,21 @@ describe('DELETE /api/logistics/weeks/:weekId (solo borradores)', () => {
   });
 });
 
+describe('GET /api/logistics/weeks', () => {
+  it('BUG evitado: con base configurada, si la consulta falla responde 503 y no la semana de ejemplo (la app la tomaba por todas)', async () => {
+    process.env.MONGODB_URI = 'mongodb://de-test-no-real';
+    LogisticsWeek.find.mockRejectedValue(new Error('conexión cortada'));
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const res = await request(buildApp()).get('/api/logistics/weeks');
+      expect(res.status).toBe(503);
+      expect(res.body.week_3).toBeUndefined();
+    } finally {
+      delete process.env.MONGODB_URI;
+    }
+  });
+});
+
 describe('Rutas antiguas retiradas', () => {
   it('GET /api/logistics y POST /update ya no existen (nadie las usaba)', async () => {
     const app = buildApp();

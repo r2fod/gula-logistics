@@ -56,12 +56,19 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Conexión a MongoDB Atlas mediante variable de entorno MONGODB_URI
 if (process.env.MONGODB_URI) {
-  mongoose.connect(process.env.MONGODB_URI)
-    // Sin migraciones aquí: el servidor arranca muchas veces al día (Render lo duerme) y
-    // una migración en el arranque se repite en cada uno. La del 03/10/2026 ya corrió
-    // (renombrado de una ficha y fechas de apuntes antiguos; ver MEJORAS.md).
+  // Sin migraciones aquí: el servidor arranca muchas veces al día (Render lo duerme) y
+  // una migración en el arranque se repite en cada uno. La del 03/10/2026 ya corrió
+  // (renombrado de una ficha y fechas de apuntes antiguos; ver MEJORAS.md).
+  // Mongoose no reintenta la PRIMERA conexión: si falla (Atlas lento, DNS al despertar) se
+  // reintenta aquí, cada vez más espaciado (hasta 1 min). Sin esto la API se quedaba en 503
+  // (esperarBaseDeDatos) hasta reiniciar el servidor a mano.
+  const conectar = (espera = 5000) => mongoose.connect(process.env.MONGODB_URI)
     .then(() => console.log('MongoDB Atlas conectado correctamente (Saldos y Fichajes sincronizados)'))
-    .catch((err) => console.error('Error al conectar con MongoDB Atlas:', err.message));
+    .catch((err) => {
+      console.error(`Error al conectar con MongoDB Atlas (reintento en ${espera / 1000} s):`, err.message);
+      setTimeout(() => conectar(Math.min(espera * 2, 60000)), espera);
+    });
+  conectar();
 } else {
   console.log('Modo backend local sin MONGODB_URI (Respaldo en memoria local activo)');
 }

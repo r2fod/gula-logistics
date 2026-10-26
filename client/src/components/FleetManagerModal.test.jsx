@@ -85,6 +85,20 @@ describe('FleetManagerModal — guardar la matrícula', () => {
     expect(onUpdateWeek.mock.calls[0][1].trucks[0].name).toBe('Camión AB');
   });
 
+  it('BUG evitado: si el guardado choca (409) y la semana vuelve al valor de antes, no se vuelve a guardar el viejo al cerrar', () => {
+    const onUpdateWeek = vi.fn();
+    const { rerender, unmount } = render(<FleetManagerModal isOpen onClose={vi.fn()} activeWeekData={semana()} onUpdateWeek={onUpdateWeek} />);
+    const campo = screen.getByDisplayValue('Camión Alquiler');
+    fireEvent.change(campo, { target: { value: 'Camión X' } });
+    fireEvent.blur(campo);
+    const guardada = { id: 'week_1', trucks: [{ name: 'Camión X', tag: 'ALQUILER' }] };
+    rerender(<FleetManagerModal isOpen onClose={vi.fn()} activeWeekData={guardada} onUpdateWeek={onUpdateWeek} />);
+    rerender(<FleetManagerModal isOpen onClose={vi.fn()} activeWeekData={semana()} onUpdateWeek={onUpdateWeek} />); // el 409 trae la del servidor
+    expect(screen.getByDisplayValue('Camión Alquiler')).toBeInTheDocument();
+    unmount();
+    expect(onUpdateWeek).toHaveBeenCalledTimes(1);
+  });
+
   it('si la ventana se cierra con el campo a medias, lo escrito se guarda igual', () => {
     const onUpdateWeek = vi.fn();
     const { unmount } = render(<FleetManagerModal isOpen onClose={vi.fn()} activeWeekData={semana()} onUpdateWeek={onUpdateWeek} />);

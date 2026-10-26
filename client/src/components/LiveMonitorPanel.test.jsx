@@ -92,5 +92,7 @@ describe('LiveMonitorPanel — «Finalizar Tarea Activa» (vista pública)', () 
     expect(boton).toBeDisabled();
     fireEvent.click(boton);
     expect(screen.queryByRole('dialog', { name: 'Finalizar tarea' })).toBeNull();
-  });
+    // BUG evitado: si el servidor la rechaza y el turno sigue abierto, se puede reintentar.
+    await waitFor(() => expect(boton).not.toBeDisabled(), { timeout: 9000 });
+  }, 12000);
 });

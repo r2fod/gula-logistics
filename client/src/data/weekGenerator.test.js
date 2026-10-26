@@ -183,6 +183,21 @@ describe('generarBorrador — casos límite', () => {
     expect(JSON.stringify(week)).not.toContain('"Brunolara"');
   });
 
+  it('BUG evitado: un recado de varios días no entra en la flota como camión: es una tarea; un camión apuntado varios días sí es alquiler', () => {
+    const conRecado = [...APUNTES, { id: 'r', fecha: '2026-09-23', hasta: '2026-09-24', tipo: 'recogida', titulo: 'recoger furgo por la tarde, recoger generador' }];
+    const { week } = generar(conRecado);
+    const flota = week.trucks.map(t => t.name);
+    expect(flota).not.toContain('recoger furgo por la tarde, recoger generador');
+    expect(week.trucks.find(t => t.name === 'Camión Sur')).toMatchObject({ isContinuousRental: true });
+    expect(JSON.stringify(week.schedule)).toMatch(/recoger furgo por la tarde/i);
+  });
+
+  it('BUG evitado: una producción de varios días sale una sola vez en los eventos con pax', () => {
+    const prod = ['2026-09-23', '2026-09-24', '2026-09-25'].map((fecha, i) => ({ id: `p${i}`, fecha, tipo: 'produccion', titulo: 'Rodaje Sur', pax: 30 }));
+    const { week } = generar(prod);
+    expect(week.events.filter(e => e.name === 'Rodaje Sur')).toHaveLength(1);
+  });
+
   it('si no alcanza la gente, asigna menos y AVISA en vez de romper', () => {
     const solo = ROSTER.filter(p => ['Bruno', 'Óscar', 'Lara'].includes(p.name));
     const { week, resumen } = generar(APUNTES, solo);

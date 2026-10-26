@@ -438,7 +438,11 @@ export default function LiveMonitorPanel({
                         // botón se bloquea para que un doble toque no cree dos salidas.
                         if (!onClockEntryCreated || cerrando.has(worker.clockEntry?.id)) return;
                         if (!(await confirm(`¿Fichar la salida de ${worker.name}?`, { title: 'Finalizar tarea', confirmText: 'Fichar salida' }))) return;
-                        setCerrando(prev => new Set(prev).add(worker.clockEntry?.id));
+                        const id = worker.clockEntry?.id;
+                        setCerrando(prev => new Set(prev).add(id));
+                        // Si el servidor la rechaza, el turno sigue abierto: a los pocos segundos
+                        // se puede volver a intentar (antes quedaba bloqueado hasta recargar).
+                        setTimeout(() => setCerrando(prev => { const s = new Set(prev); s.delete(id); return s; }), 8000);
                         onClockEntryCreated(crearFichaje({
                           trabajador: worker,
                           tipo: 'salida',

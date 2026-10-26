@@ -60,6 +60,9 @@ router.get('/weeks', async (req, res) => {
     return res.json(currentMemoryWeeks);
   } catch (error) {
     console.error('Error al obtener semanas:', error);
+    // Con base de verdad, un fallo no puede contestar la semana de ejemplo: la app la
+    // tomaría por todas las semanas y se podría editar encima.
+    if (process.env.MONGODB_URI) return res.status(503).json({ error: 'No se pudieron leer las semanas' });
     return res.json(currentMemoryWeeks);
   }
 });

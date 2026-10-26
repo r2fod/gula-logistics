@@ -11,7 +11,7 @@
 //   · un cambio concreto                     → 'cambios' (este archivo);
 //   · planificar o rehacer la semana          → 'completo' (generateScheduleWithGemini).
 import { esTareaActiva, getDayLabel } from './taskPlanning';
-import { getWeddingTaskName } from './eventNaming';
+import { getWeddingTaskName, parseEventAndTask } from './eventNaming';
 import { completarPlanGenerado, nombresPermitidos, semanaParaPrompt, semanaVacia } from './planificadorIa';
 import { normalizarHorario } from './horarios';
 import { generateScheduleWithGemini, pedirJsonAGemini } from './geminiScheduleService';
@@ -25,6 +25,7 @@ import { plano } from '../utils/texto';
 import { formatWeekdayDayMonth } from '../utils/dateUtils';
 import { buscarEnSemana, pideComprobarTareas, quienSueleHacerla, respuestaDeConocimiento, textoComprobacion } from './comprobarTareas';
 import { accionesDeDisponibilidadFija, pedirAcciones, pideAccionDeApp, validarAccion } from './accionesIa';
+import { camionesParaElegir } from './flota';
 
 const ABREV = { martes: 'mar', miercoles: 'mie', jueves: 'jue', viernes: 'vie', sabado: 'sab', domingo: 'dom', lunes: 'lun' };
 const DE_ABREV = Object.fromEntries(Object.entries(ABREV).map(([d, a]) => [a, d]));
@@ -39,9 +40,11 @@ export function elegirModo(peticion, semana) {
 
 // ¿Suena a una regla para siempre? Solo entonces se gasta la llamada que la extrae
 // para la memoria (antes se hacía en cada petición).
-export const pareceRegla = (peticion) => /\b(siempre|nunca|a partir de ahora|de ahora en adelante|recuerda|cada vez|todas las semanas|normalmente|por norma|prefiere|no le gusta|no quiere|suele)\b/.test(plano(peticion));
+export const pareceRegla = (peticion) => /\b(siempre|nunca|a partir de ahora|de ahora en adelante|recuerda|cada vez|todas las semanas|normalmente|por norma|prefiere|no le gusta|no quiere|suele|reglas? fijas?|por regla)\b/.test(plano(peticion));
 
-// La semana en líneas "T3|jue|09:00-11:00|Boda X - Carga|Ana,Luis" (+ "|HECHA").
+// La semana en líneas "T3|jue|09:00-11:00|Boda X - Carga|Ana,Luis|Camión Gula" (+ "|HECHA"):
+// la última columna es el vehículo (vacía si no lleva). Sin ella Gemini no podía repartir
+// camiones («la boda con el Covey, la producción con el Gula»).
 // `mapa` traduce cada código a su tarea real.
 export function semanaEnLineas(semana) {
   const lineas = [];
@@ -51,12 +54,14 @@ export function semanaEnLineas(semana) {
     if (!t || typeof t !== 'object' || !esTareaActiva(t)) return;
     const codigo = `T${++n}`;
     mapa[codigo] = { lista, indice, dia, hecha: !!t.completed };
-    const partes = [codigo, ABREV[dia], String(t.timeFrame || '').replace(/\s+/g, ''), String(texto || '').trim(), (t.assigned || []).join(',')];
+    const partes = [codigo, ABREV[dia], String(t.timeFrame || '').replace(/\s+/g, ''), String(texto || '').trim(), (t.assigned || []).join(','), String(t.truck || '').trim()];
     if (t.completed) partes.push('HECHA');
     lineas.push(partes.join('|'));
   };
   DIAS.slice(0, 4).forEach(d => (semana?.schedule?.[d]?.tasks || []).forEach((t, i) => anadir(d, i, d, t, t?.text)));
-  (semana?.saturdaySpecial?.weddings || []).forEach((b, i) => anadir('sabado', i, 'sabado', b, getWeddingTaskName(b)));
+  // El sábado con su evento y su tarea («Produ — Montaje (Valencia)»): antes iba como «Boda:
+  // lugar (camiones)» y una producción del sábado le llegaba a Gemini como si fuera boda.
+  (semana?.saturdaySpecial?.weddings || []).forEach((b, i) => anadir('sabado', i, 'sabado', b, b?.details ? `${b.details}${b.location ? ` (${b.location})` : ''}` : getWeddingTaskName(b)));
   (semana?.sundayMonday?.tasks || []).forEach((t, i) => anadir('cola', i, /domingo/i.test(t?.targetDay || '') ? 'domingo' : 'lunes', t, t?.text));
   return { lineas, mapa };
 }
@@ -71,14 +76,15 @@ export function esquemaCambios(nombres = []) {
         items: {
           type: 'OBJECT',
           properties: {
-            op: { type: 'STRING', format: 'enum', enum: ['personas', 'horario', 'texto', 'quitar', 'nueva', 'mover'] },
+            op: { type: 'STRING', format: 'enum', enum: ['personas', 'horario', 'texto', 'quitar', 'nueva', 'mover', 'vehiculo'] },
             t: { type: 'STRING', description: 'código de la tarea (T1…)' },
             dia: { type: 'STRING', format: 'enum', enum: Object.values(ABREV) },
             horario: TEXTO, texto: TEXTO, lugar: TEXTO,
+            vehiculo: { type: 'STRING', description: 'vehículo de la flota; varios con " + "' },
             personas: { type: 'ARRAY', items: nombres.length ? { type: 'STRING', format: 'enum', enum: nombres } : TEXTO },
           },
           required: ['op'],
-          propertyOrdering: ['op', 't', 'dia', 'horario', 'texto', 'lugar', 'personas'],
+          propertyOrdering: ['op', 't', 'dia', 'horario', 'texto', 'lugar', 'personas', 'vehiculo'],
         },
       },
     },
@@ -93,24 +99,32 @@ export function promptDeCambios({ semana, equipo = [], restricciones = [], limit
   const { lineas } = semanaEnLineas(semana);
   const dias = DIAS.map(d => `${ABREV[d]}=${getDayLabel(semana, d)}`).join(', ');
   const reglas = memorias.filter(esMemoriaActiva).map(m => m.content);
+  const flota = camionesParaElegir(semana?.trucks);
   return [
     `Planificador de Gula Logística (logística de bodas y eventos). Hoy es ${formatWeekdayDayMonth(ahora)}. Semana ${semana?.meta?.dateRange || ''} (${dias}).`,
     `Equipo: ${equipo.map(descripcionParaIa).join('; ')}.`,
     restricciones.length ? `No disponible: ${textosAgrupados(restricciones).join('; ')}.` : '',
     reglas.length ? `Preferencias: ${reglas.join('; ')}.` : '',
+    flota.length ? `Vehículos de la semana: ${flota.join('; ')}.` : '',
     textoAprendizajeParaPrompt(aprendizaje, 'Aprendido de los fichajes reales:').trim(),
-    `Reglas: recogidas con 1 persona salvo que se pida; nadie en dos tareas a la vez; máx ${limites.maxHorasDia} h/día y ${limites.descansoMinHoras} h de descanso entre jornadas; limpieza solo limpia; el jefe supervisa y no carga; texto "EVENTO - Tarea"; las HECHA no se tocan.`,
-    'Tareas (código|día|horario|tarea|personas):',
+    `Reglas generales (si la petición dice otra cosa, manda la petición): recogidas con 1 persona salvo que se pida; nadie en dos tareas a la vez; máx ${limites.maxHorasDia} h/día y ${limites.descansoMinHoras} h de descanso entre jornadas; limpieza solo limpia; el jefe supervisa y no carga; texto "EVENTO - Tarea"; las HECHA no se tocan.`,
+    'Tareas (código|día|horario|tarea|personas|vehículo):',
     ...lineas,
     ...(pregunta ? [
       `Pregunta: ${peticion}`,
       'Contesta en "respuesta", en español y corto (6 líneas como mucho), solo con lo que dicen estos datos; si con ellos no se puede saber, dilo. Nombra las tareas por su día, hora y texto, nunca por su código (T1…). No propongas cambios.',
     ] : [
       `Petición: ${peticion}`,
-      'Devuelve SOLO los cambios mínimos que pide la petición: no cambies horarios ni personas de otras tareas. Si piden añadir algo que ya está (aunque esté escrito distinto), no lo dupliques. op: personas (lista completa nueva), horario ("HH:MM-HH:MM"), texto, quitar, nueva (con dia, horario, texto, lugar y personas), mover (t y dia: la pasa a otro día con su hora y su gente; el sábado no).',
+      'Devuelve SOLO los cambios que pide la petición: no cambies horarios ni personas de otras tareas; pero si da reglas por evento, bloque o tipo de tarea («la boda la montan X e Y», «la carga la hace Z»), aplícalas a TODAS las tareas de la semana que entren en ellas. Si piden añadir algo que ya está (aunque esté escrito distinto), no lo dupliques. El evento es lo que va antes de " - " en el texto: para pasar una tarea a otro evento, cámbiale el texto; una tarea de dos eventos («A + B - Carga») se separa con texto (una) y nueva (la otra). op: personas (lista completa nueva), horario ("HH:MM-HH:MM"), texto, quitar, nueva (con dia, horario, texto, lugar y personas), mover (t y dia: la pasa a otro día con su hora y su gente; el sábado no), vehiculo (t y vehiculo: uno de los vehículos de la semana, varios con " + "). personas y nueva también admiten vehiculo.',
     ]),
   ].filter(Boolean).join('\n');
 }
+
+// El evento de un texto «EVENTO - Tarea» (el sábado también con raya: «Boda X — Recogida»), o ''.
+const eventoDelTexto = (texto) => {
+  const p = parseEventAndTask(String(texto || '').replace(/\s+[—–]\s+/, ' - '));
+  return p.explicit ? p.eventName : '';
+};
 
 // Aplica los cambios sobre una copia de la planificación. Lo que no se entiende o toca
 // una tarea HECHA se ignora y se cuenta. «mover» pasa la tarea entera (hora, gente, lugar,
@@ -128,12 +142,19 @@ export function aplicarCambios(semana, cambios = [], mapa = {}) {
   const mover = [];
   let aplicados = 0;
   let ignorados = 0;
+  // Un vehículo solo vale si es de la flota de la semana (varios con " + "): Gemini no inventa camiones.
+  const flota = camionesParaElegir(semana?.trucks);
+  const vehiculo = (v) => {
+    const partes = String(v || '').split('+').map(x => x.trim()).filter(Boolean);
+    const buenos = partes.map(x => flota.find(f => plano(f) === plano(x))).filter(Boolean);
+    return partes.length && buenos.length === partes.length ? buenos.join(' + ') : null;
+  };
 
   (Array.isArray(cambios) ? cambios : []).forEach(c => {
     if (c?.op === 'nueva') {
       const dia = DE_ABREV[c.dia] || c.dia;
       if (!DIAS.includes(dia) || !c.texto || !c.horario) { ignorados += 1; return; }
-      const base = { timeFrame: normalizarHorario(c.horario), location: c.lugar || '', assigned: c.personas || [] };
+      const base = { timeFrame: normalizarHorario(c.horario), location: c.lugar || '', assigned: c.personas || [], ...(vehiculo(c.vehiculo) ? { truck: vehiculo(c.vehiculo) } : {}), ...(eventoDelTexto(c.texto) ? { event: eventoDelTexto(c.texto) } : {}) };
       if (dia === 'sabado') plan.saturdaySpecial.weddings.push({ ...base, details: c.texto });
       else if (dia === 'domingo' || dia === 'lunes') plan.sundayMonday.tasks.push({ ...base, text: c.texto, targetDay: dia === 'domingo' ? 'Domingo' : 'Lunes' });
       else plan.schedule[dia].tasks.push({ ...base, text: c.texto });
@@ -145,9 +166,15 @@ export function aplicarCambios(semana, cambios = [], mapa = {}) {
     const tarea = listaDe(ref.lista)[ref.indice];
     const destino = DE_ABREV[c.dia] || c.dia;
     if (c.op === 'quitar') quitar.add(tarea);
-    else if (c.op === 'personas' && Array.isArray(c.personas)) tarea.assigned = c.personas;
+    else if (c.op === 'personas' && Array.isArray(c.personas)) { tarea.assigned = c.personas; if (vehiculo(c.vehiculo)) tarea.truck = vehiculo(c.vehiculo); }
+    else if (c.op === 'vehiculo' && vehiculo(c.vehiculo)) tarea.truck = vehiculo(c.vehiculo);
     else if (c.op === 'horario' && c.horario) tarea.timeFrame = normalizarHorario(c.horario);
-    else if (c.op === 'texto' && c.texto) { if (ref.lista === 'sabado') tarea.details = c.texto; else tarea.text = c.texto; }
+    else if (c.op === 'texto' && c.texto) {
+      if (ref.lista === 'sabado') tarea.details = c.texto; else tarea.text = c.texto;
+      // Sin esto el texto decía «Boda X - Carga» y la etiqueta y el coste seguían en el evento de antes.
+      const evento = eventoDelTexto(c.texto);
+      if (evento) tarea.event = evento; else delete tarea.event;
+    }
     else if (c.op === 'mover' && DIAS.includes(destino) && destino !== ref.dia && destino !== 'sabado' && ref.lista !== 'sabado') mover.push({ tarea, dia: destino });
     else { ignorados += 1; return; }
     aplicados += 1;

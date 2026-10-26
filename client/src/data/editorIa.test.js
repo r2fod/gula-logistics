@@ -32,6 +32,7 @@ describe('qué camino sigue cada petición', () => {
     expect(pareceRegla('A partir de ahora las bodas grandes llevan un apoyo más')).toBe(true);
     expect(pareceRegla('Luis nunca conduce el camión grande')).toBe(true);
     expect(pareceRegla('Pon a Luis en la carga del jueves')).toBe(false);
+    expect(pareceRegla('Sigue estas reglas fijas: la boda la montan Ana y Luis')).toBe(true);
   });
 });
 
@@ -39,10 +40,10 @@ describe('semana en líneas y cambios', () => {
   it('una línea por tarea, con código corto y las hechas marcadas', () => {
     const { lineas, mapa } = semanaEnLineas(semana());
     expect(lineas).toEqual([
-      'T1|mar|09:00-11:00|Boda Uno - Carga|Ana|HECHA',
-      'T2|mar|12:00-15:00|Boda Uno - Descarga + Montaje Estructura|Ana,Luis',
-      expect.stringMatching(/^T3\|sab\|20:30-00:30\|.*Finca Norte.*\|Ana$/),
-      'T4|lun|10:00-13:00|Limpieza Eventos - Vajilla|Eva',
+      'T1|mar|09:00-11:00|Boda Uno - Carga|Ana||HECHA',
+      'T2|mar|12:00-15:00|Boda Uno - Descarga + Montaje Estructura|Ana,Luis|',
+      'T3|sab|20:30-00:30|Boda Uno — Recogida (Finca Norte)|Ana|',
+      'T4|lun|10:00-13:00|Limpieza Eventos - Vajilla|Eva|',
     ]);
     expect(mapa.T2).toMatchObject({ lista: 'martes', indice: 1 });
   });
@@ -64,6 +65,56 @@ describe('semana en líneas y cambios', () => {
     expect(plan.sundayMonday.tasks[0].timeFrame).toBe('09:00 - 12:00');
     expect(plan.saturdaySpecial.weddings).toEqual([]);
     expect(plan.schedule.jueves.tasks[0]).toMatchObject({ text: 'Logística Preparación - Recoger mesas', assigned: ['Ana'] });
+  });
+});
+
+describe('vehículos: Gemini los ve y los reparte (solo los de la flota)', () => {
+  const conFlota = () => ({ ...semana(), trucks: [{ name: 'Camión A' }, { name: 'Furgoneta B' }] });
+
+  it('BUG evitado: cada línea lleva su vehículo y el prompt la flota de la semana (antes no podía repartir camiones)', () => {
+    const s = conFlota();
+    s.schedule.martes.tasks[1].truck = 'Camión A';
+    expect(semanaEnLineas(s).lineas[1]).toBe('T2|mar|12:00-15:00|Boda Uno - Descarga + Montaje Estructura|Ana,Luis|Camión A');
+    const texto = promptDeCambios({ semana: s, equipo, peticion: 'La boda con el Camión A' });
+    expect(texto).toMatch(/Vehículos de la semana: Camión A; Furgoneta B\./);
+    expect(texto).toMatch(/personas\|vehículo\)/);
+  });
+
+  it('aplica vehiculo (y con personas o nueva); un vehículo que no es de la flota se ignora', () => {
+    const s = conFlota();
+    const { mapa } = semanaEnLineas(s);
+    const { plan, aplicados, ignorados } = aplicarCambios(s, [
+      { op: 'vehiculo', t: 'T2', vehiculo: 'camion a + Furgoneta B' },
+      { op: 'personas', t: 'T3', personas: ['Luis'], vehiculo: 'Furgoneta B' },
+      { op: 'vehiculo', t: 'T4', vehiculo: 'Camión Inventado' },
+      { op: 'nueva', dia: 'jue', texto: 'Boda Uno - Carga', horario: '08:00-09:00', personas: ['Ana'], vehiculo: 'Camión A' },
+    ], mapa);
+    expect([aplicados, ignorados]).toEqual([3, 1]);
+    expect(plan.schedule.martes.tasks[1].truck).toBe('Camión A + Furgoneta B');
+    expect(plan.saturdaySpecial.weddings[0]).toMatchObject({ assigned: ['Luis'], truck: 'Furgoneta B' });
+    expect(plan.sundayMonday.tasks[0].truck).toBeUndefined();
+    expect(plan.schedule.jueves.tasks[0].truck).toBe('Camión A');
+  });
+});
+
+describe('eventos: lo que dice el texto manda', () => {
+  it('BUG evitado: cambiar el texto a otro evento cambia también su etiqueta (antes seguía «Produ»); el sábado también', () => {
+    const s = semana();
+    s.schedule.martes.tasks[1].event = 'Produ';
+    s.saturdaySpecial.weddings[0].event = 'Produ';
+    const { mapa } = semanaEnLineas(s);
+    const { plan } = aplicarCambios(s, [
+      { op: 'texto', t: 'T2', texto: 'Boda Uno - Descarga' },
+      { op: 'texto', t: 'T3', texto: 'Boda Uno — Recogida del evento' },
+      { op: 'nueva', dia: 'mie', texto: 'Produ - Carga', horario: '08:00-09:00', personas: ['Luis'] },
+    ], mapa);
+    expect(plan.schedule.martes.tasks[1]).toMatchObject({ text: 'Boda Uno - Descarga', event: 'Boda Uno' });
+    expect(plan.saturdaySpecial.weddings[0].event).toBe('Boda Uno');
+    expect(plan.schedule.miercoles.tasks[0].event).toBe('Produ');
+  });
+
+  it('la petición manda sobre las reglas generales («el jefe no carga» si piden que cargue)', () => {
+    expect(promptDeCambios({ semana: semana(), equipo, peticion: 'x' })).toMatch(/si la petición dice otra cosa, manda la petición/);
   });
 });
 

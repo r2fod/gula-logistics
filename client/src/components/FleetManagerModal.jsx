@@ -49,7 +49,9 @@ function InputAlSalir({ valor, onGuardar, ...props }) {
   // El borrador recuerda de qué valor partió: si la semana cambia desde fuera, manda ella.
   const [borrador, setBorrador] = useState({ base: valor, texto: valor });
   const texto = borrador.base === valor ? borrador.texto : valor;
-  const guardar = () => { if (texto !== valor) onGuardar(texto); };
+  // Al guardar, el borrador pasa a partir de lo guardado: si luego la semana vuelve al valor
+  // de antes (un 409 o el cambio de otro admin), manda ese y no se vuelve a guardar el viejo.
+  const guardar = () => { if (texto !== valor) { setBorrador({ base: texto, texto }); onGuardar(texto); } };
   const alCerrar = useRef(guardar);
   useEffect(() => { alCerrar.current = guardar; });
   useEffect(() => () => alCerrar.current(), []);
