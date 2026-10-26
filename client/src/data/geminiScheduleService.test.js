@@ -117,6 +117,16 @@ describe('generateScheduleWithGemini — nunca inventa una semana', () => {
     expect(fetchMock.mock.calls[1][0]).toContain(GEMINI_MODELS[1]);
   });
 
+  it('BUG evitado: con clave del navegador, sin cupo en un modelo (429) prueba el siguiente (antes: «demasiadas peticiones» y nada)', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 429, json: async () => ({}) })
+      .mockResolvedValueOnce(okResponse(semanaOk));
+    vi.stubGlobal('fetch', fetchMock);
+    const r = await generateScheduleWithGemini({ prompt: 'x', apiKey: 'k' });
+    expect(r.generatedJson).toEqual(planOk);
+    expect(fetchMock.mock.calls[1][0]).toContain(GEMINI_MODELS[1]);
+  });
+
   it('con clave devuelve el JSON y manda la clave en la cabecera, no en la URL', async () => {
     const fetchMock = vi.fn().mockResolvedValue(okResponse(semanaOk));
     vi.stubGlobal('fetch', fetchMock);

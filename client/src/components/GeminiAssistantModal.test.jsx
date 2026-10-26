@@ -55,6 +55,17 @@ describe('GeminiAssistantModal — memoria', () => {
     expect(args.aprendizaje).toBe(aprendizaje);
   });
 
+  it('BUG evitado: la regla se pide DESPUÉS y solo si la petición salió bien (a la vez gastaban el cupo: 429)', async () => {
+    extraer.mockClear();
+    let soltar;
+    generar.mockImplementation(() => new Promise((r) => { soltar = r; }));
+    await pedir();
+    await waitFor(() => expect(generar).toHaveBeenCalled());
+    expect(extraer).not.toHaveBeenCalled(); // no a la vez
+    await act(async () => { soltar({ generatedJson: null, errorMsg: 'Error Gemini API (429)' }); });
+    expect(extraer).not.toHaveBeenCalled(); // falló: no se gasta otra llamada
+  });
+
   it('BUG evitado: la regla que saca de lo que se pide queda PROPUESTA y solo se usa al pulsar "Recordar"', async () => {
     await pedir();
     expect(await screen.findByText('«Las bodas grandes llevan un apoyo más»')).toBeInTheDocument();

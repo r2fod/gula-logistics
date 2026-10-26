@@ -38,9 +38,10 @@ async function modelosDeLaClave(clave) {
   }
 }
 
-// Prueba los modelos por orden. Sigue si el modelo no existe (404) o está saturado
-// (503); cualquier otra respuesta (bien, clave mala, cuota…) es la definitiva y se
-// devuelve. Si no, null y en `fallos` quedan el primer "saturado" y el último "no existe".
+// Prueba los modelos por orden. Sigue si el modelo no existe (404), está saturado (503)
+// o se ha quedado sin cupo (429: en la clave gratuita cada modelo tiene el suyo, y el
+// siguiente suele contestar); cualquier otra respuesta (bien, clave mala…) es la
+// definitiva y se devuelve. Si no, null y en `fallos` quedan el primer "saturado" y el último "no existe".
 async function probar(modelos, clave, cuerpo, fallos) {
   for (const modelo of modelos) {
     const respuesta = await fetch(`${API}/models/${modelo}:generateContent`, {
@@ -50,7 +51,7 @@ async function probar(modelos, clave, cuerpo, fallos) {
     });
     const datos = await respuesta.json().catch(() => ({}));
     if (respuesta.status >= 200 && respuesta.status < 300) { modeloRecordado = modelo; return { respuesta, datos }; }
-    if (respuesta.status === 503) fallos.saturado = fallos.saturado || { respuesta, datos };
+    if (respuesta.status === 503 || respuesta.status === 429) fallos.saturado = fallos.saturado || { respuesta, datos };
     else if (respuesta.status === 404) {
       fallos.noExiste = { respuesta, datos };
       if (modelo === modeloRecordado) modeloRecordado = null; // lo han retirado: no volver a gastar la llamada

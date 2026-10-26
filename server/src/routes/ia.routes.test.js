@@ -55,6 +55,12 @@ describe('POST /api/ia/gemini', () => {
     expect(r.body.error.status).toBe('UNAVAILABLE'); // no es "falta la clave": el cliente lo distingue
   });
 
+  it('BUG evitado: sin cupo en un modelo (429) prueba el siguiente (en la clave gratuita cada uno tiene el suyo)', async () => {
+    const sinCupo = { status: 429, json: async () => ({ error: { code: 429, status: 'RESOURCE_EXHAUSTED' } }) };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(sinCupo).mockResolvedValueOnce({ status: 200, json: async () => ({ ok: 3 }) }));
+    expect((await request(app()).post('/api/ia/gemini').set('Authorization', admin()).send(cuerpo)).body).toEqual({ ok: 3 });
+  });
+
   const noExiste = { status: 404, json: async () => ({ error: { code: 404, status: 'NOT_FOUND', message: 'models/x is not found for API version v1beta' } }) };
   const lista = (nombres) => ({ status: 200, json: async () => ({ models: nombres.map(n => ({ name: `models/${n}`, supportedGenerationMethods: ['generateContent'] })) }) });
 

@@ -134,10 +134,11 @@ Cada tarea: {"id","text","location","timeFrame","assigned":["nombre exacto"],"tr
 // primero los alias que Google mantiene apuntando al Flash más reciente
 // (`gemini-flash-latest`, y de reserva `gemini-flash-lite-latest`); `gemini-2.5-flash`
 // queda al final para claves antiguas. Se pasa al siguiente si el modelo no existe (404)
-// o si Google dice que está saturado (503, pasa a menudo con Flash). El servidor
-// (ia.routes.js) usa la misma lista.
+// o si Google dice que está saturado (503, pasa a menudo con Flash), y también con 429: en
+// la clave gratuita cada modelo tiene su propio cupo por minuto, así que si uno se agota
+// el siguiente suele contestar. El servidor (ia.routes.js) usa la misma lista.
 export const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash'];
-const PROBAR_OTRO_MODELO = [404, 503];
+const PROBAR_OTRO_MODELO = [404, 429, 503];
 
 // POST a Gemini probando GEMINI_MODELS por orden. La clave va en la cabecera, no en la URL, para que no
 // quede en historiales ni registros de red. Devuelve la última Response.

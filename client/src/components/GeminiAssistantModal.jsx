@@ -72,14 +72,15 @@ export default function GeminiAssistantModal({ isOpen, onClose, onApplyGenerated
 
     // Cada petición por el camino que menos gasta (editorIa.js): disponibilidad sin
     // Gemini, cambios concretos en modo compacto, la semana entera solo si hace falta.
-    // La regla para la memoria solo se busca si la frase suena a regla, y a la vez.
+    // La regla para la memoria solo se busca si la frase suena a regla, DESPUÉS y solo si la
+    // petición salió bien: a la vez eran dos llamadas por minuto y la clave gratuita se
+    // quedaba sin cupo (429) en la que importaba.
     // Pase lo que pase, deja de «pensar»: antes un fallo fuera de Gemini la dejaba así.
     try {
-      const [r, recuerdo] = await Promise.all([
-        resolverPeticion({ peticion: prompt, apiKey, semana: activeWeekData, equipo: workersList, memorias: memoria.activas, aprendizaje, semanas, fichajes: accionesApp?.fichajes || [] }),
-        // «Eva nunca puede los lunes» va a su ficha (disponibilidad fija), no a una regla escrita.
-        pareceRegla(prompt) && !accionesDeDisponibilidadFija(prompt, workersList) ? extraerMemoriaDelPrompt({ prompt, apiKey }) : Promise.resolve(null),
-      ]);
+      const r = await resolverPeticion({ peticion: prompt, apiKey, semana: activeWeekData, equipo: workersList, memorias: memoria.activas, aprendizaje, semanas, fichajes: accionesApp?.fichajes || [] });
+      // «Eva nunca puede los lunes» va a su ficha (disponibilidad fija), no a una regla escrita.
+      const buscarRegla = !r.errorMsg && pareceRegla(prompt) && !accionesDeDisponibilidadFija(prompt, workersList);
+      const recuerdo = buscarRegla ? await extraerMemoriaDelPrompt({ prompt, apiKey }) : null;
       setGeneratedJson(r.generatedJson);
       setDeGemini(r.generatedJson);
       setResultado(r);
