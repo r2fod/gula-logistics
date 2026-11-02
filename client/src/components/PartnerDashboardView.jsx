@@ -370,7 +370,7 @@ export default function PartnerDashboardView({
 
       {activeTab === 'schedule' && adminUnlocked && (
         <DisponibilidadSemana
-          key={activeWeekId}
+          key={`disponibilidad-${activeWeekId}`}
           semana={activeWeekData}
           equipo={workersList}
           esBorrador={esBorrador(activeWeekData)}
@@ -380,7 +380,7 @@ export default function PartnerDashboardView({
 
       {activeTab === 'schedule' && adminUnlocked && (
         <ActualizarDesdeCalendario
-          key={activeWeekId}
+          key={`calendario-${activeWeekId}`}
           semana={activeWeekData}
           equipo={workersList}
           onGuardar={(parcial) => actualizarSemana(activeWeekId, parcial)}

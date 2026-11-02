@@ -9,6 +9,7 @@ vi.mock('../data/apiService', () => ({
   crearTokenSociasEnAPI: vi.fn().mockResolvedValue({ ok: true, token: 'solo.lectura', expiresAt: Date.now() + 1000 }),
   getAiMemories: vi.fn().mockResolvedValue([]),
   fetchAjustesAdmin: vi.fn().mockResolvedValue({ exigirEnlaceAlFichar: false }),
+  fetchCalendarioApuntes: vi.fn().mockResolvedValue({ configurado: true, apuntes: [] }),
 }));
 vi.mock('../data/pushService', () => ({ sendPushNotification: vi.fn().mockResolvedValue({}) }));
 
@@ -176,5 +177,13 @@ describe('PartnerDashboardView', () => {
     expect(within(dialogo).getByText(/Martes: Boda Uno - Carga — sin nadie asignado/)).toBeInTheDocument();
     fireEvent.click(within(dialogo).getByRole('button', { name: 'Aceptar igualmente' }));
     await waitFor(() => expect(props.onUpdateWeek).toHaveBeenCalledWith(expect.objectContaining({ meta: expect.objectContaining({ status: 'Operativa Activa' }) })));
+  });
+
+  it('BUG evitado: en el Cuadrante Disponibilidad y Actualizar desde calendario no colisionan en claves ni duplican Disponibilidad', async () => {
+    window.history.replaceState({}, '', '/gula-logistics/?tab=schedule');
+    pintar({ isAdmin: true });
+    expect(await screen.findByRole('button', { name: /Actualizar desde calendario/ }, { timeout: 4000 })).toBeInTheDocument();
+    const botonesDisp = screen.getAllByRole('button', { name: /Disponibilidad/ });
+    expect(botonesDisp).toHaveLength(1);
   });
 });
