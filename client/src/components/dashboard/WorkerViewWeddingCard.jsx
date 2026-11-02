@@ -1,14 +1,7 @@
 import React from 'react';
 import { CheckCircle2, MapPin, Clock, Play } from 'lucide-react';
-
-// Componente para avisos de tareas bloqueadas
-function AvisoBloqueado({ children, className = '' }) {
-  return (
-    <span className={`inline-block px-2 py-1 rounded bg-slate-800/80 text-[11px] text-slate-400 font-medium ${className}`}>
-      🔒 {children}
-    </span>
-  );
-}
+import AvisoBloqueado from '../trabajador/AvisoBloqueado';
+import { alMarcar } from '../ui/alMarcar';
 
 export default function WorkerViewWeddingCard({ 
   wedding, 
@@ -43,9 +36,9 @@ export default function WorkerViewWeddingCard({
         ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
         : 'bg-slate-900 border-amber-500/30'
     }`}>
-      <div 
+      <div
+        {...alMarcar(onToggleTask && handleToggle, isCompleted)}
         className="flex justify-between items-start cursor-pointer hover:text-white"
-        onClick={handleToggle}
       >
         <div className="flex items-start space-x-2.5">
           <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`} />

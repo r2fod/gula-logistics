@@ -1,15 +1,8 @@
 import React from 'react';
 import { CheckCircle2, MapPin, Play } from 'lucide-react';
 import TaskTextWithEvent from '../TaskTextWithEvent';
-
-// Componente para avisos de tareas bloqueadas
-function AvisoBloqueado({ children, className = '' }) {
-  return (
-    <span className={`inline-block px-2 py-1 rounded bg-slate-800/80 text-[11px] text-slate-400 font-medium ${className}`}>
-      🔒 {children}
-    </span>
-  );
-}
+import AvisoBloqueado from '../trabajador/AvisoBloqueado';
+import { alMarcar } from '../ui/alMarcar';
 
 export default function WorkerViewTaskItem({ 
   task, 
@@ -51,9 +44,9 @@ export default function WorkerViewTaskItem({
           : 'bg-slate-900 border-slate-800 text-slate-200'
       }`}
     >
-      <div 
+      <div
+        {...alMarcar(onToggleTask && handleToggle, isCompleted)}
         className="flex items-start space-x-2.5 cursor-pointer hover:text-white"
-        onClick={handleToggle}
       >
         <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`} />
         <span className={`font-medium ${isCompleted ? 'line-through opacity-70' : ''}`}>

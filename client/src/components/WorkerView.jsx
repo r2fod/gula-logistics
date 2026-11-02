@@ -1,40 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Award, BarChart3, Bell, Calendar, Car, CheckSquare, Clock, ListTodo, Lock, Pin, Play, Plus, Settings, Square, Target, Users, Zap } from 'lucide-react';
+import { Bell, Calendar, Car, Clock, Settings, Users, Zap } from 'lucide-react';
 import ClockInModal from './ClockInModal';
 import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
-import WorkerViewTaskItem from './dashboard/WorkerViewTaskItem';
-import WorkerViewWeddingCard from './dashboard/WorkerViewWeddingCard';
 import ResumenHorasSaldo from './dashboard/ResumenHorasSaldo';
 import { getActiveShiftForWorker, pairShiftsFromEntries, sortEntriesByTimestamp } from '../data/shiftCalculations';
-import { getTaskListForDay, resolveTaskIndex, isTaskEffectivelyDone, isTaskAssignedTo, getDayLabel, getWeddingsBadge, getWeekRange, resolveTaskDate, diaDeLaFecha, getNextTaskStart, isTaskTooEarlyToStart, esTareaActiva, refDeTareaFichada } from '../data/taskPlanning';
+import { getTaskListForDay, resolveTaskIndex, isTaskEffectivelyDone, getNextTaskStart, isTaskTooEarlyToStart, refDeTareaFichada } from '../data/taskPlanning';
 import { subscribeToPush } from '../data/pushService';
-import { crearFichaje } from '../data/fichajes';
-import { getWeddingTaskName } from '../data/eventNaming';
-import { formatTimeShort, formatWeekdayDay } from '../utils/dateUtils';
 import HistorialFichajes from './trabajador/HistorialFichajes';
+import TarjetaFichar from './trabajador/TarjetaFichar';
+import CuadranteDias from './trabajador/CuadranteDias';
 import AvisoFichajesPrivados from './AvisoFichajesPrivados';
-import { useDialog } from '../contexts/DialogContext';
-import EnVivo from './ui/EnVivo';
-import LlevasGanado from './trabajador/LlevasGanado';
 import { useAhora } from '../hooks/useAhora';
-import { duracionEnCurso } from '../data/costeEnVivo';
 import { mismoNombre } from '../data/nombresTrabajadores';
-
-
-// Texto del botón de empezar la jornada: se elige uno al azar al abrir la
-// vista (no en cada render, para que no cambie cada segundo). Todas dicen
-// claramente lo que hace el botón.
-const START_JORNADA_LABELS = [
-  'INICIAR JORNADA AHORA',
-  '¡ARRANCAMOS! INICIAR JORNADA',
-  '¡A POR EL DÍA! INICIAR JORNADA',
-  '¡VAMOS ALLÁ! INICIAR JORNADA',
-  'CAFÉ TOMADO: INICIAR JORNADA',
-  '¡A MOVER CAJAS! INICIAR JORNADA',
-  '¡A LA CARRETERA! INICIAR JORNADA',
-  '¡CON GANAS! INICIAR JORNADA',
-];
+import {
+  agendaDeLaSemana, sinLunesRepetido, proximaTareaDe, diaDeHoy, esDiaFuturo, diasParaVer,
+  textoDePuerta, companerosDeTarea,
+} from '../data/agendaTrabajador';
 
 export default function WorkerView({
   workerName,
@@ -49,7 +31,6 @@ export default function WorkerView({
   onDeleteClockEntry,
   onOpenAdminDashboard
 }) {
-  const { confirm } = useDialog();
   const [isClockModalOpen, setIsClockModalOpen] = useState(false);
   const [prefilledTask, setPrefilledTask] = useState(null); // for task-level clock-in
   const [taskRef, setTaskRef] = useState(null); // { dayKey, taskIndex } — para marcar la tarea como hecha al fichar salida
@@ -57,8 +38,6 @@ export default function WorkerView({
   // el cronómetro del turno va aparte en <EnVivo>. Antes se redibujaba entera cada
   // segundo, que en un móvil modesto se nota.
   const currentTime = useAhora(15000);
-  const [startLabel] = useState(() => START_JORNADA_LABELS[Math.floor(Math.random() * START_JORNADA_LABELS.length)]);
-  const dayNames = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
   // 'hoy' = el día de hoy de la semana que se ve, o toda la semana si hoy no cae en ella
   // (se resuelve abajo, cuando ya se sabe qué semana es: diaElegido).
   const [selectedDayKey, setSelectedDayKey] = useState('hoy');
@@ -97,7 +76,7 @@ export default function WorkerView({
     }
   };
 
-  const currentWorkerObj = workersList.find(w => w.name.toLowerCase() === workerName.toLowerCase()) || {
+  const currentWorkerObj = workersList.find(w => mismoNombre(w.name, workerName)) || {
     name: workerName,
     role: "Operativa Logística",
     avatar: "👤",
@@ -129,172 +108,22 @@ export default function WorkerView({
   // duración. Las horas de la semana y del mes las cuenta ResumenHorasSaldo.
   const duracionDeSalida = new Map(pairShiftsFromEntries(myEntries).shifts.map(turno => [turno.endEntry?.id, turno.durationHours]));
 
-  // Standard 7 Days Definition
-  // Títulos y números de día salen de meta.dateRange de la semana activa
-  // (getDayLabel) — antes estaban escritos a mano ("Lunes 14"... "Domingo
-  // 20") y la semana siguiente habrían enseñado fechas de la anterior. El
-  // 'lunes' de esta lista es el de COLA de la semana (día siguiente al
-  // domingo), no el que la abre. 'domingo' agrupa domingo Y lunes (misma
-  // lista), y su título lo dice.
-  const dayLabel = (key) => getDayLabel(activeWeekData, key, currentTime);
-  const dayNumber = (key) => dayLabel(key).replace(/^\D+/, '');
-  // Orden de Gula: la semana va de martes a domingo y el lunes es su COLA (el
-  // día siguiente al domingo), así que va el último — antes salía "LUN 28"
-  // delante de "MAR 22".
-  const weekDays = [
-    { key: 'martes', label: 'MAR', date: dayNumber('martes'), title: activeWeekData.schedule?.martes?.title || dayLabel('martes'), badge: activeWeekData.schedule?.martes?.badge || 'Arranque Flota' },
-    { key: 'miercoles', label: 'MIÉ', date: dayNumber('miercoles'), title: activeWeekData.schedule?.miercoles?.title || dayLabel('miercoles'), badge: activeWeekData.schedule?.miercoles?.badge || 'Descarga Fincas' },
-    { key: 'jueves', label: 'JUE', date: dayNumber('jueves'), title: activeWeekData.schedule?.jueves?.title || dayLabel('jueves'), badge: activeWeekData.schedule?.jueves?.badge || 'Eventos' },
-    { key: 'viernes', label: 'VIE', date: dayNumber('viernes'), title: activeWeekData.schedule?.viernes?.title || dayLabel('viernes'), badge: activeWeekData.schedule?.viernes?.badge || 'Cierre Crítico' },
-    { key: 'sabado', label: 'SÁB', date: dayNumber('sabado'), title: dayLabel('sabado'), badge: getWeddingsBadge(activeWeekData) },
-    { key: 'domingo', label: 'DOM', date: dayNumber('domingo'), title: `${dayLabel('domingo')} y ${dayLabel('lunes')}`, badge: 'Descarga & Vajilla' },
-    { key: 'lunes', label: 'LUN', date: dayNumber('lunes'), title: dayLabel('lunes'), badge: 'Devoluciones & Limpieza' }
-  ];
-
-  // Helper to extract assigned tasks & weddings for a day for current worker
-  const getDayActivities = (dayKey) => {
-    let tasks = [];
-    let weddings = [];
-
-    const isAssigned = (t) => isTaskAssignedTo(t, currentWorkerObj.name);
-
-    if (['martes', 'miercoles', 'jueves', 'viernes'].includes(dayKey)) {
-      const dayObj = activeWeekData.schedule?.[dayKey];
-      if (dayObj && dayObj.tasks) {
-        tasks = dayObj.tasks.filter(isAssigned).filter(esTareaActiva);
-      }
-    } else if (dayKey === 'sabado') {
-      const wList = activeWeekData.saturdaySpecial?.weddings || [];
-      weddings = wList.filter(isAssigned).filter(esTareaActiva);
-    } else if (dayKey === 'domingo' || dayKey === 'lunes') {
-      // domingo y lunes comparten sundayMonday.tasks bajo un único bucket
-      // real ('domingo' es la clave de storage) — confirmado con el
-      // usuario que la pestaña "LUN" debe enseñar las mismas tareas que
-      // "DOM", no quedarse vacía como antes (buscaba en schedule.lunes,
-      // que no existe).
-      tasks = getTaskListForDay(activeWeekData, 'domingo').filter(isAssigned).filter(esTareaActiva);
-      // Una tarea etiquetada "Domingo" (targetDay) no es del lunes: sin este
-      // filtro la pestaña LUN enseñaba p.ej. la recogida del domingo bajo
-      // "Lunes". Las sin etiquetar siguen en ambas (no se sabe cuál es).
-      if (dayKey === 'lunes') {
-        tasks = tasks.filter(t => !(typeof t === 'object' && String(t.targetDay || '').toLowerCase() === 'domingo'));
-      }
-    }
-
-    return { tasks, weddings, totalCount: tasks.length + weddings.length };
-  };
-
-  // Resuelve el índice REAL de una tarea dentro de su lista de origen —
-  // schedule[dayKey].tasks para los días normales, sundayMonday.tasks para
-  // "domingo" (que agrupa domingo Y lunes bajo esa misma clave, igual que
-  // getDayActivities). Las listas que se muestran en pantalla (dayGroup.tasks,
-  // day.tasks de daysWithActivities) están filtradas por trabajador, así que
-  // el índice que se ve ahí NUNCA es el índice real — hay que volver a
-  // buscarlo por texto contra la lista completa antes de tocar el planning.
-  // Se le pasa la TAREA (no su texto): dos con el mismo texto no se confunden (resolveTaskIndex).
+  // Resuelve el índice REAL de una tarea dentro de su lista de origen (schedule[dayKey]
+  // o sundayMonday para domingo/lunes): las listas en pantalla están filtradas por
+  // trabajador, así que su índice NUNCA es el real. Se le pasa la TAREA (no su texto):
+  // dos con el mismo texto no se confunden (resolveTaskIndex).
   const resolveRealTaskIndex = (dayKey, tarea) => resolveTaskIndex(activeWeekData, dayKey, tarea);
 
-  // Build full activities per day
-  const daysWithActivities = weekDays.map(day => {
-    const act = getDayActivities(day.key);
-    return { ...day, ...act };
-  });
+  // Cada día (de martes al lunes de cola) con sus tareas y bodas; los totales van sin el
+  // lunes, que comparte lista con el domingo (no se cuentan dos veces).
+  const daysWithActivities = agendaDeLaSemana(activeWeekData, currentWorkerObj.name, currentTime);
+  const totalAssignedTasks = sinLunesRepetido(daysWithActivities).reduce((acc, d) => acc + d.totalCount, 0);
 
-  // 'lunes' comparte bucket con 'domingo' (misma tarea, mismo texto) —
-  // se usa para totales/recuentos en vez de daysWithActivities directo,
-  // para no contar dos veces las tareas de domingo/lunes (una por cada
-  // pestaña). 'domingo' sí se cuenta normal, es la única entrada real.
-  const daysWithActivitiesForTotals = daysWithActivities.filter(d => d.key !== 'lunes');
-
-  // Calculate total assigned tasks & completion stats across week
-  const totalAssignedTasks = daysWithActivitiesForTotals.reduce((acc, d) => acc + d.totalCount, 0);
-
-  // Auto-detect immediate / first pending task for ZERO-SCROLL instant clock-in
-  // Se recalcula cada minuto (no cada segundo) para que una tarea que ya
-  // terminó deje de ser "la siguiente" sin tener que recargar.
-  const minuteKey = Math.floor(currentTime.getTime() / 60000);
   // La próxima tarea de este trabajador, tenga o no el turno abierto. Con el turno abierto
-  // el bloque «Tarea en curso» enseña ESTA (antes enseñaba «JORNADA» y «Marcar como
-  // completada» no marcaba ninguna tarea).
-  const proximaTarea = useMemo(() => {
-    // La SIGUIENTE tarea: la que empieza antes entre las que ni están
-    // completadas ni han terminado ya (daysWithActivitiesForTotals excluye
-    // 'lunes' para no contar dos veces la lista compartida domingo/lunes).
-    // Antes era "la primera sin completar por orden de día", y una boda de
-    // sábado ya pasada se quedaba fijada como "siguiente" para siempre, así
-    // que "iniciar jornada" nunca esperaba a la hora de la tarea real. Se
-    // ordena por hora de inicio real porque la lista compartida mezcla
-    // tareas de domingo y de lunes en cualquier orden.
-    const candidates = [];
-    for (const day of daysWithActivitiesForTotals) {
-      for (const t of day.tasks) {
-        if (isTaskEffectivelyDone(activeWeekData, day.key, t, currentTime)) continue;
-        candidates.push({ day, t, isWedding: false });
-      }
-      for (const w of day.weddings || []) {
-        if (isTaskEffectivelyDone(activeWeekData, day.key, w, currentTime)) continue;
-        candidates.push({ day, t: w, isWedding: true });
-      }
-    }
-    const startOf = ({ day, t }) => getNextTaskStart(activeWeekData, day.key, t, currentTime)?.getTime() ?? Infinity;
-    // Una tarea con horario que ya terminó no es "la siguiente" aunque nadie la
-    // marcara (desde el 25/09 nada se marca solo): antes, con solo tareas pasadas
-    // sin marcar, la puerta de los 5 min no se cerraba nunca y el botón de fichar
-    // quedaba siempre activo. Con fechas ilegibles no se descarta nada (se podría
-    // dejar a todos sin poder fichar).
-    const fechasLegibles = !!getWeekRange(activeWeekData, currentTime);
-    const conHorario = ({ t }) => typeof t === 'object' && /\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}/.test(t?.timeFrame || '');
-    const pendientes = candidates.filter(c => !(fechasLegibles && conHorario(c) && startOf(c) === Infinity));
-    pendientes.sort((a, b) => {
-      const sa = startOf(a);
-      const sb = startOf(b);
-      return sa === sb ? 0 : sa < sb ? -1 : 1;
-    });
+  // el bloque «Tarea en curso» enseña ESTA. Se recalcula en cada repintado (cada 15 s):
+  // una tarea que ya terminó deja de ser «la siguiente» sin tener que recargar.
+  const proximaTarea = proximaTareaDe(activeWeekData, daysWithActivities, currentTime);
 
-    const next = pendientes[0];
-    if (!next) return null;
-    const { day, t } = next;
-    if (next.isWedding) {
-      return {
-        isShiftActive: false,
-        dayKey: day.key,
-        dayTitle: day.title,
-        dayBadge: 'Boda Fin de Semana',
-        taskName: getWeddingTaskName(t),
-        taskIndex: resolveRealTaskIndex(day.key, t),
-        timeFrame: t.timeFrame,
-        location: t.location,
-        rawTask: t,
-        isWedding: true
-      };
-    }
-    const text = typeof t === 'object' ? t.text : t;
-    return {
-      isShiftActive: false,
-      dayKey: day.key,
-      taskIndex: resolveRealTaskIndex(day.key, t),
-      dayTitle: day.title,
-      dayBadge: day.badge,
-      taskName: text,
-      timeFrame: typeof t === 'object' ? t.timeFrame : null,
-      location: typeof t === 'object' ? t.location : null,
-      mapsUrl: typeof t === 'object' ? t.mapsUrl : null,
-      rawTask: t,
-      isWedding: false
-    };
-  }, [daysWithActivities, minuteKey]);
-
-  // Con un turno abierto, la tarjeta de fichar enseña el turno; sin él, la próxima tarea.
-  const immediateTask = activeShift
-    ? {
-        isShiftActive: true,
-        taskName: activeShift.taskName || 'Turno Activo General',
-        dayTitle: 'Turno en curso',
-        dayBadge: '🔴 En Directo',
-        timeFrame: null, // el tiempo que lleva se pinta en directo (EnVivo)
-        isWedding: false
-      }
-    : proximaTarea;
   // Un turno de jornada (se ficha la entrada de la jornada y luego se van marcando las tareas):
   // su `taskName` pasa a ser el de la última tarea marcada, así que se mira su marca propia.
   const esJornada = !!activeShift?.esJornada;
@@ -311,86 +140,31 @@ export default function WorkerView({
       const t = list[taskIndex];
       return (t && typeof t === 'object' && Array.isArray(t.assigned)) ? t.assigned : null;
     }
-    if (!activeShift && immediateTask?.rawTask && Array.isArray(immediateTask.rawTask.assigned)) {
-      return immediateTask.rawTask.assigned;
+    if (!activeShift && proximaTarea?.rawTask && Array.isArray(proximaTarea.rawTask.assigned)) {
+      return proximaTarea.rawTask.assigned;
     }
     return null;
   })();
 
-  // Memoizado por clockEntries: este componente también tiene un timer de
-  // 1s (currentTime) que fuerza re-render, igual que en LiveMonitorPanel.
+  // Memoizado por clockEntries: la vista se repinta cada 15 s (currentTime) y no hace
+  // falta volver a emparejar todos los fichajes en cada repintado.
   const { activeShifts: clockedInNow } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
-  const taskCoworkers = (referenceTaskAssigned || [])
-    .filter(name => name.toLowerCase() !== currentWorkerObj.name.toLowerCase())
-    .map(name => ({
-      name,
-      profile: workersList.find(w => w.name.toLowerCase() === name.toLowerCase()),
-      isClockedIn: Object.keys(clockedInNow).some(n => n.toLowerCase() === name.toLowerCase())
-    }));
+  const taskCoworkers = companerosDeTarea(referenceTaskAssigned, currentWorkerObj.name, workersList, Object.keys(clockedInNow));
 
-
-  // «Hoy» es el día de ESTA semana que cae hoy por fecha real; si la semana que se ve no
-  // es la de hoy (el lunes ya se enseña la siguiente a quien acabó), no hay «hoy» en ella.
-  // Antes se miraba solo el nombre del día: el lunes 19 marcaba «LUN 26 · HOY» y enseñaba
-  // las tareas del lunes siguiente como si fueran de hoy. Sin fechas legibles, por nombre.
-  const todayKey = getWeekRange(activeWeekData, currentTime) ? diaDeLaFecha(activeWeekData, currentTime) : dayNames[currentTime.getDay()];
+  // «Hoy» (null si la semana que se ve no es la de hoy) y el día elegido en las píldoras.
+  const todayKey = diaDeHoy(activeWeekData, currentTime);
   const diaElegido = selectedDayKey === 'hoy' ? (todayKey || 'all') : selectedDayKey;
 
-  // Para deshabilitar "Fichar" en un día que todavía no ha llegado (evita
-  // fichar por error una tarea de dentro de varios días). Compara por
-  // orden de día de la semana (lunes→domingo), el mismo criterio que ya
-  // usa "Hoy" (todayKey) arriba — no por fecha exacta del calendario.
-  const weekDayOrder = [...dayNames.slice(1), dayNames[0]]; // lunes→domingo (calendario)
-  const todayOrdinal = weekDayOrder.indexOf(todayKey);
-  const isDayInFuture = (dayKey) => {
-    // Por FECHA REAL cuando la semana tiene fechas legibles: así una semana
-    // futura entera sale bloqueada (por día de la semana suelto, el martes
-    // de la semana que viene "ya había llegado" un domingo por la noche).
-    const dayDate = resolveTaskDate(getWeekRange(activeWeekData, currentTime), dayKey);
-    if (dayDate) {
-      const today = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
-      return dayDate.getTime() > today.getTime();
-    }
-    const ordinal = weekDayOrder.indexOf(dayKey);
-    if (ordinal === -1 || todayOrdinal === -1) return false;
-    // 'domingo' es el último elemento de weekDayOrder (ordinal más alto) —
-    // comprobado ya en lunes, `ordinal > todayOrdinal` (6 > 0) lo marcaría
-    // como "futuro" cuando en realidad fue AYER. Mismo bug que ya se
-    // corrigió en taskPlanning.js para isTaskChronologicallyPast — aquí se
-    // aplica el mismo criterio de "ayer exactamente" antes del corte.
-    const isExactlyYesterday = ((todayOrdinal - ordinal + weekDayOrder.length) % weekDayOrder.length) === 1;
-    if (isExactlyYesterday) return false;
-    return ordinal > todayOrdinal;
-  };
+  // Para deshabilitar "Fichar" en un día que todavía no ha llegado (evita fichar por error
+  // una tarea de dentro de varios días).
+  const isDayInFuture = (dayKey) => esDiaFuturo(activeWeekData, dayKey, currentTime);
 
   // Con el turno abierto, la próxima tarea puede ser de otro día (hoy no le queda nada):
   // entonces no es «en curso», es la próxima, y se dice de qué día.
   const proximaEsOtroDia = !!proximaTarea?.dayKey && isDayInFuture(proximaTarea.dayKey);
 
-  // Filtered days list based on selected tab. En "Todos" se usa la lista
-  // sin 'lunes' (daysWithActivitiesForTotals) para no mostrar la misma
-  // tarjeta de domingo/lunes duplicada dos veces seguidas — seleccionando
-  // la pestaña "LUN" directamente sí se sigue viendo (usa la lista
-  // completa, esa sí incluye su propia entrada).
-  // NUEVO COMPORTAMIENTO: Para que el trabajador no tenga que hacer scroll,
-  // ordenamos los días colocando HOY y los días futuros primero, y enviamos
-  // los días pasados (ya completados) al final.
-  const displayedDays = diaElegido === 'all'
-    ? [...daysWithActivitiesForTotals].sort((a, b) => {
-        const isPast = (dayKey) => dayKey !== todayKey && !isDayInFuture(dayKey);
-        const aPast = isPast(a.key);
-        const bPast = isPast(b.key);
-        if (aPast && !bPast) return 1;
-        if (!aPast && bPast) return -1;
-        return 0;
-      })
-    : daysWithActivities.filter(d => d.key === diaElegido);
+  const displayedDays = diasParaVer(daysWithActivities, diaElegido, todayKey, isDayInFuture);
 
-  // domingo y lunes comparten sundayMonday.tasks bajo un único bucket real
-  // ('domingo' es la clave de storage) — toStorageDayKey evita repetir esa
-  // conversión al leer/escribir la lista real (findTaskIndex, toggle,
-  // taskRef).
-  const toStorageDayKey = (dayKey) => (dayKey === 'lunes' ? 'domingo' : dayKey);
   // Un turno solo se puede EMPEZAR desde 5 min antes de que empiece la
   // siguiente tarea (isTaskTooEarlyToStart): el primero del día Y el de cada
   // vuelta de una jornada partida (tras la pausa, la primera tarea del
@@ -398,28 +172,24 @@ export default function WorkerView({
   // cambiar de tarea cuando se quiera. Es la misma puerta para el botón de
   // iniciar jornada y para los "Fichar esta tarea" mientras no haya turno.
   const jornadaStarted = !!activeShift;
-  const firstTaskStart = jornadaStarted || !immediateTask?.dayKey
+  const firstTaskStart = jornadaStarted || !proximaTarea?.dayKey
     ? null
-    : getNextTaskStart(activeWeekData, immediateTask.dayKey, immediateTask.rawTask, currentTime);
+    : getNextTaskStart(activeWeekData, proximaTarea.dayKey, proximaTarea.rawTask, currentTime);
   // Sin ninguna tarea pendiente tampoco se abre (evita fichar sin querer); para algo
   // que no está en el planning queda «O fichar otra tarea libre».
-  const sinTareasPendientes = !jornadaStarted && !immediateTask;
-  const jornadaGateClosed = sinTareasPendientes || (!!firstTaskStart && isTaskTooEarlyToStart(activeWeekData, immediateTask.dayKey, immediateTask.rawTask, currentTime));
-  const gateText = () => {
-    if (sinTareasPendientes) return 'No tienes tareas pendientes ahora';
-    if (!firstTaskStart) return '';
-    const opens = new Date(firstTaskStart.getTime() - 5 * 60 * 1000);
-    const hhmm = formatTimeShort(opens);
-    return opens.toDateString() === currentTime.toDateString()
-      ? `Podrás fichar a partir de las ${hhmm}`
-      : `Podrás fichar el ${formatWeekdayDay(opens)} a las ${hhmm}`;
-  };
+  const sinTareasPendientes = !jornadaStarted && !proximaTarea;
+  const jornadaGateClosed = sinTareasPendientes || (!!firstTaskStart && isTaskTooEarlyToStart(activeWeekData, proximaTarea.dayKey, proximaTarea.rawTask, currentTime));
+  const gateText = textoDePuerta({ sinTareasPendientes, inicioPrimeraTarea: firstTaskStart, ahora: currentTime });
 
   // Lo que se ve marcado = lo que hace el clic = lo que guarda el sistema
-  // (isTaskEffectivelyDone): hecha si está marcada, o si pasó su hora + margen y
-  // nadie la desmarcó a propósito. Compara contra la FECHA REAL de la tarea
-  // (meta.dateRange) y respeta su targetDay; una sin etiquetar cuenta como lunes.
-  const isTaskDone = (dayKey, task) => isTaskEffectivelyDone(activeWeekData, dayKey, task, currentTime);
+  // (isTaskEffectivelyDone): hecha solo si está marcada (a mano o al fichar su salida).
+  const isTaskDone = (dayKey, task) => isTaskEffectivelyDone(activeWeekData, dayKey, task);
+
+  const abrirFichar = (label, ref) => {
+    setPrefilledTask(label);
+    setTaskRef(ref);
+    setIsClockModalOpen(true);
+  };
 
   return (
     <div className="space-y-4 sm:space-y-5 animate-fadeIn w-full max-w-full xl:max-w-6xl 2xl:max-w-7xl mx-auto overflow-x-hidden">
@@ -480,6 +250,7 @@ export default function WorkerView({
               isAdmin ? (
                 <button
                   onClick={onOpenAdminDashboard}
+                  aria-label="Administración"
                   className="py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold transition-colors flex items-center space-x-1.5 shrink-0"
                 >
                   <Settings className="w-4 h-4 hover:rotate-90 transition-transform duration-300" />
@@ -505,224 +276,25 @@ export default function WorkerView({
           fichajesDeTodo={fichajesDeTodo}
           equipo={workersList}
         />
-        {/* 🎯 HERO ACTION CARD: IMMEDIATE TASK (0 SCROLL REQUIRED!) */}
-        <div className={`mt-3 rounded-2xl p-3 sm:p-5 border transition-all ${
-          activeShift
-            ? 'bg-gradient-to-r from-rose-950/60 via-slate-950 to-rose-950/40 border-rose-500/50 shadow-xl shadow-rose-950/30'
-            : immediateTask
-            ? 'bg-gradient-to-br from-emerald-950/40 via-slate-950 to-amber-950/30 border-emerald-500/40 shadow-xl shadow-emerald-950/20'
-            : 'bg-slate-950/80 border-slate-800'
-        }`}>
-          {activeShift ? (
-            /* ACTIVE SHIFT: Live Clock-Out Button */
-            <div className="space-y-3">
-              {/* Cada pieza en una línea: si no caben juntas (móvil estrecho o letra grande), el
-                  cronómetro baja entero en vez de partirse ("3h 48m" / "02s"). */}
-              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-rose-500/20 pb-2">
-                <div className="flex items-center gap-2 whitespace-nowrap">
-                  <span className="w-2.5 h-2.5 shrink-0 rounded-full bg-rose-500 animate-ping motion-reduce:animate-none"></span>
-                  <span className="text-[11px] font-black uppercase tracking-wider text-rose-400">
-                    EN TURNO
-                  </span>
-                </div>
-                <span className="whitespace-nowrap tabular-nums text-sm sm:text-base font-extrabold font-mono text-emerald-400 bg-slate-900 px-2.5 py-0.5 rounded-lg border border-slate-800">
-                  <Clock className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" /><EnVivo>{(ahora) => duracionEnCurso(activeShift, ahora)}</EnVivo>
-                </span>
-              </div>
-
-              <div>
-                <p className="text-sm sm:text-base font-extrabold text-white font-outfit">
-                  <Pin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{esJornada ? 'Jornada iniciada' : (activeShift.taskName || 'Turno Operativo General')}
-                </p>
-              </div>
-
-              {!currentWorkerObj.isPayroll && <LlevasGanado turno={activeShift} trabajador={currentWorkerObj} />}
-
-              {/* Sub-tareas V2 */}
-              {esJornada && (
-                <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 mt-2">
-                  <div className="flex items-center justify-between gap-2 border-b border-emerald-500/20 pb-2 mb-2">
-                    <div className="flex items-center space-x-1.5 text-emerald-400">
-                      <Target className="w-4 h-4" />
-                      <span className="text-[11px] font-black uppercase tracking-wider">{proximaEsOtroDia ? 'PRÓXIMA TAREA' : 'TAREA EN CURSO'}</span>
-                    </div>
-                  </div>
-                  
-                  {proximaTarea ? (
-                    <>
-                      <p className="text-xs font-bold text-white mb-1">{proximaTarea.taskName}</p>
-                      {(proximaTarea.timeFrame || proximaEsOtroDia) && <p className="text-[11px] text-slate-400 mb-3">{[proximaEsOtroDia && getDayLabel(activeWeekData, proximaTarea.dayKey), proximaTarea.timeFrame].filter(Boolean).join(' · ')}</p>}
-                      {(() => {
-                        const isLocked = proximaTarea.dayKey && isDayInFuture(proximaTarea.dayKey);
-                        return (
-                          <button
-                            onClick={() => {
-                              if (isLocked) return;
-                              const tRef = proximaTarea.dayKey && proximaTarea.taskIndex != null
-                                ? { dayKey: proximaTarea.dayKey, taskIndex: proximaTarea.taskIndex }
-                                : null;
-
-                                safeClockEntry(() => crearFichaje({
-                                  trabajador: currentWorkerObj,
-                                  tipo: 'fichaje',
-                                  taskName: String(proximaTarea.taskName).trim(),
-                                  note: '',
-                                  taskRef: refDeTareaFichada(activeWeekData, tRef)
-                                }));
-                              }}
-                              disabled={isLocked || isProcessingAction}
-                            className={`w-full py-2.5 px-3 rounded-lg text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
-                              isLocked
-                                ? 'bg-slate-800 text-slate-500 cursor-not-allowed shadow-none'
-                                : 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 active:scale-95'
-                            }`}
-                          >
-                            {isLocked ? (
-                              <>
-                                <Lock className="w-3.5 h-3.5" />
-                                <span className="whitespace-nowrap">Esperando día...</span>
-                              </>
-                            ) : (
-                              <>
-                                <CheckSquare className="w-3.5 h-3.5" />
-                                <span className="whitespace-nowrap">Marcar como completada</span>
-                              </>
-                            )}
-                          </button>
-                        );
-                      })()}
-                    </>
-                  ) : (
-                    <div className="text-center py-2">
-                      <span className="text-xs font-bold text-slate-400 block">
-                        🎉 ¡Estás al día! No tienes tareas pendientes hoy.
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <button
-                disabled={isProcessingAction}
-                onClick={() => { 
-                  safeClockEntry(() => crearFichaje({ trabajador: currentWorkerObj, tipo: 'salida', note: '' }));
-                }}
-                className={`w-full py-3.5 px-3 rounded-xl text-xs min-[360px]:text-sm font-extrabold flex items-center justify-center space-x-2 transition-all shadow-xl active:scale-95 ${
-                  isProcessingAction ? 'bg-rose-900/50 text-rose-500 cursor-not-allowed shadow-none' : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30'
-                }`}
-              >
-                <Square className="w-4 h-4 shrink-0" />
-                <span className="whitespace-nowrap">{esJornada ? 'FINALIZAR JORNADA' : 'Fichar salida'}</span>
-              </button>
-
-              {/* BOTÓN DESHACER: Disponible solo durante los primeros 15 min */}
-              {activeShift && (new Date() - new Date(activeShift.timestamp) < 15 * 60 * 1000) && (
-                <button
-                  onClick={async () => {
-                    if (await confirm('¿Seguro que quieres anular este fichaje de entrada? Hazlo solo si le diste por error.', { type: 'warning' })) {
-                      onDeleteClockEntry(activeShift.id);
-                    }
-                  }}
-                  className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-400 flex items-center justify-center transition-colors border border-slate-700"
-                >
-                  Deshacer Entrada (Me he equivocado)
-                </button>
-              )}
-            </div>
-          ) : (
-            /* INICIAR JORNADA BUTTON (No active shift) */
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2 border-b border-emerald-500/20 pb-2">
-                <div className="flex items-center space-x-1.5 text-emerald-400">
-                  <Clock className="w-4 h-4 animate-pulse" />
-                  <span className="text-[11px] font-black uppercase tracking-wider">
-                    FUERA DE TURNO
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-sm sm:text-base font-extrabold text-white font-outfit leading-snug">
-                  ¿Listo para empezar el día?
-                </h2>
-                <p className="text-xs text-slate-400 mt-1">
-                  Inicia tu jornada general. Luego podrás ir marcando las tareas que termines.
-                </p>
-              </div>
-
-              {(() => {
-                // La puerta (jornadaGateClosed) mira la fecha REAL de la primera
-                // tarea, no solo la hora de hoy: una tarea de un día futuro no
-                // deja iniciar jornada antes de tiempo.
-                const isReady = !jornadaGateClosed;
-                const minutesLeft = isReady || !firstTaskStart ? 0 : Math.max(1, Math.ceil((firstTaskStart.getTime() - currentTime.getTime()) / 60000 - 5));
-                const waitText = minutesLeft >= 60 ? `${Math.floor(minutesLeft / 60)} h ${minutesLeft % 60} min` : `${minutesLeft} min`;
-
-                return (
-                  <>
-                  <button
-                    disabled={!isReady || isProcessingAction}
-                    onClick={() => {
-                      safeClockEntry(() => crearFichaje({
-                        trabajador: currentWorkerObj,
-                        tipo: 'entrada',
-                        taskName: 'JORNADA',
-                        note: 'Inicio de Jornada',
-                        taskRef: null
-                      }));
-                    }}
-                    className={`w-full py-3.5 px-3 sm:px-4 rounded-xl text-[13px] min-[360px]:text-sm font-extrabold flex items-center justify-center gap-2 transition-all ${
-                      isReady && !isProcessingAction
-                        ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 text-slate-950 shadow-xl shadow-emerald-500/25 active:scale-95' 
-                        : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-                    }`}
-                  >
-                    {isReady ? (
-                      <>
-                        <Play className="w-4 h-4 fill-current" />
-                        <span>{startLabel}</span>
-                      </>
-                    ) : sinTareasPendientes ? (
-                      <>
-                        <Lock className="w-4 h-4 shrink-0" />
-                        <span className="text-center">Sin tareas pendientes</span>
-                      </>
-                    ) : (
-                      <>
-                        <Clock className="w-4 h-4 shrink-0 hidden min-[360px]:block" aria-hidden="true" />
-                        {/* Si no cabe (320 px, letra grande) baja de línea entre palabras en
-                            vez de cortarse; el tiempo no se parte. */}
-                        <span className="text-center">Espera <span className="whitespace-nowrap">{waitText}</span> para fichar</span>
-                      </>
-                    )}
-                  </button>
-                  {!isReady && (
-                    <p className="text-[11px] text-slate-400">
-                      {sinTareasPendientes ? 'Si te han llamado para algo que no está en tu planning, usa «O fichar otra tarea libre».' : `${gateText()} (5 min antes de tu primera tarea).`}
-                    </p>
-                  )}
-                  </>
-                );
-              })()}
-            </div>
-          )}
-
-          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-3 mt-3 border-t border-slate-800 text-[11px] text-slate-400">
-            <button
-              onClick={() => {
-                setPrefilledTask(null);
-                setTaskRef(null);
-                setIsClockModalOpen(true);
-              }}
-              className="whitespace-nowrap py-2 hover:text-amber-400 text-slate-300 underline decoration-slate-700 hover:decoration-amber-400 transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />O fichar otra tarea libre
-            </button>
-            <span className="whitespace-nowrap text-[11px] text-slate-500">
-              <Lock className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Registro seguro
-            </span>
-          </div>
-        </div>
+        {/* Tarjeta de fichar: la acción inmediata, sin scroll */}
+        <TarjetaFichar
+          turno={activeShift}
+          esJornada={esJornada}
+          trabajador={currentWorkerObj}
+          semana={activeWeekData}
+          proximaTarea={proximaTarea}
+          proximaEsOtroDia={proximaEsOtroDia}
+          hayTarea={!!proximaTarea}
+          puertaCerrada={jornadaGateClosed}
+          sinTareasPendientes={sinTareasPendientes}
+          inicioPrimeraTarea={firstTaskStart}
+          ahora={currentTime}
+          textoPuerta={gateText}
+          ocupado={isProcessingAction}
+          onFichar={safeClockEntry}
+          onDeshacer={onDeleteClockEntry}
+          onFicharLibre={() => abrirFichar(null, null)}
+        />
       </div>
 
       {/* Compañeros de esta tarea — para saber a quién preguntar por si
@@ -836,185 +408,22 @@ export default function WorkerView({
             <TaskFlowGraphView activeWeekData={activeWeekData} workersList={workersList} onToggleTask={onToggleTask} restrictToWorkerName={currentWorkerObj.name} />
           </div>
         ) : (
-          <>
-            {/* HORIZONTAL SCROLLABLE DAY PILLS BAR */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 pt-1 -mx-1 px-1 shrink-0">
-              {todayKey && (
-              <button
-                onClick={() => setSelectedDayKey(todayKey)}
-                className={`px-3 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all shrink-0 flex items-center gap-1.5 border ${
-                  diaElegido === todayKey
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
-                    : 'bg-slate-950 text-slate-200 border-slate-800 hover:text-white'
-                }`}
-              >
-                <span><Zap className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Hoy ({weekDays.find(d => d.key === todayKey)?.label || 'Hoy'})</span>
-              </button>
-              )}
-
-              <button
-                onClick={() => setSelectedDayKey('all')}
-                className={`px-3 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all shrink-0 border ${
-                  diaElegido === 'all'
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md'
-                    : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
-                }`}
-              >
-                <ListTodo className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Toda la Semana ({totalAssignedTasks})
-              </button>
-
-              {daysWithActivities.map((day) => {
-                const isSelected = diaElegido === day.key;
-                const hasActivity = day.totalCount > 0;
-                const isSaturday = day.key === 'sabado';
-                const isToday = day.key === todayKey;
-
-                return (
-                  <button
-                    key={day.key}
-                    onClick={() => setSelectedDayKey(day.key)}
-                    className={`px-3 py-2 rounded-xl text-xs font-extrabold whitespace-nowrap transition-all shrink-0 flex items-center gap-1.5 border ${
-                      isSelected
-                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md scale-105'
-                        : hasActivity
-                        ? isSaturday
-                          ? 'bg-amber-950/30 text-amber-300 border-amber-500/40 hover:border-amber-400'
-                          : 'bg-slate-950 text-slate-200 border-slate-800 hover:border-amber-500/40'
-                        : 'bg-slate-950/40 text-slate-500 border-slate-800/60'
-                    }`}
-                  >
-                    <span>{day.label} {day.date}</span>
-                    {isToday && (
-                      <span className="text-[10px] px-1 py-0.2 rounded bg-blue-500/20 text-blue-300 font-extrabold">
-                        HOY
-                      </span>
-                    )}
-                    {day.totalCount > 0 && (
-                      <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
-                        isSelected ? 'bg-slate-950 text-amber-400' : 'bg-slate-800 text-amber-300'
-                      }`}>
-                        {day.totalCount}
-                      </span>
-                    )}
-                    {isSaturday && <span>👑</span>}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* DETAILED TASKS & WEDDINGS BREAKDOWN ACCORDING TO SELECTED DAY */}
-            <div className="space-y-4 pt-4 border-t border-slate-800 flex-1 flex flex-col">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
-                <h3 className="text-base sm:text-lg font-extrabold text-white font-outfit flex items-center space-x-2">
-                  <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
-                  <span>
-                    {diaElegido === 'all' 
-                      ? 'Desglose Completo de tu Cuadrante Semanal' 
-                      : `Tareas Asignadas para ${weekDays.find(d => d.key === diaElegido)?.title}`}
-                  </span>
-                </h3>
-                <span className="text-[11px] sm:text-xs text-slate-400 font-semibold bg-slate-950 px-3 py-1 rounded-xl border border-slate-800 self-start sm:self-auto">
-                  {(n => `${n} ${n === 1 ? 'día' : 'días'}`)(displayedDays.filter(d => d.totalCount > 0).length)} con asignación directa
-                </span>
-              </div>
-
-              {/* Un solo día: a todo el ancho. Dos días: 2 columnas que llenan la fila. Tres o más: hasta 3 columnas */}
-              <div className={`grid grid-cols-1 gap-3 sm:gap-4 ${
-                displayedDays.filter(d => diaElegido !== 'all' || d.totalCount > 0).length > 1 
-                  ? (displayedDays.filter(d => diaElegido !== 'all' || d.totalCount > 0).length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-2 2xl:grid-cols-3') 
-                  : ''
-              } flex-1 items-stretch`}>
-                {displayedDays.map((dayGroup) => {
-                  if (dayGroup.totalCount === 0 && diaElegido === 'all') return null;
-
-                  return (
-                    <div 
-                      key={dayGroup.key} 
-                      className={`bg-slate-950 border p-4 sm:p-5 rounded-2xl space-y-3 sm:space-y-4 transition-all flex flex-col h-full ${
-                        dayGroup.weddings.length > 0
-                          ? 'border-amber-500/40 bg-gradient-to-br from-slate-950 via-slate-950 to-amber-950/20'
-                          : 'border-slate-800'
-                      }`}
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5 shrink-0">
-                        <div>
-                          <h4 className="whitespace-nowrap font-extrabold text-amber-300 text-sm sm:text-base font-outfit">
-                            <Calendar className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{dayGroup.title}
-                          </h4>
-                          <span className="text-[11px] text-slate-400 block mt-0.5">{dayGroup.badge}</span>
-                        </div>
-
-                        <span className="whitespace-nowrap text-[11px] bg-slate-900 text-slate-300 font-bold px-2 py-0.5 rounded-lg border border-slate-800 shrink-0">
-                          {dayGroup.totalCount} {dayGroup.totalCount === 1 ? 'tarea' : 'tareas'}
-                        </span>
-                      </div>
-
-                      {/* Tasks List */}
-                      {dayGroup.tasks.length > 0 && (
-                        <ul className="space-y-2 text-xs text-slate-200 flex-1">
-                          {dayGroup.tasks.map((task, idx) => (
-                            <WorkerViewTaskItem
-                              key={idx}
-                              task={task}
-                              dayKey={dayGroup.key}
-                              isCompleted={isTaskDone(dayGroup.key, task)}
-                              isDayInFuture={isDayInFuture(dayGroup.key)}
-                              jornadaStarted={jornadaStarted}
-                              jornadaGateClosed={jornadaGateClosed}
-                              gateText={gateText()}
-                              onToggleTask={onToggleTask}
-                              toStorageDayKey={toStorageDayKey}
-                              resolveRealTaskIndex={resolveRealTaskIndex}
-                              onClockIn={(label, ref) => {
-                                setPrefilledTask(label);
-                                setTaskRef(ref);
-                                setIsClockModalOpen(true);
-                              }}
-                            />
-                          ))}
-                        </ul>
-                      )}
-
-                      {/* Saturday Weddings assigned */}
-                      {dayGroup.weddings.length > 0 && (
-                        <div className="space-y-2 pt-2">
-                          <span className="text-[11px] font-extrabold text-amber-300 uppercase tracking-wider flex items-center space-x-1">
-                            <Award className="w-3.5 h-3.5 text-amber-400" />
-                            <span>Boda Asignada Sábado</span>
-                          </span>
-                          {dayGroup.weddings.map((w, idx) => (
-                            <WorkerViewWeddingCard
-                              key={idx}
-                              wedding={w}
-                              isCompleted={isTaskDone('sabado', w)}
-                              isDayInFuture={isDayInFuture('sabado')}
-                              jornadaStarted={jornadaStarted}
-                              jornadaGateClosed={jornadaGateClosed}
-                              gateText={gateText()}
-                              onToggleTask={onToggleTask}
-                              resolveRealTaskIndex={resolveRealTaskIndex}
-                              getWeddingTaskName={getWeddingTaskName}
-                              onClockIn={(label, ref) => {
-                                setPrefilledTask(label);
-                                setTaskRef(ref);
-                                setIsClockModalOpen(true);
-                              }}
-                            />
-                          ))}
-                        </div>
-                      )}
-
-                      {dayGroup.totalCount === 0 && (
-                        <p className="text-xs text-slate-500 italic text-center py-4 flex-1 flex items-center justify-center">
-                          Sin tareas directas asignadas para este día. Estás en backup u operativa general de base.
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </>
+          <CuadranteDias
+            dias={daysWithActivities}
+            diasMostrados={displayedDays}
+            diaElegido={diaElegido}
+            hoy={todayKey}
+            totalTareas={totalAssignedTasks}
+            onElegirDia={setSelectedDayKey}
+            estaHecha={isTaskDone}
+            esDiaFuturo={isDayInFuture}
+            jornadaStarted={jornadaStarted}
+            puertaCerrada={jornadaGateClosed}
+            textoPuerta={gateText}
+            onToggleTask={onToggleTask}
+            resolveRealTaskIndex={resolveRealTaskIndex}
+            onFicharTarea={abrirFichar}
+          />
         )}
       </div>
       )}

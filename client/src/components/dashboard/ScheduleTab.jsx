@@ -8,13 +8,10 @@ import { rejillaDeDias } from './rejillaDias';
 import { formatearHoras } from '../../data/formatoFinanciero';
 import { tarifaCorta } from '../../data/tarifas';
 
-// Una tarjeta que se marca o desmarca con un clic (o Enter/Espacio), como las de martes a
-// viernes. Antes las bodas del sábado y las tareas de domingo y lunes no se podían marcar
-// desde aquí: salían bloqueadas. `marcar` null = solo lectura.
-const alMarcar = (marcar, hecha) => (marcar ? {
-  role: 'button', tabIndex: 0, 'aria-pressed': hecha, onClick: marcar,
-  onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); marcar(); } },
-} : {});
+import { alMarcar } from '../ui/alMarcar';
+
+// Bodas del sábado y tareas de domingo/lunes se marcan con un clic (o Enter/Espacio),
+// como las de martes a viernes (alMarcar); antes salían bloqueadas.
 
 export default function ScheduleTab({ activeWeekData, workersList, onToggleTask, vispera = null }) {
   const [selectedWorkerFilter, setSelectedWorkerFilter] = useState(null);

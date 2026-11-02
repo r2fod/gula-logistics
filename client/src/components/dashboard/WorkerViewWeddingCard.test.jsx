@@ -27,6 +27,17 @@ describe('WorkerViewWeddingCard', () => {
     expect(p.onClockIn).toHaveBeenCalledWith('Boda: Finca Sur (Camión Uno)', { dayKey: 'sabado', taskIndex: 2 });
   });
 
+  it('BUG evitado: la boda se marca también con el teclado (antes era un div sin foco ni Enter)', () => {
+    const p = pintar();
+    const tarjeta = screen.getByRole('button', { name: /Finca Sur/ });
+    expect(tarjeta).toHaveAttribute('tabindex', '0');
+    expect(tarjeta).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.keyDown(tarjeta, { key: 'Enter' });
+    fireEvent.keyDown(tarjeta, { key: ' ' });
+    fireEvent.keyDown(tarjeta, { key: 'a' });
+    expect(p.onToggleTask).toHaveBeenCalledTimes(2);
+  });
+
   it('con la jornada ya empezada no aparece el botón de fichar', () => {
     pintar({ jornadaStarted: true });
     expect(screen.queryByRole('button', { name: /Fichar/ })).toBeNull();
