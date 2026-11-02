@@ -4,7 +4,7 @@
 // texto, que guarda el fichaje, ni su gente, ni su posición— y las nuevas se reparten
 // con la gente ya asignada como ocupada (optimizadorPlanning.js). Funciones puras: la
 // lectura del calendario y el guardado los hace quien llama.
-import { eventosDelCalendario, generarBorrador } from './weekGenerator';
+import { eventosDelCalendario, esAlquilerContinuo, generarBorrador, tituloDeRecado } from './weekGenerator';
 import { tareasDelPlanning } from './optimizadorPlanning';
 import { limitesDe, restriccionesDe } from './disponibilidad';
 import { getWeekRange } from './taskPlanning';
@@ -45,8 +45,24 @@ function eventosEnSemana(semana) {
   return vistos;
 }
 
+// Recados del calendario (recoger o devolver material, alquileres de un día) de la semana,
+// de martes a lunes, que no salen en el planning: su título (sin la hora) no está en el
+// texto de ninguna tarea. Antes el botón solo miraba eventos y un recado apuntado después
+// no llegaba nunca. Los alquileres continuos («Camión X» de varias semanas) no son tareas.
+function recadosQueFaltan(semana, apuntes, inicio) {
+  const desde = aIso(inicio);
+  const hasta = aIso(sumarDias(inicio, 6));
+  const textos = tareasDelPlanning(semana).map(t => plano(t.texto));
+  return apuntes.filter(a => a?.tipo === 'recogida' && !esAlquilerContinuo(a) && a.fecha >= desde && a.fecha <= hasta)
+    .filter(a => {
+      const t = plano(tituloDeRecado(a.titulo));
+      return t && !textos.some(x => x.includes(t));
+    });
+}
+
 // Lo que falta: { faltan: [{ nombre, tipo, fechas, pax, hora, sitio, tareas: [{ clave, lista, dia, tarea }] }], avisos }
-// o { error }. Una producción se mira día a día (cada día de rodaje es un servicio).
+// o { error }. Una producción se mira día a día (cada día de rodaje es un servicio). Los
+// recados que faltan salen uno por fila (tipo 'recogida').
 export function eventosQueFaltan(semana, apuntes = [], { equipo = [], ahora = new Date() } = {}) {
   const rango = getWeekRange(semana, ahora);
   if (!rango) return { error: 'No se pueden leer las fechas de la semana (meta.dateRange).' };
@@ -55,12 +71,14 @@ export function eventosQueFaltan(semana, apuntes = [], { equipo = [], ahora = ne
   const faltan = eventosDelCalendario(apuntes, inicio, sumarDias(inicio, 5)).filter(e => !vistos.some(v =>
     mismoEvento(v.nombre, e.nombre) && (e.tipo !== 'produccion' || v.dia === null || v.dia === diaDe(e.fecha))
   ));
-  if (!faltan.length) return { faltan: [], avisos: [] };
+  const recados = recadosQueFaltan(semana, apuntes, inicio);
+  if (!faltan.length && !recados.length) return { faltan: [], avisos: [] };
 
   // Sus tareas, como en el borrador, pero solo de lo que falta y con la gente ya
   // asignada en la semana como ocupada.
   const soloLoQueFalta = [
     ...faltan.map((e, i) => ({ id: `falta${i}`, fecha: e.fecha, tipo: e.tipo, titulo: e.nombre, pax: e.pax, hora: e.hora, sitio: e.sitio })),
+    ...recados.map((a, i) => ({ ...a, id: `recado${i}`, hasta: undefined })),
     ...apuntes.filter(a => a?.tipo === 'vacaciones'),
   ];
   const fijas = tareasDelPlanning(semana).map(t => ({ clave: t.clave, dia: t.dia, ini: t.ini, fin: t.fin, personas: t.asignados }));
@@ -86,6 +104,14 @@ export function eventosQueFaltan(semana, apuntes = [], { equipo = [], ahora = ne
     const corto = plano(g.nombre.replace(/^(Evento|Boda|Comunión)\s+/i, ''));
     g.tareas = generadas.filter(x => x.tarea.event === g.nombre
       || (x.tarea.event === 'Limpieza Eventos' && corto && plano(x.tarea.text || '').includes(`(${corto}`)));
+  });
+  // Cada recado, su fila con su tarea (el generador junta los del mismo día y hora en una).
+  const usadas = new Set(grupos.flatMap(g => g.tareas.map(t => t.clave)));
+  recados.forEach(a => {
+    const titulo = tituloDeRecado(a.titulo);
+    const suyas = generadas.filter(x => !usadas.has(x.clave) && plano(x.tarea.text || '').includes(plano(titulo)));
+    suyas.forEach(x => usadas.add(x.clave));
+    grupos.push({ nombre: titulo, tipo: 'recogida', fechas: [a.fecha], pax: null, hora: a.hora || null, sitio: a.sitio || null, tareas: suyas });
   });
   // Solo los avisos de lo que se propone (no los de las tareas generales que se dejan fuera).
   const nombres = grupos.map(g => plano(g.nombre));

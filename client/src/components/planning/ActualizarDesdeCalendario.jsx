@@ -7,7 +7,7 @@ import { NOMBRE_DIA } from '../../data/disponibilidad';
 import { fechaLocal } from '../../data/fechasSemana';
 import { formatWeekdayShortDay } from '../../utils/dateUtils';
 
-const TIPO = { boda: 'Boda', comunion: 'Comunión', corporativo: 'Corporativo', cumpleanos: 'Cumpleaños', produccion: 'Producción' };
+const TIPO = { boda: 'Boda', comunion: 'Comunión', corporativo: 'Corporativo', cumpleanos: 'Cumpleaños', produccion: 'Producción', recogida: 'Recado' };
 
 // «Actualizar desde calendario» (Cuadrante, solo admin): lee el Calendario Gula de la
 // semana, enseña lo que falta en el planning con sus tareas propuestas y solo añade
@@ -31,7 +31,7 @@ export default function ActualizarDesdeCalendario({ semana, equipo = [], onGuard
       if (!r || r.error) { setMensaje({ tipo: 'error', texto: `No se pudo leer el calendario: ${r?.error || 'sin respuesta'}.` }); return; }
       const res = eventosQueFaltan(semana, r.apuntes || [], { equipo });
       if (res.error) { setMensaje({ tipo: 'error', texto: res.error }); return; }
-      if (!res.faltan.length) { setMensaje({ tipo: 'ok', texto: 'El planning ya tiene todos los eventos del calendario de esta semana.' }); return; }
+      if (!res.faltan.length) { setMensaje({ tipo: 'ok', texto: 'El planning ya tiene todos los eventos y recados del calendario de esta semana.' }); return; }
       setQuitadas(new Set());
       setPropuesta(res);
     } finally {
@@ -61,7 +61,7 @@ export default function ActualizarDesdeCalendario({ semana, equipo = [], onGuard
           <h3 className="text-xs font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
             <CalendarSync className="w-4 h-4 text-sky-400 shrink-0" aria-hidden="true" />Calendario Gula
           </h3>
-          <p className="text-[11px] text-slate-400 mt-0.5">Trae los eventos de esta semana que faltan en el planning (producciones, cumpleaños, lo apuntado después). Lo que ya hay no se toca.</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Trae los eventos y recados (recoger o devolver material) de esta semana que faltan en el planning. Lo que ya hay no se toca.</p>
         </div>
         <Boton variante="primario" onClick={leer} disabled={leyendo} className="w-full sm:w-auto text-xs whitespace-nowrap">
           <CalendarSync className={`w-4 h-4 ${leyendo ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
@@ -78,7 +78,7 @@ export default function ActualizarDesdeCalendario({ semana, equipo = [], onGuard
       {propuesta && (
         <div className="space-y-3 animate-fadeIn">
           <p className="text-[11px] text-slate-300">
-            Faltan en el planning <b>{propuesta.faltan.length === 1 ? '1 evento' : `${propuesta.faltan.length} eventos`}</b>. Deja marcadas las tareas que quieras añadir:
+            Faltan en el planning <b>{propuesta.faltan.length === 1 ? '1 cosa' : `${propuesta.faltan.length} cosas`}</b> del calendario. Deja marcadas las tareas que quieras añadir:
           </p>
           {propuesta.faltan.map(e => (
             <div key={e.nombre} className="rounded-2xl border border-sky-500/20 bg-slate-950/60 p-3 space-y-2">

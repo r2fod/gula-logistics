@@ -55,6 +55,21 @@ describe('actualizar el planning desde el calendario', () => {
     expect(r.avisos.every(a => /Produ Faro/.test(a))).toBe(true); // solo avisos de lo propuesto
   });
 
+  it('BUG evitado: también propone los recados del calendario que faltan (antes solo eventos); los que ya están, el alquiler continuo y lo que no es recado, no', () => {
+    const s = semana();
+    s.schedule.miercoles.tasks.push({ id: 'mi3', text: 'Logística Preparación - Recoger camión Sur', timeFrame: '08:00 - 09:00', assigned: [] });
+    const recados = [
+      { id: 'r1', fecha: '2026-10-06', tipo: 'recogida', titulo: 'recoger furgo por la tarde, recoger generador 17:00' },
+      { id: 'r2', fecha: '2026-10-07', tipo: 'recogida', titulo: 'Recoger camión Sur' }, // ya está
+      { id: 'r3', fecha: '2026-09-01', hasta: '2026-12-01', tipo: 'recogida', titulo: 'Camión Norte' }, // alquiler continuo
+      { id: 'r4', fecha: '2026-10-08', hasta: '2026-10-09', tipo: 'recogida', titulo: 'Proveedor recoger 105 sillas' }, // recado de dos días: el primero
+    ];
+    const r = eventosQueFaltan(s, [APUNTES[0], APUNTES[2], ...recados], { equipo: EQUIPO, ahora: AHORA });
+    expect(r.faltan.map(e => `${e.tipo}: ${e.nombre}`)).toEqual(['recogida: recoger furgo por la tarde, recoger generador', 'recogida: Proveedor recoger 105 sillas']);
+    expect(r.faltan[0].tareas.map(t => `${t.dia} ${t.tarea.timeFrame} ${t.tarea.text}`)).toEqual(['martes 17:00 - 18:00 Logística Preparación - recoger furgo por la tarde, recoger generador']);
+    expect(r.faltan[1].tareas.map(t => t.dia)).toEqual(['jueves']);
+  });
+
   it('una producción que ya tiene su día en el planning solo propone los días que faltan', () => {
     const s = semana();
     s.schedule.jueves.tasks.push({ id: 'j1', text: 'Produ Faro - Carga de material', timeFrame: '10:00 - 11:00', assigned: [], event: 'Produ Faro' });

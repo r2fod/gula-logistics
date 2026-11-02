@@ -48,7 +48,7 @@ describe('ActualizarDesdeCalendario', () => {
 
   it('si no falta nada, lo dice y no guarda', async () => {
     const onGuardar = pintar(vi.fn().mockResolvedValue({ configurado: true, apuntes: [] }));
-    expect(await screen.findByRole('status')).toHaveTextContent('El planning ya tiene todos los eventos del calendario de esta semana.');
+    expect(await screen.findByRole('status')).toHaveTextContent('El planning ya tiene todos los eventos y recados del calendario de esta semana.');
     expect(onGuardar).not.toHaveBeenCalled();
   });
 

@@ -114,27 +114,30 @@ function extraerEventos(apuntes, inicio, fin) {
   return { eventos: unicos.sort((x, y) => x.fecha.localeCompare(y.fecha)), descargas, avisosFusion };
 }
 
+// Un alquiler continuo es un VEHÍCULO («Camión X») apuntado varios días; un recado de
+// varios días («recoger furgo por la tarde, recoger generador», «X recoger 105 sillas») es
+// una tarea el día que empieza: antes entraba en la flota como si fuera un camión.
+const esVehiculo = (titulo) => /\b(cami[oó]n|furgo(neta)?|van)\b/i.test(titulo) && !/\b(recog|devolv|devoluc|llev|traer|carg|descarg)\w*/i.test(titulo);
+export const esAlquilerContinuo = (a) => a?.tipo === 'recogida' && !!a.hasta && esVehiculo(a.titulo);
+// El título de un recado sin su hora ni comas sueltas («Recoger mesas 18:00,» → «Recoger mesas»).
+export const tituloDeRecado = (titulo) => String(titulo || '').replace(/\b\d{1,2}:\d{2}\b/g, '').replace(/[,\s]+$/g, '').replace(/^\s*(?:a las\s*)?/i, '').trim();
+
 function extraerAlquileres(apuntes, inicio, fin) {
   // Los alquileres continuos ("Camión X" con `hasta`) son disponibilidad, no tareas semanales.
-  // Un alquiler continuo es un VEHÍCULO («Camión X») apuntado varios días; un recado de
-  // varios días («recoger furgo por la tarde, recoger generador», «X recoger 105 sillas») es
-  // una tarea el día que empieza: antes entraba en la flota como si fuera un camión.
-  const esVehiculo = (titulo) => /\b(cami[oó]n|furgo(neta)?|van)\b/i.test(titulo) && !/\b(recog|devolv|devoluc|llev|traer|carg|descarg)\w*/i.test(titulo);
-  const continuo = (a) => !!a.hasta && esVehiculo(a.titulo);
   const tareas = apuntes
-    .filter(a => a.tipo === 'recogida' && !continuo(a) && a.fecha >= aIso(inicio) && a.fecha <= aIso(fin))
+    .filter(a => a.tipo === 'recogida' && !esAlquilerContinuo(a) && a.fecha >= aIso(inicio) && a.fecha <= aIso(fin))
     .map(a => {
       const h = a.titulo.match(/(\d{1,2}):(\d{2})/);
       const esDevolucion = /devolv|devoluc/i.test(a.titulo);
-      const limpio = a.titulo.replace(/\b\d{1,2}:\d{2}\b/g, '').replace(/[,\s]+$/g, '').replace(/^\s*(?:a las\s*)?/i, '').trim();
+      const limpio = tituloDeRecado(a.titulo);
       return { titulo: limpio, fecha: a.fecha, hora: h ? aMin(`${h[1]}:${h[2]}`) : null, esDevolucion };
     });
 
   const mensualesMap = new Map();
   apuntes
-    .filter(a => a.tipo === 'recogida' && continuo(a) && a.hasta >= aIso(inicio) && a.fecha <= aIso(fin))
+    .filter(a => esAlquilerContinuo(a) && a.hasta >= aIso(inicio) && a.fecha <= aIso(fin))
     .forEach(a => {
-      const nombre = a.titulo.replace(/\b\d{1,2}:\d{2}\b/g, '').replace(/[,\s]+$/g, '').replace(/^\s*(?:a las\s*)?/i, '').trim();
+      const nombre = tituloDeRecado(a.titulo);
       if (!mensualesMap.has(nombre.toLowerCase())) {
         mensualesMap.set(nombre.toLowerCase(), { nombre, desde: a.fecha, hasta: a.hasta });
       }
