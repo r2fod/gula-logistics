@@ -19,9 +19,11 @@ const MAX_RETRASO = 400; // las listas largas no se hacen esperar
 
 // Historial de fichajes: resumen, quién está fichado ahora, filtros y los
 // fichajes por día (plegables), con cuánto duró y costó cada turno. Los datos
-// vienen ya filtrados/agrupados por data/fichajesAgrupados.js.
+// vienen ya filtrados/agrupados por data/fichajesAgrupados.js. `turnos`: los de estos
+// fichajes ya emparejados (pairShiftsFromEntries); sin ellos, se emparejan aquí.
 export default function FichajesTab({
   clockEntries,
+  turnos = null,
   adminUnlocked,
   workersList,
   handleOpenCreateEntry,
@@ -41,7 +43,7 @@ export default function FichajesTab({
   const cambiar = (parcial) => setFiltros(f => ({ ...f, ...parcial }));
   const filtrando = hayFiltros(filtros);
 
-  const { shifts, activeShifts } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
+  const { shifts, activeShifts } = useMemo(() => turnos || pairShiftsFromEntries(clockEntries), [turnos, clockEntries]);
   const porSalida = useMemo(() => turnosPorSalida(shifts), [shifts]);
   const visibles = useMemo(() => filtrarFichajes(clockEntries, filtros), [clockEntries, filtros]);
   const grupos = useMemo(() => agruparPorDia(visibles, shifts), [visibles, shifts]);

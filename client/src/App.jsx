@@ -154,7 +154,22 @@ export default function App() {
   // financiero) se usan todos (activeClockEntries) para no romper el histórico.
   // La ventana y los turnos abiertos los decide fichajesDeLaSemana (data/fichajes.js).
   const rangoSemanaActiva = useMemo(() => getWeekRange(activeWeek), [activeWeek]);
+  // Admin mode state — the source of truth is the signed backend session
+  // token (getStoredAdminToken), never a plain localStorage flag a visitor
+  // could fake from devtools with localStorage.setItem('x', 'true').
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => !!getStoredAdminToken());
+  const isAdmin = isAdminUnlocked;
+
   const turnosFichados = useMemo(() => pairShiftsFromEntries(activeClockEntries), [activeClockEntries]);
+
+  // Lo que el asistente aprende solo: de los fichajes (duraciones, quién hace cada tipo) y
+  // del planning de las semanas aceptadas (camiones y tareas que se repiten, del grafo).
+  // Es un grafo de todas las semanas: solo con sesión de admin (nadie más usa la IA).
+  const turnosCerrados = turnosFichados.shifts;
+  const aprendizaje = useMemo(
+    () => (isAdmin ? { ...aprenderDeFichajes(turnosCerrados, allWeeks), planning: aprenderDelPlanning(allWeeks, workersList) } : null),
+    [isAdmin, turnosCerrados, allWeeks, workersList]
+  );
   const currentWeekClockEntries = useMemo(() => {
     const abiertos = Object.values(turnosFichados.activeShifts);
     // fichajesDeLaSemana de data/fichajes.js se encarga de todo: 
@@ -162,14 +177,6 @@ export default function App() {
     return fichajesDeLaSemana(activeClockEntries, rangoSemanaActiva, abiertos);
   }, [activeClockEntries, turnosFichados, rangoSemanaActiva]);
 
-  // Lo que el asistente aprende de los fichajes reales (duraciones y quién hace
-  // qué): lo reciben Gemini (asistente y nueva semana) y el panel Memoria IA.
-  // Lo que el asistente aprende solo: de los fichajes (duraciones, quién hace cada tipo) y
-  // del planning de las semanas aceptadas (camiones y tareas que se repiten, del grafo).
-  const aprendizaje = useMemo(
-    () => ({ ...aprenderDeFichajes(turnosFichados.shifts, allWeeks), planning: aprenderDelPlanning(allWeeks, workersList) }),
-    [turnosFichados, allWeeks, workersList]
-  );
 
   // Anticipación automática de semanas (desde el calendario, como BORRADOR).
   // Solo con sesión de admin; como mucho cada 6 h por navegador; idempotente
@@ -541,11 +548,6 @@ export default function App() {
 
 
 
-  // Admin mode state — the source of truth is the signed backend session
-  // token (getStoredAdminToken), never a plain localStorage flag a visitor
-  // could fake from devtools with localStorage.setItem('x', 'true').
-  const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => !!getStoredAdminToken());
-  const isAdmin = isAdminUnlocked;
 
   // Con el panel de admin ya en pantalla, sus ventanas se van bajando en segundo plano.
   useEffect(() => (isAdmin ? precargarEnReposo(Object.values(VENTANAS)) : undefined), [isAdmin]);
@@ -674,6 +676,7 @@ export default function App() {
           workersList={workersList}
           initialWorkerName={clockInWorker || trabajadorActivo}
           clockEntries={currentWeekClockEntries}
+          turnosAbiertos={turnosFichados.activeShifts}
           onClockEntryCreated={handleClockEntryCreated}
           isAdmin={isAdmin}
         />
@@ -717,6 +720,7 @@ export default function App() {
           workersList={workersList}
           initialWorkerName={clockInWorker || trabajadorActivo}
           clockEntries={currentWeekClockEntries}
+          turnosAbiertos={turnosFichados.activeShifts}
           onClockEntryCreated={handleClockEntryCreated}
           isAdmin={isAdmin}
         />
@@ -754,6 +758,7 @@ export default function App() {
         onCerrarAnticipacionAviso={() => setAvisoAnticipacion(null)}
         workersList={workersList}
         clockEntries={activeClockEntries}
+        turnos={turnosFichados}
         isAdmin={isAdmin}
         balancesData={balancesData}
         setBalancesData={setBalancesData}
@@ -784,6 +789,7 @@ export default function App() {
         workersList={workersList}
         initialWorkerName={clockInWorker || trabajadorActivo}
         clockEntries={currentWeekClockEntries}
+        turnosAbiertos={turnosFichados.activeShifts}
         onClockEntryCreated={handleClockEntryCreated}
         isAdmin={isAdmin}
       />

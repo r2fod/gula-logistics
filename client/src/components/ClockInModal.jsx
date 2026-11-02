@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Briefcase, Clock, Euro, Lock, Pin, Play, Square } from 'lucide-react';
-import { getActiveShiftForWorker } from '../data/shiftCalculations';
+import { pairShiftsFromEntries, turnoAbiertoDe } from '../data/shiftCalculations';
 import { crearFichaje } from '../data/fichajes';
 import { tarifaCorta, tarifaDe } from '../data/tarifas';
 import { formatearEuros } from '../data/formatoFinanciero';
@@ -25,6 +25,7 @@ function VentanaFichar({
   initialTaskName,
   taskRef,
   clockEntries = [],
+  turnosAbiertos = null,
   onClockEntryCreated,
   isAdmin
 }) {
@@ -53,8 +54,10 @@ function VentanaFichar({
   // fichaje de entrada se hizo desde otro dispositivo, ej. un móvil
   // compartido en el evento) ni del orden del array tal cual (el servidor
   // devuelve los más recientes primero, así que "el último del array" no
-  // es "el más reciente" — ver getActiveShiftForWorker).
-  const activeShift = getActiveShiftForWorker(clockEntries, selectedWorker);
+  // es "el más reciente" — ver getActiveShiftForWorker). `turnosAbiertos` (App) ya
+  // vienen emparejados; sin ellos, se emparejan aquí una vez, no en cada tic del reloj.
+  const abiertos = useMemo(() => turnosAbiertos || pairShiftsFromEntries(clockEntries).activeShifts, [turnosAbiertos, clockEntries]);
+  const activeShift = turnoAbiertoDe(abiertos, selectedWorker);
 
   const currentWorkerObj = workersList.find(w => w.name === selectedWorker) || workersList[0] || null;
 

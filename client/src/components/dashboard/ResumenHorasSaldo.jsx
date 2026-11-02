@@ -45,17 +45,22 @@ function Horas({ valor, texto }) {
 //
 // Props: nombre, enNomina, turnoAbierto (su entrada sin salida, o null),
 // fichajesDeTodo (el histórico: el mes y el saldo cuentan todos sus turnos) y equipo.
-export default function ResumenHorasSaldo({ nombre, enNomina = false, turnoAbierto = null, fichajesDeTodo = [], equipo = [] }) {
+// `turnos` (opcional): los turnos cerrados de fichajesDeTodo ya emparejados (App); sin
+// ellos, se emparejan aquí.
+export default function ResumenHorasSaldo({ nombre, enNomina = false, turnoAbierto = null, fichajesDeTodo = [], equipo = [], turnos: turnosDados = null }) {
   const { ficha, sinEnlace, sinFicha } = useMiSaldo(nombre);
   const ahora = useAhora(60 * 1000); // para cambiar de semana y de mes sin recargar
 
-  const turnos = useMemo(() => pairShiftsFromEntries(fichajesDeTodo).shifts, [fichajesDeTodo]);
+  const turnos = useMemo(() => turnosDados || pairShiftsFromEntries(fichajesDeTodo).shifts, [turnosDados, fichajesDeTodo]);
   const horas = useMemo(
     () => (ficha ? buscarPorNombreDeSaldo(aggregateShiftsByWorker(turnos, equipo), ficha.name) : null),
     [ficha, turnos, equipo]
   );
 
-  const suyos = turnos.filter(t => String(t.workerName || '').trim().toLowerCase() === String(nombre || '').trim().toLowerCase());
+  const suyos = useMemo(
+    () => turnos.filter(t => String(t.workerName || '').trim().toLowerCase() === String(nombre || '').trim().toLowerCase()),
+    [turnos, nombre]
+  );
   const periodo = (modo) => {
     const rango = rangoDePeriodo(modo, ahora);
     const cerradas = horasDelPeriodo(suyos, rango);

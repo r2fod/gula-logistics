@@ -1,7 +1,6 @@
 import { bolsaDeFicha, mesDe, repartirBolsa, tieneBolsa } from './bolsaHoras';
-import { costeEnCurso } from './costeEnVivo';
+import { costeEnCurso, tarifaDelTurno } from './costeEnVivo';
 import { isZombieShift } from './shiftCalculations';
-import { tarifaDe } from './tarifasPorDefecto';
 
 // Saldo de una persona: la MISMA cuenta en Saldos & Acuerdos y en la vista del propio
 // trabajador.
@@ -24,8 +23,10 @@ export function saldoDeTrabajador({ ficha, horas = null, abierto = null }) {
   const enNomina = ficha?.statusType === 'payroll';
   const olvidado = !!abierto && isZombieShift(abierto);
   const cobraEnDirecto = !!abierto && !olvidado && !enNomina;
+  // La del fichaje y, si no tiene, la de su ficha de Saldos (o la por defecto).
+  const tarifa = abierto ? tarifaDelTurno(abierto, { rate: ficha?.hourlyRate, isPayroll: abierto.isPayroll }) : 0;
   const enCurso = (ahora) => (cobraEnDirecto
-    ? costeEnCurso({ entrada: abierto, ahora, tarifa: abierto.rate || ficha?.hourlyRate || tarifaDe(abierto), ficha, turnosPrevios: turnos }).coste
+    ? costeEnCurso({ entrada: abierto, ahora, tarifa, ficha, turnosPrevios: turnos }).coste
     : 0);
   return { costes, fichado, cerrado: (Number(ficha?.currentBalance) || 0) + fichado, enNomina, olvidado, cobraEnDirecto, enCurso };
 }

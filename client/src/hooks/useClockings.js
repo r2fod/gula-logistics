@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { 
   saveClockEntryToAPI, 
   updateClockEntryInAPI, 
@@ -42,26 +42,18 @@ export function useClockings(markTaskCompleted) {
     if (newEntry.type === 'fichaje' && newEntry.taskRef && markTaskCompleted) {
       markTaskCompleted(newEntry.taskRef);
     }
-    setClockEntries(prev => {
-      const updated = [...prev, newEntry];
-      try {
-        localStorage.setItem(CLAVE_LOCAL, JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
+    // Al fichar salida de una tarea concreta (fichada con taskRef desde
+    // "Fichar Esta Tarea" / "Fichar Entrada Ahora"), marcarla como hecha
+    // sola en el planning — se busca en los fichajes previos a este (sin el
+    // `newEntry` todavía). Fuera del actualizador de estado: React lo ejecuta
+    // dos veces en StrictMode y marcaba la tarea dos veces.
+    if (newEntry.type === 'salida' && markTaskCompleted) {
+      const closingShift = getActiveShiftForWorker(clockEntries, newEntry.workerName);
+      if (closingShift?.taskRef) {
+        markTaskCompleted(closingShift.taskRef);
       }
-      
-      // Al fichar salida de una tarea concreta (fichada con taskRef desde
-      // "Fichar Esta Tarea" / "Fichar Entrada Ahora"), marcarla como hecha
-      // sola en el planning — se busca en los fichajes previos a este (el
-      // array `prev` de este cierre, sin el `newEntry` todavía).
-      if (newEntry.type === 'salida' && markTaskCompleted) {
-        const closingShift = getActiveShiftForWorker(prev, newEntry.workerName);
-        if (closingShift?.taskRef) {
-          markTaskCompleted(closingShift.taskRef);
-        }
-      }
-      return updated;
-    });
+    }
+    actualizarLocal(prev => [...prev, newEntry]);
     
     Promise.resolve(saveClockEntryToAPI(newEntry)).then(async (r) => {
       if (!r?.rechazado) return;
@@ -137,8 +129,10 @@ export function useClockings(markTaskCompleted) {
   // Un turno largo que es real: se marca su entrada y deja de avisar (revisionFichajes.js).
   const handleMarcarRevisado = (entrada) => handleUpdateClockEntry({ ...entrada, revisado: true });
 
-  const activeClockEntries = clockEntries.filter(e => !e.deleted);
-  const deletedClockEntries = clockEntries.filter(e => e.deleted);
+  // Memoizados: App se repinta al menos cada 20 s y con un `.filter` en cada render
+  // todo lo que dependía de ellos (emparejar turnos…) se recalculaba sin cambios.
+  const activeClockEntries = useMemo(() => clockEntries.filter(e => !e.deleted), [clockEntries]);
+  const deletedClockEntries = useMemo(() => clockEntries.filter(e => e.deleted), [clockEntries]);
 
   return {
     clockEntries,

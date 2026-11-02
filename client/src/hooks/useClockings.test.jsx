@@ -76,6 +76,24 @@ describe('useClockings', () => {
     expect(marcar).toHaveBeenCalledWith(taskRef);
   });
 
+  it('BUG evitado: en StrictMode la salida marca su tarea UNA vez (antes se marcaba dentro del actualizador de estado, que React ejecuta dos veces)', () => {
+    const marcar = vi.fn();
+    const taskRef = { dayKey: 'martes', taskIndex: 0, weekId: 'week_1', taskId: 'm1', taskText: 'Evento - Carga' };
+    localStorage.setItem('gula_clock_entries_v1', JSON.stringify([f('e', { taskRef })]));
+    const { result } = renderHook(() => useClockings(marcar), { reactStrictMode: true });
+    act(() => { result.current.handleClockEntryCreated(f('s', { type: 'salida', timestamp: '2026-09-20T12:00:00.000Z' })); });
+    expect(marcar).toHaveBeenCalledTimes(1);
+    expect(result.current.clockEntries.map(e => e.id)).toEqual(['e', 's']);
+  });
+
+  it('activeClockEntries y deletedClockEntries no cambian de referencia si no cambian los fichajes', () => {
+    const { result, rerender } = montar([f('a'), f('b', { deleted: true })]);
+    const { activeClockEntries, deletedClockEntries } = result.current;
+    rerender();
+    expect(result.current.activeClockEntries).toBe(activeClockEntries);
+    expect(result.current.deletedClockEntries).toBe(deletedClockEntries);
+  });
+
   it('si el servidor exige el enlace personal y este móvil no lo tiene, el fichaje se quita y se avisa', async () => {
     saveClockEntryToAPI.mockResolvedValueOnce({ rechazado: 'Para fichar usa tu enlace personal: pídeselo al administrador.' });
     const { result } = montar([]);

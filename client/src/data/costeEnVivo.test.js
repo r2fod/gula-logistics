@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { costeEnCurso, duracionEnCurso, enCursoDelPeriodo } from './costeEnVivo';
+import { afterEach, vi } from 'vitest';
+import { costeEnCurso, duracionEnCurso, enCursoDelPeriodo, prepararEnCurso, sumarEnCurso, tarifaDelTurno } from './costeEnVivo';
+import { saldoDeTrabajador } from './saldoTrabajador';
+import { pairShiftsFromEntries } from './shiftCalculations';
+import { crearFichaje } from './fichajes';
+import { tarifasPorDefecto, usarTarifasPorDefecto } from './tarifasPorDefecto';
 
 const entrada = { timestamp: new Date(2026, 8, 28, 9, 0).toISOString() };
 const a = (h, m = 0, s = 0) => new Date(2026, 8, 28, h, m, s);
@@ -90,5 +95,61 @@ describe('enCursoDelPeriodo: la ficha de cada uno', () => {
     expect(enCursoDelPeriodo([abiertoAna], semana, { ahora: a(11), equipo, fichas }).extras).toBe(16); // 2 h de bolsa a 8 €/h
     const abiertoMariana = { ...abiertoAna, workerName: 'Mariana' };
     expect(enCursoDelPeriodo([abiertoMariana], semana, { ahora: a(11), equipo, fichas }).extras).toBe(20); // sin bolsa
+  });
+});
+
+describe('costeEnCurso sin tarifa', () => {
+  it('sin tarifa no inventa ninguna: 0 (antes 10 por defecto en el código)', () => {
+    expect(costeEnCurso({ entrada, ahora: a(10) })).toEqual({ horas: 1, coste: 0 });
+  });
+});
+
+describe('prepararEnCurso + sumarEnCurso', () => {
+  it('da lo mismo que enCursoDelPeriodo (lo de cada segundo es solo la suma)', () => {
+    const semana = { desde: new Date(2026, 8, 22), hasta: new Date(2026, 8, 29) };
+    const equipo = [{ name: 'Ana', isPayroll: false }, { name: 'Luis', isPayroll: true }];
+    const abiertos = [
+      { workerName: 'Ana', type: 'entrada', timestamp: a(9).toISOString(), rate: 10 },
+      { workerName: 'Luis', type: 'entrada', timestamp: a(10).toISOString(), rate: 14, isPayroll: true },
+    ];
+    const preparados = prepararEnCurso(abiertos, semana, { equipo });
+    [a(10), a(11, 30), a(12, 15, 9)].forEach(ahora => {
+      expect(sumarEnCurso(preparados, ahora)).toEqual(enCursoDelPeriodo(abiertos, semana, { ahora, equipo }));
+    });
+  });
+});
+
+describe('tarifaDelTurno', () => {
+  const antes = { ...tarifasPorDefecto() };
+  afterEach(() => usarTarifasPorDefecto(antes));
+
+  it('la del fichaje; sin ella, la de la persona; sin persona, la por defecto', () => {
+    usarTarifasPorDefecto({ extra: 9, nomina: 13 });
+    expect(tarifaDelTurno({ rate: 11 }, { rate: 12 })).toBe(11);
+    expect(tarifaDelTurno({}, { rate: 12 })).toBe(12);
+    expect(tarifaDelTurno({ isPayroll: true }, null)).toBe(13);
+    expect(tarifaDelTurno(null, { rate: 12 })).toBe(12);
+  });
+
+  it('BUG evitado: el monitor, Saldos, el Resumen y la vista del trabajador dan la misma tarifa que lo que se cobra al cerrar (antes, con una entrada sin tarifa, el Resumen usaba la por defecto y el monitor la de la ficha)', () => {
+    usarTarifasPorDefecto({ extra: 9, nomina: 13 });
+    const persona = { name: 'Eva', role: 'Montaje', isPayroll: false, rate: 12 };
+    // Entró cuando aún no tenía tarifa (ni suya ni por defecto); luego se la pusieron.
+    const entradaSinTarifa = { ...crearFichaje({ trabajador: persona, tipo: 'entrada', fecha: a(9) }), rate: undefined };
+    const salida = crearFichaje({ trabajador: persona, tipo: 'salida', fecha: a(11) });
+    const cobrado = pairShiftsFromEntries([entradaSinTarifa, salida]).shifts[0].rate;
+    expect(cobrado).toBe(12);
+
+    // Monitor (LiveMonitorPanel) y vista del trabajador (LlevasGanado): tarifaDelTurno(entrada, persona).
+    expect(tarifaDelTurno(entradaSinTarifa, persona)).toBe(cobrado);
+    // Resumen Financiero: lo que suma en directo por hora.
+    const semana = { desde: new Date(2026, 8, 22), hasta: new Date(2026, 8, 29) };
+    expect(enCursoDelPeriodo([entradaSinTarifa], semana, { ahora: a(11), equipo: [persona] }).extras).toBe(cobrado * 2);
+    // Saldos (con la tarifa de su ficha de Saldos). Mira si el turno es un olvido con la hora real.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(a(11));
+    const saldo = saldoDeTrabajador({ ficha: { name: 'Eva', hourlyRate: 12 }, abierto: entradaSinTarifa });
+    expect(saldo.enCurso(a(11))).toBe(cobrado * 2);
+    vi.useRealTimers();
   });
 });

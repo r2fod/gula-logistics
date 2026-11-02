@@ -78,6 +78,7 @@ export default function PartnerDashboardView({
   onPasarADiaHabil = null,
   workersList = [],
   clockEntries = [],
+  turnos = null, // { shifts, activeShifts } de estos clockEntries, ya emparejados en App
   isAdmin = false,
   balancesData: externalBalancesData,
   setBalancesData: externalSetBalancesData,
@@ -201,7 +202,9 @@ export default function PartnerDashboardView({
   // para no repetirlo al cambiar de pestaña o abrir un modal sin fichajes nuevos.
   // Los totales y el desglose por evento del Resumen Financiero los calcula su
   // pestaña, porque dependen del periodo elegido (semana, mes, año o todo).
-  const { shifts: paidShifts, activeShifts: turnosAbiertos } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
+  // `turnos` (App) ya vienen emparejados de estos mismos fichajes; sin ellos, se emparejan aquí.
+  const turnosEmparejados = useMemo(() => turnos || pairShiftsFromEntries(clockEntries), [turnos, clockEntries]);
+  const { shifts: paidShifts, activeShifts: turnosAbiertos } = turnosEmparejados;
   const workerBalances = useMemo(() => aggregateShiftsByWorker(paidShifts, workersList), [paidShifts, workersList]);
 
   // Horas y turnos de quien tiene la ficha `nombreSaldo` ("Marta Gula"); los
@@ -320,6 +323,7 @@ export default function PartnerDashboardView({
       {activeTab === 'fichajes' && (
         <FichajesTab
           clockEntries={clockEntries}
+          turnos={turnosEmparejados}
           adminUnlocked={adminUnlocked}
           workersList={workersList}
           handleOpenCreateEntry={handleOpenCreateEntry}
@@ -337,6 +341,7 @@ export default function PartnerDashboardView({
         <LiveMonitorPanel
           workersList={workersList}
           clockEntries={clockEntries}
+          turnos={turnosEmparejados}
           activeWeekData={activeWeekData}
           semanas={allWeeks}
           onClockEntryCreated={onClockEntryCreated}

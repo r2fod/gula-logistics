@@ -41,8 +41,13 @@ export function sortEntriesByTimestamp(entries = []) {
 // fichado ahora mismo), calculado en orden cronológico real.
 export function getActiveShiftForWorker(entries = [], workerName) {
   if (!workerName) return null;
-  const { activeShifts } = pairShiftsFromEntries(entries);
-  
+  return turnoAbiertoDe(pairShiftsFromEntries(entries).activeShifts, workerName);
+}
+
+// El turno abierto de `workerName` entre los `activeShifts` ya emparejados (sin
+// volver a emparejar todo el histórico), o null.
+export function turnoAbiertoDe(activeShifts = {}, workerName) {
+  if (!workerName) return null;
   // Buscar usando case-insensitive para que coincida robustamente
   const lowerName = workerName.toLowerCase();
   for (const [wName, activeShift] of Object.entries(activeShifts)) {
@@ -217,6 +222,9 @@ export function pairShiftsFromEntries(entries = []) {
 // nº de turnos completados) — lo que necesita el panel de saldos.
 export function aggregateShiftsByWorker(shifts, workersList = []) {
   const workerBalances = {};
+  // Día (startDate) → su fila en `bucket.shifts`, por persona: antes se buscaba con
+  // `find` sobre todos sus días en cada turno (cuadrático con el histórico entero).
+  const diasDe = new Map();
 
   workersList.forEach(w => {
     workerBalances[w.name] = {
@@ -263,7 +271,9 @@ export function aggregateShiftsByWorker(shifts, workersList = []) {
     bucket.totalCost += shift.cost;
     
     // Group by Date for Jornada Partida (Split Shifts)
-    const existingDay = bucket.shifts.find(s => s.startDate === shift.startDate);
+    if (!diasDe.has(bucket)) diasDe.set(bucket, new Map());
+    const dias = diasDe.get(bucket);
+    const existingDay = dias.get(shift.startDate);
     if (existingDay) {
       existingDay.durationHours += shift.durationHours;
       existingDay.cost += shift.cost;
@@ -277,11 +287,13 @@ export function aggregateShiftsByWorker(shifts, workersList = []) {
       if (shift.endEntry?.id) existingDay.entryIds.push(shift.endEntry.id);
     } else {
       bucket.completedShifts += 1;
-      bucket.shifts.push({
+      const dia = {
         ...shift,
         entryIds: [shift.startEntry?.id, shift.endEntry?.id].filter(Boolean),
         ranges: [`${shift.startTime} a ${shift.endTime}`]
-      });
+      };
+      bucket.shifts.push(dia);
+      dias.set(shift.startDate, dia);
     }
   });
 

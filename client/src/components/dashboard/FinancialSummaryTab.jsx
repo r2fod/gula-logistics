@@ -22,7 +22,7 @@ import { descargarArchivo } from '../../data/enlaces';
 import { aplicarTarifaDeBolsa } from '../../data/bolsaHoras';
 import { conceptosDelPeriodo } from '../../data/conceptosSaldos';
 import { estimarHorasPlanning } from '../../data/estimadoPlanning';
-import { enCursoDelPeriodo } from '../../data/costeEnVivo';
+import { prepararEnCurso, sumarEnCurso } from '../../data/costeEnVivo';
 import { textoResumenWhatsApp } from '../../data/resumenWhatsApp';
 import { elMasParecido, parecidoNombre } from '../../data/nombresTrabajadores';
 import { useCopiado } from '../../hooks/useCopiado';
@@ -82,6 +82,12 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
 
   const rango = useMemo(() => rangoDePeriodo(modo, ancla, allWeeks), [modo, ancla, allWeeks]);
   const turnos = useMemo(() => turnosDelPeriodo(turnosConTarifa, rango), [turnosConTarifa, rango]);
+  // Los turnos abiertos del periodo con su tarifa, ficha y turnos previos, una vez: cada
+  // segundo (<EnVivo>) solo se suma lo que llevan.
+  const enCursoPreparado = useMemo(
+    () => prepararEnCurso(abiertos, rango, { equipo: workersList, fichas: saldos, turnos: shifts }),
+    [abiertos, rango, workersList, saldos, shifts]
+  );
 
   // Lo apuntado a mano en Saldos en este periodo.
   const conceptos = useMemo(() => conceptosDelPeriodo(saldos, rango, { incluirSinFecha: modo === 'todo' }), [saldos, rango, modo]);
@@ -197,7 +203,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
     </span>
   ));
 
-  // Las cuatro cifras de arriba. `vivo` (enCursoDelPeriodo): lo que llevan ahora los
+  // Las cuatro cifras de arriba. `vivo` (sumarEnCurso): lo que llevan ahora los
   // turnos abiertos del periodo, que se suma a lo ya fichado; null si no hay ninguno.
   const rejillaKpi = (vivo) => {
     const extrasVivo = vivo?.extras || 0;
@@ -273,7 +279,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
       </div>
 
       {/* Con alguien fichado ahora, las cifras suben en directo (solo se repinta esta rejilla). */}
-      {abiertos.length > 0 ? <EnVivo>{(ahora) => rejillaKpi(enCursoDelPeriodo(abiertos, rango, { ahora, equipo: workersList, fichas: saldos, turnos: shifts }))}</EnVivo> : rejillaKpi(null)}
+      {abiertos.length > 0 ? <EnVivo>{(ahora) => rejillaKpi(sumarEnCurso(enCursoPreparado, ahora))}</EnVivo> : rejillaKpi(null)}
 
       {turnos.length === 0 ? (
         <div className="bg-slate-900 border border-dashed border-slate-700 rounded-2xl px-4 py-10 sm:py-14 text-center animate-aparecer motion-reduce:animate-none" style={{ animationDelay: '300ms' }}>

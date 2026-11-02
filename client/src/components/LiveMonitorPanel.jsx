@@ -8,10 +8,9 @@ import BarraProgreso from './ui/BarraProgreso';
 import EnVivo from './ui/EnVivo';
 import { useAhora } from '../hooks/useAhora';
 import { useDialog } from '../contexts/DialogContext';
-import { costeEnCurso, duracionEnCurso } from '../data/costeEnVivo';
+import { costeEnCurso, duracionEnCurso, tarifaDelTurno } from '../data/costeEnVivo';
 import { fichaDePersona } from '../data/nombresTrabajadores';
 import { formatearEuros } from '../data/formatoFinanciero';
-import { tarifaDe as tarifaDeFicha } from '../data/tarifas';
 import { plano } from '../utils/texto';
 
 
@@ -19,10 +18,12 @@ import { plano } from '../utils/texto';
 // ganado cada persona en turno, subiendo en tiempo real. `saldos` (fichas de Saldos)
 // sirve para cobrar la bolsa de horas igual que en Saldos. `semanas` (todas): las
 // tareas de hoy salen por su FECHA real, de la semana que sea (sin ellas, solo de la
-// semana abierta, y solo si contiene hoy).
+// semana abierta, y solo si contiene hoy). `turnos` ({ shifts, activeShifts } de
+// pairShiftsFromEntries de estos mismos `clockEntries`): si llega, no se vuelven a emparejar.
 export default function LiveMonitorPanel({
   workersList = [],
   clockEntries = [],
+  turnos = null,
   activeWeekData = {},
   semanas = null,
   onClockEntryCreated,
@@ -36,7 +37,7 @@ export default function LiveMonitorPanel({
   const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'active' | 'trucks' | 'base'
 
   // Turnos cerrados y abiertos por trabajador, solo cuando cambian los fichajes.
-  const { activeShifts, shifts } = useMemo(() => pairShiftsFromEntries(clockEntries), [clockEntries]);
+  const { activeShifts, shifts } = useMemo(() => turnos || pairShiftsFromEntries(clockEntries), [turnos, clockEntries]);
   const { confirm } = useDialog();
   const [cerrando, setCerrando] = useState(() => new Set()); // ids de entradas cuya salida ya se mandó
   const turnosCerrados = useMemo(() => {
@@ -44,7 +45,11 @@ export default function LiveMonitorPanel({
     shifts.forEach(t => { (porPersona[t.workerName] = porPersona[t.workerName] || []).push(t); });
     return porPersona;
   }, [shifts]);
-  const tarifaDe = (worker) => worker.clockEntry?.rate || tarifaDeFicha(worker);
+  // La ficha de Saldos de cada uno (para la bolsa), una vez y no en cada segundo de <EnVivo>.
+  const fichaDe = useMemo(() => {
+    const nombres = workersList.map(w => w.name);
+    return new Map(workersList.map(w => [w.name, fichaDePersona(w.name, saldos, nombres)]));
+  }, [workersList, saldos]);
 
   const parseTimeToMinutes = (str) => {
     const m = /(\d{1,2}):(\d{2})/.exec(str || '');
@@ -149,6 +154,11 @@ export default function LiveMonitorPanel({
       isClockedIn,
       isZombie: isClockedIn && isZombieShift(clockEntry, currentTime),
       clockEntry,
+      // Para el dinero que sube cada segundo: precalculado aquí, en <EnVivo> solo se multiplica.
+      // La tarifa, la misma que se cobra al cerrar el turno (tarifaDelTurno).
+      tarifaTurno: tarifaDelTurno(clockEntry, w),
+      fichaSaldo: fichaDe.get(w.name) || null,
+      turnosPrevios: turnosCerrados[w.name] || [],
       currentTask: currentTaskToDisplay,
       extraTasksCount: !isClockedIn ? 0 : (rawTaskName && !isGenericTaskName) ? 0 : taskInfo.extraCount,
       location: getWorkerLocation(w)
@@ -378,9 +388,9 @@ export default function LiveMonitorPanel({
                           <EnVivo>{(ahora) => formatearEuros(costeEnCurso({
                             entrada: worker.clockEntry,
                             ahora,
-                            tarifa: tarifaDe(worker),
-                            ficha: fichaDePersona(worker.name, saldos, workersList.map(w => w.name)),
-                            turnosPrevios: turnosCerrados[worker.name] || [],
+                            tarifa: worker.tarifaTurno,
+                            ficha: worker.fichaSaldo,
+                            turnosPrevios: worker.turnosPrevios,
                           }).coste)}</EnVivo>
                         </span>
                       </div>
@@ -420,11 +430,11 @@ export default function LiveMonitorPanel({
 
                   {worker.isPayroll ? (
                     <span className="text-[11px] font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 shrink-0">
-                      Nómina{mostrarDinero && ` (${formatearEuros(tarifaDe(worker))}/h)`}
+                      Nómina{mostrarDinero && ` (${formatearEuros(worker.tarifaTurno)}/h)`}
                     </span>
                   ) : (
                     <span className="text-[11px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
-                      Extra{mostrarDinero && ` (${formatearEuros(tarifaDe(worker))}/h)`}
+                      Extra{mostrarDinero && ` (${formatearEuros(worker.tarifaTurno)}/h)`}
                     </span>
                   )}
                 </div>
