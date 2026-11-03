@@ -103,6 +103,24 @@ export function descargarArchivo(blob, nombre) {
 // Manda un archivo hecho en el navegador (el PDF del planning…): en el móvil abre el menú de
 // compartir del sistema (sale WhatsApp directamente); donde no se pueden compartir archivos,
 // o si falla, lo descarga. → 'compartido' | 'descargado' | 'cancelado' (el usuario cerró el menú).
+// ¿Móvil o tableta? Solo ahí el menú de compartir trae WhatsApp: en el ordenador (macOS)
+// salía Mail, Notas… y nada de WhatsApp.
+export const esMovil = () => typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+
+// Mandar un archivo por WhatsApp. En el móvil, con el menú de compartir (sale WhatsApp con
+// el archivo puesto). En el ordenador una web no puede adjuntarlo en WhatsApp: se descarga y
+// se abre WhatsApp con el texto, y se adjunta a mano. → 'compartido' | 'cancelado' | 'descargado'
+export async function compartirPorWhatsApp(blob, nombre, { titulo, texto } = {}) {
+  if (esMovil()) {
+    const resultado = await compartirArchivo(blob, nombre, { titulo, texto });
+    if (resultado !== 'descargado') return resultado;
+  } else {
+    descargarArchivo(blob, nombre);
+  }
+  abrirEnPestanaNueva(enlaceWhatsApp(texto || titulo || nombre));
+  return 'descargado';
+}
+
 export async function compartirArchivo(blob, nombre, { titulo, texto } = {}) {
   const archivo = new File([blob], nombre, { type: blob.type || 'application/octet-stream' });
   if (navigator.canShare?.({ files: [archivo] })) {

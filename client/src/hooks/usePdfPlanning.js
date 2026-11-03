@@ -1,13 +1,14 @@
 import { useState, useCallback } from 'react';
 import { useDialog } from '../contexts/DialogContext';
 import { datosDelPdf, nombreDelPdf } from '../data/pdfPlanning';
-import { compartirArchivo } from '../data/enlaces';
 
-// Saca el planning de la semana en PDF y lo comparte (en el móvil sale WhatsApp; si no se
-// puede, lo descarga). jsPDF solo se descarga al pulsar. → { generando, generar }
+// Saca el planning de la semana en PDF y lo deja listo para la vista previa, donde se elige
+// mandarlo por WhatsApp o descargarlo (VistaPreviaPdf). jsPDF solo se descarga al pulsar.
+// → { generando, generar, pdf: { blob, nombre, texto } | null, cerrar }
 export function usePdfPlanning(semana, equipo = []) {
   const { alert } = useDialog();
   const [generando, setGenerando] = useState(false);
+  const [pdf, setPdf] = useState(null);
 
   const generar = useCallback(async () => {
     if (generando) return;
@@ -19,8 +20,8 @@ export function usePdfPlanning(semana, equipo = []) {
     setGenerando(true);
     try {
       const { pdfDelPlanning } = await import('../data/pdfPlanningDoc');
-      const nombre = nombreDelPdf(semana);
-      await compartirArchivo(pdfDelPlanning(modelo), nombre, { titulo: nombre.replace(/\.pdf$/, ''), texto: `Planning ${modelo.cabecera.semana}${modelo.cabecera.rango ? ` (${modelo.cabecera.rango})` : ''}` });
+      const texto = `Planning ${modelo.cabecera.semana}${modelo.cabecera.rango ? ` (${modelo.cabecera.rango})` : ''}`;
+      setPdf({ blob: pdfDelPlanning(modelo), nombre: nombreDelPdf(semana), texto });
     } catch (error) {
       await alert(`No se pudo generar el PDF: ${error?.message || 'error desconocido'}`, { type: 'error' });
     } finally {
@@ -28,5 +29,6 @@ export function usePdfPlanning(semana, equipo = []) {
     }
   }, [generando, semana, equipo, alert]);
 
-  return { generando, generar };
+  const cerrar = useCallback(() => setPdf(null), []);
+  return { generando, generar, pdf, cerrar };
 }

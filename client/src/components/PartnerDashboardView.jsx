@@ -10,6 +10,7 @@ import { useCopiado } from '../hooks/useCopiado';
 import { useEnlaceSocias } from '../hooks/useEnlaceSocias';
 import { useAvisarCambios } from '../hooks/useAvisarCambios';
 import { usePdfPlanning } from '../hooks/usePdfPlanning';
+import VistaPreviaPdf from './panel/VistaPreviaPdf';
 import { useDialog } from '../contexts/DialogContext';
 import LiveMonitorPanel from './LiveMonitorPanel';
 import AdminClockEditModal from './AdminClockEditModal';
@@ -464,6 +465,8 @@ export default function PartnerDashboardView({
         enviando={aviso.enviando}
         onEnviar={aviso.enviar}
       />
+
+      <VistaPreviaPdf pdf={pdf.pdf} onCerrar={pdf.cerrar} />
     </div>
     </>
   );
