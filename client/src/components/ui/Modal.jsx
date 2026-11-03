@@ -54,7 +54,8 @@ function useFocoDentro(abierto, panelRef, nombrarConTitulo) {
       }
     }
     const alPulsar = (e) => {
-      if (e.key !== 'Tab' || !panel.contains(document.activeElement) && document.activeElement !== panel) return;
+      // `defaultPrevented`: una ventana abierta DENTRO de esta (la flota en el editor) ya lo movió.
+      if (e.key !== 'Tab' || e.defaultPrevented || !panel.contains(document.activeElement) && document.activeElement !== panel) return;
       const lista = [...panel.querySelectorAll(ENFOCABLES)].filter(el => !el.closest('[hidden], [aria-hidden="true"]'));
       if (!lista.length) { e.preventDefault(); return; }
       const [primero, ultimo] = [lista[0], lista[lista.length - 1]];

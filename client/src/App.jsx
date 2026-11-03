@@ -854,6 +854,7 @@ export default function App() {
           onSaveWeekData={handleUpdateActiveWeek}
           onJumpToVispera={handleJumpToVispera}
           onAddWorker={handleAddWorker}
+          onGestionarEquipo={() => setIsWorkerEditorModalOpen(true)}
         />
       </AlAbrir>
       </Suspense>

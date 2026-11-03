@@ -67,7 +67,9 @@ function InputAlSalir({ valor, onGuardar, ...props }) {
   );
 }
 
-export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onUpdateWeek }) {
+// `nota`: lo que se enseña bajo el título en vez de la explicación de siempre (p. ej. desde
+// el editor del planning, donde los cambios se guardan con la semana al pulsar Guardar).
+export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onUpdateWeek, nota = null }) {
   const { confirm, alert } = useDialog();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
@@ -129,7 +131,7 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
             <Truck className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500 shrink-0" />
             <span>Gestión de Flota ({trucks.length})</span>
           </h2>
-          <p className="text-xs sm:text-sm text-slate-400 mt-1">Configura camiones propios y de alquiler (con tareas de recogida/devolución automáticas).</p>
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">{nota || 'Configura camiones propios y de alquiler (con tareas de recogida/devolución automáticas).'}</p>
         </div>
         <BotonCerrar onClick={onClose} />
       </div>

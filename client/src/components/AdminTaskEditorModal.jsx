@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, Edit3, MapPin, Plus, Save, Trash2, Users, Eye, EyeOff } from 'lucide-react';
+import { Calendar, MapPin, Plus, Save, Trash2, Users, Eye, EyeOff } from 'lucide-react';
 import { getTaskListForDay, buildTaskListPatch } from '../data/taskPlanning';
 import { collectEventNames, EVENT_CATEGORIES } from '../data/eventNaming';
 import Modal from './ui/Modal';
 import SelectorPosicion from './ui/SelectorPosicion';
-import CabeceraModal from './ui/CabeceraModal';
-import BotonCerrar from './ui/BotonCerrar';
 import { Input, Selector } from './ui/Campo';
 import { enlaceMaps } from '../data/mapas';
 import EventoYTarea from './editor/EventoYTarea';
 import CampoEvento from './editor/CampoEvento';
 import SelectorCamion from './editor/SelectorCamion';
 import SelectorEquipo from './editor/SelectorEquipo';
+import CabeceraEditor from './editor/CabeceraEditor';
+import FleetManagerModal from './FleetManagerModal';
 
 const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 
@@ -78,9 +78,12 @@ function TimeRangeEditor({ value, onChange }) {
   );
 }
 
-export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, workersList = [], onSaveWeekData, onJumpToVispera, onAddWorker = null }) {
+// `onGestionarEquipo`: abre «Gestionar equipo» encima del editor (App); la flota se gestiona
+// aquí mismo sobre la semana que se edita y se guarda con ella.
+export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, workersList = [], onSaveWeekData, onJumpToVispera, onAddWorker = null, onGestionarEquipo = null }) {
   const [localWeek, setLocalWeek] = useState(null);
   const [activeDayId, setActiveDayId] = useState('martes');
+  const [flotaAbierta, setFlotaAbierta] = useState(false);
   const wasOpenRef = useRef(false);
   const scrollContainerRef = useRef(null);
 
@@ -324,15 +327,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
     <Modal onCerrar={onClose} ancho="amplio" disposicion="columna" botonCerrar={false}>
       {/* Header */}
       <div className="p-3 sm:p-6 border-b border-slate-800 shrink-0">
-        {/* La X va como `acciones` de la cabecera: así el título no reserva sitio de más para ella y cabe en una línea en el móvil. */}
-        <CabeceraModal
-          icono={Edit3}
-          degradado="amber-orange"
-          compacta
-          titulo="Editor Manual del Planning"
-          subtitulo={`Modificando: ${localWeek.name || 'Semana'}`}
-          acciones={<BotonCerrar onClick={onClose} />}
-        />
+        <CabeceraEditor nombreSemana={localWeek.name} onCerrar={onClose} onFlota={() => setFlotaAbierta(true)} onEquipo={onGestionarEquipo} />
       </div>
 
       {/* Quick Day Jump Ribbon with Illuminated Active Day */}
@@ -915,6 +910,14 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
           <span className="relative z-10">Guardar y Actualizar Planning</span>
         </button>
       </div>
+      {/* La flota de la semana que se edita: sus cambios van a `localWeek` y se guardan con Guardar. */}
+      <FleetManagerModal
+        isOpen={flotaAbierta}
+        onClose={() => setFlotaAbierta(false)}
+        activeWeekData={localWeek}
+        onUpdateWeek={(_id, parcial) => setLocalWeek(semana => ({ ...semana, ...parcial }))}
+        nota="Los cambios se guardan con la semana al pulsar Guardar en el editor."
+      />
     </Modal>
   );
 }

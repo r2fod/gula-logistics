@@ -169,3 +169,25 @@ describe('AdminTaskEditorModal — vehículo y persona nuevos desde la tarea', (
   });
 });
 
+
+describe('AdminTaskEditorModal — atajos a la flota y al equipo', () => {
+  it('«Flota» abre la flota de la semana que se edita y lo que se añade se guarda con la semana', () => {
+    render(<AdminTaskEditorModal isOpen onClose={() => {}} activeWeekData={semana()} workersList={[]} onSaveWeekData={(w) => { guardado = w; }} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Gestionar la flota de esta semana' }));
+    expect(screen.getByText(/se guardan con la semana al pulsar Guardar/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Añadir Camión/i }));
+    expect(guardado).toBeNull(); // todavía no: va con la semana
+    fireEvent.click(screen.getByRole('button', { name: /Guardar y Actualizar Planning/ }));
+    expect(guardado.trucks).toHaveLength(1);
+  });
+
+  it('«Equipo» abre Gestionar equipo (lo pone App); sin esa función no sale', () => {
+    const onGestionarEquipo = vi.fn();
+    const { unmount } = render(<AdminTaskEditorModal isOpen onClose={() => {}} activeWeekData={semana()} workersList={[]} onSaveWeekData={() => {}} onGestionarEquipo={onGestionarEquipo} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Gestionar el equipo' }));
+    expect(onGestionarEquipo).toHaveBeenCalledTimes(1);
+    unmount();
+    render(<AdminTaskEditorModal isOpen onClose={() => {}} activeWeekData={semana()} workersList={[]} onSaveWeekData={() => {}} />);
+    expect(screen.queryByRole('button', { name: 'Gestionar el equipo' })).toBeNull();
+  });
+});

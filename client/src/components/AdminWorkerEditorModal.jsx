@@ -84,8 +84,9 @@ export default function AdminWorkerEditorModal({ isOpen, onClose, workersList = 
     return guardado;
   };
 
+  // Capa 60: se puede abrir encima del editor del planning (su atajo «Equipo»).
   return (
-    <Modal onCerrar={onClose} ancho="4xl" disposicion="columna" botonCerrar={false} etiqueta="Gestionar equipo">
+    <Modal onCerrar={onClose} ancho="4xl" capa={60} disposicion="columna" botonCerrar={false} etiqueta="Gestionar equipo">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-800 p-4 sm:p-5">
         <CabeceraModal
           icono={Users}
