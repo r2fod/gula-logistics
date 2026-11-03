@@ -25,6 +25,9 @@ function avisar(r) {
 
 function suscribir(cadaMs, oyente) {
   const r = reloj(cadaMs);
+  // El primero que se suscribe lo pone en hora: el reloj pudo crearse en un render que no
+  // llegó a suscribirse y guardar una hora vieja (hasta `cadaMs` de retraso).
+  if (r.oyentes.size === 0) r.ahora = new Date();
   r.oyentes.add(oyente);
   if (r.id === null) r.id = setInterval(() => { if (!oculta()) avisar(r); }, cadaMs);
   return () => {
