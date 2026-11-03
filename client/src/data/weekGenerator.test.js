@@ -192,6 +192,13 @@ describe('generarBorrador — casos límite', () => {
     expect(JSON.stringify(week.schedule)).toMatch(/recoger furgo por la tarde/i);
   });
 
+  it('BUG evitado: los recados que ya estaban en la flota de la plantilla no se copian a la semana nueva', () => {
+    const plantilla = { ...PLANTILLA, trucks: [{ name: 'Camión Gula', tag: 'PROPIO' }, { name: 'recoger furgo por la tarde, recoger generador produ', tag: 'PROPIO' }] };
+    const { week } = generar(APUNTES, ROSTER, { plantilla });
+    expect(week.trucks.map(t => t.name)).not.toContain('recoger furgo por la tarde, recoger generador produ');
+    expect(week.trucks.map(t => t.name)).toContain('Camión Gula');
+  });
+
   it('BUG evitado: una producción de varios días sale una sola vez en los eventos con pax', () => {
     const prod = ['2026-09-23', '2026-09-24', '2026-09-25'].map((fecha, i) => ({ id: `p${i}`, fecha, tipo: 'produccion', titulo: 'Rodaje Sur', pax: 30 }));
     const { week } = generar(prod);

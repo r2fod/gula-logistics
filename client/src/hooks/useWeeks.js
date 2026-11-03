@@ -5,6 +5,7 @@ import { semanaPorDefecto } from '../data/anticipacion';
 import { getTaskListForDay, buildTaskListPatch, isTaskEffectivelyDone, ensureYearInDateRange, clearWeekCompletion, indiceDeTareaFichada } from '../data/taskPlanning';
 import { useDialog } from '../contexts/DialogContext';
 import { useAhora } from './useAhora';
+import { flotaSinRecados } from '../data/flota';
 
 const BASE_WEEK_3 = {
   id: "week_3",
@@ -170,6 +171,7 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
       ...template,
       id: newId,
       name,
+      trucks: flotaSinRecados(template.trucks), // los recados que se colaron en la flota no pasan a la nueva
       meta: {
         ...template.meta,
         ...(aiGeneratedJson?.meta || {}),

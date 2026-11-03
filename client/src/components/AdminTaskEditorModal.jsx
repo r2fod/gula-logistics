@@ -11,6 +11,7 @@ import { enlaceMaps } from '../data/mapas';
 import EventoYTarea from './editor/EventoYTarea';
 import CampoEvento from './editor/CampoEvento';
 import SelectorCamion from './editor/SelectorCamion';
+import SelectorEquipo from './editor/SelectorEquipo';
 
 const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes'];
 
@@ -77,7 +78,7 @@ function TimeRangeEditor({ value, onChange }) {
   );
 }
 
-export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, workersList = [], onSaveWeekData, onJumpToVispera }) {
+export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, workersList = [], onSaveWeekData, onJumpToVispera, onAddWorker = null }) {
   const [localWeek, setLocalWeek] = useState(null);
   const [activeDayId, setActiveDayId] = useState('martes');
   const wasOpenRef = useRef(false);
@@ -302,28 +303,9 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
     setLocalWeek(updated);
   };
 
-  const AssignedPicker = ({ assigned = [], onToggle }) => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-      {workersList.map(w => {
-        const isChecked = assigned.includes(w.name);
-        return (
-          <button
-            key={w.name}
-            type="button"
-            onClick={() => onToggle(w.name)}
-            className={`text-[11px] font-bold px-1.5 py-1.5 sm:px-2 sm:py-2 rounded-lg border transition-colors flex items-center justify-center gap-1.5 ${
-              isChecked
-                ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/10'
-                : 'bg-slate-950 text-slate-400 border-slate-700/60 hover:border-slate-500 hover:bg-slate-900'
-            }`}
-          >
-            <span className="shrink-0">{w.avatar}</span>
-            <span className="truncate">{w.name}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
+  // Un vehículo nuevo desde el selector de camión: entra en la flota de esta semana y se
+  // guarda con ella al pulsar Guardar.
+  const anadirVehiculo = (name) => setLocalWeek(prev => ({ ...prev, trucks: [...(prev.trucks || []), { name, tag: 'PROPIO', status: 'Operativo' }] }));
 
   const handleSave = () => {
     onSaveWeekData(localWeek);
@@ -555,13 +537,14 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                         </div>
                         <div>
                           <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Camión</label>
-                          <SelectorCamion valor={truckValue} flota={localWeek.trucks} onCambiar={(camion) => handleTaskMetadataChange(dayKey, idx, 'truck', camion)} />
+                          <SelectorCamion onAnadirVehiculo={anadirVehiculo} valor={truckValue} flota={localWeek.trucks} onCambiar={(camion) => handleTaskMetadataChange(dayKey, idx, 'truck', camion)} />
                         </div>
                         <div>
                           <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Asignar a</label>
-                          <AssignedPicker
-                            assigned={assignedValue}
-                            onToggle={(workerName) => toggleAssignedWorker(dayKey, idx, workerName)}
+                          <SelectorEquipo
+                            equipo={workersList} onAddWorker={onAddWorker}
+                            asignados={assignedValue}
+                            onAlternar={(workerName) => toggleAssignedWorker(dayKey, idx, workerName)}
                           />
                         </div>
                       </div>
@@ -715,9 +698,10 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                     )}
                     <div>
                       <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Asignar a</label>
-                      <AssignedPicker
-                        assigned={Array.isArray(w.assigned) ? w.assigned : []}
-                        onToggle={(workerName) => toggleAssignedWedding(idx, workerName)}
+                      <SelectorEquipo
+                        equipo={workersList} onAddWorker={onAddWorker}
+                        asignados={Array.isArray(w.assigned) ? w.assigned : []}
+                        onAlternar={(workerName) => toggleAssignedWedding(idx, workerName)}
                       />
                     </div>
                   </div>
@@ -849,7 +833,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                           <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Camión</label>
-                          <SelectorCamion valor={truckValue} flota={localWeek.trucks} acento="emerald" onCambiar={(camion) => handleTaskMetadataChange('sundayMonday', idx, 'truck', camion)} />
+                          <SelectorCamion onAnadirVehiculo={anadirVehiculo} valor={truckValue} flota={localWeek.trucks} acento="emerald" onCambiar={(camion) => handleTaskMetadataChange('sundayMonday', idx, 'truck', camion)} />
                         </div>
                         <div>
                           <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Día Específico</label>
@@ -866,9 +850,10 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
                       </div>
                       <div>
                         <label className="text-[11px] text-slate-400 uppercase font-bold mb-1 block">Asignar a</label>
-                        <AssignedPicker
-                          assigned={assignedValue}
-                          onToggle={(workerName) => toggleAssignedWorker('sundayMonday', idx, workerName)}
+                        <SelectorEquipo
+                          equipo={workersList} onAddWorker={onAddWorker}
+                          asignados={assignedValue}
+                          onAlternar={(workerName) => toggleAssignedWorker('sundayMonday', idx, workerName)}
                         />
                       </div>
                     </div>

@@ -28,6 +28,7 @@ import { plano } from '../utils/texto';
 import { nombreEnTexto } from './nombresTrabajadores';
 import { PREFIJO_ID, aIso, fechaLocal, formatearRango, sumarDias } from './fechasSemana';
 import { diaHabilCercano, festivoEn, festivosLocales } from './festivos';
+import { esRecado, flotaSinRecados } from './flota';
 
 // Se siguen exportando desde aquí (tests y quien ya los importaba).
 export { PREFIJO_ID, martesDeSemana, formatearRango, weekIdParaInicio } from './fechasSemana';
@@ -117,7 +118,7 @@ function extraerEventos(apuntes, inicio, fin) {
 // Un alquiler continuo es un VEHÍCULO («Camión X») apuntado varios días; un recado de
 // varios días («recoger furgo por la tarde, recoger generador», «X recoger 105 sillas») es
 // una tarea el día que empieza: antes entraba en la flota como si fuera un camión.
-const esVehiculo = (titulo) => /\b(cami[oó]n|furgo(neta)?|van)\b/i.test(titulo) && !/\b(recog|devolv|devoluc|llev|traer|carg|descarg)\w*/i.test(titulo);
+const esVehiculo = (titulo) => /\b(cami[oó]n|furgo(neta)?|van)\b/i.test(titulo) && !esRecado(titulo);
 export const esAlquilerContinuo = (a) => a?.tipo === 'recogida' && !!a.hasta && esVehiculo(a.titulo);
 // El título de un recado sin su hora ni comas sueltas («Recoger mesas 18:00,» → «Recoger mesas»).
 export const tituloDeRecado = (titulo) => String(titulo || '').replace(/\b\d{1,2}:\d{2}\b/g, '').replace(/[,\s]+$/g, '').replace(/^\s*(?:a las\s*)?/i, '').trim();
@@ -172,7 +173,7 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
   const avisos = [...avisosFusion];
 
   const diaDeFecha = (iso) => JS_DIA[fechaLocal(iso).getDay()];
-  const camiones = (plantilla.trucks || []).map(t => t.name);
+  const camiones = flotaSinRecados(plantilla.trucks).map(t => t.name);
 
   // ── 1. Lista de tareas a colocar ──
   // t: { dia, ini, fin, accion, evento, n, pool, lugar, extra, tipoTarea }
@@ -395,7 +396,7 @@ export function generarBorrador({ inicio, apuntes = [], roster = [], plantilla =
       ...(limites !== LIMITES_POR_DEFECTO ? { limites } : {}),
     },
     trucks: (() => {
-      const trucksBase = (plantilla.trucks || []).map(t => ({ ...t, pickupCompleted: false, returnCompleted: false }));
+      const trucksBase = flotaSinRecados(plantilla.trucks).map(t => ({ ...t, pickupCompleted: false, returnCompleted: false }));
       // Agregar los alquileres continuos del calendario si no están ya en la lista
       alquileresMensuales.forEach(m => {
         if (!trucksBase.some(t => t.name.toLowerCase() === m.nombre.toLowerCase())) {

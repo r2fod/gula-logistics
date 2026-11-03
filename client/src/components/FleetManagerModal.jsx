@@ -7,6 +7,7 @@ import BotonCerrar from './ui/BotonCerrar';
 import { Input, Selector } from './ui/Campo';
 import { useDialog } from '../contexts/DialogContext';
 import { fechaLocal } from '../data/fechasSemana';
+import { esRecado } from '../data/flota';
 import { festivoEn } from '../data/festivos';
 import { fechaDeDiaDeFlota } from '../data/festivosSemana';
 import { useFestivosLocales } from '../hooks/useFestivosLocales';
@@ -173,6 +174,13 @@ export default function FleetManagerModal({ isOpen, onClose, activeWeekData, onU
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
+
+            {esRecado(truck.name) && (
+              <p role="alert" className="mb-3 text-[11px] leading-snug text-amber-300 flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                Esto parece un recado, no un vehículo: bórralo de la flota.
+              </p>
+            )}
 
             {truck.tag === 'ALQUILER' && (
               <div className="mt-4 pt-4 border-t border-slate-800/50">

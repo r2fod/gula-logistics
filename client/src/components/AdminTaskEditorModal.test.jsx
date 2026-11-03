@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent } from '../test/render';
 import AdminTaskEditorModal from './AdminTaskEditorModal';
 
 const semana = () => ({
@@ -138,6 +138,34 @@ describe('AdminTaskEditorModal — el evento también se elige el sábado y en d
     fireEvent.click(botonDe(campo.closest('div').parentElement, 'Boda Ana y Luis'));
     guardar();
     expect(guardado.saturdaySpecial.weddings[0]).toMatchObject({ location: 'Finca Sur', details: 'Montaje', event: 'Boda Ana y Luis' });
+  });
+});
+
+describe('AdminTaskEditorModal — vehículo y persona nuevos desde la tarea', () => {
+  it('añadir un vehículo desde el selector lo mete en la flota de la semana y se guarda con ella', () => {
+    render(<AdminTaskEditorModal isOpen onClose={() => {}} activeWeekData={semana()} workersList={[]} onSaveWeekData={(w) => { guardado = w; }} />);
+    const selector = screen.getAllByRole('combobox').find(s => [...s.options].some(o => /Añadir vehículo/.test(o.textContent)));
+    fireEvent.change(selector, { target: { value: '__nuevo_vehiculo__' } });
+    const campo = screen.getByLabelText('Nombre del vehículo nuevo');
+    fireEvent.change(campo, { target: { value: 'Furgoneta B' } });
+    fireEvent.keyDown(campo, { key: 'Enter' });
+    fireEvent.click(screen.getByRole('button', { name: /Guardar y Actualizar Planning/ }));
+    expect(guardado.trucks).toEqual([{ name: 'Furgoneta B', tag: 'PROPIO', status: 'Operativo' }]);
+  });
+
+  it('«+ Nueva persona» llama a onAddWorker (la misma función de Gestionar equipo) y asigna a la tarea; sin onAddWorker no sale', () => {
+    const onAddWorker = vi.fn();
+    const equipo = [{ name: 'Ana', role: 'Conductora', avatar: '🚚' }];
+    const { unmount } = render(<AdminTaskEditorModal isOpen onClose={() => {}} activeWeekData={semana()} workersList={equipo} onSaveWeekData={(w) => { guardado = w; }} onAddWorker={onAddWorker} />);
+    fireEvent.click(screen.getAllByText('+ Nueva persona')[0]);
+    fireEvent.change(screen.getByLabelText('Nombre de la persona nueva'), { target: { value: 'Marcos' } });
+    fireEvent.keyDown(screen.getByLabelText('Nombre de la persona nueva'), { key: 'Enter' });
+    expect(onAddWorker).toHaveBeenCalledWith(expect.objectContaining({ name: 'Marcos' }));
+    fireEvent.click(screen.getByRole('button', { name: /Guardar y Actualizar Planning/ }));
+    expect(guardado.schedule.martes.tasks[0].assigned).toContain('Marcos');
+    unmount();
+    render(<AdminTaskEditorModal isOpen onClose={() => {}} activeWeekData={semana()} workersList={equipo} onSaveWeekData={() => {}} />);
+    expect(screen.queryByText('+ Nueva persona')).toBeNull();
   });
 });
 

@@ -853,6 +853,7 @@ export default function App() {
           workersList={workersList}
           onSaveWeekData={handleUpdateActiveWeek}
           onJumpToVispera={handleJumpToVispera}
+          onAddWorker={handleAddWorker}
         />
       </AlAbrir>
       </Suspense>

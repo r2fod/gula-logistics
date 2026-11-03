@@ -103,6 +103,19 @@ describe('useWeeks — crear semana con eventos', () => {
   });
 });
 
+describe('useWeeks — flota al clonar una semana', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('BUG evitado: al clonar, los recados que se colaron en la flota no pasan a la semana nueva', () => {
+    const { result } = montar();
+    const anterior = { ...semana(), trucks: [{ name: 'Camión A' }, { name: 'recoger furgo por la tarde, recoger generador' }] };
+    act(() => result.current.setAllWeeks({ week_3: anterior }));
+    act(() => result.current.handleCreateWeek({ name: 'Semana 4', dateRange: 'Del 22 al 27 de septiembre', cloneCurrent: true }));
+    const creada = Object.values(result.current.allWeeks).find(w => w.name === 'Semana 4');
+    expect(creada.trucks.map(t => t.name)).toEqual(['Camión A']);
+  });
+});
+
 describe('useWeeks — semana con la que se abre', () => {
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
