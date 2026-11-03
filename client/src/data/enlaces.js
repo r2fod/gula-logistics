@@ -99,3 +99,20 @@ export function descargarArchivo(blob, nombre) {
   enlace.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
 }
+
+// Manda un archivo hecho en el navegador (el PDF del planning…): en el móvil abre el menú de
+// compartir del sistema (sale WhatsApp directamente); donde no se pueden compartir archivos,
+// o si falla, lo descarga. → 'compartido' | 'descargado' | 'cancelado' (el usuario cerró el menú).
+export async function compartirArchivo(blob, nombre, { titulo, texto } = {}) {
+  const archivo = new File([blob], nombre, { type: blob.type || 'application/octet-stream' });
+  if (navigator.canShare?.({ files: [archivo] })) {
+    try {
+      await navigator.share({ files: [archivo], title: titulo, text: texto });
+      return 'compartido';
+    } catch (error) {
+      if (error?.name === 'AbortError') return 'cancelado';
+    }
+  }
+  descargarArchivo(blob, nombre);
+  return 'descargado';
+}

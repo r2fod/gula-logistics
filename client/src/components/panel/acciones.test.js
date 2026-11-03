@@ -3,7 +3,7 @@ import { crearAcciones, accionesDe, SECCIONES_MENU } from './acciones';
 
 const todasLasFunciones = () => ({
   fichar: vi.fn(), avisar: vi.fn(), editarPlanning: vi.fn(), editarEquipo: vi.fn(), nominas: vi.fn(), gemini: vi.fn(),
-  compartir: vi.fn(), copiarEnlaceSocias: vi.fn(), vistaPublica: vi.fn(), claves: vi.fn(), nuevaSemana: vi.fn(),
+  compartir: vi.fn(), pdfPlanning: vi.fn(), copiarEnlaceSocias: vi.fn(), vistaPublica: vi.fn(), claves: vi.fn(), nuevaSemana: vi.fn(),
 });
 
 const ids = (acciones) => acciones.map((a) => a.id);
@@ -11,13 +11,13 @@ const ids = (acciones) => acciones.map((a) => a.id);
 describe('crearAcciones', () => {
   it('sin ser admin solo quedan las acciones de todos (y las que tienen su función); el enlace de socias es solo del admin', () => {
     const acciones = crearAcciones({ admin: false }, todasLasFunciones());
-    expect(ids(acciones)).toEqual(['fichar', 'whatsapp', 'vistaPublica']);
+    expect(ids(acciones)).toEqual(['fichar', 'whatsapp', 'pdfPlanning', 'vistaPublica']);
   });
 
   it('un admin ve todas', () => {
     const acciones = crearAcciones({ admin: true }, todasLasFunciones());
     expect(ids(acciones)).toEqual([
-      'fichar', 'avisar', 'planning', 'trabajador', 'nominas', 'gemini', 'whatsapp', 'enlaceSocias', 'vistaPublica', 'claves', 'nuevaSemana',
+      'fichar', 'avisar', 'planning', 'trabajador', 'nominas', 'gemini', 'whatsapp', 'pdfPlanning', 'enlaceSocias', 'vistaPublica', 'claves', 'nuevaSemana',
     ]);
   });
 
@@ -33,7 +33,7 @@ describe('crearAcciones', () => {
 
   it('cada variante enseña sus acciones: barra, barra rápida del móvil, cabecera y menú', () => {
     const acciones = crearAcciones({ admin: true }, todasLasFunciones());
-    expect(ids(accionesDe(acciones, 'barra'))).toEqual(['fichar', 'avisar', 'planning', 'trabajador', 'nominas', 'gemini', 'whatsapp', 'enlaceSocias', 'vistaPublica']);
+    expect(ids(accionesDe(acciones, 'barra'))).toEqual(['fichar', 'avisar', 'planning', 'trabajador', 'nominas', 'gemini', 'whatsapp', 'pdfPlanning', 'enlaceSocias', 'vistaPublica']);
     expect(ids(accionesDe(acciones, 'movil'))).toEqual(['fichar', 'whatsapp']);
     expect(ids(accionesDe(acciones, 'cabecera'))).toEqual(['claves', 'nuevaSemana']);
     expect(accionesDe(acciones, 'menu')).toHaveLength(acciones.length);
@@ -56,6 +56,12 @@ describe('crearAcciones', () => {
     expect(enlace({ enlaceSociasCopiado: false })).toMatchObject({ etiqueta: 'Link Socias', etiquetaMenu: 'Copiar link de socias' });
     expect(enlace({ enlaceSociasCopiado: true })).toMatchObject({ etiqueta: '¡Copiado!', etiquetaMenu: '¡Enlace copiado!', colorIcono: 'text-emerald-400' });
     expect(enlace({ enlaceSociasCargando: true })).toMatchObject({ cargando: true });
+  });
+
+  it('el PDF del planning lo ven también las socias y, mientras genera, dice "Generando…" y se desactiva', () => {
+    const pdf = (estado) => crearAcciones({ admin: false, ...estado }, todasLasFunciones()).find((a) => a.id === 'pdfPlanning');
+    expect(pdf({ pdfCargando: false })).toMatchObject({ etiqueta: 'PDF', etiquetaMenu: 'Planning en PDF (compartir)', seccion: 'compartir', cargando: false });
+    expect(pdf({ pdfCargando: true })).toMatchObject({ etiqueta: 'Generando…', cargando: true });
   });
 
   it('la función de cada acción es la que se le dio', () => {

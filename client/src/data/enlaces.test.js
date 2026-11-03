@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { construirEnlaceTrabajador, semanaPedidaEnEnlace, abreElPanelDeSocias, urlBase, enlaceTrabajador, enlaceSocias, enlaceVistaPublica, enlaceWhatsApp, abrirEnPestanaNueva, abrirEnPestanaNuevaAlLlegar, telefonoWhatsApp } from './enlaces';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { construirEnlaceTrabajador, semanaPedidaEnEnlace, abreElPanelDeSocias, urlBase, enlaceTrabajador, enlaceSocias, enlaceVistaPublica, enlaceWhatsApp, abrirEnPestanaNueva, abrirEnPestanaNuevaAlLlegar, telefonoWhatsApp, compartirArchivo } from './enlaces';
 
 const semana = (dateRange, status = 'Operativa Activa') => ({ meta: { dateRange, status } });
 const semanas = {
@@ -128,6 +128,54 @@ describe('WhatsApp a un teléfono', () => {
     expect(enlaceWhatsApp('Hola', '600000000')).toBe('https://wa.me/34600000000?text=Hola');
     expect(enlaceWhatsApp('Hola')).toBe('https://api.whatsapp.com/send?text=Hola');
     expect(enlaceWhatsApp('Hola', 'no es un teléfono')).toBe('https://api.whatsapp.com/send?text=Hola');
+  });
+});
+
+describe('compartirArchivo', () => {
+  const pdf = () => new Blob(['%PDF'], { type: 'application/pdf' });
+  let descargado;
+  beforeEach(() => {
+    descargado = vi.fn();
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x');
+    globalThis.URL.revokeObjectURL = vi.fn();
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(descargado);
+  });
+  afterEach(() => {
+    delete navigator.canShare;
+    delete navigator.share;
+    vi.restoreAllMocks();
+  });
+  const conShare = (share, canShare = () => true) => {
+    Object.defineProperty(navigator, 'canShare', { value: canShare, configurable: true });
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true });
+  };
+
+  it('si el navegador puede compartir archivos, abre el menú de compartir con el archivo', async () => {
+    const share = vi.fn().mockResolvedValue();
+    conShare(share);
+    expect(await compartirArchivo(pdf(), 'Planning.pdf', { titulo: 'Planning', texto: 'Hola' })).toBe('compartido');
+    expect(share).toHaveBeenCalledOnce();
+    expect(share.mock.calls[0][0].files[0].name).toBe('Planning.pdf');
+    expect(descargado).not.toHaveBeenCalled();
+  });
+
+  it('sin soporte para compartir archivos, lo descarga', async () => {
+    expect(await compartirArchivo(pdf(), 'Planning.pdf')).toBe('descargado');
+    expect(descargado).toHaveBeenCalledOnce();
+    conShare(vi.fn(), () => false);
+    expect(await compartirArchivo(pdf(), 'Planning.pdf')).toBe('descargado');
+  });
+
+  it('si el usuario cierra el menú (AbortError), no descarga nada', async () => {
+    conShare(vi.fn().mockRejectedValue(Object.assign(new Error('cerrado'), { name: 'AbortError' })));
+    expect(await compartirArchivo(pdf(), 'Planning.pdf')).toBe('cancelado');
+    expect(descargado).not.toHaveBeenCalled();
+  });
+
+  it('si compartir falla por otro motivo, lo descarga', async () => {
+    conShare(vi.fn().mockRejectedValue(Object.assign(new Error('no'), { name: 'NotAllowedError' })));
+    expect(await compartirArchivo(pdf(), 'Planning.pdf')).toBe('descargado');
+    expect(descargado).toHaveBeenCalledOnce();
   });
 });
 

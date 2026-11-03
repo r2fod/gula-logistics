@@ -9,6 +9,7 @@ import { tareasDeLaVispera, fichadosDelDia } from '../data/vispera';
 import { useCopiado } from '../hooks/useCopiado';
 import { useEnlaceSocias } from '../hooks/useEnlaceSocias';
 import { useAvisarCambios } from '../hooks/useAvisarCambios';
+import { usePdfPlanning } from '../hooks/usePdfPlanning';
 import { useDialog } from '../contexts/DialogContext';
 import LiveMonitorPanel from './LiveMonitorPanel';
 import AdminClockEditModal from './AdminClockEditModal';
@@ -113,6 +114,7 @@ export default function PartnerDashboardView({
   const [enlaceCopiado, copiarEnlace] = useCopiado();
   const enlaceSocias = useEnlaceSocias(adminUnlocked);
   const aviso = useAvisarCambios();
+  const pdf = usePdfPlanning(activeWeekData, workersList);
 
   // El resto de pestañas, en segundo plano en cuanto el panel está pintado.
   useEffect(() => precargarEnReposo(Object.values(PIEZAS)), []);
@@ -224,7 +226,7 @@ export default function PartnerDashboardView({
   };
 
   const acciones = crearAcciones(
-    { admin: adminUnlocked, avisando: aviso.enviando, enlaceSociasCopiado: !!enlaceCopiado, enlaceSociasCargando: enlaceSocias.cargando },
+    { admin: adminUnlocked, avisando: aviso.enviando, enlaceSociasCopiado: !!enlaceCopiado, enlaceSociasCargando: enlaceSocias.cargando, pdfCargando: pdf.generando },
     {
       fichar: onOpenClockIn,
       avisar: aviso.abrir,
@@ -233,6 +235,7 @@ export default function PartnerDashboardView({
       nominas: () => handleTabClick('financial'),
       gemini: onOpenGemini,
       compartir: onOpenShareModal,
+      pdfPlanning: pdf.generar,
       copiarEnlaceSocias: async () => {
         if (enlaceSocias.enlace) return copiarEnlace(enlaceSocias.enlace);
         await alert(enlaceSocias.error ? `No se pudo generar el enlace de socias: ${enlaceSocias.error}` : 'El enlace de socias se está generando; vuelve a pulsar en un momento.', { type: 'info' });

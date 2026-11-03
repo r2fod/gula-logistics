@@ -1,4 +1,4 @@
-import { Clock, Bell, Edit3, Users, DollarSign, Wand2, Share2, Copy, Check, Eye, KeyRound, Plus, RefreshCw, BrainCircuit } from 'lucide-react';
+import { Clock, Bell, Edit3, Users, DollarSign, Wand2, Share2, Copy, Check, Eye, KeyRound, Plus, RefreshCw, BrainCircuit, FileDown } from 'lucide-react';
 
 // Secciones del menú lateral, en orden.
 export const SECCIONES_MENU = [
@@ -22,10 +22,10 @@ export const SECCIONES_MENU = [
 // Solo devuelve las acciones que este usuario puede usar ahora: las de administración
 // necesitan `admin`, y las que abren un modal, que el llamador le haya dado su función.
 //
-// `estado`: { admin, avisando, enlaceSociasCopiado, enlaceSociasCargando }
+// `estado`: { admin, avisando, enlaceSociasCopiado, enlaceSociasCargando, pdfCargando }
 // `alHacer`: { fichar, avisar, editarPlanning, editarEquipo, nominas, gemini, compartir,
-//              copiarEnlaceSocias, vistaPublica, claves, nuevaSemana }
-export function crearAcciones({ admin = false, avisando = false, enlaceSociasCopiado = false, enlaceSociasCargando = false } = {}, alHacer = {}) {
+//              pdfPlanning, copiarEnlaceSocias, vistaPublica, claves, nuevaSemana }
+export function crearAcciones({ admin = false, avisando = false, enlaceSociasCopiado = false, enlaceSociasCargando = false, pdfCargando = false } = {}, alHacer = {}) {
   const todas = [
     {
       id: 'fichar', etiqueta: 'Fichar', etiquetaMenu: 'Registrar fichaje', icono: Clock, claseIcono: 'icono-reloj', colorIcono: 'text-emerald-950', tono: 'fichar',
@@ -56,6 +56,13 @@ export function crearAcciones({ admin = false, avisando = false, enlaceSociasCop
       id: 'whatsapp', etiqueta: 'WhatsApp', etiquetaMenu: 'Compartir por WhatsApp', icono: Share2, colorIcono: 'text-blue-400', claseIcono: 'icono-latido', tono: 'whatsapp',
       titulo: 'Enlaces de WhatsApp (Trabajadores y Socias)',
       lugares: ['barra', 'movil', 'menu'], seccion: 'compartir', visible: !!alHacer.compartir, onClick: alHacer.compartir,
+    },
+    {
+      id: 'pdfPlanning', etiqueta: pdfCargando ? 'Generando…' : 'PDF', etiquetaMenu: pdfCargando ? 'Generando…' : 'Planning en PDF (compartir)',
+      icono: FileDown, claseIcono: 'icono-pop', colorIcono: 'text-rose-400', tono: 'neutro',
+      titulo: 'Sacar el planning de la semana en PDF para compartirlo', cargando: pdfCargando,
+      // También las socias (solo lectura): el PDF solo lleva lo que ya ven en el panel.
+      lugares: ['barra', 'menu'], seccion: 'compartir', visible: !!alHacer.pdfPlanning, onClick: alHacer.pdfPlanning,
     },
     {
       id: 'enlaceSocias', etiqueta: enlaceSociasCopiado ? '¡Copiado!' : 'Link Socias',
