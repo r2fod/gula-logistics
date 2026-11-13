@@ -13,7 +13,7 @@
 - Tarea: `{ id, text, timeFrame "HH:MM - HH:MM", assigned[], completed, completedAt, reopened, active, event, targetDay }`. `active: false` = desactivada (no se borra). Se marca SOLO a mano o al fichar su salida — nada se marca solo por la hora.
 - Texto de tarea `"EVENTO - Tarea"` (guion normal entre espacios, `data/eventNaming.js`; `+` para varios eventos) — de ahí sale el coste por evento. No reescribir textos de tareas ya fichadas (el fichaje guarda el texto): usar el campo `event`.
 - Task ID: corta y manual por día (`m1`, `mi2`, `v1c`…), sin chocar con las del mismo día. `taskRef` de un fichaje lleva día, índice, `weekId`, `taskId` y `taskText` (`refDeTareaFichada`); la salida busca la tarea por id o texto (`indiceDeTareaFichada`), no a ciegas por índice.
-- Week ID: `week_<Date.now()>` a mano; borradores automáticos `week_auto_AAAA-MM-DD` (martes que la abre). `meta.status` `"Borrador"` hasta que un admin la acepta (`"Operativa Activa"`). `week_3` es la semilla base (no renombrar sin tocar `server/src/data/logisticsData.js` y el bootstrap).
+- Week ID: `week_<Date.now()>_<sufijo>` a mano; borradores automáticos `week_auto_AAAA-MM-DD` (martes que la abre). `meta.status` `"Borrador"` hasta que un admin la acepta (`"Operativa Activa"`). `week_3` es la semilla base (no renombrar sin tocar `server/src/data/logisticsData.js` y el bootstrap).
 - Equipo: solo en Mongo (`/api/roster`, `hooks/useWorkers.js`); el código no trae ninguna lista de arranque. `assigned` usa sus nombres exactos: renombrar a alguien sin migrar los `assigned` los deja huérfanos.
 - WorkerBalance ID: `nombre.toLowerCase().replace(/\s+/g, '-')` — cambiar el nombre sin el id rompe su vínculo con fichajes/saldos.
 - ClockEntry ID: `crypto.randomUUID()` (`data/fichajes.js`, `crearFichaje`). `POST /api/clock` es idempotente por id (cola offline).
@@ -42,7 +42,7 @@
 - Al usuario se le dice qué se encargó a quién y qué salió.
 
 ## WORKFLOW
-- El planning vive en Mongo: `logisticsData.js` (cliente/servidor) es solo semilla. Cambiar una semana = `POST /api/logistics/weeks` con el objeto COMPLETO (reemplaza el documento; control por `updatedAt`, 409 si alguien guardó antes).
+- El planning vive en Mongo: `logisticsData.js` (cliente/servidor) es solo semilla. Editar las tareas de una semana = `POST /api/logistics/weeks` con el objeto COMPLETO (reemplaza el documento; control por `updatedAt`, 409 si alguien guardó antes).
 - Dos checkouts: el worktree (rama de trabajo) y la copia principal (`main`, solo para merge + push; su ruta: `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`). Antes de fusionar, traer `origin/main` a la rama (otras sesiones trabajan en paralelo).
 - Deploy cliente: automático en cada push a `main` (GitHub Action, ~1 min; comprobar `gh run list` y el hash del bundle en la URL pública). Servidor: Render auto-despliega (de 5 a 30 min y no avisa): `curl …onrender.com/api/health` dice el commit desplegado (`version`).
 

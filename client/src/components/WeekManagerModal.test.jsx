@@ -121,7 +121,7 @@ describe('WeekManagerModal — clave de Gemini y errores', () => {
 
 describe('WeekManagerModal — pax de cada evento', () => {
   it('los pax llegan al prompt y a la semana creada ([{ name, pax }])', async () => {
-    const onCreateWeek = vi.fn();
+    const onCreateWeek = vi.fn().mockResolvedValue({ success: true });
     render(
       <WeekManagerModal isOpen onClose={() => {}} onCreateWeek={onCreateWeek} currentWeekName="Semana 3" currentWeekTrucks={[{ name: 'Camión Gula' }]} workersList={[{ name: 'Ana', avatar: '🚚' }]} />
     );

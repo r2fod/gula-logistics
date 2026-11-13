@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 import mongoose from 'mongoose';
@@ -147,7 +147,7 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
 
     expect(res.status).toBe(200);
     expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
-      { weekId: 'week_3' },
+      expect.objectContaining({ weekId: 'week_3' }),
       { $set: { 'schedule.martes.tasks.0': { text: 'Cargar furgoneta', completed: true } } },
       { new: true }
     );
@@ -198,7 +198,7 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
     expect(r1.status).toBe(200);
     expect(r1.body.unchanged).toBeUndefined();
     expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
-      { weekId: 'week_3' },
+      expect.objectContaining({ weekId: 'week_3' }),
       { $set: { 'sundayMonday.tasks.0': { text: 'Devolver Alquileres Norte', completed: false, reopened: true } } },
       { new: true }
     );
@@ -208,7 +208,7 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
     const r2 = await request(app).patch('/api/logistics/weeks/week_3/tasks').send({ dayKey: 'domingo', taskIndex: 0, completed: true, reopened: false });
     expect(r2.status).toBe(200);
     expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
-      { weekId: 'week_3' },
+      expect.objectContaining({ weekId: 'week_3' }),
       { $set: { 'sundayMonday.tasks.0': { text: 'Devolver Alquileres Norte', completed: true, reopened: false } } },
       { new: true }
     );
@@ -231,7 +231,7 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
     LogisticsWeek.findOneAndUpdate.mockResolvedValue({ weekId: 'week_3' });
     await request(app).patch('/api/logistics/weeks/week_3/tasks').send({ dayKey: 'domingo', taskIndex: 0, completed: true });
     expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
-      { weekId: 'week_3' },
+      expect.objectContaining({ weekId: 'week_3' }),
       { $set: { 'sundayMonday.tasks.0': { text: 'X', completed: true, reopened: true, assigned: ['Ana'] } } },
       { new: true }
     );
@@ -251,7 +251,7 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
 
     expect(res.status).toBe(200);
     expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
-      { weekId: 'week_3' },
+      expect.objectContaining({ weekId: 'week_3' }),
       { $set: { 'sundayMonday.tasks.0': { text: 'Devolver Alquileres Norte', completed: true } } },
       { new: true }
     );
@@ -271,7 +271,7 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
 
     expect(res.status).toBe(200);
     expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
-      { weekId: 'week_3' },
+      expect.objectContaining({ weekId: 'week_3' }),
       { $set: { 'saturdaySpecial.weddings.0': { location: 'Finca Este', truck: 'Camión Gula', completed: true } } },
       { new: true }
     );
@@ -290,7 +290,7 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
       .send({ dayKey: 'martes', taskIndex: 0, completed: true });
 
     expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
-      { weekId: 'week_3' },
+      expect.objectContaining({ weekId: 'week_3' }),
       { $set: { 'schedule.martes.tasks.0': { text: 'Recoger sillas', completed: true } } },
       { new: true }
     );
@@ -407,30 +407,91 @@ describe('PATCH — completedAt (endpoint público)', () => {
   });
 });
 
-describe('DELETE /api/logistics/weeks/:weekId (solo borradores)', () => {
-  const borrar = (token = adminAuthHeader()) => request(buildApp()).delete('/api/logistics/weeks/week_x').set('Authorization', token);
+describe('Gestión de semanas', () => {
+  const version = '2026-09-20T09:00:00.000Z';
+  const publicada = { weekId: 'week_x', name: 'Semana 4', updatedAt: version, meta: { status: 'Operativa Activa' } };
+  const otra = { weekId: 'week_y', name: 'Semana 5', updatedAt: version, meta: { status: 'Borrador' } };
+  const url = '/api/logistics/weeks/week_x';
+  const conAdmin = (peticion) => peticion.set('Authorization', adminAuthHeader());
+  const archivar = () => conAdmin(request(buildApp()).delete(url)).send({ updatedAt: version });
 
-  it('exige admin', async () => {
-    expect((await request(buildApp()).delete('/api/logistics/weeks/week_x')).status).toBe(401);
+  beforeEach(() => {
+    vi.spyOn(mongoose.connection, 'transaction').mockImplementation(fn => fn({}));
+    vi.spyOn(mongoose.connection, 'collection').mockReturnValue({ updateOne: vi.fn().mockResolvedValue({}) });
+    LogisticsWeek.find.mockResolvedValue([publicada, otra]);
+    LogisticsWeek.findOne.mockResolvedValue(publicada);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    LogisticsWeek.find.mockReset();
+    LogisticsWeek.findOne.mockReset();
   });
 
-  it('borra un borrador', async () => {
-    LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_x', meta: { status: 'Borrador' } });
-    LogisticsWeek.deleteOne.mockResolvedValue({ deletedCount: 1 });
-    expect((await borrar()).status).toBe(200);
-    expect(LogisticsWeek.deleteOne).toHaveBeenCalledWith({ weekId: 'week_x', 'meta.status': 'Borrador' });
+  it('renombrar y eliminar exigen admin', async () => {
+    expect((await request(buildApp()).patch(url).send({ name: 'Semana 5', updatedAt: version })).status).toBe(401);
+    expect((await request(buildApp()).delete(url).send({ updatedAt: version })).status).toBe(401);
   });
 
-  it('BUG evitado: una semana aceptada NO se puede borrar (409), ni con sesión de admin', async () => {
-    LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_x', meta: { status: 'Operativa Activa' } });
-    const r = await borrar();
-    expect(r.status).toBe(409);
+  it('renombra una publicada y desplaza un borrador, conservando sus fechas y tareas', async () => {
+    LogisticsWeek.findOneAndUpdate.mockImplementation(async ({ weekId }, { $set }) => {
+      const anterior = [publicada, otra].find(w => w.weekId === weekId);
+      return { ...anterior, name: $set.name, meta: { ...anterior.meta, week: $set['meta.week'] } };
+    });
+    const r = await conAdmin(request(buildApp()).patch(url)).send({ name: ' Semana 5 ', updatedAt: version, schedule: {}, meta: { status: 'Borrador' } });
+    expect(r.status).toBe(200);
+    expect(r.body.data.week_x).toMatchObject({ name: 'Semana 5', meta: { week: 'Semana 5', status: 'Operativa Activa' } });
+    expect(r.body.data.week_y).toMatchObject({ name: 'Semana 6', meta: { week: 'Semana 6', status: 'Borrador' } });
+    expect(LogisticsWeek.findOneAndUpdate.mock.calls.map(([, update]) => update.$set)).toEqual([
+      { name: 'Semana 5', 'meta.week': 'Semana 5' }, { name: 'Semana 6', 'meta.week': 'Semana 6' },
+    ]);
+    LogisticsWeek.findOneAndUpdate.mockReset();
+  });
+
+  it('al crear manualmente conserva el número elegido y desplaza la semana previa', async () => {
+    LogisticsWeek.findOne.mockResolvedValue(null);
+    LogisticsWeek.findOneAndUpdate.mockResolvedValue({ ...publicada, name: 'Semana 5' });
+    const creada = { weekId: 'week_nueva', name: 'Semana 4', meta: { status: 'Operativa Activa', week: 'Semana 4' } };
+    LogisticsWeek.create.mockResolvedValue([creada]);
+    const r = await conAdmin(request(buildApp()).post('/api/logistics/weeks/manual'))
+      .send({ weekId: 'week_nueva', week: { name: '4', updatedAt: version } });
+    expect(r.status).toBe(201);
+    expect(r.body.data.week_nueva).toEqual(creada);
+    expect(LogisticsWeek.findOneAndUpdate.mock.calls.map(([, update]) => update.$set.name)).toEqual(['Semana 5', 'Semana 6']);
+    expect(LogisticsWeek.create.mock.calls[0][0][0].updatedAt).toBeUndefined();
+  });
+
+  it('el histórico archivado solo está disponible con acceso al panel', async () => {
+    expect((await request(buildApp()).get('/api/logistics/weeks/archivadas')).status).toBe(401);
+    LogisticsWeek.find.mockResolvedValue([{ ...publicada, archivada: true }]);
+    const r = await conAdmin(request(buildApp()).get('/api/logistics/weeks/archivadas'));
+    expect(r.body.week_x).toMatchObject({ archivada: true });
+    expect(LogisticsWeek.find).toHaveBeenCalledWith({ archivada: true, 'meta.status': { $ne: 'Borrador' } });
+  });
+
+  it('archiva una publicada conservando el documento', async () => {
+    LogisticsWeek.find.mockResolvedValue([publicada, { ...otra, meta: { status: 'Operativa Activa' } }]);
+    LogisticsWeek.findOneAndUpdate.mockResolvedValue({ ...publicada, archivada: true });
+    const r = await archivar();
+    expect(r.status).toBe(200);
+    expect(r.body.success).toBe(true);
+    expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ weekId: 'week_x', updatedAt: new Date(version) }),
+      { $set: { archivada: true, archivadaEn: expect.any(Date) } },
+      expect.objectContaining({ new: true })
+    );
     expect(LogisticsWeek.deleteOne).not.toHaveBeenCalled();
   });
 
-  it('404 si no existe', async () => {
-    LogisticsWeek.findOne.mockResolvedValue(null);
-    expect((await borrar()).status).toBe(404);
+  it('impide archivar la última publicada aunque haya borradores', async () => {
+    expect((await archivar()).status).toBe(409);
+    expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('rechaza la versión desactualizada antes de renombrar o archivar', async () => {
+    LogisticsWeek.findOne.mockResolvedValue({ ...publicada, updatedAt: '2026-09-20T10:00:00.000Z' });
+    expect((await conAdmin(request(buildApp()).patch(url)).send({ name: 'Semana 5', updatedAt: version })).status).toBe(409);
+    expect((await archivar()).status).toBe(409);
+    expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
   });
 });
 
@@ -460,6 +521,12 @@ describe('Rutas antiguas retiradas', () => {
 describe('POST /api/logistics/weeks/draft (borradores automáticos: nunca pisan nada)', () => {
   const borrador = () => ({ name: 'Semana 5', meta: { week: 'Semana 5', status: 'Borrador' }, schedule: {} });
   const enviar = (body, token = adminAuthHeader()) => request(buildApp()).post('/api/logistics/weeks/draft').set('Authorization', token).send(body);
+  beforeEach(() => {
+    vi.spyOn(mongoose.connection, 'transaction').mockImplementation(fn => fn({}));
+    vi.spyOn(mongoose.connection, 'collection').mockReturnValue({ updateOne: vi.fn().mockResolvedValue({}) });
+    LogisticsWeek.find.mockResolvedValue([{ weekId: 'week_3', name: 'Semana 4' }]);
+  });
+  afterEach(() => vi.restoreAllMocks());
 
   it('exige admin', async () => {
     expect((await request(buildApp()).post('/api/logistics/weeks/draft').send({ weekId: 'week_x', week: borrador() })).status).toBe(401);
@@ -467,10 +534,10 @@ describe('POST /api/logistics/weeks/draft (borradores automáticos: nunca pisan 
 
   it('crea la semana si no existe (201)', async () => {
     LogisticsWeek.findOne.mockResolvedValue(null);
-    LogisticsWeek.create.mockResolvedValue({ weekId: 'week_auto_2026-09-29' });
+    LogisticsWeek.create.mockResolvedValue([{ weekId: 'week_auto_2026-09-29', name: 'Semana 5' }]);
     const r = await enviar({ weekId: 'week_auto_2026-09-29', week: borrador() });
     expect(r.status).toBe(201);
-    expect(LogisticsWeek.create).toHaveBeenCalledWith(expect.objectContaining({ weekId: 'week_auto_2026-09-29', id: 'week_auto_2026-09-29', name: 'Semana 5' }));
+    expect(LogisticsWeek.create).toHaveBeenCalledWith([expect.objectContaining({ weekId: 'week_auto_2026-09-29', id: 'week_auto_2026-09-29', name: 'Semana 5' })], expect.anything());
   });
 
   it('BUG evitado: si ya existe NO la pisa (409), aunque no sea borrador', async () => {
@@ -478,6 +545,13 @@ describe('POST /api/logistics/weeks/draft (borradores automáticos: nunca pisan 
     const r = await enviar({ weekId: 'week_3', week: borrador(), reemplazar: true });
     expect(r.status).toBe(409);
     expect(r.body.borrador).toBe(false);
+    expect(LogisticsWeek.create).not.toHaveBeenCalled();
+    expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('no vuelve a crear un borrador automático eliminado', async () => {
+    LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_auto_1', archivada: true, meta: { status: 'Borrador' } });
+    expect((await enviar({ weekId: 'week_auto_1', week: borrador(), reemplazar: true })).status).toBe(409);
     expect(LogisticsWeek.create).not.toHaveBeenCalled();
     expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
   });

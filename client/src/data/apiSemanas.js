@@ -88,26 +88,38 @@ export async function createDraftWeekInAPI(weekId, week, reemplazar = false) {
       body: JSON.stringify({ weekId, week, reemplazar })
     });
     const body = await res.json().catch(() => ({}));
-    return { ok: res.ok, status: res.status, existe: !!body.existe };
+    return { ok: res.ok, status: res.status, existe: !!body.existe, name: body.data?.name };
   } catch (err) {
     return { ok: false, status: 0, error: err.message };
   }
 }
 
-export async function deleteWeekFromAPI(weekId) {
+async function gestionarSemana(ruta, method, datos) {
   try {
-    const res = await fetchConLimite(`${API_BASE}/logistics/weeks/${encodeURIComponent(weekId)}`, {
-      method: 'DELETE',
-      headers: { ...authHeaders() },
+    const res = await fetchConLimite(`${API_BASE}/logistics/weeks/${ruta}`, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(datos),
     });
-    
-    const contentType = res.headers.get("content-type");
-    if (contentType && contentType.indexOf("application/json") !== -1) {
-      return await res.json();
-    } else {
-      return { success: false, message: `El servidor respondió con un error no esperado (Status ${res.status}). Es posible que el backend aún se esté actualizando, inténtalo en un par de minutos.` };
-    }
-  } catch (err) {
-    return { success: false, message: err.message };
+    const resultado = await res.json().catch(() => null);
+    if (res.ok && resultado?.success) return resultado;
+    return { success: false, message: resultado?.message || 'No se pudo guardar el cambio de semana.' };
+  } catch {
+    return { success: false, message: 'No se pudo conectar para guardar el cambio de semana.' };
+  }
+}
+
+export const crearSemanaManualEnAPI = (weekId, week) => gestionarSemana('manual', 'POST', { weekId, week });
+export const renombrarSemanaEnAPI = (weekId, name, updatedAt) =>
+  gestionarSemana(encodeURIComponent(weekId), 'PATCH', { name, updatedAt });
+export const deleteWeekFromAPI = (weekId, updatedAt) =>
+  gestionarSemana(encodeURIComponent(weekId), 'DELETE', { updatedAt });
+
+export async function leerSemanasArchivadas() {
+  try {
+    const res = await fetchConLimite(`${API_BASE}/logistics/weeks/archivadas`, { headers: authHeaders() });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
   }
 }

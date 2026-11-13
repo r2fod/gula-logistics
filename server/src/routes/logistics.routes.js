@@ -2,10 +2,11 @@ import express from 'express';
 import { logisticsData } from '../data/logisticsData.js';
 import { LogisticsWeek } from '../models/LogisticsWeek.model.js';
 import mongoose from 'mongoose';
-import { requireAdmin } from '../middleware/requireAdmin.js';
+import { requireAdmin, requireLectura } from '../middleware/requireAdmin.js';
 import { Documento } from '../models/Documento.model.js';
 import multer from 'multer';
 import crypto from 'crypto';
+import { crearSemanaManual, crearBorrador, gestionarSemana, idValido, nombreValido, semanasVisibles } from '../services/gestionarSemanas.js';
 
 // El PDF del alquiler de un camión: en memoria hasta guardarlo en la base (antes iba
 // al disco de Render, que se borra al desplegar y al dormirse: los PDF desaparecían).
@@ -38,7 +39,7 @@ let currentMemoryWeeks = {
 router.get('/weeks', async (req, res) => {
   try {
     if (mongoose.connection.readyState === 1) {
-      let weeksDocs = await LogisticsWeek.find();
+      let weeksDocs = await LogisticsWeek.find(semanasVisibles);
 
       // First-ever read: bootstrap Mongo from the seed so every device
       // starts from the same shared week instead of each browser's own copy.
@@ -94,18 +95,20 @@ router.post('/weeks', requireAdmin, async (req, res) => {
       const freshDocs = {};
       for (const [weekId, weekData] of Object.entries(weeksPayload)) {
         const existing = await LogisticsWeek.findOne({ weekId });
-        if (existing && weekData.updatedAt &&
-            new Date(existing.updatedAt).getTime() !== new Date(weekData.updatedAt).getTime()) {
-          conflicts.push(weekId);
-          freshDocs[weekId] = existing;
-          continue;
-        }
-        const saved = await LogisticsWeek.findOneAndUpdate(
-          { weekId },
-          { ...weekData, weekId },
-          { upsert: true, new: true }
+        const versionDistinta = existing && weekData.updatedAt &&
+          new Date(existing.updatedAt).getTime() !== new Date(weekData.updatedAt).getTime();
+        const { archivada, archivadaEn, updatedAt, ...contenido } = weekData;
+        const saved = existing?.archivada || versionDistinta ? null : await LogisticsWeek.findOneAndUpdate(
+          { weekId, ...(existing ? { ...semanasVisibles, updatedAt: existing.updatedAt } : {}) },
+          { ...contenido, weekId },
+          { upsert: !existing, new: true }
         );
-        freshDocs[weekId] = saved;
+        if (saved) freshDocs[weekId] = saved;
+        else {
+          conflicts.push(weekId);
+          const fresca = await LogisticsWeek.findOne({ weekId, ...semanasVisibles });
+          if (fresca && !fresca.archivada) freshDocs[weekId] = fresca;
+        }
       }
 
       if (conflicts.length > 0) {
@@ -129,81 +132,44 @@ router.post('/weeks', requireAdmin, async (req, res) => {
   }
 });
 
-// POST /api/logistics/weeks/draft - Crea una semana en BORRADOR (la que genera
-// el planificador automático desde el calendario). A diferencia de POST /weeks
-// (que reemplaza el documento entero a ciegas), esta ruta NUNCA pisa nada:
-//   · solo acepta semanas con meta.status === 'Borrador';
-//   · si el weekId ya existe responde 409, salvo `reemplazar: true` y solo si
-//     lo que hay ya es otro BORRADOR (una semana aceptada nunca se toca aquí);
-//   · el índice único de weekId hace que dos sesiones a la vez no dupliquen.
-router.post('/weeks/draft', requireAdmin, async (req, res) => {
+// Los informes pueden consultar el planning original sin volver a publicarlo.
+router.get('/weeks/archivadas', requireLectura, async (_req, res) => {
   try {
-    const { weekId, week, reemplazar } = req.body || {};
-    if (typeof weekId !== 'string' || !/^week_[A-Za-z0-9_-]{1,60}$/.test(weekId)) {
-      return res.status(400).json({ error: 'weekId debe tener la forma week_<algo>' });
-    }
-    if (!week || typeof week !== 'object' || typeof week.name !== 'string' || week.meta?.status !== 'Borrador') {
-      return res.status(400).json({ error: 'week debe ser una semana con name y meta.status "Borrador"' });
-    }
-    if (mongoose.connection.readyState !== 1) {
-      return res.status(503).json({ error: 'Se requiere conexión activa a MongoDB Atlas' });
-    }
-
-    const existing = await LogisticsWeek.findOne({ weekId });
-    if (!existing) {
-      try {
-        const created = await LogisticsWeek.create({ ...week, weekId, id: weekId });
-        return res.status(201).json({ success: true, creada: true, data: created });
-      } catch (err) {
-        if (err?.code === 11000) return res.status(409).json({ success: false, existe: true, error: 'Esa semana ya existe' });
-        throw err;
-      }
-    }
-
-    if (reemplazar === true && existing.meta?.status === 'Borrador') {
-      const updated = await LogisticsWeek.findOneAndUpdate(
-        { weekId },
-        { ...week, weekId, id: weekId },
-        { new: true }
-      );
-      return res.json({ success: true, reemplazada: true, data: updated });
-    }
-
-    return res.status(409).json({
-      success: false,
-      existe: true,
-      borrador: existing.meta?.status === 'Borrador',
-      error: existing.meta?.status === 'Borrador'
-        ? 'Esa semana ya existe como borrador (usa reemplazar para regenerarla)'
-        : 'Esa semana ya existe y no es un borrador: no se toca'
-    });
+    if (mongoose.connection.readyState !== 1) return res.status(503).json({ error: 'No se pudo leer el histórico de semanas.' });
+    const semanas = await LogisticsWeek.find({ archivada: true, 'meta.status': { $ne: 'Borrador' } });
+    return res.json(Object.fromEntries(semanas.map(semana => [semana.weekId, semana])));
   } catch (error) {
-    console.error('Error al crear el borrador de semana:', error);
-    return res.status(500).json({ success: false, message: error.message });
+    console.error('Error al leer semanas archivadas:', error);
+    return res.status(500).json({ error: 'No se pudo leer el histórico de semanas.' });
   }
 });
 
-// DELETE /api/logistics/weeks/:weekId - Eliminar una semana
-router.delete('/weeks/:weekId', requireAdmin, async (req, res) => {
+const gestionar = (operacion) => async (req, res) => {
   try {
-    const { weekId } = req.params;
-    const conMongo = mongoose.connection.readyState === 1;
-    const semana = conMongo ? await LogisticsWeek.findOne({ weekId }) : currentMemoryWeeks[weekId];
-    if (!semana) return res.status(404).json({ success: false, message: 'Semana no encontrada' });
-    // Solo BORRADORES (el único botón que borra está en su aviso). Una semana
-    // aceptada tiene tareas hechas, costes y el enlace de los trabajadores: un
-    // fallo de la interfaz o un token robado no debe poder borrarla de un golpe.
-    if (semana.meta?.status !== 'Borrador') {
-      return res.status(409).json({ success: false, message: 'Solo se pueden eliminar semanas en borrador' });
-    }
-    if (conMongo) await LogisticsWeek.deleteOne({ weekId, 'meta.status': 'Borrador' });
-    delete currentMemoryWeeks[weekId];
-    return res.json({ success: true, message: 'Semana eliminada' });
+    const { status, ...resultado } = await operacion(req);
+    return res.status(status).json(resultado);
   } catch (error) {
-    console.error('Error al eliminar semana:', error);
-    return res.status(500).json({ success: false, message: error.message });
+    if (error.code === 11000) return res.status(409).json({ success: false, existe: true, message: 'Esa semana ya existe.' });
+    console.error('Error al gestionar semana:', error);
+    return res.status(500).json({ success: false, message: 'No se pudo guardar el cambio de semana.' });
   }
-});
+};
+
+router.post('/weeks/manual', requireAdmin, gestionar(req => crearSemanaManual(req.body?.weekId, req.body?.week)));
+
+router.post('/weeks/draft', requireAdmin, gestionar(req => {
+  const { weekId, week, reemplazar } = req.body || {};
+  if (!idValido(weekId) || !nombreValido(week?.name) || week.meta?.status !== 'Borrador') {
+    return { status: 400, error: 'Se requiere un weekId válido y una semana con nombre y estado Borrador.' };
+  }
+  return crearBorrador(weekId, week, reemplazar === true);
+}));
+
+router.patch('/weeks/:weekId', requireAdmin, gestionar(req =>
+  gestionarSemana(req.params.weekId, req.body?.updatedAt, 'renombrar', req.body?.name)));
+
+router.delete('/weeks/:weekId', requireAdmin, gestionar(req =>
+  gestionarSemana(req.params.weekId, req.body?.updatedAt, 'archivar')));
 
 // PATCH /api/logistics/weeks/:weekId/tasks - Marca/desmarca UNA tarea como
 // completada. Sin requireAdmin a propósito: es lo único que necesita el
@@ -263,7 +229,7 @@ router.patch('/weeks/:weekId/tasks', async (req, res) => {
     }
 
     const week = await LogisticsWeek.findOne({ weekId });
-    if (!week) return res.status(404).json({ error: 'Semana no encontrada' });
+    if (!week || week.archivada) return res.status(404).json({ error: 'Semana no encontrada' });
 
     // Mismo caso especial que taskPlanning.js en el cliente: domingo y
     // lunes comparten sundayMonday.tasks (no schedule.domingo, que ni
@@ -304,11 +270,11 @@ router.patch('/weeks/:weekId/tasks', async (req, res) => {
       : isDomingoOLunes ? `sundayMonday.tasks.${taskIndex}` : `schedule.${dayKey}.tasks.${taskIndex}`;
 
     const updated = await LogisticsWeek.findOneAndUpdate(
-      { weekId },
+      { weekId, ...semanasVisibles },
       { $set: { [fieldPath]: updatedTask } },
       { new: true }
     );
-
+    if (!updated) return res.status(404).json({ error: 'Semana no encontrada' });
     return res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Error al actualizar tarea de la semana:', error);

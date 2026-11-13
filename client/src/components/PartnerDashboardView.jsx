@@ -68,6 +68,7 @@ export default function PartnerDashboardView({
   activeWeekId,
   onSelectWeek,
   onRegenerateDraft,
+  onRenombrarSemana,
   onEliminarSemana,
   anticipacionAviso,
   deshacerIa = null,
@@ -260,6 +261,8 @@ export default function PartnerDashboardView({
         allWeeks={allWeeks}
         activeWeekId={activeWeekId}
         onSelectWeek={onSelectWeek}
+        onRenombrarSemana={onRenombrarSemana}
+        onEliminarSemana={onEliminarSemana}
         acciones={acciones}
         onSalir={handleSalir}
         onDesbloquear={handleDesbloquear}
@@ -300,7 +303,13 @@ export default function PartnerDashboardView({
             if (onUpdateWeek) onUpdateWeek({ ...activeWeekData, meta: { ...metaSinAvisos, status: 'Operativa Activa', aceptadaEl: new Date().toISOString() } });
           }}
           onRegenerar={onRegenerateDraft ? () => onRegenerateDraft(activeWeekId) : undefined}
-          onEliminar={onEliminarSemana ? () => onEliminarSemana(activeWeekId) : undefined}
+          onEliminar={onEliminarSemana && allWeeks[activeWeekId] ? async () => {
+            const semana = allWeeks[activeWeekId];
+            const resultado = await onEliminarSemana(activeWeekId, semana.updatedAt, semana.name || semana.meta?.week);
+            if (!resultado?.success && !resultado?.cancelado) {
+              await alert(resultado?.message || 'No se pudo descartar el borrador.', { type: 'error' });
+            }
+          } : undefined}
           extra={<RevisionIaBorrador key={activeWeekId} semana={activeWeekData} equipo={workersList} aprendizaje={aprendizaje} onGuardar={(parcial) => actualizarSemana(activeWeekId, parcial)} />}
         />
       )}

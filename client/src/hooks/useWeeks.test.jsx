@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '../test/render';
 
 const patch = vi.fn();
+const crear = vi.fn(async (id, semana) => ({ success: true, data: { [id]: semana } }));
 vi.mock('../data/apiService', () => ({
   saveWeeksToAPI: vi.fn().mockResolvedValue({ success: true }),
+  crearSemanaManualEnAPI: (...args) => crear(...args),
   patchTaskCompletionInAPI: (...args) => patch(...args),
 }));
 
@@ -69,6 +71,14 @@ describe('useWeeks — marcar y desmarcar tareas (solo a mano)', () => {
     expect(result.current.activeWeek.sundayMonday.tasks[1].completed).toBe(false);
   });
 
+  it('BUG evitado: al cerrar un fichaje de una semana archivada no marca otra semana', () => {
+    const { result } = montar();
+    act(() => result.current.markTaskCompleted({
+      weekId: 'week_archivada', dayKey: 'domingo', taskIndex: 0, taskText: 'Devolución Generador',
+    }));
+    expect(patch).not.toHaveBeenCalled();
+  });
+
   it('por id si la tarea lo tiene; si ya no está en el día, no marca ninguna', () => {
     vi.setSystemTime(new Date(2026, 8, 21, 10, 5));
     const { result } = montar();
@@ -85,32 +95,49 @@ describe('useWeeks — marcar y desmarcar tareas (solo a mano)', () => {
 describe('useWeeks — crear semana con eventos', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('la semana nueva lleva SUS eventos con pax y una clonada no hereda los de la anterior', () => {
+  it('la semana nueva lleva SUS eventos con pax y una clonada no hereda los de la anterior', async () => {
     const { result } = montar();
     const anterior = { ...semana(), events: [{ name: 'Boda Vieja', pax: 200 }] };
     act(() => result.current.setAllWeeks({ week_3: anterior }));
 
-    act(() => result.current.handleCreateWeek({
+    await act(() => result.current.handleCreateWeek({
       name: 'Semana 4', dateRange: 'Del 22 al 27 de septiembre', cloneCurrent: true,
       events: [{ name: 'Boda Nueva', pax: 90 }],
     }));
     const creada = Object.values(result.current.allWeeks).find(w => w.name === 'Semana 4');
     expect(creada.events).toEqual([{ name: 'Boda Nueva', pax: 90 }]);
 
-    act(() => result.current.handleCreateWeek({ name: 'Semana 5', dateRange: 'Del 29 de septiembre al 4 de octubre', cloneCurrent: true }));
+    await act(() => result.current.handleCreateWeek({ name: 'Semana 5', dateRange: 'Del 29 de septiembre al 4 de octubre', cloneCurrent: true }));
     const sinEventos = Object.values(result.current.allWeeks).find(w => w.name === 'Semana 5');
     expect(sinEventos.events).toEqual([]);
+  });
+});
+
+describe('useWeeks — numeración confirmada por el servidor', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('integra la semana creada y las desplazadas, y conserva el resto', async () => {
+    const { result } = montar();
+    const anterior = { ...semana(), id: 'week_4', name: 'Semana 4' };
+    act(() => result.current.setAllWeeks({ week_3: semana(), week_4: anterior }));
+    crear.mockImplementationOnce(async (id, nueva) => ({
+      success: true, data: { [id]: nueva, week_4: { ...anterior, name: 'Semana 5' } },
+    }));
+    await act(() => result.current.handleCreateWeek({ name: 'Semana 4', dateRange: 'Del 22 al 27 de septiembre' }));
+    expect(result.current.activeWeek.name).toBe('Semana 4');
+    expect(result.current.allWeeks.week_4.name).toBe('Semana 5');
+    expect(result.current.allWeeks.week_3.name).toBe('Semana 3');
   });
 });
 
 describe('useWeeks — flota al clonar una semana', () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it('BUG evitado: al clonar, los recados que se colaron en la flota no pasan a la semana nueva', () => {
+  it('BUG evitado: al clonar, los recados que se colaron en la flota no pasan a la semana nueva', async () => {
     const { result } = montar();
     const anterior = { ...semana(), trucks: [{ name: 'Camión A' }, { name: 'recoger furgo por la tarde, recoger generador' }] };
     act(() => result.current.setAllWeeks({ week_3: anterior }));
-    act(() => result.current.handleCreateWeek({ name: 'Semana 4', dateRange: 'Del 22 al 27 de septiembre', cloneCurrent: true }));
+    await act(() => result.current.handleCreateWeek({ name: 'Semana 4', dateRange: 'Del 22 al 27 de septiembre', cloneCurrent: true }));
     const creada = Object.values(result.current.allWeeks).find(w => w.name === 'Semana 4');
     expect(creada.trucks.map(t => t.name)).toEqual(['Camión A']);
   });

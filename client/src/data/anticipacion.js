@@ -107,7 +107,7 @@ export async function anticiparSemanas({ semanas, hoy = new Date(), roster = [],
     if (resumen.eventos === 0 && resumen.alquileres === 0) { omitidas.push({ inicio, motivo: 'sin eventos ni alquileres en el calendario' }); continue; }
     
     const r = await crearBorrador(weekId, { ...week, id: weekId }, reemplazar);
-    if (r?.ok) creadas.push({ weekId, name: week.name, dateRange: week.meta.dateRange, resumen });
+    if (r?.ok) creadas.push({ weekId, name: r.name || week.name, dateRange: week.meta.dateRange, resumen });
     else omitidas.push({ inicio, motivo: r?.existe ? 'ya existe' : `no se pudo guardar${r?.status ? ` (${r.status})` : ''}` });
   }
   return { estado: 'ok', creadas, omitidas };

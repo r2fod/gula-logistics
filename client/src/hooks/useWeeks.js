@@ -1,6 +1,7 @@
-import { useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { logisticsData as BASE_DATA } from '../data/logisticsData';
-import { saveWeeksToAPI, patchTaskCompletionInAPI } from '../data/apiService';
+import { saveWeeksToAPI, patchTaskCompletionInAPI, crearSemanaManualEnAPI, renombrarSemanaEnAPI, deleteWeekFromAPI } from '../data/apiService';
+import { conTareasPendientes } from '../data/colaTareas';
 import { semanaPorDefecto } from '../data/anticipacion';
 import { getTaskListForDay, buildTaskListPatch, isTaskEffectivelyDone, ensureYearInDateRange, clearWeekCompletion, indiceDeTareaFichada } from '../data/taskPlanning';
 import { useDialog } from '../contexts/DialogContext';
@@ -49,17 +50,40 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
   // no sobreescriba un cambio que el usuario acaba de hacer.
   const lastLocalEditRef = useRef(0);
 
-  const applyLocalWeeksState = (newWeeks) => {
-    setAllWeeks(newWeeks);
+  useEffect(() => {
     try {
-      localStorage.setItem('gula_logistics_all_weeks_v10', JSON.stringify(newWeeks));
+      localStorage.setItem('gula_logistics_all_weeks_v10', JSON.stringify(allWeeks));
     } catch (e) {
       console.error(e);
     }
+  }, [allWeeks]);
+
+  const integrarGestion = (data, eliminada) => {
+    lastLocalEditRef.current = Date.now();
+    const recibidas = Object.entries(conTareasPendientes(data) || {});
+    setAllWeeks(anteriores => Object.fromEntries([
+      ...Object.entries(anteriores).filter(([id]) => id !== eliminada),
+      ...recibidas.filter(([id, nueva]) => !(Date.parse(anteriores[id]?.updatedAt) > Date.parse(nueva.updatedAt))),
+    ]));
+  };
+
+  const renombrarSemana = async (id, nombre, version) => {
+    const res = await renombrarSemanaEnAPI(id, nombre, version);
+    if (res.success) integrarGestion(res.data);
+    return res;
+  };
+
+  const archivarSemana = async (id, version) => {
+    const res = await deleteWeekFromAPI(id, version);
+    if (res.success) {
+      integrarGestion(null, id);
+      if (activeWeekId === id) setActiveWeekId(null);
+    }
+    return res;
   };
 
   const updateWeeks = async (newWeeks) => {
-    applyLocalWeeksState(newWeeks);
+    setAllWeeks(newWeeks);
     // Solo se envían las semanas que han cambiado. Antes iban TODAS en cada guardado:
     // el servidor las reescribía todas (y subía su `updatedAt`, provocando conflictos
     // falsos en otras semanas) y, con unas 10 semanas, la petición pasaba del límite
@@ -76,7 +100,7 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
       // servidor no tenga en su caché) y se avisa para repetir el cambio
       // a mano sobre esa base si todavía hace falta.
       if (result.data) {
-        applyLocalWeeksState({ ...newWeeks, ...result.data });
+        setAllWeeks({ ...newWeeks, ...result.data });
       }
       await alert(result.message || '⚠️ Alguien más ha guardado cambios en esta semana mientras la editabas. Se ha recargado la versión más reciente — revisa y repite tu cambio si todavía hace falta.', { type: 'warning' });
       return;
@@ -92,7 +116,7 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
     // compararía contra el `updatedAt` viejo que todavía tendría el estado
     // local y se autoconflictuaría contra su propio guardado anterior.
     if (result.data) {
-      applyLocalWeeksState({ ...newWeeks, ...result.data });
+      setAllWeeks({ ...newWeeks, ...result.data });
     }
     return result;
   };
@@ -120,7 +144,7 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
     } else {
       list[taskIdx] = { text: taskItem, completed: newCompleted, reopened, completedAt };
     }
-    applyLocalWeeksState({ ...allWeeks, [targetWeekId]: { ...semana, ...buildTaskListPatch(semana, dayKey, list) } });
+    setAllWeeks({ ...allWeeks, [targetWeekId]: { ...semana, ...buildTaskListPatch(semana, dayKey, list) } });
     lastLocalEditRef.current = Date.now();
     patchTaskCompletionInAPI(targetWeekId, dayKey, taskIdx, newCompleted, reopened, completedAt, taskItem);
   };
@@ -129,8 +153,9 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
   // lunes de cola puede no ser la que se está viendo) y la tarea se busca por id o texto
   // (indiceDeTareaFichada): si el admin reordenó el día, antes se marcaba otra.
   const markTaskCompleted = (taskRef) => {
-    const weekId = taskRef?.weekId && allWeeks[taskRef.weekId] ? taskRef.weekId : activeWeekId;
-    const semana = allWeeks[weekId] || activeWeek;
+    const weekId = taskRef?.weekId || activeWeekId;
+    const semana = allWeeks[weekId];
+    if (!semana) return;
     const dayKey = taskRef?.dayKey;
     const taskIdx = indiceDeTareaFichada(semana, taskRef);
     if (taskIdx == null) return;
@@ -144,7 +169,7 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
     } else {
       list[taskIdx] = { text: taskItem, completed: true, reopened: false, completedAt };
     }
-    applyLocalWeeksState({ ...allWeeks, [weekId]: { ...semana, ...buildTaskListPatch(semana, dayKey, list) } });
+    setAllWeeks({ ...allWeeks, [weekId]: { ...semana, ...buildTaskListPatch(semana, dayKey, list) } });
     // Igual que toggleTask: sin esto, el polling de 20s podía traer de
     // vuelta datos del servidor de antes de que este PATCH llegara y
     // desmarcar la tarea que se acaba de completar (el mismo bug que ya
@@ -159,8 +184,8 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
   // bodas...). Cuando viene, sustituye schedule/saturdaySpecial/sundayMonday
   // del template — el template (clonado o base) solo aporta trucks/team si
   // no los trae el propio JSON generado.
-  const handleCreateWeek = ({ name, dateRange, cloneCurrent, aiGeneratedJson, events = [] }) => {
-    const newId = `week_${Date.now()}`;
+  const handleCreateWeek = async ({ name, dateRange, cloneCurrent, aiGeneratedJson, events = [] }) => {
+    const newId = `week_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
     const template = cloneCurrent ? JSON.parse(JSON.stringify(activeWeek)) : JSON.parse(JSON.stringify(BASE_WEEK_3));
 
     // clearWeekCompletion: una semana clonada o generada por IA no debe
@@ -187,8 +212,12 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
       sundayMonday: aiGeneratedJson?.sundayMonday || template.sundayMonday
     });
 
-    updateWeeks({ ...allWeeks, [newId]: newWeekObj });
-    setActiveWeekId(newId);
+    const resultado = await crearSemanaManualEnAPI(newId, newWeekObj);
+    if (resultado.success) {
+      integrarGestion(resultado.data);
+      setActiveWeekId(newId);
+    }
+    return resultado;
   };
 
   // Lo último que aplicó Gemini, para poder deshacerlo: { weekId, nombre, anterior,
@@ -248,6 +277,8 @@ export function useWeeks({ persona = null, congelar = false } = {}) {
     toggleTask,
     markTaskCompleted,
     handleCreateWeek,
+    renombrarSemana,
+    archivarSemana,
     handleApplyGeminiSchedule,
     deshacerIa,
     cambiadaTrasIa,

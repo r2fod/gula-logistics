@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor, within } from '../../test/render';
 import BotonAccion from './BotonAccion';
 import CabeceraPanel from './CabeceraPanel';
 import MenuLateral from './MenuLateral';
@@ -51,15 +51,21 @@ describe('BotonAccion', () => {
 });
 
 describe('CabeceraPanel', () => {
-  const semanas = { a: { id: 'a', name: 'Semana 3', meta: { dateRange: 'Del 15 al 20' } }, b: { id: 'b', name: 'Semana 4', meta: { dateRange: 'Del 22 al 27', status: 'Borrador' } } };
+  const actualizada = '2026-09-15T12:00:00.000Z';
+  const semanas = { a: { name: 'Semana 3', updatedAt: actualizada, meta: { dateRange: 'Del 15 al 20' } }, b: { id: 'b', name: 'Semana 4', updatedAt: actualizada, meta: { dateRange: 'Del 22 al 27', status: 'Borrador' } } };
   const pintar = (extra = {}) => {
     const fn = funciones();
     const props = {
       adminUnlocked: true, activeWeekData: semanas.a, allWeeks: semanas, activeWeekId: 'a', onSelectWeek: vi.fn(),
       acciones: crearAcciones({ admin: true }, fn), onSalir: vi.fn(), onDesbloquear: vi.fn(), onAbrirMenu: vi.fn(), ...extra,
     };
-    render(<CabeceraPanel {...props} />);
-    return { fn, props };
+    const vista = render(<CabeceraPanel {...props} />);
+    return { fn, props, ...vista };
+  };
+
+  const abrirEditor = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Editar semana' }));
+    return screen.getByRole('dialog', { name: 'Editar semana' });
   };
 
   it('un admin ve su insignia, la clave, salir y el botón de nueva semana', () => {
@@ -90,8 +96,57 @@ describe('CabeceraPanel', () => {
     const { props } = pintar({ adminUnlocked: false, acciones: crearAcciones({ admin: false }, fn) });
     expect(screen.queryByText('ADMIN')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Nóminas' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Editar semana' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Admin Login' }));
     expect(props.onDesbloquear).toHaveBeenCalled();
+  });
+
+  it('oculta la edición si la semana seleccionada no existe en el selector', () => {
+    pintar({ activeWeekId: 'ausente' });
+    expect(screen.queryByRole('button', { name: 'Editar semana' })).toBeNull();
+  });
+
+  it('guarda el nombre con la clave y la versión que tenía la semana al abrir el editor', async () => {
+    let resolver;
+    const onRenombrarSemana = vi.fn(() => new Promise((resolve) => { resolver = resolve; }));
+    const { rerender, props } = pintar({ onRenombrarSemana });
+    const dialogo = abrirEditor();
+    expect(within(dialogo).getByText('Del 15 al 20')).toBeInTheDocument();
+    expect(within(dialogo).getByRole('textbox', { name: 'Nombre de la semana' })).toHaveValue('Semana 3');
+    rerender(<CabeceraPanel {...props} activeWeekId="b" allWeeks={{ ...semanas, a: { ...semanas.a, updatedAt: '2026-09-16T12:00:00.000Z' } }} />);
+    fireEvent.change(within(dialogo).getByRole('textbox', { name: 'Nombre de la semana' }), { target: { value: 'Semana 5' } });
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
+    expect(onRenombrarSemana).toHaveBeenCalledWith('a', 'Semana 5', actualizada);
+    expect(within(dialogo).getByRole('button', { name: 'Guardando…' })).toBeDisabled();
+    resolver({ success: true });
+    await waitFor(() => expect(dialogo).not.toBeInTheDocument());
+  });
+
+  it('mantiene el nombre escrito y explica el error si el guardado falla', async () => {
+    const message = 'La semana cambió. Vuelve a abrir el editor.';
+    pintar({ onRenombrarSemana: vi.fn().mockResolvedValue({ success: false, message }) });
+    const dialogo = abrirEditor();
+    const nombre = within(dialogo).getByRole('textbox', { name: 'Nombre de la semana' });
+    fireEvent.change(nombre, { target: { value: 'Semana 5' } });
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
+    expect(await within(dialogo).findByRole('alert')).toHaveTextContent(message);
+    expect(nombre).toHaveValue('Semana 5');
+  });
+
+  it.each(['a', 'b'])('mantiene abierto el editor de %s al cancelar o fallar la eliminación', async (activeWeekId) => {
+    const message = 'La semana tiene fichajes asociados.';
+    const onEliminarSemana = vi.fn().mockResolvedValueOnce({ cancelado: true }).mockResolvedValueOnce({ success: false, message }).mockResolvedValueOnce({ success: true });
+    pintar({ activeWeekId, onEliminarSemana });
+    const dialogo = abrirEditor();
+    const eliminar = within(dialogo).getByRole('button', { name: 'Eliminar semana' });
+    fireEvent.click(eliminar);
+    expect(onEliminarSemana).toHaveBeenCalledWith(activeWeekId, actualizada, semanas[activeWeekId].name);
+    await waitFor(() => expect(eliminar).toBeEnabled());
+    expect(within(dialogo).queryByRole('alert')).toBeNull();
+    fireEvent.click(eliminar);
+    expect(await within(dialogo).findByRole('alert')).toHaveTextContent(message);
+    fireEvent.click(eliminar);
+    await waitFor(() => expect(dialogo).not.toBeInTheDocument());
   });
 
   it('Fichar y WhatsApp están en la barra rápida del móvil y en la de escritorio', () => {

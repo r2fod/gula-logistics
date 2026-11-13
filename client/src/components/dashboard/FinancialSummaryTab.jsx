@@ -25,6 +25,8 @@ import { estimarHorasPlanning } from '../../data/estimadoPlanning';
 import { prepararEnCurso, sumarEnCurso } from '../../data/costeEnVivo';
 import { textoResumenWhatsApp } from '../../data/resumenWhatsApp';
 import { elMasParecido, parecidoNombre } from '../../data/nombresTrabajadores';
+import { leerSemanasArchivadas } from '../../data/apiSemanas';
+import { getStoredAdminToken, getStoredSociasToken } from '../../data/accesos';
 import { useCopiado } from '../../hooks/useCopiado';
 
 // Con el planning de la semana abierta (la del selector de arriba) como punto de
@@ -68,6 +70,20 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
   const [modo, setModo] = useState(() => (enfoque?.persona ? 'todo' : 'semana'));
   const [ancla, setAncla] = useState(() => anclaInicial(activeWeekData));
   const [copiado, copiar] = useCopiado();
+  const conAcceso = !!(getStoredAdminToken() || getStoredSociasToken());
+  const [historico, setHistorico] = useState(null);
+  useEffect(() => {
+    if (!conAcceso) return;
+    let vigente = true;
+    leerSemanasArchivadas().then(semanas => {
+      if (vigente) setHistorico({ semanas, visibles: allWeeks });
+    });
+    return () => { vigente = false; };
+  }, [allWeeks, conAcceso]);
+  const archivadas = historico?.semanas;
+  const cargandoHistorico = conAcceso && historico?.visibles !== allWeeks;
+  const falloHistorico = conAcceso && !cargandoHistorico && !archivadas;
+  const semanasDeInformes = useMemo(() => ({ ...archivadas, ...allWeeks }), [archivadas, allWeeks]);
 
   // Quien tiene bolsa de horas cuesta lo mismo que en Saldos & Acuerdos (bolsaHoras.js).
   // Se aplica al histórico entero: la bolsa se va gastando turno a turno.
@@ -80,7 +96,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
   const inicioActiva = getWeekRange(activeWeekData)?.start?.getTime() ?? null;
   useEffect(() => { setAncla(inicioActiva ? new Date(inicioActiva) : new Date()); }, [inicioActiva]);
 
-  const rango = useMemo(() => rangoDePeriodo(modo, ancla, allWeeks), [modo, ancla, allWeeks]);
+  const rango = useMemo(() => rangoDePeriodo(modo, ancla, semanasDeInformes), [modo, ancla, semanasDeInformes]);
   const turnos = useMemo(() => turnosDelPeriodo(turnosConTarifa, rango), [turnosConTarifa, rango]);
   // Los turnos abiertos del periodo con su tarifa, ficha y turnos previos, una vez: cada
   // segundo (<EnVivo>) solo se suma lo que llevan.
@@ -123,9 +139,9 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
   // Desglose por evento (una tarea de varios eventos reparte su coste entre ellos).
   // El tiempo de jornada sin tarea se reparte según el planning (repartoPorPlanning.js).
   // Los pax son los de las semanas del periodo; el enlace tarea -> evento, el de todas.
-  const paxByEvent = useMemo(() => buildPaxRegistry(semanasDelPeriodo(allWeeks, rango, ancla)), [allWeeks, rango, ancla]);
-  const resolveEvent = useMemo(() => buildTaskContextResolver(allWeeks), [allWeeks]);
-  const repartidos = useMemo(() => repartirTiempoSinTarea(turnos, allWeeks, resolveEvent), [turnos, allWeeks, resolveEvent]);
+  const paxByEvent = useMemo(() => buildPaxRegistry(semanasDelPeriodo(semanasDeInformes, rango, ancla)), [semanasDeInformes, rango, ancla]);
+  const resolveEvent = useMemo(() => buildTaskContextResolver(semanasDeInformes), [semanasDeInformes]);
+  const repartidos = useMemo(() => repartirTiempoSinTarea(turnos, semanasDeInformes, resolveEvent), [turnos, semanasDeInformes, resolveEvent]);
   const eventsList = useMemo(
     () => summarizeByEvent(repartidos, workersList, paxByEvent, resolveEvent),
     [repartidos, workersList, paxByEvent, resolveEvent]
@@ -133,7 +149,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
   // El informe de personal de los eventos elegidos, en Excel (el mismo reparto que aquí).
   // El generador (y exceljs) solo se descarga al pulsar.
   const descargarExcel = async (nombres) => {
-    const informes = informeDeEventos({ eventos: nombres, turnos: repartidos, equipo: workersList, paxByEvent, resolveEvent, semanas: allWeeks });
+    const informes = informeDeEventos({ eventos: nombres, turnos: repartidos, equipo: workersList, paxByEvent, resolveEvent, semanas: semanasDeInformes });
     const { excelDeEventos, nombreDeArchivo } = await import('../../data/excelEventos');
     descargarArchivo(await excelDeEventos(informes, { periodo: rango.etiqueta }), nombreDeArchivo(informes));
   };
@@ -154,9 +170,9 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
   // abiertos, que ese coste también suma (antes no: con solo un turno abierto, «-100 %»).
   const costeAnterior = useMemo(() => {
     if (modo === 'todo') return null;
-    const anterior = rangoDePeriodo(modo, moverPeriodo(modo, ancla, -1), allWeeks);
+    const anterior = rangoDePeriodo(modo, moverPeriodo(modo, ancla, -1), semanasDeInformes);
     return costeTotal(turnosDelPeriodo(turnosConTarifa, anterior)) + conceptosDelPeriodo(saldos, anterior).total;
-  }, [modo, ancla, allWeeks, turnosConTarifa, saldos]);
+  }, [modo, ancla, semanasDeInformes, turnosConTarifa, saldos]);
   const variacionCon = (vivo = 0) => (costeAnterior === null ? null : variacionPorcentual(costeTotal(turnos) + conceptos.total + vivo, costeAnterior));
 
   // Lo apuntado a mano en Saldos en este periodo, y lo previsto por el planning
@@ -327,7 +343,11 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
                   </span>
                 </p>
               )}
-              <DescargarExcel eventos={eventsList.map(evt => evt.eventName)} onDescargar={descargarExcel} />
+              {cargandoHistorico || falloHistorico ? (
+                <p role="status" className="text-xs text-amber-300">
+                  {falloHistorico ? 'El histórico archivado no está disponible. El desglose puede estar incompleto.' : 'Cargando el histórico de semanas…'}
+                </p>
+              ) : <DescargarExcel eventos={eventsList.map(evt => evt.eventName)} onDescargar={descargarExcel} />}
               <ul className="flex-1">
                 {eventsList.map((evt, i) => (
                   <FilaDesglose

@@ -59,7 +59,6 @@ import {
   createDraftWeekInAPI,
   retryPendingClockEntries,
   retryPendingTaskPatches,
-  deleteWeekFromAPI,
   saveWeeksToAPI,
   getAiMemories
 } from './data/apiService';
@@ -124,6 +123,8 @@ export default function App() {
     toggleTask,
     markTaskCompleted,
     handleCreateWeek,
+    renombrarSemana,
+    archivarSemana,
     handleApplyGeminiSchedule,
     deshacerIa,
     cambiadaTrasIa,
@@ -282,23 +283,10 @@ export default function App() {
     }
   };
 
-  const eliminarSemana = async (weekId) => {
-    const isConfirmed = await confirm('¿Estás seguro de que quieres eliminar esta semana permanentemente? Esta acción no se puede deshacer.', { type: 'warning' });
-    if (!isConfirmed) return;
-    
-    const res = await deleteWeekFromAPI(weekId);
-    if (res && res.success) {
-      const nuevas = await fetchWeeksFromAPI();
-      if (nuevas) {
-        setAllWeeks(nuevas);
-        // Si era la que se veía, se vuelve a la de hoy.
-        if (activeWeekId === weekId) setActiveWeekId(null);
-      }
-    } else {
-      await alert(`Error al eliminar la semana: ${res?.message || 'Error desconocido'}`, { type: 'error' });
-    }
+  const eliminarSemana = async (id, version, nombre) => {
+    const confirmado = await confirm(`¿Eliminar «${nombre}» del planning? Se conservará su historial de fichajes.`, { type: 'warning' });
+    return confirmado ? archivarSemana(id, version) : { cancelado: true };
   };
-
 
   const [isPublicPreviewMode, setIsPublicPreviewMode] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -440,11 +428,6 @@ export default function App() {
     fetchWeeksFromAPI().then(remoteWeeks => {
       if (remoteWeeks) {
         setAllWeeks(remoteWeeks);
-        try {
-          localStorage.setItem('gula_logistics_all_weeks_v10', JSON.stringify(remoteWeeks));
-        } catch (e) {
-          console.error(e);
-        }
         // El ?week= puede ser de una semana que este dispositivo aún no tenía.
         const pedidaEnServidor = semanaPedidaEnEnlace({ weekParam, workerParam, hayAdmin: hasAdminSession, semanas: remoteWeeks });
         if (pedidaEnServidor) setActiveWeekId(pedidaEnServidor);
@@ -521,8 +504,9 @@ export default function App() {
       // (el PATCH puede tardar un poco en llegar al servidor y reflejarse en el GET)
       const msSinceLastEdit = Date.now() - (lastLocalEditRef?.current || 0);
       if (msSinceLastEdit > 5000) {
+        const inicioLectura = Date.now();
         fetchWeeksFromAPI().then(remoteWeeks => {
-          if (remoteWeeks) setAllWeeks(remoteWeeks);
+          if (remoteWeeks && lastLocalEditRef.current < inicioLectura) setAllWeeks(remoteWeeks);
         });
       }
     };
@@ -753,6 +737,7 @@ export default function App() {
         onUpdateWeek={handleUpdateActiveWeek}
         onPasarADiaHabil={handlePasarADiaHabil}
         onRegenerateDraft={regenerarBorrador}
+        onRenombrarSemana={renombrarSemana}
         onEliminarSemana={eliminarSemana}
         anticipacionAviso={avisoAnticipacion}
         onCerrarAnticipacionAviso={() => setAvisoAnticipacion(null)}

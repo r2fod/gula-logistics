@@ -47,6 +47,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
   const [showKeyInput, setShowKeyInput] = useState(() => !localStorage.getItem(GEMINI_API_KEY_STORAGE_KEY));
   const errorRef = useRef(null);
   const [loading, setLoading] = useState(false);
+  const [guardando, setGuardando] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [generatedJson, setGeneratedJson] = useState(null);
   const [resultado, setResultado] = useState(null); // lo que gastó la última llamada a Gemini
@@ -192,22 +193,22 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
   // compartidas entre eventos en proporción a su tamaño.
   const weekEvents = () => events.map(e => ({ name: buildEventName(e, dayLabel), pax: Number(e.pax) > 0 ? Math.round(Number(e.pax)) : null }));
 
-  const handleApply = () => {
-    if (!weekName.trim() || !dateRange.trim() || !generatedJson) return;
-    onCreateWeek({ name: weekName.trim(), dateRange: dateRange.trim(), cloneCurrent, aiGeneratedJson: generatedJson, events: weekEvents() });
-    resetAndClose();
+  const guardar = async (aiGeneratedJson) => {
+    if (guardando || loading || calendarLoading || !weekName.trim() || !dateRange.trim()) return;
+    setGuardando(true);
+    setErrorMsg('');
+    const resultado = await onCreateWeek({
+      name: weekName.trim(), dateRange: dateRange.trim(), cloneCurrent, aiGeneratedJson, events: weekEvents(),
+    });
+    setGuardando(false);
+    if (resultado?.success) resetAndClose();
+    else setErrorMsg(resultado?.message || 'No se pudo crear la semana.');
   };
 
-  const handleSkipAndCreateBlank = () => {
-    if (!weekName.trim() || !dateRange.trim()) return;
-    onCreateWeek({ name: weekName.trim(), dateRange: dateRange.trim(), cloneCurrent, events: weekEvents() });
-    resetAndClose();
-  };
-
-  const canGenerate = weekName.trim() && dateRange.trim() && !loading && !calendarLoading;
+  const canGenerate = weekName.trim() && dateRange.trim() && !loading && !calendarLoading && !guardando;
 
   return (
-    <Modal onCerrar={resetAndClose} ancho="3xl" disposicion="columna" botonCerrar={false}>
+    <Modal onCerrar={() => { if (!guardando) resetAndClose(); }} ancho="3xl" disposicion="columna" botonCerrar={false}>
       <div className="p-3 sm:p-5 border-b border-slate-800 flex items-center justify-between shrink-0">
         <CabeceraModal
           icono={Sparkles}
@@ -215,7 +216,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
           titulo="Crear Nueva Semana"
           subtitulo="Responde unas preguntas y Gemini AI te arma la planificación"
         />
-        <BotonCerrar onClick={resetAndClose} />
+        <BotonCerrar onClick={() => { if (!guardando) resetAndClose(); }} />
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-7 space-y-5">
@@ -236,7 +237,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
             <button
               type="button"
               onClick={handleAutoCalendar}
-              disabled={calendarLoading || loading}
+              disabled={calendarLoading || loading || guardando}
               className="relative overflow-hidden group shrink-0 whitespace-nowrap bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-400 hover:to-purple-400 text-white font-bold py-2.5 px-5 rounded-xl shadow-lg shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2 z-10"
             >
               <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent group-hover:animate-[shimmer_1.5s_infinite]"></div>
@@ -260,11 +261,13 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
             <Input
               type="text"
               required
+              maxLength={120}
               value={weekName}
               onChange={(e) => setWeekName(e.target.value)}
               placeholder="ej. Semana 4"
               acento="amber-suave"
             />
+            <p className="mt-1.5 text-[11px] text-slate-400">Si el número ya existe, las semanas afectadas pasarán al siguiente número disponible.</p>
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
@@ -562,10 +565,10 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
           </button>
         </div>
         <div className="flex items-center justify-between text-[11px] text-slate-500">
-          <button type="button" onClick={handleSkipAndCreateBlank} disabled={!weekName.trim() || !dateRange.trim()} className="py-2 underline hover:text-slate-300 disabled:opacity-40 disabled:no-underline">
+          <button type="button" onClick={() => guardar()} disabled={!canGenerate} className="py-2 underline hover:text-slate-300 disabled:opacity-40 disabled:no-underline">
             Prefiero saltarme esto y crearla en blanco
           </button>
-          <button type="button" onClick={resetAndClose} className="py-2 hover:text-slate-300">
+          <button type="button" onClick={resetAndClose} disabled={guardando} className="py-2 hover:text-slate-300">
             Cancelar
           </button>
         </div>
@@ -594,7 +597,7 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
               <button
                 type="button"
                 onClick={() => corregirAvisos(avisos)}
-                disabled={loading}
+                disabled={loading || guardando}
                 className="w-full py-2.5 px-4 rounded-xl border border-amber-500/40 bg-amber-500/10 text-amber-200 text-xs font-bold hover:bg-amber-500/20 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? <RefreshCw className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Sparkles className="w-4 h-4" aria-hidden="true" />}
@@ -638,12 +641,13 @@ export default function WeekManagerModal({ isOpen, onClose, onCreateWeek, onForc
             </div>
 
             <button
-              onClick={handleApply}
+              onClick={() => guardar(generatedJson)}
+              disabled={guardando || loading || calendarLoading}
               className="group relative overflow-hidden w-full py-4 px-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 text-sm font-extrabold shadow-lg shadow-emerald-500/25 transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center space-x-2"
             >
               <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent group-hover:animate-[shimmer_1.5s_infinite]"></div>
               <Plus className="w-5 h-5 relative z-10" />
-              <span className="relative z-10 whitespace-nowrap tracking-wide">Crear la semana</span>
+              <span className="relative z-10 whitespace-nowrap tracking-wide">{guardando ? 'Guardando…' : 'Crear la semana'}</span>
             </button>
           </div>
         )}

@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 const LogisticsWeekSchema = new mongoose.Schema({
   weekId: { type: String, required: true, unique: true },
   name: { type: String, required: true },
+  archivada: Boolean,
+  archivadaEn: Date,
   meta: { type: Object, default: {} },
   team: { type: Array, default: [] },
   trucks: { type: Array, default: [] },

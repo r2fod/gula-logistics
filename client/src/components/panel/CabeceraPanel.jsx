@@ -1,7 +1,8 @@
-import React from 'react';
-import { ShieldCheck, KeyRound, LogOut, Truck, Menu, MoreHorizontal } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldCheck, KeyRound, LogOut, Truck, Menu, MoreHorizontal, Pencil } from 'lucide-react';
 import { esBorrador } from '../../data/anticipacion';
 import BotonAccion from './BotonAccion';
+import EditarSemanaModal from './EditarSemanaModal';
 import { accionesDe } from './acciones';
 import { Selector } from '../ui/Campo';
 
@@ -21,13 +22,17 @@ export default function CabeceraPanel({
   allWeeks = {},
   activeWeekId,
   onSelectWeek,
+  onRenombrarSemana,
+  onEliminarSemana,
   acciones,
   onSalir,
   onDesbloquear,
   onAbrirMenu,
 }) {
+  const [semanaEditada, setSemanaEditada] = useState(null);
   const claves = accionesDe(acciones, 'cabecera').find((a) => a.id === 'claves');
   const nuevaSemana = accionesDe(acciones, 'cabecera').find((a) => a.id === 'nuevaSemana');
+  const semanaSeleccionada = allWeeks[activeWeekId];
 
   return (
     <header className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-3 sm:px-4 sm:py-3 rounded-2xl shadow-xl flex flex-col gap-3 w-full max-w-full overflow-hidden">
@@ -98,6 +103,20 @@ export default function CabeceraPanel({
               <option key={id} value={id}>{w.name} ({w.meta?.dateRange}){esBorrador(w) ? ' — BORRADOR' : ''}</option>
             ))}
           </Selector>
+          {adminUnlocked && semanaSeleccionada && (
+            <BotonAccion
+              variante="cabecera"
+              accion={{
+                etiqueta: 'Editar semana', icono: Pencil, tono: 'semana', colorIcono: 'text-amber-400',
+                onClick: () => setSemanaEditada({
+                  id: activeWeekId,
+                  nombre: semanaSeleccionada.name || semanaSeleccionada.meta?.week || '',
+                  fechas: semanaSeleccionada.meta?.dateRange,
+                  updatedAt: semanaSeleccionada.updatedAt,
+                }),
+              }}
+            />
+          )}
           {nuevaSemana && <BotonAccion accion={nuevaSemana} variante="cabecera" />}
         </div>
       </div>
@@ -139,6 +158,14 @@ export default function CabeceraPanel({
           <span className="hidden xl:inline whitespace-nowrap">Más</span>
         </button>
       </div>
+      {adminUnlocked && semanaEditada && (
+        <EditarSemanaModal
+          semana={semanaEditada}
+          onCerrar={() => setSemanaEditada(null)}
+          onRenombrar={onRenombrarSemana}
+          onEliminar={onEliminarSemana}
+        />
+      )}
     </header>
   );
 }
