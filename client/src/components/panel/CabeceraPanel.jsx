@@ -5,6 +5,7 @@ import BotonAccion from './BotonAccion';
 import EditarSemanaModal from './EditarSemanaModal';
 import { accionesDe } from './acciones';
 import { Selector } from '../ui/Campo';
+import { semanasOrdenadas } from '../../data/ordenSemanas';
 
 // Cabecera del panel de control: título con el estado de la sesión, selector de
 // semana y las acciones (barra de escritorio o barra rápida del móvil + "Menú").
@@ -99,7 +100,7 @@ export default function CabeceraPanel({
           >
             {/* El valor es la CLAVE de la semana: la semana 3 no lleva campo `id`, y con `w.id` su
                 opción valía "undefined" y al elegirla se abría la semana de ejemplo. */}
-            {Object.entries(allWeeks).map(([id, w]) => (
+            {semanasOrdenadas(allWeeks).map(([id, w]) => (
               <option key={id} value={id}>{w.name} ({w.meta?.dateRange}){esBorrador(w) ? ' — BORRADOR' : ''}</option>
             ))}
           </Selector>
