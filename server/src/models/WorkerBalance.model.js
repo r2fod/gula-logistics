@@ -15,6 +15,16 @@ const BreakdownItemSchema = new mongoose.Schema({
   horasBolsa: { type: Number }
 }, { _id: false });
 
+// Lo que se quitó del desglose (un pago borrado, un transporte…): solo rastro, nada
+// de la app lo lee ni lo suma. Se guardan los últimos 200.
+const ApunteBorradoSchema = new mongoose.Schema({
+  concept: { type: String },
+  amount: { type: Number },
+  date: { type: String, default: '' },
+  tipo: { type: String, default: '' },
+  borradoEn: { type: String }
+}, { _id: false });
+
 const ShiftPurseSchema = new mongoose.Schema({
   date: { type: String },
   hours: { type: Number },
@@ -53,6 +63,7 @@ const WorkerBalanceSchema = new mongoose.Schema({
   hourlyRate: { type: Number },
   agreements: [{ type: String }],
   breakdown: [BreakdownItemSchema],
+  apuntesBorrados: [ApunteBorradoSchema],
   hasTransportBonus: { type: Boolean, default: false },
   transportBonusText: { type: String, default: '' },
   isSpecialPurse: { type: Boolean, default: false },

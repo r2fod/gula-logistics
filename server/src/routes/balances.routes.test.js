@@ -33,6 +33,12 @@ beforeEach(() => {
 });
 
 describe('GET /api/balances (dinero: solo admin o enlace de socias)', () => {
+  it('no devuelve el rastro interno (apuntesBorrados) a quien solo lee', async () => {
+    WorkerBalance.find.mockReturnValue({ sort: vi.fn().mockResolvedValue([]) });
+    await request(buildApp()).get('/api/balances').set('Authorization', adminAuthHeader());
+    expect(WorkerBalance.find).toHaveBeenCalledWith({}, '-apuntesBorrados');
+  });
+
   it('BUG evitado: sin sesión NO devuelve los saldos (antes eran públicos)', async () => {
     const r = await request(buildApp()).get('/api/balances');
     expect(r.status).toBe(401);
@@ -99,6 +105,86 @@ describe('PUT /api/balances/:id (actualización parcial de saldo)', () => {
 
     expect(res.status).toBe(401);
     expect(WorkerBalance.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe('PUT /api/balances/:id — dinero: validación, saldo calculado en el servidor y rastro', () => {
+  const guardar = (cuerpo) => request(buildApp()).put('/api/balances/eva').set('Authorization', adminAuthHeader()).send(cuerpo);
+  const apunte = (extra = {}) => ({ concept: 'Transporte', amount: 10, ...extra });
+
+  beforeEach(() => {
+    WorkerBalance.findOne.mockResolvedValue(null);
+    WorkerBalance.findOneAndUpdate.mockResolvedValue({ id: 'eva' });
+  });
+
+  it('rechaza (400) importes que no son números finitos o desorbitados, y conceptos vacíos, sin escribir', async () => {
+    for (const malo of [apunte({ amount: 'diez' }), apunte({ amount: null }), apunte({ amount: 1e9 }), apunte({ concept: '   ' }), apunte({ concept: 5 }), 'texto']) {
+      const r = await guardar({ breakdown: [malo] });
+      expect(r.status, JSON.stringify(malo)).toBe(400);
+    }
+    expect((await guardar({ breakdown: 'no es lista' })).status).toBe(400);
+    expect(WorkerBalance.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('rechaza una fecha o un tipo que no existen', async () => {
+    expect((await guardar({ breakdown: [apunte({ date: '13/10/2026' })] })).status).toBe(400);
+    expect((await guardar({ breakdown: [apunte({ tipo: 'regalo' })] })).status).toBe(400);
+    expect(WorkerBalance.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('BUG evitado: el saldo lo calcula el servidor con los apuntes (no se fía del currentBalance del navegador) y al céntimo', async () => {
+    const r = await guardar({ breakdown: [apunte({ amount: 0.1 }), apunte({ amount: 0.2 }), apunte({ amount: -5.006, tipo: 'pago' })], currentBalance: 99999 });
+    expect(r.status).toBe(200);
+    const [, update] = WorkerBalance.findOneAndUpdate.mock.calls[0];
+    expect(update.$set.currentBalance).toBe(-4.71); // 0,10 + 0,20 − 5,01 (cada importe al céntimo)
+    expect(update.$set.breakdown.map(b => b.amount)).toEqual([0.1, 0.2, -5.01]);
+  });
+
+  it('BUG evitado: no se puede saltar la validación con rutas con punto o con $, ni vaciar el rastro, ni mandar un saldo suelto', async () => {
+    expect((await guardar({ 'breakdown.0.amount': 99999 })).status).toBe(400);
+    expect((await guardar({ $set: { currentBalance: 5 } })).status).toBe(400);
+    expect(WorkerBalance.findOneAndUpdate).not.toHaveBeenCalled();
+
+    await guardar({ name: 'Eva', apuntesBorrados: [], _id: 'x', createdAt: 'y', updatedAt: 'z', currentBalance: 12345, cosaRara: 1 });
+    const [, update] = WorkerBalance.findOneAndUpdate.mock.calls[0];
+    expect(update.$set).toEqual({ name: 'Eva' }); // solo campos de la ficha; el saldo sale de los apuntes
+  });
+
+  it('un apunte antiguo con campos null (date, tipo…) se acepta y se limpia, no bloquea el guardado de la ficha', async () => {
+    const r = await guardar({ breakdown: [apunte({ date: null, tipo: null, timestamp: null, isPositive: null, horasBolsa: null })] });
+    expect(r.status).toBe(200);
+    expect(WorkerBalance.findOneAndUpdate.mock.calls[0][1].$set.breakdown).toEqual([{ concept: 'Transporte', amount: 10 }]);
+  });
+
+  it('BUG evitado: si la ficha cambió entre leerla y guardarla (otro admin), 409 y no se pisa; la escritura va filtrada por su versión', async () => {
+    WorkerBalance.findOne.mockResolvedValue({ breakdown: [apunte()], updatedAt: new Date('2026-11-01T10:00:00Z') });
+    WorkerBalance.findOneAndUpdate.mockResolvedValue(null);
+    const r = await guardar({ breakdown: [apunte(), apunte({ amount: 5 })] });
+    expect(r.status).toBe(409);
+    const [filtro, , opciones] = WorkerBalance.findOneAndUpdate.mock.calls[0];
+    expect(filtro).toEqual({ id: 'eva', updatedAt: new Date('2026-11-01T10:00:00Z') });
+    expect(opciones.upsert).toBeFalsy(); // existe: nunca se intenta crear otra con el mismo id
+  });
+
+  it('la línea «Valor Acumulado Horas Bolsa» que se sustituye en cada turno no llena el rastro', async () => {
+    WorkerBalance.findOne.mockResolvedValue({ breakdown: [{ concept: 'Valor Acumulado Horas Bolsa (6h a 8€/h)', amount: 48 }], updatedAt: new Date() });
+    WorkerBalance.findOneAndUpdate.mockResolvedValue({ id: 'eva' });
+    await guardar({ breakdown: [{ concept: 'Valor Acumulado Horas Bolsa (9h a 8€/h)', amount: 72 }] });
+    expect(WorkerBalance.findOneAndUpdate.mock.calls[0][1].$push).toBeUndefined();
+  });
+
+  it('quitar un pago deja rastro (apuntesBorrados); cambiar solo su fecha NO', async () => {
+    const pago = { concept: 'Efectivo', amount: -100, date: '2026-10-13', tipo: 'pago' };
+    WorkerBalance.findOne.mockResolvedValue({ breakdown: [apunte(), pago], updatedAt: new Date('2026-11-01T10:00:00Z') });
+
+    await guardar({ breakdown: [apunte(), { ...pago, date: '2026-10-14' }] });
+    expect(WorkerBalance.findOneAndUpdate.mock.calls[0][1].$push).toBeUndefined();
+
+    WorkerBalance.findOneAndUpdate.mockClear();
+    await guardar({ breakdown: [apunte()] });
+    const [, update] = WorkerBalance.findOneAndUpdate.mock.calls[0];
+    expect(update.$push.apuntesBorrados.$each).toEqual([expect.objectContaining({ concept: 'Efectivo', amount: -100, tipo: 'pago', borradoEn: expect.any(String) })]);
+    expect(update.$push.apuntesBorrados.$slice).toBe(-200);
   });
 });
 

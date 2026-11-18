@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { WorkerBalance } from '../models/WorkerBalance.model.js';
 import { initialBalancesData } from '../data/balancesData.js';
 import { requireAdmin, requireLectura, requireTrabajador } from '../middleware/requireAdmin.js';
+import { validarApuntes, saldoDeApuntes, apuntesQuitados, hayClavesPeligrosas, soloCamposDeFicha } from '../services/apuntesSaldos.js';
 
 const router = express.Router();
 
@@ -13,7 +14,7 @@ let memoryBalancesData = { ...initialBalancesData };
 router.get('/', requireLectura, async (req, res) => {
   try {
     if (mongoose.connection.readyState === 1) {
-      const dbWorkers = await WorkerBalance.find().sort({ createdAt: 1 });
+      const dbWorkers = await WorkerBalance.find({}, '-apuntesBorrados').sort({ createdAt: 1 });
       if (dbWorkers && dbWorkers.length > 0) {
         return res.json({
           lastUpdated: new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }),
@@ -57,14 +58,43 @@ router.put('/:id', requireAdmin, async (req, res) => {
     // agreements...) se borraría del documento entero. `id` fuera del
     // propio payload para que $set/$setOnInsert nunca compitan por el
     // mismo campo.
-    const { id: _ignored, ...updatePayload } = req.body || {};
+    if (hayClavesPeligrosas(req.body)) return res.status(400).json({ error: 'El cuerpo trae claves no permitidas (con punto o $)' });
+    // Solo campos de la ficha: `id`, el rastro y las marcas de Mongo no se escriben desde fuera.
+    const updatePayload = soloCamposDeFicha(req.body);
+
+    // Dinero: los apuntes se validan y el saldo lo calcula el servidor con ellos. Un
+    // `currentBalance` que llegue (con o sin desglose) se descarta.
+    let apuntes = null;
+    if (updatePayload.breakdown !== undefined) {
+      const validado = validarApuntes(updatePayload.breakdown);
+      if (validado.error) return res.status(400).json({ error: validado.error });
+      apuntes = validado.apuntes;
+      updatePayload.breakdown = apuntes;
+      updatePayload.currentBalance = saldoDeApuntes(apuntes);
+    }
 
     if (mongoose.connection.readyState === 1) {
-      const updatedDoc = await WorkerBalance.findOneAndUpdate(
-        { id },
-        { $set: updatePayload, $setOnInsert: { id } },
-        { new: true, upsert: true }
-      );
+      const actualizacion = { $set: updatePayload, $setOnInsert: { id } };
+      let filtro = { id };
+      let existe = false;
+      if (apuntes) {
+        const anterior = await WorkerBalance.findOne({ id });
+        existe = !!anterior;
+        // Solo se guarda si la ficha sigue como se leyó: si otro admin guardó entre medias,
+        // este guardado le pisaría su cambio (409, como las semanas).
+        if (anterior?.updatedAt) filtro = { id, updatedAt: anterior.updatedAt };
+        // Rastro de lo que se quita (un pago borrado ya no desaparece sin más).
+        const quitados = apuntesQuitados(anterior?.breakdown, apuntes);
+        if (quitados.length) {
+          const borradoEn = new Date().toISOString();
+          actualizacion.$push = { apuntesBorrados: {
+            $each: quitados.map(({ concept, amount, date, tipo }) => ({ concept, amount, date, tipo, borradoEn })),
+            $slice: -200,
+          } };
+        }
+      }
+      const updatedDoc = await WorkerBalance.findOneAndUpdate(filtro, actualizacion, { new: true, upsert: !existe });
+      if (!updatedDoc) return res.status(409).json({ error: 'Esta ficha ha cambiado mientras se guardaba. Recarga y repite el cambio.' });
       return res.json(updatedDoc);
     }
 
