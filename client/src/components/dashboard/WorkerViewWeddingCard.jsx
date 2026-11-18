@@ -38,11 +38,11 @@ export default function WorkerViewWeddingCard({
     }`}>
       <div
         {...alMarcar(onToggleTask && handleToggle, isCompleted)}
-        className="flex justify-between items-start cursor-pointer hover:text-white"
+        className="flex justify-between items-start cursor-pointer hover:text-white min-w-0"
       >
-        <div className="flex items-start space-x-2.5">
-          <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`} />
-          <div>
+        <div className="flex items-start space-x-2.5 min-w-0 flex-1">
+          <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`} aria-hidden="true" />
+          <div className="min-w-0 flex-1">
             <div className="flex items-center flex-wrap gap-2">
               <span className={`font-black text-sm ${isCompleted ? 'line-through opacity-70' : 'text-white'}`}>
                 <MapPin className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />{wedding.location}
@@ -82,6 +82,7 @@ export default function WorkerViewWeddingCard({
             <AvisoBloqueado>{gateText}</AvisoBloqueado>
           ) : (
             <button
+              type="button"
               onClick={handleClockIn}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95 mt-1"
             >

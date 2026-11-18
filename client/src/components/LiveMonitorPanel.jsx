@@ -6,6 +6,7 @@ import { crearFichaje } from '../data/fichajes';
 import { formatTime } from '../utils/dateUtils';
 import BarraProgreso from './ui/BarraProgreso';
 import EnVivo from './ui/EnVivo';
+import EstadoVacio from './ui/EstadoVacio';
 import { useAhora } from '../hooks/useAhora';
 import { useDialog } from '../contexts/DialogContext';
 import { costeEnCurso, duracionEnCurso, tarifaDelTurno } from '../data/costeEnVivo';
@@ -179,7 +180,7 @@ export default function LiveMonitorPanel({
   }).sort((a, b) => Number(b.isClockedIn) - Number(a.isClockedIn));
 
   return (
-    <div className="space-y-6">
+    <div role="region" aria-label="Monitor de actividad en tiempo real" className="space-y-6">
 
       {/* Live Monitor Header */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl backdrop-blur-xl space-y-3.5 sm:space-y-4">
@@ -253,6 +254,8 @@ export default function LiveMonitorPanel({
         {/* Filter Buttons */}
         <div className="flex items-center space-x-2 pt-2 border-t border-slate-800/80 overflow-x-auto no-scrollbar w-full max-w-full">
           <button
+            type="button"
+            aria-pressed={filterStatus === 'all'}
             onClick={() => setFilterStatus('all')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
               filterStatus === 'all' ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
@@ -262,6 +265,8 @@ export default function LiveMonitorPanel({
           </button>
 
           <button
+            type="button"
+            aria-pressed={filterStatus === 'active'}
             onClick={() => setFilterStatus('active')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
               filterStatus === 'active' ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
@@ -271,6 +276,8 @@ export default function LiveMonitorPanel({
           </button>
 
           <button
+            type="button"
+            aria-pressed={filterStatus === 'trucks'}
             onClick={() => setFilterStatus('trucks')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
               filterStatus === 'trucks' ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
@@ -280,6 +287,8 @@ export default function LiveMonitorPanel({
           </button>
 
           <button
+            type="button"
+            aria-pressed={filterStatus === 'base'}
             onClick={() => setFilterStatus('base')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shrink-0 ${
               filterStatus === 'base' ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
@@ -291,6 +300,22 @@ export default function LiveMonitorPanel({
       </div>
 
       {/* Workers Real-Time Live Grid */}
+      {filteredWorkers.length === 0 ? (
+        <EstadoVacio
+          icono={Activity}
+          titulo={filterStatus === 'active' ? 'Nadie está en turno ahora mismo.' : 'No hay trabajadores en este filtro.'}
+          detalle={filterStatus === 'active' ? 'Cuando alguien fiche su entrada aparecerá aquí al instante.' : 'Prueba con otro filtro para ver al resto del equipo.'}
+          accion={filterStatus !== 'all' ? (
+            <button
+              type="button"
+              onClick={() => setFilterStatus('all')}
+              className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition-colors"
+            >
+              Ver todo el equipo
+            </button>
+          ) : null}
+        />
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
         {filteredWorkers.map((worker) => {
           // Calculate progress percentage of standard 8h shift
@@ -323,14 +348,14 @@ export default function LiveMonitorPanel({
               <div className="flex-1 flex flex-col justify-between space-y-4">
                 <div>
                   {/* Header Info */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center space-x-3 min-w-0">
                       <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl shrink-0 shadow-inner">
                         {worker.avatar}
                       </div>
                       <div className="min-w-0">
-                        <h4 className="font-extrabold text-white text-base font-outfit">{worker.name}</h4>
-                        <p className="text-[11px] text-slate-400 leading-snug">{worker.role}</p>
+                        <h4 className="font-extrabold text-white text-base font-outfit truncate">{worker.name}</h4>
+                        <p className="text-[11px] text-slate-400 leading-snug break-words">{worker.role}</p>
                       </div>
                     </div>
 
@@ -422,18 +447,18 @@ export default function LiveMonitorPanel({
 
               {/* Pie de tarjeta: ubicación y acción agrupados al fondo */}
               <div className="mt-auto space-y-2 pt-3 border-t border-slate-800/80">
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
+                <div className="flex items-center justify-between gap-2 text-[11px] text-slate-400">
                   <span className="flex items-center space-x-1 text-slate-300 font-medium min-w-0 flex-1">
-                    <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" aria-hidden="true" />
                     <span className="min-w-0 break-words">{worker.location}</span>
                   </span>
 
                   {worker.isPayroll ? (
-                    <span className="text-[11px] font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 shrink-0">
+                    <span className="text-[11px] font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 shrink-0 whitespace-nowrap">
                       Nómina{mostrarDinero && ` (${formatearEuros(worker.tarifaTurno)}/h)`}
                     </span>
                   ) : (
-                    <span className="text-[11px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0">
+                    <span className="text-[11px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 shrink-0 whitespace-nowrap">
                       Extra{mostrarDinero && ` (${formatearEuros(worker.tarifaTurno)}/h)`}
                     </span>
                   )}
@@ -441,6 +466,7 @@ export default function LiveMonitorPanel({
 
                 <div>
                   <button
+                    type="button"
                     disabled={worker.isClockedIn && cerrando.has(worker.clockEntry?.id)}
                     onClick={async () => {
                       if (worker.isClockedIn) {
@@ -487,6 +513,7 @@ export default function LiveMonitorPanel({
           );
         })}
       </div>
+      )}
     </div>
   );
 }

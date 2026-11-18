@@ -46,10 +46,10 @@ export default function WorkerViewTaskItem({
     >
       <div
         {...alMarcar(onToggleTask && handleToggle, isCompleted)}
-        className="flex items-start space-x-2.5 cursor-pointer hover:text-white"
+        className="flex items-start space-x-2.5 cursor-pointer hover:text-white min-w-0"
       >
-        <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`} />
-        <span className={`font-medium ${isCompleted ? 'line-through opacity-70' : ''}`}>
+        <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`} aria-hidden="true" />
+        <span className={`font-medium flex-1 min-w-0 break-words ${isCompleted ? 'line-through opacity-70' : ''}`}>
           <TaskTextWithEvent text={taskText} event={typeof task === 'object' ? task.event : undefined} />{timeFrame && <> <span className="whitespace-nowrap">({timeFrame})</span></>}
         </span>
         {typeof task === 'object' && task.targetDay && (
@@ -92,6 +92,7 @@ export default function WorkerViewTaskItem({
           <AvisoBloqueado className="mt-1 ml-6 self-start flex">{gateText}</AvisoBloqueado>
         ) : (
           <button
+            type="button"
             onClick={handleClockIn}
             className="mt-1 ml-6 self-start flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 transition-all active:scale-95"
           >

@@ -81,48 +81,51 @@ function TimeRangeEditor({ value, onChange }) {
 // `onGestionarEquipo`: abre «Gestionar equipo» encima del editor (App); la flota se gestiona
 // aquí mismo sobre la semana que se edita y se guarda con ella.
 export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, workersList = [], onSaveWeekData, onJumpToVispera, onAddWorker = null, onGestionarEquipo = null }) {
-  const [localWeek, setLocalWeek] = useState(null);
+  const [localWeek, setLocalWeek] = useState(() => (isOpen && activeWeekData ? JSON.parse(JSON.stringify(activeWeekData)) : null));
+  const [estabaAbierto, setEstabaAbierto] = useState(isOpen);
   const [activeDayId, setActiveDayId] = useState('martes');
   const [flotaAbierta, setFlotaAbierta] = useState(false);
-  const wasOpenRef = useRef(false);
   const scrollContainerRef = useRef(null);
 
-  useEffect(() => {
-    // Solo recargar del servidor al ABRIR el modal (transición false→true) —
-    // si se recarga en cada cambio de `activeWeekData`, el poll de fondo de
-    // App.jsx (refetch cada 20s) pisa cualquier edición a medio hacer con el
-    // dato viejo del servidor, borrando lo que se esté escribiendo.
-    if (isOpen && !wasOpenRef.current && activeWeekData) {
+  // Solo recargar del servidor al ABRIR el modal (transición false→true) —
+  // si se recarga en cada cambio de `activeWeekData`, el poll de fondo de
+  // App.jsx (refetch cada 20s) pisa cualquier edición a medio hacer con el
+  // dato viejo del servidor, borrando lo que se esté escribiendo.
+  if (isOpen !== estabaAbierto) {
+    setEstabaAbierto(isOpen);
+    if (isOpen && activeWeekData) {
       setLocalWeek(JSON.parse(JSON.stringify(activeWeekData)));
     }
-    wasOpenRef.current = isOpen;
-  }, [isOpen, activeWeekData]);
+  }
+
+  const availableDays = localWeek ? [
+    ...days.filter(d => localWeek.schedule && localWeek.schedule[d]),
+    ...(localWeek.saturdaySpecial ? ['sabado'] : []),
+    ...(localWeek.sundayMonday ? ['sundayMonday'] : [])
+  ] : [];
+  const diaActivo = availableDays.length > 0 && !availableDays.includes(activeDayId) ? availableDays[0] : activeDayId;
 
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container || !isOpen || !localWeek) return;
 
-    const availableDays = [
+    const diasDisponibles = [
       ...days.filter(d => localWeek.schedule && localWeek.schedule[d]),
       ...(localWeek.saturdaySpecial ? ['sabado'] : []),
       ...(localWeek.sundayMonday ? ['sundayMonday'] : [])
     ];
 
-    if (availableDays.length > 0 && !availableDays.includes(activeDayId)) {
-      setActiveDayId(availableDays[0]);
-    }
-
     const handleScroll = () => {
       const containerRect = container.getBoundingClientRect();
       const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 40;
 
-      if (isAtBottom && availableDays.length > 0) {
-        setActiveDayId(availableDays[availableDays.length - 1]);
+      if (isAtBottom && diasDisponibles.length > 0) {
+        setActiveDayId(diasDisponibles[diasDisponibles.length - 1]);
         return;
       }
 
-      let currentActive = availableDays[0];
-      for (const dayKey of availableDays) {
+      let currentActive = diasDisponibles[0];
+      for (const dayKey of diasDisponibles) {
         const el = document.getElementById(`editor-day-${dayKey}`);
         if (el) {
           const elRect = el.getBoundingClientRect();
@@ -139,9 +142,12 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
     };
 
     container.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
+    const raf = requestAnimationFrame(handleScroll);
 
-    return () => container.removeEventListener('scroll', handleScroll);
+    return () => {
+      cancelAnimationFrame(raf);
+      container.removeEventListener('scroll', handleScroll);
+    };
   }, [localWeek, isOpen]);
 
   if (!isOpen || !localWeek) return null;
@@ -347,7 +353,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
           </button>
         )}
         {days.filter(d => localWeek.schedule[d]).map(d => {
-          const isActive = activeDayId === d;
+          const isActive = diaActivo === d;
           return (
             <button
               key={d}
@@ -367,7 +373,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
           );
         })}
         {localWeek.saturdaySpecial && (() => {
-          const isActive = activeDayId === 'sabado';
+          const isActive = diaActivo === 'sabado';
           return (
             <button
               type="button"
@@ -386,7 +392,7 @@ export default function AdminTaskEditorModal({ isOpen, onClose, activeWeekData, 
           );
         })()}
         {localWeek.sundayMonday && (() => {
-          const isActive = activeDayId === 'sundayMonday';
+          const isActive = diaActivo === 'sundayMonday';
           return (
             <button
               type="button"

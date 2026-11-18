@@ -15,6 +15,7 @@ import { tarifaDe, transporteDia } from '../../data/tarifas';
 import { aIso } from '../../data/fechasSemana';
 import EnviarSaldoModal from './saldos/EnviarSaldoModal';
 import PanelBolsa from './saldos/PanelBolsa';
+import EstadoVacio from '../ui/EstadoVacio';
 
 // Horas tal como se escriben DENTRO del texto de un concepto ("4,5" → "4.5", sin ceros de
 // sobra). Ese texto se guarda en Mongo: no cambiar el formato, o los conceptos nuevos
@@ -339,10 +340,11 @@ export default function TeamBalancesTab({
 
             <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
               <button
+                type="button"
                 onClick={onOpenShareModal}
                 className="py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs flex items-center space-x-2 shadow-lg shadow-blue-600/30 transition-all active:scale-95"
               >
-                <Share2 className="w-4 h-4" />
+                <Share2 className="w-4 h-4" aria-hidden="true" />
                 <span>Generar Enlaces (WhatsApp)</span>
               </button>
 
@@ -352,6 +354,9 @@ export default function TeamBalancesTab({
             </div>
           </div>
 
+          {(balancesData.workers || []).length === 0 ? (
+            <EstadoVacio icono={TrendingUp} titulo="No hay fichas de saldos registradas todavía." detalle="Las fichas del equipo aparecerán aquí en cuanto se carguen." />
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {(balancesData.workers || []).map((worker) => {
               const isExpanded = expandedWorkerId === worker.id;
@@ -420,9 +425,9 @@ export default function TeamBalancesTab({
                         <div className="w-12 h-12 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center text-2xl shrink-0 shadow-inner">
                           {worker.avatar}
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="font-extrabold text-white text-lg font-outfit">{worker.name}</h4>
+                            <h4 className="font-extrabold text-white text-lg font-outfit break-words">{worker.name}</h4>
                             {derivedStatusType === 'success' && (
                               <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
                                 🟢 A favor
@@ -439,7 +444,7 @@ export default function TeamBalancesTab({
                               </span>
                             )}
                             {derivedStatusType === 'neutral' && (
-                              <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400">
+                              <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-700">
                                 ⚪ Sin Saldo
                               </span>
                             )}
@@ -585,6 +590,7 @@ export default function TeamBalancesTab({
                           <div className="p-3 rounded-xl border border-amber-500/30 bg-slate-950/80 space-y-2.5">
                             <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800 space-x-1">
                               <button
+                                type="button"
                                 onClick={() => setNewConceptMode('turno')}
                                 className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all ${
                                   newConceptMode === 'turno' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
@@ -593,6 +599,7 @@ export default function TeamBalancesTab({
                                 <Clock className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Turno
                               </button>
                               <button
+                                type="button"
                                 onClick={() => setNewConceptMode('manual')}
                                 className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all ${
                                   newConceptMode === 'manual' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'
@@ -601,6 +608,7 @@ export default function TeamBalancesTab({
                                 <Edit3 className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Ajuste
                               </button>
                               <button
+                                type="button"
                                 onClick={() => setNewConceptMode('pago')}
                                 className={`flex-1 py-1.5 rounded-md text-[11px] font-bold transition-all ${
                                   newConceptMode === 'pago' ? 'bg-rose-500 text-white' : 'text-slate-400 hover:text-white'
@@ -655,7 +663,7 @@ export default function TeamBalancesTab({
                                       </label>
                                     )}
                                     {worker.hasTransportBonus && transporte > 0 && newShiftIncludeTransport && (() => {
-                                      const other = findOtherTransportBonusOnDate(worker, computeShiftPreview(worker)?.dateLabel);
+                                      const other = findOtherTransportBonusOnDate(worker, preview?.dateLabel);
                                       return other ? (
                                         <div className="text-[11px] text-blue-300 bg-blue-500/10 border border-blue-500/20 rounded-lg p-2">
                                           <Bus className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" /><b>{other.name}</b> también tiene transporte añadido ese mismo día — si fuisteis en el mismo coche, desmarca la casilla de arriba para no pagarlo dos veces.
@@ -674,6 +682,7 @@ export default function TeamBalancesTab({
                                     )}
                                     <div className="flex gap-2">
                                       <button
+                                        type="button"
                                         onClick={() => handleAddShift(worker)}
                                         disabled={savingBalanceId === worker.id || !preview}
                                         className="flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-all disabled:opacity-50"
@@ -681,6 +690,7 @@ export default function TeamBalancesTab({
                                         {savingBalanceId === worker.id ? 'Guardando...' : 'Guardar'}
                                       </button>
                                       <button
+                                        type="button"
                                         onClick={resetAddConceptForm}
                                         className="flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all"
                                       >
@@ -707,13 +717,14 @@ export default function TeamBalancesTab({
                           </div>
                         ) : (
                           <button
+                            type="button"
                             onClick={() => {
                               setAddingConceptFor(worker.id);
                               setNewShiftDate(aIso(new Date())); // hoy en hora de aquí (en UTC, de madrugada era ayer)
                             }}
                             className="w-full py-2 rounded-xl border border-dashed border-slate-700 hover:border-amber-500/50 text-slate-400 hover:text-amber-400 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3.5 h-3.5" aria-hidden="true" />
                             <span>Añadir concepto / horas manual</span>
                           </button>
                         )
@@ -732,10 +743,11 @@ export default function TeamBalancesTab({
 
                   <div className="pt-3 border-t border-slate-800 flex items-center justify-end mt-auto">
                     <button
+                      type="button"
                       onClick={() => setEnviandoSaldo({ ficha: worker, saldo, turnos: [...dynamicShifts].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)), turnosHoras: hours?.shifts || [] })}
                       className="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center justify-center space-x-2 shadow-lg shadow-emerald-600/20 transition-all active:scale-95"
                     >
-                      <MessageCircle className="w-4 h-4" />
+                      <MessageCircle className="w-4 h-4" aria-hidden="true" />
                       <span>Enviar por WhatsApp</span>
                     </button>
                   </div>
@@ -743,6 +755,7 @@ export default function TeamBalancesTab({
               );
             })}
           </div>
+          )}
           {enviandoSaldo && (
             <EnviarSaldoModal key={enviandoSaldo.ficha.id} datos={enviandoSaldo} admin={adminUnlocked} equipo={equipo} onCerrar={() => setEnviandoSaldo(null)} />
           )}

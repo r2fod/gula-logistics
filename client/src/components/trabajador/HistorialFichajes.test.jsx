@@ -14,4 +14,12 @@ describe('HistorialFichajes', () => {
     render(<HistorialFichajes fichajes={[fichaje('a'), fichaje('b')]} onAnadir={() => {}} />);
     expect(screen.getByText('2 fichajes enviados')).toBeInTheDocument();
   });
+
+  it('BUG evitado: la tabla de escritorio muestra la duración del turno de salida igual que las tarjetas móviles', () => {
+    const salida = { id: 's1', workerName: 'Ana', type: 'salida', timestamp: new Date(2026, 9, 14, 13, 30).toISOString(), taskName: 'JORNADA' };
+    render(<HistorialFichajes fichajes={[salida]} duracionDeSalida={new Map([['s1', 4.5]])} onAnadir={() => {}} />);
+    const tabla = screen.getByRole('table');
+    expect(tabla.textContent).toContain('Duración');
+    expect(tabla.textContent).toMatch(/4,5\s+h/);
+  });
 });

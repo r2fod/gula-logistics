@@ -230,4 +230,45 @@ describe('WorkerView — «Mis fichajes»', () => {
     const tarjetas = [...document.querySelectorAll('.block.sm\\:hidden > div')];
     expect(tarjetas[0].textContent).toMatch(/23/);
   });
+
+  it('BUG evitado: «Contigo en esta tarea» resuelve la tarea por id/texto aunque el día se haya reordenado', () => {
+    const reordenada = {
+      id: 'w1',
+      meta: { dateRange: 'Del 22 al 27 de Septiembre de 2026' },
+      schedule: {
+        martes: {
+          title: 'Martes 22',
+          tasks: [
+            { id: 'm_nueva', text: 'Otra tarea nueva', timeFrame: '08:00 - 09:00', assigned: ['Ana', 'Eva'] },
+            { id: 'm1', text: 'Carga original', timeFrame: '09:00 - 11:00', assigned: ['Ana', 'Luis'] },
+          ],
+        },
+      },
+      saturdaySpecial: { weddings: [] },
+      sundayMonday: { tasks: [] },
+    };
+    const entradaConRef = {
+      id: 'e1',
+      workerName: 'Ana',
+      type: 'entrada',
+      timestamp: new Date(2026, 8, 22, 9, 0, 0).toISOString(),
+      taskName: 'Carga original',
+      taskRef: { weekId: 'w1', dayKey: 'martes', taskIndex: 0, taskId: 'm1', taskText: 'Carga original' },
+    };
+    render(
+      <WorkerView
+        workerName="Ana"
+        workersList={[
+          { name: 'Ana', role: 'Conductora', avatar: '🚚', rate: 10 },
+          { name: 'Luis', role: 'Base', avatar: '📦', rate: 10 },
+          { name: 'Eva', role: 'Base', avatar: '✨', rate: 10 },
+        ]}
+        activeWeekData={reordenada}
+        clockEntries={[entradaConRef]}
+      />
+    );
+    expect(screen.getByText('Contigo en esta tarea')).toBeInTheDocument();
+    expect(screen.getByText('Luis')).toBeInTheDocument();
+    expect(screen.queryByText('Eva')).toBeNull();
+  });
 });

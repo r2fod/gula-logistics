@@ -80,6 +80,7 @@ export default function TarjetaFichar({
                   {(proximaTarea.timeFrame || proximaEsOtroDia) && <p className="text-[11px] text-slate-400 mb-3">{[proximaEsOtroDia && getDayLabel(semana, proximaTarea.dayKey), proximaTarea.timeFrame].filter(Boolean).join(' · ')}</p>}
                   {/* Una tarea de un día que no ha llegado no se marca (se espera a ese día). */}
                   <button
+                    type="button"
                     onClick={() => {
                       if (proximaEsOtroDia) return;
                       const tRef = proximaTarea.dayKey && proximaTarea.taskIndex != null
@@ -124,19 +125,21 @@ export default function TarjetaFichar({
           )}
 
           <button
+            type="button"
             disabled={ocupado}
             onClick={() => onFichar(() => crearFichaje({ trabajador, tipo: 'salida', note: '' }))}
             className={`w-full py-3.5 px-3 rounded-xl text-xs min-[360px]:text-sm font-extrabold flex items-center justify-center space-x-2 transition-all shadow-xl active:scale-95 ${
               ocupado ? 'bg-rose-900/50 text-rose-500 cursor-not-allowed shadow-none' : 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30'
             }`}
           >
-            <Square className="w-4 h-4 shrink-0" />
+            <Square className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span className="whitespace-nowrap">{esJornada ? 'FINALIZAR JORNADA' : 'Fichar salida'}</span>
           </button>
 
           {/* Deshacer: solo durante los primeros 15 min */}
-          {(new Date() - new Date(turno.timestamp) < 15 * 60 * 1000) && (
+          {((ahora || new Date()) - new Date(turno.timestamp) < 15 * 60 * 1000) && (
             <button
+              type="button"
               onClick={async () => {
                 if (await confirm('¿Seguro que quieres anular este fichaje de entrada? Hazlo solo si le diste por error.', { type: 'warning' })) {
                   onDeshacer(turno.id);
@@ -171,6 +174,7 @@ export default function TarjetaFichar({
           {/* La puerta mira la fecha REAL de la primera tarea, no solo la hora de hoy: una
               tarea de un día futuro no deja iniciar jornada antes de tiempo. */}
           <button
+            type="button"
             disabled={puertaCerrada || ocupado}
             onClick={() => onFichar(() => crearFichaje({
               trabajador,
@@ -214,6 +218,7 @@ export default function TarjetaFichar({
 
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pt-3 mt-3 border-t border-slate-800 text-[11px] text-slate-400">
         <button
+          type="button"
           onClick={onFicharLibre}
           className="whitespace-nowrap py-2 hover:text-amber-400 text-slate-300 underline decoration-slate-700 hover:decoration-amber-400 transition-colors"
         >

@@ -68,7 +68,13 @@ const TotalPie = ({ horas, coste }) => (
 // histórico, con esa persona abierta en "Coste por trabajador".
 export default function FinancialSummaryTab({ shifts = [], workersList = [], allWeeks = {}, activeWeekData = null, saldos = [], enfoque = null, turnosAbiertos = {} }) {
   const [modo, setModo] = useState(() => (enfoque?.persona ? 'todo' : 'semana'));
-  const [ancla, setAncla] = useState(() => anclaInicial(activeWeekData));
+  const inicioActiva = getWeekRange(activeWeekData)?.start?.getTime() ?? null;
+  const [estadoAncla, setEstadoAncla] = useState(() => ({ inicio: inicioActiva, fecha: anclaInicial(activeWeekData) }));
+  // El resumen sigue a la semana que se elige arriba: al cambiarla, el periodo pasa a
+  // ser esa semana (o el mes o año que la contiene). Las flechas y los botones de
+  // periodo siguen funcionando después, a partir de ahí.
+  const ancla = estadoAncla.inicio === inicioActiva ? estadoAncla.fecha : (inicioActiva ? new Date(inicioActiva) : estadoAncla.fecha);
+  const setAncla = (fecha) => setEstadoAncla({ inicio: inicioActiva, fecha });
   const [copiado, copiar] = useCopiado();
   const conAcceso = !!(getStoredAdminToken() || getStoredSociasToken());
   const [historico, setHistorico] = useState(null);
@@ -89,12 +95,6 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
   // Se aplica al histórico entero: la bolsa se va gastando turno a turno.
   const turnosConTarifa = useMemo(() => aplicarTarifaDeBolsa(shifts, saldos), [shifts, saldos]);
   const abiertos = useMemo(() => Object.values(turnosAbiertos || {}), [turnosAbiertos]);
-
-  // El resumen sigue a la semana que se elige arriba: al cambiarla, el periodo pasa a
-  // ser esa semana (o el mes o año que la contiene). Las flechas y los botones de
-  // periodo siguen funcionando después, a partir de ahí.
-  const inicioActiva = getWeekRange(activeWeekData)?.start?.getTime() ?? null;
-  useEffect(() => { setAncla(inicioActiva ? new Date(inicioActiva) : new Date()); }, [inicioActiva]);
 
   const rango = useMemo(() => rangoDePeriodo(modo, ancla, semanasDeInformes), [modo, ancla, semanasDeInformes]);
   const turnos = useMemo(() => turnosDelPeriodo(turnosConTarifa, rango), [turnosConTarifa, rango]);
@@ -344,7 +344,7 @@ export default function FinancialSummaryTab({ shifts = [], workersList = [], all
                 </p>
               )}
               {cargandoHistorico || falloHistorico ? (
-                <p role="status" className="text-xs text-amber-300">
+                <p role="status" className="border-b border-slate-800 bg-slate-950/40 px-3.5 py-2.5 text-xs text-amber-300 sm:px-5">
                   {falloHistorico ? 'El histórico archivado no está disponible. El desglose puede estar incompleto.' : 'Cargando el histórico de semanas…'}
                 </p>
               ) : <DescargarExcel eventos={eventsList.map(evt => evt.eventName)} onDescargar={descargarExcel} />}

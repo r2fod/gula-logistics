@@ -14,13 +14,13 @@ export function movimientoReducido() {
 // directo: animarlo dejaría el número repintándose sin parar.
 export function useCountUp(objetivo, duracion = 700) {
   const meta = Number.isFinite(objetivo) ? objetivo : 0;
-  const [valor, setValor] = useState(() => (movimientoReducido() ? meta : 0));
+  const reducido = movimientoReducido();
+  const [valor, setValor] = useState(() => (reducido ? meta : 0));
   const actual = useRef(valor);
 
   useEffect(() => {
-    if (movimientoReducido()) {
+    if (reducido) {
       actual.current = meta;
-      setValor(meta);
       return undefined;
     }
     const desde = actual.current;
@@ -36,9 +36,9 @@ export function useCountUp(objetivo, duracion = 700) {
     };
     id = requestAnimationFrame(paso);
     return () => cancelAnimationFrame(id);
-  }, [meta, duracion]);
+  }, [meta, duracion, reducido]);
 
-  return valor;
+  return reducido ? meta : valor;
 }
 
 // false en el primer pintado y true en el siguiente: sirve para que una barra

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Truck, X, ShieldCheck, Eye } from 'lucide-react';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
@@ -14,34 +14,46 @@ import { SECCIONES_MENU, accionesDe } from './acciones';
 export default function MenuLateral({ abierto, onCerrar, acciones, adminUnlocked, onSalir, onDesbloquear }) {
   useBodyScrollLock(abierto);
   useCerrarConEscape(abierto, onCerrar);
+  const panelRef = useRef(null);
+
+  useEffect(() => {
+    if (!abierto) return undefined;
+    const anterior = document.activeElement;
+    panelRef.current?.focus({ preventScroll: true });
+    return () => {
+      if (anterior && typeof anterior.focus === 'function' && document.contains(anterior)) {
+        anterior.focus({ preventScroll: true });
+      }
+    };
+  }, [abierto]);
 
   if (!abierto) return null;
 
   const delMenu = accionesDe(acciones, 'menu');
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Menú de Gestión" className="fixed inset-0 z-50 flex justify-end">
+    <div role="dialog" aria-modal="true" aria-label="Menú de Gestión" className="fixed inset-0 z-50 flex justify-end overscroll-contain">
       <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" onClick={onCerrar} />
 
-      <div className="relative w-full max-w-xs bg-slate-900 border-l border-slate-800 h-full p-5 flex flex-col justify-between shadow-2xl overflow-y-auto z-10">
+      <div ref={panelRef} tabIndex={-1} className="relative w-full max-w-xs bg-slate-900 border-l border-slate-800 h-full p-5 safe-bottom flex flex-col justify-between shadow-2xl overflow-y-auto overscroll-contain outline-none z-10">
         <div className="space-y-5">
           {/* Cabecera pegada arriba: la X de cerrar no se va al bajar por el menú. */}
           <div className="sticky -top-5 z-10 -mx-5 -mt-5 flex items-center justify-between border-b border-slate-800 bg-slate-900 px-5 pb-3 pt-5">
             <div className="flex items-center space-x-2">
               <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                <Truck className="w-4 h-4" />
+                <Truck className="w-4 h-4" aria-hidden="true" />
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-white font-outfit">Menú de Gestión</h3>
                 <p className="text-[11px] text-slate-400">Herramientas & Ajustes</p>
               </div>
             </div>
-            <button onClick={onCerrar} className="p-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-white" aria-label="Cerrar Menú">
-              <X className="w-5 h-5" />
+            <button type="button" onClick={onCerrar} className="p-2 rounded-lg bg-slate-800 text-slate-400 hover:text-white" aria-label="Cerrar Menú">
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
 
-          <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between">
+          <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 flex items-center justify-between gap-2">
             <div>
               <span className="text-[11px] text-slate-400 block font-medium">Modo de Acceso</span>
               <span className="text-xs font-bold text-white flex items-center gap-1 mt-0.5">
@@ -52,15 +64,17 @@ export default function MenuLateral({ abierto, onCerrar, acciones, adminUnlocked
             </div>
             {adminUnlocked ? (
               <button
+                type="button"
                 onClick={() => { onSalir(); onCerrar(); }}
-                className="px-2 py-1 text-[11px] font-bold rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                className="px-2.5 py-1.5 text-[11px] font-bold rounded-lg bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 transition-colors"
               >
                 Salir
               </button>
             ) : (
               <button
+                type="button"
                 onClick={() => { onDesbloquear(); onCerrar(); }}
-                className="px-2.5 py-1 text-[11px] font-extrabold rounded-lg bg-amber-500 text-slate-950 shadow-md"
+                className="px-2.5 py-1.5 text-[11px] font-extrabold rounded-lg bg-amber-500 text-slate-950 shadow-md hover:bg-amber-400 transition-colors"
               >
                 Desbloquear
               </button>

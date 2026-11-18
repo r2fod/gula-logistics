@@ -172,4 +172,29 @@ describe('ScheduleTab — marcar tareas de sábado, domingo y lunes', () => {
     expect(screen.queryByRole('button', { name: /Finca Sur/ })).toBeNull();
     expect(screen.getByText('Recogida en finca').closest('[role="button"]')).toBeNull();
   });
+
+  it('BUG evitado: las tareas de martes a viernes se marcan con teclado y el filtro por trabajador ignora tildes', () => {
+    const onToggleTask = vi.fn();
+    const week = {
+      ...semana([]),
+      schedule: {
+        martes: {
+          title: 'Martes 15',
+          tasks: [
+            { text: 'Carga con tilde', timeFrame: '09:00-10:00', assigned: ['Ines'], completed: false },
+            { text: 'Carga de otro', timeFrame: '10:00-11:00', assigned: ['Luis'], completed: false },
+          ],
+        },
+      },
+    };
+    render(<ScheduleTab activeWeekData={week} workersList={[{ name: 'Inés', role: 'Conductora', avatar: '🚚', rate: 10 }]} onToggleTask={onToggleTask} />);
+    const item = screen.getByText('Carga con tilde').closest('[role="button"]');
+    expect(item).not.toBeNull();
+    fireEvent.keyDown(item, { key: 'Enter' });
+    expect(onToggleTask).toHaveBeenCalledWith('martes', 0);
+
+    fireEvent.click(screen.getByRole('button', { name: /Inés/ }));
+    expect(item.className).toContain('ring-amber-500');
+    expect(screen.getByText('Carga de otro').closest('li').className).toContain('opacity-30');
+  });
 });

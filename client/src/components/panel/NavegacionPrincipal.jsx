@@ -23,11 +23,34 @@ export function BarraPestanas({ activa, onSeleccionar, contadorFichajes = 0 }) {
     }
   }, [activa, contadorFichajes]);
 
-  // Si cambia el ancho de la ventana (o carga la tipografía) la pastilla se recoloca.
+  // Si cambia el ancho de la ventana, del contenedor o carga la tipografía, la pastilla se recoloca.
   useEffect(() => {
-    window.addEventListener('resize', medir);
-    return () => window.removeEventListener('resize', medir);
+    const actualizar = () => medir();
+    window.addEventListener('resize', actualizar);
+    const nodo = barra.current;
+    const obs = typeof ResizeObserver === 'function' && nodo ? new ResizeObserver(actualizar) : null;
+    if (obs) obs.observe(nodo);
+    let cancelado = false;
+    document.fonts?.ready?.then(() => { if (!cancelado) medir(); });
+    return () => {
+      cancelado = true;
+      window.removeEventListener('resize', actualizar);
+      obs?.disconnect();
+    };
   }, [activa]);
+
+  const alPulsarTecla = (evento, indice) => {
+    let destino = null;
+    if (evento.key === 'ArrowRight') destino = (indice + 1) % PESTANAS.length;
+    else if (evento.key === 'ArrowLeft') destino = (indice - 1 + PESTANAS.length) % PESTANAS.length;
+    else if (evento.key === 'Home') destino = 0;
+    else if (evento.key === 'End') destino = PESTANAS.length - 1;
+    if (destino === null) return;
+    evento.preventDefault();
+    const siguiente = PESTANAS[destino];
+    onSeleccionar(siguiente.id);
+    barra.current?.querySelector(`[data-pestana="${siguiente.id}"]`)?.focus();
+  };
 
   return (
     <div
@@ -45,7 +68,7 @@ export function BarraPestanas({ activa, onSeleccionar, contadorFichajes = 0 }) {
           style={{ left: marca.left, width: marca.width }}
         />
       )}
-      {PESTANAS.map(({ id, etiqueta, icono: Icono, vivo, hover, contador, colorIcono }) => {
+      {PESTANAS.map(({ id, etiqueta, icono: Icono, vivo, hover, contador, colorIcono }, indice) => {
         const esActiva = activa === id;
         return (
           <button
@@ -55,6 +78,7 @@ export function BarraPestanas({ activa, onSeleccionar, contadorFichajes = 0 }) {
             aria-selected={esActiva}
             data-pestana={id}
             onClick={() => onSeleccionar(id)}
+            onKeyDown={(e) => alPulsarTecla(e, indice)}
             className={`relative z-10 flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs whitespace-nowrap transition-colors duration-300 ${hover || ''} ${
               esActiva ? 'text-slate-950 font-extrabold' : 'text-slate-400 font-bold hover:bg-slate-800/70 hover:text-white'
             }`}

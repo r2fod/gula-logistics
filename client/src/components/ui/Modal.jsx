@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import BotonCerrar from './BotonCerrar';
@@ -22,15 +22,16 @@ const CAPAS = { 50: 'z-50', 60: 'z-[60]', 100: 'z-[100]' };
 const DISPOSICIONES = {
   // El contenido hace scroll dentro del panel; la X, fuera de ese scroll, se queda
   // siempre a la vista (antes subía con el contenido y había que volver arriba).
+  // `dvh` evita que en móvil el teclado virtual o la barra de direcciones corten el pie.
   pagina: {
     fondo: 'p-3 sm:p-4',
-    panel: 'rounded-2xl sm:rounded-3xl max-h-[92vh] flex flex-col overflow-hidden',
-    cuerpo: 'min-h-0 flex-1 overflow-y-auto p-4 sm:p-7',
+    panel: 'rounded-2xl sm:rounded-3xl max-h-[92vh] max-h-[92dvh] flex flex-col overflow-hidden',
+    cuerpo: 'min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-7',
   },
   // Cabecera fija + cuerpo con scroll propio: los monta el llamador.
   columna: {
     fondo: 'p-1 sm:p-4',
-    panel: 'rounded-2xl sm:rounded-3xl max-h-[94vh] flex flex-col',
+    panel: 'rounded-2xl sm:rounded-3xl max-h-[94vh] max-h-[94dvh] flex flex-col overflow-hidden',
   },
 };
 
@@ -40,7 +41,7 @@ const ENFOCABLES = 'a[href], button:not([disabled]), input:not([disabled]), sele
 // autoFocus); Tab da la vuelta dentro de ella y al cerrar vuelve a donde estaba. Antes el
 // foco se quedaba detrás: Tab recorría la página de debajo. Sin `etiqueta`, el diálogo toma
 // como nombre su primer título (lo que lee un lector de pantalla al abrirla).
-function useFocoDentro(abierto, panelRef, nombrarConTitulo) {
+function useFocoDentro(abierto, panelRef, nombrarConTitulo, tituloIdBase) {
   useEffect(() => {
     const panel = panelRef.current;
     if (!abierto || !panel) return undefined;
@@ -49,7 +50,7 @@ function useFocoDentro(abierto, panelRef, nombrarConTitulo) {
     if (nombrarConTitulo) {
       const titulo = panel.querySelector('h1, h2, h3');
       if (titulo) {
-        if (!titulo.id) titulo.id = `titulo-ventana-${Math.random().toString(36).slice(2, 9)}`;
+        if (!titulo.id) titulo.id = `titulo-ventana-${tituloIdBase}`;
         panel.setAttribute('aria-labelledby', titulo.id);
       }
     }
@@ -67,7 +68,7 @@ function useFocoDentro(abierto, panelRef, nombrarConTitulo) {
       panel.removeEventListener('keydown', alPulsar);
       if (antes && typeof antes.focus === 'function' && document.contains(antes)) antes.focus({ preventScroll: true });
     };
-  }, [abierto, panelRef, nombrarConTitulo]);
+  }, [abierto, panelRef, nombrarConTitulo, tituloIdBase]);
 }
 
 // Ventana modal base de la app: velo oscuro (sin desenfoque: recalcularlo en cada
@@ -100,16 +101,17 @@ export default function Modal({
 }) {
   useBodyScrollLock(abierto);
   const panelRef = useRef(null);
+  const tituloIdBase = useId();
 
   useCerrarConEscape(abierto && cerrarConEscape, onCerrar);
-  useFocoDentro(abierto, panelRef, !etiqueta);
+  useFocoDentro(abierto, panelRef, !etiqueta, tituloIdBase);
 
   if (!abierto) return null;
 
   const { fondo, panel, cuerpo = null } = DISPOSICIONES[disposicion] || DISPOSICIONES.pagina;
 
   return (
-    <div className={`fixed inset-0 ${CAPAS[capa] || CAPAS[50]} flex items-center justify-center ${fondo} bg-slate-950/85 animate-fadeIn`}>
+    <div className={`fixed inset-0 ${CAPAS[capa] || CAPAS[50]} flex items-center justify-center overscroll-contain ${fondo} bg-slate-950/85 animate-fadeIn`}>
       <div
         ref={panelRef}
         tabIndex={-1}

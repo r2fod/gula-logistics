@@ -95,4 +95,13 @@ describe('LiveMonitorPanel — «Finalizar Tarea Activa» (vista pública)', () 
     // BUG evitado: si el servidor la rechaza y el turno sigue abierto, se puede reintentar.
     await waitFor(() => expect(boton).not.toBeDisabled(), { timeout: 9000 });
   }, 12000);
+
+  it('BUG evitado: si ningún trabajador coincide con el filtro muestra estado vacío y botón para ver a todos', async () => {
+    const { fireEvent } = await import('../test/render');
+    render(<LiveMonitorPanel workersList={equipo} clockEntries={[]} />);
+    fireEvent.click(screen.getByRole('button', { name: /En Turno \(0\)/ }));
+    expect(screen.getByText(/Nadie está en turno/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Ver todo el equipo/i }));
+    expect(screen.getByText('Ana')).toBeInTheDocument();
+  });
 });

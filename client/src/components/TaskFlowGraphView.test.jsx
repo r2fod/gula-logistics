@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import TaskFlowGraphView from './TaskFlowGraphView';
 
 const semana = () => ({
@@ -46,5 +46,32 @@ describe('TaskFlowGraphView — tareas desactivadas', () => {
     const { container } = render(<TaskFlowGraphView activeWeekData={w} workersList={[{ name: 'Ana', avatar: '🚚' }]} />);
     expect(container.textContent).toContain('Tarea de martes');
     expect(container.textContent).not.toContain('Tarea apagada');
+  });
+});
+
+describe('TaskFlowGraphView — varios camiones, idioma y filtros Gantt', () => {
+  it('BUG evitado: una tarea o boda con dos camiones («A + B») enlaza con ambos camiones', () => {
+    const w = semana();
+    w.trucks = [{ name: 'Camión Gula', tag: 'PROPIO' }, { name: 'Furgo Norte', tag: 'ALQUILER' }];
+    w.saturdaySpecial.weddings[0].truck = 'Camión Gula + Furgo Norte';
+    render(<TaskFlowGraphView activeWeekData={w} workersList={[{ name: 'Ana', avatar: '🚚' }]} />);
+    fireEvent.click(screen.getByText('Furgo Norte'));
+    expect(screen.getAllByText(/Finca Sur/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/Tareas en este Flujo \(1\)/)).toBeInTheDocument();
+  });
+
+  it('BUG evitado: el nodo seleccionado muestra su tipo en español (nunca day/task/truck/worker)', () => {
+    render(<TaskFlowGraphView activeWeekData={semana()} workersList={[{ name: 'Ana', avatar: '🚚', role: 'Conductora' }]} />);
+    fireEvent.click(screen.getByText('Camión Gula'));
+    expect(screen.getByText('Camión')).toBeInTheDocument();
+    expect(screen.queryByText(/^truck$/i)).toBeNull();
+  });
+
+  it('BUG evitado: en Gantt con un filtro sin resultados muestra estado vacío en vez de 6 días vacíos', () => {
+    render(<TaskFlowGraphView activeWeekData={semana()} workersList={[{ name: 'Ana', role: 'Conductora' }, { name: 'Luis', role: 'Base' }]} />);
+    fireEvent.click(screen.getByRole('button', { name: /Gantt/ }));
+    const selects = screen.getAllByRole('combobox');
+    fireEvent.change(selects[2], { target: { value: 'worker_luis' } });
+    expect(screen.getByText(/No hay tareas que coincidan con los filtros/i)).toBeInTheDocument();
   });
 });

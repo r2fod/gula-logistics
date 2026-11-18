@@ -60,33 +60,39 @@ export default function HistorialFichajes({ fichajes = [], duracionDeSalida = ne
           </div>
 
           {/* Desde tablet: tabla */}
-          <div className="hidden sm:block overflow-x-auto">
+          <div tabIndex={0} role="region" aria-label="Mi historial de fichajes" className="hidden sm:block overflow-x-auto rounded-xl">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[11px]">
-                  <th className="py-3 px-3">Fecha & Hora</th>
-                  <th className="py-3 px-3">Tipo</th>
-                  <th className="py-3 px-3">Tarea / Concepto</th>
-                  <th className="py-3 px-3">Estado</th>
-                  <th className="py-3 px-3 text-right">Acción</th>
+                  <th scope="col" className="py-3 px-3">Fecha & Hora</th>
+                  <th scope="col" className="py-3 px-3">Tipo</th>
+                  <th scope="col" className="py-3 px-3">Tarea / Concepto</th>
+                  <th scope="col" className="py-3 px-3">Duración</th>
+                  <th scope="col" className="py-3 px-3">Estado</th>
+                  <th scope="col" className="py-3 px-3 text-right">Acción</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
                 {fichajes.map((entry) => (
                   <tr key={entry.id} className="hover:bg-slate-950/50 transition-colors">
-                    <td className="py-3 px-3 font-mono text-slate-200">
+                    <td className="py-3 px-3 font-mono text-slate-200 whitespace-nowrap">
                       <div className="font-bold text-white">{horaDeFichaje(entry)}</div>
                       <div className="text-[11px] text-slate-500">{fechaDeFichaje(entry)}</div>
                     </td>
                     <td className="py-3 px-3"><InsigniaTipo tipo={entry.type} /></td>
                     <td className="py-3 px-3 text-slate-300 font-medium">{entry.taskName || entry.note || '—'}</td>
+                    <td className="py-3 px-3 font-mono tabular-nums whitespace-nowrap text-slate-300">
+                      {duracionDeSalida.has(entry.id) ? (
+                        <span className="font-bold text-emerald-400">{formatearHoras(duracionDeSalida.get(entry.id))}</span>
+                      ) : '—'}
+                    </td>
                     <td className="py-3 px-3">
-                      <span className="text-[11px] font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 inline-flex items-center space-x-1">
-                        <Lock className="w-3 h-3 text-amber-400" />
+                      <span className="text-[11px] font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 inline-flex items-center space-x-1 whitespace-nowrap">
+                        <Lock className="w-3 h-3 text-amber-400" aria-hidden="true" />
                         <span>Guardado</span>
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-right text-[11px] font-bold text-amber-300">Solo Admin</td>
+                    <td className="py-3 px-3 text-right text-[11px] font-bold text-amber-300 whitespace-nowrap">Solo Admin</td>
                   </tr>
                 ))}
               </tbody>

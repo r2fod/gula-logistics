@@ -68,7 +68,7 @@ import { aprenderDeFichajes } from './data/aprendizajeFichajes';
 import { aprenderDelPlanning } from './data/conocimientoPlanning';
 import { semanaDeLaVispera } from './data/vispera';
 import { getWeekRange } from './data/taskPlanning';
-import { semanaPedidaEnEnlace, abreElPanelDeSocias } from './data/enlaces';
+import { semanaPedidaEnEnlace } from './data/enlaces';
 import { parseWeekRange } from './data/taskPlanning';
 
 import { useWorkers } from './hooks/useWorkers';
@@ -91,7 +91,24 @@ export default function App() {
   const [isTaskEditorModalOpen, setIsTaskEditorModalOpen] = useState(false);
   const [isAdminLoginOpen, setIsAdminLoginOpen] = useState(false);
 
-  const [activeWorker, setActiveWorker] = useState(null);
+  const [activeWorker, setActiveWorker] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const workerParam = params.get('worker');
+    const hasAdminSession = !!getStoredAdminToken();
+    const hasSociasAcceso = params.has('socias') || Boolean(params.get('acceso')) || Boolean(getStoredSociasToken());
+    if (workerParam) {
+      return workersList.find(w => w.name.toLowerCase() === workerParam.toLowerCase())?.name || null;
+    }
+    if (!params.has('socias') && !params.get('acceso') && !hasAdminSession && !hasSociasAcceso && params.get('view') !== 'public') {
+      try {
+        const lastWorker = localStorage.getItem('gula_last_worker_v1');
+        if (lastWorker) {
+          return workersList.find(w => w.name.toLowerCase() === lastWorker.toLowerCase())?.name || null;
+        }
+      } catch { /* sin almacenamiento (modo privado): se sigue sin él */ }
+    }
+    return null;
+  });
   const [clockInWorker, setClockInWorker] = useState(null);
   // El enlace ?worker= se resuelve al abrir con la lista de equipo que haya en el
   // dispositivo; en un móvil nuevo esa lista es la de arranque y no trae a quien
@@ -158,7 +175,10 @@ export default function App() {
   // Admin mode state — the source of truth is the signed backend session
   // token (getStoredAdminToken), never a plain localStorage flag a visitor
   // could fake from devtools with localStorage.setItem('x', 'true').
-  const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => !!getStoredAdminToken());
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return !!(getStoredAdminToken() || params.get('token') || params.get('key'));
+  });
   const isAdmin = isAdminUnlocked;
 
   const turnosFichados = useMemo(() => pairShiftsFromEntries(activeClockEntries), [activeClockEntries]);
@@ -246,7 +266,9 @@ export default function App() {
     }
   };
   const ejecutarAnticipacionRef = useRef(ejecutarAnticipacion);
-  ejecutarAnticipacionRef.current = ejecutarAnticipacion;
+  useEffect(() => {
+    ejecutarAnticipacionRef.current = ejecutarAnticipacion;
+  });
 
   // Primera pasada poco después de abrir la app y luego cada 30 min (el límite de
   // 6 h por navegador está dentro de ejecutarAnticipacion).
@@ -301,7 +323,16 @@ export default function App() {
     return !!(getStoredAdminToken() || getStoredSociasToken() || params.get('token') || params.get('key') || params.get('acceso'));
   });
   // Aviso en la vista pública cuando un enlace de socias ya no da acceso.
-  const [avisoAcceso, setAvisoAcceso] = useState('');
+  const [avisoAcceso, setAvisoAcceso] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const hasSociasFlag = params.has('socias');
+    const tokenParam = params.get('token') || params.get('key');
+    const accesoParam = params.get('acceso');
+    if (hasSociasFlag && !tokenParam && !accesoParam && !getStoredAdminToken() && !getStoredSociasToken()) {
+      return 'Este enlace de socias ya no da acceso. Pide al administrador el enlace nuevo.';
+    }
+    return '';
+  });
 
   const clearUrlParams = () => {
     try {
@@ -326,49 +357,25 @@ export default function App() {
     const tokenTrabajadorParam = workerParam ? params.get('t') : null;
     const hasSociasFlag = params.has('socias');
 
-    // Qué semana se abre (ver data/enlaces.js): un trabajador siempre ve la de hoy,
-    // aunque su enlace sea uno viejo con ?week=; un borrador solo lo abre un admin.
-    // Sin ?week= no se fija ninguna: la app sigue sola la de hoy (useWeeks).
     const hasAdminSession = !!getStoredAdminToken();
-    const semanaPedida = semanaPedidaEnEnlace({ weekParam, workerParam, hayAdmin: hasAdminSession, semanas: allWeeks });
-    if (semanaPedida) setActiveWeekId(semanaPedida);
-    // El icono de la app instalada (PWA) siempre abre start_url del
-    // manifest, SIN los parámetros de la URL original (?worker=...) — así
-    // que un trabajador que instale su propio enlace perdía su identidad
-    // en cada relanzamiento y caía al panel general. Se recuerda el
-    // último trabajador válido en localStorage y se restaura solo si
-    // sigue en el roster actual (si lo quitaste del equipo, no se
-    // restaura — sigue revocado).
-    //
-    // Nunca en un dispositivo con sesión de admin real ni con enlace de socias:
-    // si no, un admin o socia que abra o pruebe el enlace de un trabajador
-    // queda "atrapado" en esa vista en cada carga siguiente, sin poder ver
-    // el panel de socias. Tampoco cuando se abre explícitamente ?socias o ?acceso=.
     const hasSociasAcceso = hasSociasFlag || Boolean(accesoParam) || Boolean(getStoredSociasToken());
     if (workerParam) {
       const matched = workersList.find(w => w.name.toLowerCase() === workerParam.toLowerCase());
-      if (matched) {
-        setActiveWorker(matched.name);
-        if (!hasAdminSession && !hasSociasAcceso) {
-          try { localStorage.setItem('gula_last_worker_v1', matched.name); } catch { /* sin almacenamiento (modo privado): se sigue sin él */ }
-        }
+      if (matched && !hasAdminSession && !hasSociasAcceso) {
+        try { localStorage.setItem('gula_last_worker_v1', matched.name); } catch { /* sin almacenamiento (modo privado): se sigue sin él */ }
       }
     } else if (hasSociasFlag || accesoParam) {
       // El usuario viene expresamente por el enlace de socias (?socias o ?socias&acceso=…):
       // NUNCA restaurar al último trabajador visto en este dispositivo, ni dejarlo activo.
-      setActiveWorker(null);
       try { localStorage.removeItem('gula_last_worker_v1'); } catch { /* sin almacenamiento */ }
-      // Solo con acceso real: un ?socias viejo (sin acceso=) enseña el aviso, no un panel vacío.
-      if (abreElPanelDeSocias({ acceso: accesoParam, hayAdmin: hasAdminSession, haySociasGuardado: !!getStoredSociasToken() })) setIsPartnerMode(true);
     } else if (!hasAdminSession && !hasSociasAcceso && params.get('view') !== 'public') {
       try {
         const lastWorker = localStorage.getItem('gula_last_worker_v1');
         if (lastWorker) {
           const stillValid = workersList.find(w => w.name.toLowerCase() === lastWorker.toLowerCase());
-          if (stillValid) setActiveWorker(stillValid.name);
           // Solo se olvida si el equipo ya se conoce: con la lista aún vacía (móvil
           // sin equipo guardado) no se sabe si esa persona sigue.
-          else if (workersList.length) localStorage.removeItem('gula_last_worker_v1');
+          if (!stillValid && workersList.length) localStorage.removeItem('gula_last_worker_v1');
         }
       } catch { /* sin almacenamiento (modo privado): se sigue sin él */ }
     }
@@ -383,7 +390,6 @@ export default function App() {
     if (tokenTrabajadorParam) guardarTokenTrabajador(workerParam, tokenTrabajadorParam);
     if (tokenParam) {
       setStoredAdminToken(tokenParam, Date.now() + 30 * 24 * 60 * 60 * 1000);
-      setIsAdminUnlocked(true);
     }
     if (tokenParam || accesoParam || tokenTrabajadorParam) {
       // Ya está guardado en localStorage — quitarlo de la barra de
@@ -404,10 +410,6 @@ export default function App() {
       } catch (e) {
         console.error(e);
       }
-    }
-    if (tokenParam || accesoParam) setIsPartnerMode(true);
-    else if (hasSociasFlag && !hasAdminSession && !getStoredSociasToken()) {
-      setAvisoAcceso('Este enlace de socias ya no da acceso. Pide al administrador el enlace nuevo.');
     }
 
     // El acceso guardado (sesión de admin o enlace de socias) puede haber caducado o
@@ -431,6 +433,9 @@ export default function App() {
         // El ?week= puede ser de una semana que este dispositivo aún no tenía.
         const pedidaEnServidor = semanaPedidaEnEnlace({ weekParam, workerParam, hayAdmin: hasAdminSession, semanas: remoteWeeks });
         if (pedidaEnServidor) setActiveWeekId(pedidaEnServidor);
+      } else {
+        const semanaPedida = semanaPedidaEnEnlace({ weekParam, workerParam, hayAdmin: hasAdminSession, semanas: allWeeks });
+        if (semanaPedida) setActiveWeekId(semanaPedida);
       }
     });
   }, []);
@@ -632,23 +637,28 @@ export default function App() {
   // Genuinely public, no-sensitive-data view: no saldos, no nóminas, no admin
   // controls, regardless of whether this browser also has an admin session.
   if (isPublicPreviewMode && !trabajadorActivo) {
+    const puedeVolverAlPanel = isAdmin || isPartnerMode;
     return (
       <div className="bg-slate-950 min-h-screen text-slate-100 antialiased p-3 sm:p-6 md:p-8 font-sans relative isolate">
         <BackgroundAnimation viewMode="public" />
         <div className="w-full space-y-4 relative z-10">
-          <button
-            onClick={() => { setIsPublicPreviewMode(false); clearUrlParams(); }}
-            className="text-xs bg-slate-900 hover:bg-slate-800 text-slate-300 px-3.5 py-2 rounded-xl font-semibold transition-colors border border-slate-800 flex items-center gap-1.5"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-            <span>Volver al Panel</span>
-          </button>
+          {puedeVolverAlPanel && (
+            <button
+              type="button"
+              onClick={() => { setIsPublicPreviewMode(false); clearUrlParams(); }}
+              className="text-xs bg-slate-900 hover:bg-slate-800 text-slate-300 px-3.5 py-2 rounded-xl font-semibold transition-colors border border-slate-800 flex items-center gap-1.5"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
+              <span>Volver al Panel</span>
+            </button>
+          )}
           <PublicView
             data={activeWeek}
             workersList={workersList}
             clockEntries={currentWeekClockEntries}
             lecturaFichajes={lecturaFichajes}
             semanas={allWeeks}
+            onOpenLogin={!puedeVolverAlPanel ? () => setIsAdminLoginOpen(true) : undefined}
             onClockEntryCreated={handleClockEntryCreated}
             onOpenClockModal={abrirModalFichar}
           />
@@ -664,6 +674,20 @@ export default function App() {
           onClockEntryCreated={handleClockEntryCreated}
           isAdmin={isAdmin}
         />
+
+        {!puedeVolverAlPanel && (
+          <AdminLoginModal
+            isOpen={isAdminLoginOpen}
+            onClose={() => setIsAdminLoginOpen(false)}
+            onSuccess={() => {
+              setIsAdminUnlocked(true);
+              setIsPartnerMode(true);
+              setIsPublicPreviewMode(false);
+              clearUrlParams();
+              setIsAdminLoginOpen(false);
+            }}
+          />
+        )}
       </div>
     );
   }

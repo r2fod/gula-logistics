@@ -1,44 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Bell, Check } from 'lucide-react';
 import Modal from '../ui/Modal';
 import BotonCerrar from '../ui/BotonCerrar';
 import Boton from '../ui/Boton';
 import Chip from '../ui/Chip';
 
-// Elige a quién se avisa de que su planning ha cambiado (aviso push). Si no se
-// elige a nadie, se avisa a todos.
-//
-// Props: abierto, onCerrar, workersList, enviando (hay un envío en curso) y
-// onEnviar(nombres) con los trabajadores elegidos (lista vacía = todos).
-export default function AvisarCambiosModal({ abierto, onCerrar, workersList = [], enviando = false, onEnviar }) {
+function ContenidoAvisar({ onCerrar, workersList, enviando, onEnviar }) {
   const [elegidos, setElegidos] = useState([]);
-
-  // Cada vez que se abre empieza sin nadie elegido.
-  useEffect(() => {
-    if (abierto) setElegidos([]);
-  }, [abierto]);
 
   const alternar = (nombre) =>
     setElegidos((previos) => (previos.includes(nombre) ? previos.filter((n) => n !== nombre) : [...previos, nombre]));
 
   return (
-    <Modal abierto={abierto} onCerrar={onCerrar} ancho="sm" disposicion="columna" botonCerrar={false} etiqueta="Avisar cambios">
+    <>
       <div className="p-4 border-b border-slate-800/60 flex justify-between items-center bg-slate-900/50 backdrop-blur-md rounded-t-3xl">
         <h2 className="text-sm font-extrabold text-slate-100 flex items-center gap-2">
           <span className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20">
-            <Bell className="w-4 h-4 text-indigo-400" />
+            <Bell className="w-4 h-4 text-indigo-400" aria-hidden="true" />
           </span>
           ¿A quién quieres avisar?
         </h2>
         <BotonCerrar onClick={onCerrar} />
       </div>
 
-      <div className="p-5 overflow-y-auto max-h-[60vh] space-y-4">
+      <div className="p-5 overflow-y-auto overscroll-contain max-h-[60vh] space-y-4">
         <p className="text-xs text-slate-400 leading-relaxed">
           Selecciona a los trabajadores que recibirán la notificación de cambios en su planning. Si no seleccionas a ninguno, se enviará a <strong>todos</strong>.
         </p>
 
         <button
+          type="button"
           onClick={() => setElegidos([])}
           className={`w-full flex items-center justify-between p-3.5 rounded-2xl border transition-all ${
             elegidos.length === 0 
@@ -49,7 +40,7 @@ export default function AvisarCambiosModal({ abierto, onCerrar, workersList = []
           <span>Avisar a Todos</span>
           {elegidos.length === 0 && (
             <div className="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30">
-              <Check className="w-3.5 h-3.5 text-indigo-400" />
+              <Check className="w-3.5 h-3.5 text-indigo-400" aria-hidden="true" />
             </div>
           )}
         </button>
@@ -79,10 +70,24 @@ export default function AvisarCambiosModal({ abierto, onCerrar, workersList = []
           variante="indigo"
           className="flex-1 whitespace-nowrap"
         >
-          <Bell className={`w-4 h-4 shrink-0 ${enviando ? 'animate-pulse' : ''}`} />
+          <Bell className={`w-4 h-4 shrink-0 ${enviando ? 'animate-pulse' : ''}`} aria-hidden="true" />
           <span>{enviando ? 'Enviando Aviso...' : 'Enviar Aviso Push'}</span>
         </Boton>
       </div>
+    </>
+  );
+}
+
+// Elige a quién se avisa de que su planning ha cambiado (aviso push). Si no se
+// elige a nadie, se avisa a todos. Al desmontar el contenido cuando se cierra,
+// siempre vuelve a abrir sin nadie elegido.
+//
+// Props: abierto, onCerrar, workersList, enviando (hay un envío en curso) y
+// onEnviar(nombres) con los trabajadores elegidos (lista vacía = todos).
+export default function AvisarCambiosModal({ abierto, onCerrar, workersList = [], enviando = false, onEnviar }) {
+  return (
+    <Modal abierto={abierto} onCerrar={onCerrar} ancho="sm" disposicion="columna" botonCerrar={false} etiqueta="Avisar cambios">
+      {abierto && <ContenidoAvisar onCerrar={onCerrar} workersList={workersList} enviando={enviando} onEnviar={onEnviar} />}
     </Modal>
   );
 }

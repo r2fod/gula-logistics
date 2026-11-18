@@ -4,7 +4,11 @@ import { getDayLabel, getWeddingsBadge, isTaskEffectivelyDone, esTareaActiva } f
 import { Selector } from './ui/Campo';
 import Tarjeta from './ui/Tarjeta';
 import BarraProgreso from './ui/BarraProgreso';
+import EstadoVacio from './ui/EstadoVacio';
 import { normalizarNombre } from '../data/nombresTrabajadores';
+import { useAhora } from '../hooks/useAhora';
+
+const TIPO_NODO = { day: 'Día', task: 'Tarea', truck: 'Camión', worker: 'Persona' };
 
 // Categoriza una tarea por su texto para darle un icono/color propio en el
 // grafo — pura ayuda visual para distinguir de un vistazo qué tipo de
@@ -44,7 +48,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
   const slug = (s) => normalizarNombre(s).replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 
   // Cambia cada minuto: el grafo se recalcula cuando pasa la hora de una tarea.
-  const minutoActual = Math.floor(Date.now() / 60000);
+  const ahoraMinuto = useAhora(60000);
   const graphData = useMemo(() => {
     const nodes = [];
     const links = [];
@@ -110,28 +114,33 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
       });
     };
 
-    const truckIdByText = (text) => {
+    const truckIdsByText = (text) => {
       // Una tarea sin `.text` (objeto malformado, ej. de una generación de
       // IA incompleta) pasaba undefined hasta aquí y `.includes` reventaba
-      // toda la vista del Grafo — con este guard simplemente no encuentra
-      // camión, en vez de romper el render entero.
+      // toda la vista del Grafo. Además admite varios camiones ("A + B").
       const safeText = typeof text === 'string' ? text : '';
-      const found = trucks.find(t => safeText.includes(t.name) || (t.shortName && safeText.includes(t.shortName)));
-      return found ? found.id : null;
+      if (!safeText) return [];
+      const normalizado = normalizarNombre(safeText);
+      return trucks
+        .filter(t => safeText.includes(t.name) || (t.shortName && safeText.includes(t.shortName))
+          || normalizado.includes(normalizarNombre(t.name))
+          || (t.shortName && normalizado.includes(normalizarNombre(t.shortName))))
+        .map(t => t.id);
     };
 
     const linkTruck = (taskId, truckField, text) => {
       if (truckField) {
-        const truckId = truckIdByText(truckField);
-        if (truckId) links.push({ source: taskId, target: truckId });
-        return;
+        const ids = truckIdsByText(truckField);
+        if (ids.length) {
+          ids.forEach(truckId => links.push({ source: taskId, target: truckId }));
+          return;
+        }
       }
       if (/\d+\s*camiones/i.test(text || '')) {
         trucks.forEach(t => links.push({ source: taskId, target: t.id }));
         return;
       }
-      const truckId = truckIdByText(text);
-      if (truckId) links.push({ source: taskId, target: truckId });
+      truckIdsByText(text).forEach(truckId => links.push({ source: taskId, target: truckId }));
     };
 
     // 4. Task Nodes & Links
@@ -140,7 +149,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
     // aquí solo se leía la casilla guardada — y a las bodas del sábado y a las
     // tareas de domingo/lunes ni siquiera se les calculaba —, así que una
     // semana ya terminada seguía enseñando tareas pendientes en el grafo.
-    const ahora = new Date();
+    const ahora = ahoraMinuto;
     const rawSchedule = activeWeekData?.schedule || {};
 
     const dayConfigs = [
@@ -179,12 +188,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
       const id = `task_sabado_${idx}`;
       nodes.push({ id, type: 'task', label: `💒 ${w.location}`, sub: w.details, timeFrame: w.timeFrame, completed: isTaskEffectivelyDone(activeWeekData, 'sabado', w, ahora), dayId: 'day_sabado', dayKey: 'saturdaySpecial', idx });
       links.push({ source: 'day_sabado', target: id });
-
-      if (w.truck) {
-        const truckId = truckIdByText(w.truck);
-        if (truckId) links.push({ source: id, target: truckId });
-      }
-
+      linkTruck(id, w.truck, w.details);
       linkAssignedWorkers(id, w.assigned);
     });
 
@@ -193,7 +197,8 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
 
     domTasks.forEach((tItem, idx) => {
       if (!esTareaActiva(tItem)) return;
-      anadirTarea(tItem, idx, { id: `task_domingo_${idx}`, dayId: 'day_domingo', claveDia: 'domingo', claveNodo: 'sundayMonday' });
+      const claveDia = /domingo/i.test(tItem?.targetDay || '') ? 'domingo' : 'lunes';
+      anadirTarea(tItem, idx, { id: `task_domingo_${idx}`, dayId: 'day_domingo', claveDia, claveNodo: 'sundayMonday' });
     });
 
     // Vista de un trabajador concreto (dentro de WorkerView): el Grafo
@@ -223,7 +228,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
     }
 
     return { nodes, links };
-  }, [activeWeekData, workersList, restrictToWorkerName, minutoActual]);
+  }, [activeWeekData, workersList, restrictToWorkerName, ahoraMinuto]);
 
   // Connected node IDs calculation when a node is hovered/clicked.
   const connectedNodeIds = useMemo(() => {
@@ -289,6 +294,22 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
 
   const truckNodes = graphData.nodes.filter(n => n.type === 'truck');
   const workerNodes = graphData.nodes.filter(n => n.type === 'worker');
+  const hayFiltrosActivos = filterDay !== 'all' || filterTruck !== 'all' || filterWorker !== 'all';
+  const limpiarFiltros = () => { setFilterDay('all'); setFilterTruck('all'); setFilterWorker('all'); };
+  const ganttDays = hayFiltrosActivos ? dayNodes.filter(d => taskNodes.some(t => t.dayId === d.id)) : dayNodes;
+  const propsNodo = (id, seleccionado) => ({
+    role: 'button',
+    tabIndex: 0,
+    'aria-pressed': seleccionado,
+    onClick: () => setSelectedNodeId(seleccionado ? null : id),
+    onKeyDown: (e) => {
+      if (e.target !== e.currentTarget) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        setSelectedNodeId(seleccionado ? null : id);
+      }
+    },
+  });
 
   return (
     <div className="space-y-4 sm:space-y-6 w-full max-w-full">
@@ -296,7 +317,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 sm:gap-4 bg-slate-900/90 p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-800 shadow-2xl">
         <div className="flex items-center space-x-3 min-w-0">
           <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shadow-lg shrink-0">
-            <Zap className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
+            <Zap className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" aria-hidden="true" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -314,13 +335,14 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
         </div>
 
         {/* Filters & View Toggles */}
-        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full lg:w-auto">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-1 sm:flex-none">
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 w-full lg:w-auto min-w-0">
+          <div className={`grid grid-cols-1 ${restrictToWorkerName ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-2 flex-1 sm:flex-none min-w-0`}>
             {/* Day Filter */}
             <Selector 
               value={filterDay} 
               onChange={(e) => setFilterDay(e.target.value)}
-              tamano="sm" texto="suave" className="font-semibold w-full"
+              aria-label="Filtrar por día"
+              tamano="sm" texto="suave" className="font-semibold w-full min-w-0"
             >
               <option value="all">📅 Todos los Días</option>
               <option value="day_martes">{getDayLabel(activeWeekData, 'martes')}</option>
@@ -335,7 +357,8 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
             <Selector 
               value={filterTruck} 
               onChange={(e) => setFilterTruck(e.target.value)}
-              tamano="sm" texto="esmeralda" className="font-semibold w-full"
+              aria-label="Filtrar por camión"
+              tamano="sm" texto="esmeralda" className="font-semibold w-full min-w-0"
             >
               <option value="all">🚚 Toda la Flota</option>
               {truckNodes.map(t => (
@@ -343,22 +366,27 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
               ))}
             </Selector>
 
-            {/* Worker Filter — del roster real (workerNodes), no una lista fija */}
-            <Selector
-              value={filterWorker}
-              onChange={(e) => setFilterWorker(e.target.value)}
-              tamano="sm" texto="ambar-claro" className="font-semibold w-full"
-            >
-              <option value="all">👥 Todo el Equipo</option>
-              {workerNodes.map(w => (
-                <option key={w.id} value={w.id}>{w.label}</option>
-              ))}
-            </Selector>
+            {/* Worker Filter — solo si no está restringido a un trabajador */}
+            {!restrictToWorkerName && (
+              <Selector
+                value={filterWorker}
+                onChange={(e) => setFilterWorker(e.target.value)}
+                aria-label="Filtrar por persona"
+                tamano="sm" texto="ambar-claro" className="font-semibold w-full min-w-0"
+              >
+                <option value="all">👥 Todo el Equipo</option>
+                {workerNodes.map(w => (
+                  <option key={w.id} value={w.id}>{w.label}</option>
+                ))}
+              </Selector>
+            )}
           </div>
 
           {/* View Mode Toggle */}
           <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0 justify-center">
             <button
+              type="button"
+              aria-pressed={viewMode === 'graph'}
               onClick={() => setViewMode('graph')}
               className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-center ${
                 viewMode === 'graph' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
@@ -367,6 +395,8 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
               <Share2 className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Grafo
             </button>
             <button
+              type="button"
+              aria-pressed={viewMode === 'gantt'}
               onClick={() => setViewMode('gantt')}
               className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all text-center ${
                 viewMode === 'gantt' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
@@ -387,6 +417,8 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
           {/* Mobile Column Selector Bar */}
           <div className="relative z-20 flex md:hidden items-center gap-1.5 overflow-x-auto no-scrollbar pb-2 mb-3">
             <button
+              type="button"
+              aria-pressed={mobileColumn === 'all'}
               onClick={() => setMobileColumn('all')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
                 mobileColumn === 'all'
@@ -397,6 +429,8 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
               <Globe className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Vista Completa
             </button>
             <button
+              type="button"
+              aria-pressed={mobileColumn === 'days'}
               onClick={() => setMobileColumn('days')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
                 mobileColumn === 'days'
@@ -407,6 +441,8 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
               <Calendar className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Días ({dayNodes.length})
             </button>
             <button
+              type="button"
+              aria-pressed={mobileColumn === 'tasks'}
               onClick={() => setMobileColumn('tasks')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
                 mobileColumn === 'tasks'
@@ -417,6 +453,8 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
               <ListTodo className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Tareas ({taskNodes.length})
             </button>
             <button
+              type="button"
+              aria-pressed={mobileColumn === 'trucks'}
               onClick={() => setMobileColumn('trucks')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
                 mobileColumn === 'trucks'
@@ -427,6 +465,8 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
               <Truck className="w-3.5 h-3.5 inline-block align-[-2px] mr-1" aria-hidden="true" />Camiones ({truckNodes.length})
             </button>
             <button
+              type="button"
+              aria-pressed={mobileColumn === 'workers'}
               onClick={() => setMobileColumn('workers')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
                 mobileColumn === 'workers'
@@ -443,14 +483,14 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
             <div className="relative z-20 mb-4 sm:mb-6 bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 border border-amber-500/40 p-3.5 sm:p-5 rounded-2xl shadow-xl space-y-3 animate-fadeIn">
               <div className="flex items-center justify-between gap-2 border-b border-amber-500/20 pb-2.5">
                 <div className="flex items-center space-x-2.5 min-w-0">
-                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" />
+                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 shrink-0" aria-hidden="true" />
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="text-[11px] uppercase font-extrabold text-amber-400 tracking-wider">
                         Ruta Conectada • Nodo Activo
                       </span>
-                      <span className="text-[10px] font-bold px-2 py-0.2 rounded-full bg-slate-800 text-slate-300 capitalize">
-                        {selectedNodeObj.type}
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+                        {TIPO_NODO[selectedNodeObj.type] || selectedNodeObj.type}
                       </span>
                     </div>
                     <h4 className="text-sm sm:text-base font-extrabold text-white truncate font-outfit mt-0.5">
@@ -460,6 +500,7 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                   </div>
                 </div>
                 <button 
+                  type="button"
                   onClick={() => setSelectedNodeId(null)}
                   className="text-xs bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-xl font-bold transition-all shrink-0 active:scale-95"
                 >
@@ -534,13 +575,13 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
             </div>
           )}
 
-          {/* 4 Interactive Columns Graph View - Fully responsive */}
-          <div className="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6 w-full max-w-full">
+          {/* 4 Interactive Columns Graph View - 2 columnas en tablet (md), 4 en escritorio ancho (xl) */}
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5 w-full max-w-full">
             
             {/* COLUMN 1: DÍAS / HITOS */}
-            <div className={`space-y-3 md:rounded-2xl md:border md:border-slate-800/80 md:bg-slate-950/40 md:p-3 ${mobileColumn !== 'all' && mobileColumn !== 'days' ? 'hidden md:block' : 'block'}`}>
+            <div className={`min-w-0 space-y-3 md:rounded-2xl md:border md:border-slate-800/80 md:bg-slate-950/40 md:p-3 ${mobileColumn !== 'all' && mobileColumn !== 'days' ? 'hidden md:block' : 'block'}`}>
               <div className="flex items-center space-x-2 text-xs font-black uppercase text-blue-400 tracking-wider pb-2 border-b border-slate-800">
-                <Calendar className="w-4 h-4" />
+                <Calendar className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>1. Días & Hitos</span>
               </div>
 
@@ -553,16 +594,18 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                   return (
                     <div
                       key={d.id}
-                      onClick={() => setSelectedNodeId(isSelected ? null : d.id)}
+                      {...propsNodo(d.id, isSelected)}
                       className={`cursor-pointer transition-all duration-300 p-3 sm:p-3.5 rounded-2xl border ${d.color} ${opacityClass} ${
                         isSelected ? 'ring-2 ring-amber-400 scale-[1.02] shadow-lg shadow-amber-500/20' : 'hover:scale-[1.01]'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-xs">{d.label}</span>
-                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-900/60 text-slate-300 border border-slate-700/50">
-                          {d.sub}
-                        </span>
+                      <div className="flex flex-wrap items-center justify-between gap-1.5">
+                        <span className="font-extrabold text-xs whitespace-nowrap shrink-0">{d.label}</span>
+                        {d.sub && (
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-slate-900/60 text-slate-300 border border-slate-700/50 leading-snug break-words max-w-full">
+                            {d.sub}
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
@@ -571,14 +614,16 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
             </div>
 
             {/* COLUMN 2: TAREAS & ACTIVIDADES */}
-            <div className={`space-y-3 md:col-span-1 md:rounded-2xl md:border md:border-slate-800/80 md:bg-slate-950/40 md:p-3 ${mobileColumn !== 'all' && mobileColumn !== 'tasks' ? 'hidden md:block' : 'block'}`}>
+            <div className={`min-w-0 space-y-3 md:col-span-1 md:rounded-2xl md:border md:border-slate-800/80 md:bg-slate-950/40 md:p-3 ${mobileColumn !== 'all' && mobileColumn !== 'tasks' ? 'hidden md:block' : 'block'}`}>
               <div className="flex items-center space-x-2 text-xs font-black uppercase text-amber-400 tracking-wider pb-2 border-b border-slate-800">
-                <Clock className="w-4 h-4" />
+                <Clock className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>2. Tareas & Operaciones ({taskNodes.length})</span>
               </div>
 
               <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1">
-                {taskNodes.map(t => {
+                {taskNodes.length === 0 ? (
+                  <p className="text-xs text-slate-500 text-center py-6">Sin tareas para estos filtros.</p>
+                ) : taskNodes.map(t => {
                   const isSelected = selectedNodeId === t.id;
                   const isConnected = connectedNodeIds.has(t.id);
                   const opacityClass = selectedNodeId && !isConnected ? 'opacity-30 blur-[0.5px]' : 'opacity-100';
@@ -588,42 +633,45 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                   return (
                     <div
                       key={t.id}
-                      onClick={() => setSelectedNodeId(isSelected ? null : t.id)}
+                      {...propsNodo(t.id, isSelected)}
                       className={`cursor-pointer transition-all duration-300 p-3 rounded-2xl border border-l-4 bg-slate-900/80 border-slate-800 ${category.border} ${opacityClass} ${
                         isSelected ? 'border-amber-400 ring-2 ring-amber-400 scale-[1.02] shadow-xl shadow-amber-500/20' : 'hover:border-slate-700'
                       }`}
                     >
-                      <div className="flex items-start space-x-2">
+                      <div className="flex items-start space-x-2 min-w-0">
                         {t.dayKey && onToggleTask ? (
                           <button
+                            type="button"
+                            aria-label={t.completed ? `Desmarcar ${t.label}` : `Marcar ${t.label} como completada`}
+                            aria-pressed={t.completed}
                             onClick={(e) => {
                               e.stopPropagation();
                               onToggleTask(t.dayKey, t.idx);
                             }}
                             className="mt-0.5 text-slate-400 hover:text-emerald-400 transition-colors shrink-0"
                           >
-                            {t.completed ? <CheckCircle2 className="w-4 h-4 text-emerald-400" /> : <Circle className="w-4 h-4" />}
+                            {t.completed ? <CheckCircle2 className="w-4 h-4 text-emerald-400" aria-hidden="true" /> : <Circle className="w-4 h-4" aria-hidden="true" />}
                           </button>
                         ) : (
-                          <CategoryIcon className={`w-4 h-4 ${category.color} mt-0.5 shrink-0`} />
+                          <CategoryIcon className={`w-4 h-4 ${category.color} mt-0.5 shrink-0`} aria-hidden="true" />
                         )}
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap mb-1">
                             <span className={`inline-flex items-center justify-center w-5 h-5 rounded-md shrink-0 ${category.bg} ${category.color}`}>
-                              <CategoryIcon className="w-3 h-3" />
+                              <CategoryIcon className="w-3 h-3" aria-hidden="true" />
                             </span>
                             {t.timeFrame && (
                               <span className="inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded-md">
-                                <Clock className="w-3 h-3" />
+                                <Clock className="w-3 h-3" aria-hidden="true" />
                                 {t.timeFrame}
                               </span>
                             )}
                           </div>
-                          <p className={`text-xs font-medium leading-snug ${t.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>
+                          <p className={`text-xs font-medium leading-snug break-words ${t.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>
                             {t.label}
                           </p>
-                          {t.sub && <p className="text-[11px] text-amber-400/90 font-semibold mt-1">{t.sub}</p>}
+                          {t.sub && <p className="text-[11px] text-amber-400/90 font-semibold mt-1 break-words">{t.sub}</p>}
                         </div>
                       </div>
                     </div>
@@ -633,9 +681,9 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
             </div>
 
             {/* COLUMN 3: FLOTA & CAMIONES */}
-            <div className={`space-y-3 md:rounded-2xl md:border md:border-slate-800/80 md:bg-slate-950/40 md:p-3 ${mobileColumn !== 'all' && mobileColumn !== 'trucks' ? 'hidden md:block' : 'block'}`}>
+            <div className={`min-w-0 space-y-3 md:rounded-2xl md:border md:border-slate-800/80 md:bg-slate-950/40 md:p-3 ${mobileColumn !== 'all' && mobileColumn !== 'trucks' ? 'hidden md:block' : 'block'}`}>
               <div className="flex items-center space-x-2 text-xs font-black uppercase text-emerald-400 tracking-wider pb-2 border-b border-slate-800">
-                <Truck className="w-4 h-4" />
+                <Truck className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>3. Flota de Camiones</span>
               </div>
 
@@ -648,16 +696,16 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                   return (
                     <div
                       key={tr.id}
-                      onClick={() => setSelectedNodeId(isSelected ? null : tr.id)}
+                      {...propsNodo(tr.id, isSelected)}
                       className={`cursor-pointer transition-all duration-300 p-3 sm:p-3.5 rounded-2xl border ${tr.color} ${opacityClass} ${
                         isSelected ? 'ring-2 ring-emerald-400 scale-[1.02] shadow-lg shadow-emerald-500/20' : 'hover:scale-[1.01]'
                       }`}
                     >
-                      <div className="flex items-center space-x-3">
-                        <Truck className="w-5 h-5 shrink-0" />
+                      <div className="flex items-center space-x-3 min-w-0">
+                        <Truck className="w-5 h-5 shrink-0" aria-hidden="true" />
                         <div className="min-w-0">
                           <h4 className="font-extrabold text-xs break-words">{tr.label}</h4>
-                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">{tr.sub}</span>
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block break-words">{tr.sub}</span>
                         </div>
                       </div>
                     </div>
@@ -667,9 +715,9 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
             </div>
 
             {/* COLUMN 4: TRABAJADORES & ROLES */}
-            <div className={`space-y-3 md:rounded-2xl md:border md:border-slate-800/80 md:bg-slate-950/40 md:p-3 ${mobileColumn !== 'all' && mobileColumn !== 'workers' ? 'hidden md:block' : 'block'}`}>
+            <div className={`min-w-0 space-y-3 md:rounded-2xl md:border md:border-slate-800/80 md:bg-slate-950/40 md:p-3 ${mobileColumn !== 'all' && mobileColumn !== 'workers' ? 'hidden md:block' : 'block'}`}>
               <div className="flex items-center space-x-2 text-xs font-black uppercase text-purple-400 tracking-wider pb-2 border-b border-slate-800">
-                <Users className="w-4 h-4" />
+                <Users className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>4. Personal Asignado</span>
               </div>
 
@@ -682,16 +730,18 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
                   return (
                     <div
                       key={w.id}
-                      onClick={() => setSelectedNodeId(isSelected ? null : w.id)}
+                      {...propsNodo(w.id, isSelected)}
                       className={`cursor-pointer transition-all duration-300 p-2.5 rounded-xl border bg-slate-900/90 border-slate-800 text-slate-300 ${opacityClass} ${
                         isSelected ? 'border-purple-400 ring-2 ring-purple-400 scale-[1.02] shadow-lg shadow-purple-500/20 text-white' : 'hover:border-slate-700'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs">{w.label}</span>
-                        <span className="text-[11px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800">
-                          {w.sub}
-                        </span>
+                      <div className="flex items-center justify-between gap-2 min-w-0">
+                        <span className="font-bold text-xs truncate min-w-0">{w.label}</span>
+                        {w.sub && (
+                          <span className="text-[11px] text-slate-400 bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800 shrink-0 max-w-[55%] truncate">
+                            {w.sub}
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
@@ -706,59 +756,76 @@ export default function TaskFlowGraphView({ activeWeekData, workersList = [], on
         <Tarjeta variante="lienzo" className="p-4 sm:p-6 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-3 border-b border-slate-800">
             <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-              <Layers className="w-4 h-4 text-amber-400" />
+              <Layers className="w-4 h-4 text-amber-400" aria-hidden="true" />
               <span>Cronograma Gantt Operativo de la Semana</span>
             </h3>
             <span className="text-xs text-slate-400">Progreso por jornadas completadas</span>
           </div>
 
-          <div className="space-y-4">
-            {dayNodes.map(d => {
-              const dayTasks = taskNodes.filter(t => t.dayId === d.id);
-              const completedCount = dayTasks.filter(t => t.completed).length;
-              const totalCount = dayTasks.length;
-              const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+          {ganttDays.length === 0 ? (
+            <EstadoVacio
+              icono={Layers}
+              titulo="No hay tareas que coincidan con los filtros."
+              detalle="Prueba a cambiar el día, el camión o la persona seleccionados."
+              accion={hayFiltrosActivos ? (
+                <button
+                  type="button"
+                  onClick={limpiarFiltros}
+                  className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition-colors"
+                >
+                  Limpiar filtros
+                </button>
+              ) : null}
+            />
+          ) : (
+            <div className="space-y-4">
+              {ganttDays.map(d => {
+                const dayTasks = taskNodes.filter(t => t.dayId === d.id);
+                const completedCount = dayTasks.filter(t => t.completed).length;
+                const totalCount = dayTasks.length;
+                const pct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-              return (
-                <div key={d.id} className="bg-slate-900/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800 space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-1.5">
-                    <div className="flex items-center space-x-2 min-w-0">
-                      <span className="font-extrabold text-xs sm:text-sm text-amber-400 truncate">{d.label}</span>
-                      <span className="text-xs text-slate-400">({d.sub})</span>
+                return (
+                  <div key={d.id} className="bg-slate-900/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                      <div className="flex items-center space-x-2 min-w-0">
+                        <span className="font-extrabold text-xs sm:text-sm text-amber-400 truncate">{d.label}</span>
+                        {d.sub && <span className="text-xs text-slate-400 truncate">({d.sub})</span>}
+                      </div>
+                      <span className="text-xs font-mono text-emerald-400 font-bold shrink-0">
+                        {completedCount} / {totalCount} Tareas ({pct}%)
+                      </span>
                     </div>
-                    <span className="text-xs font-mono text-emerald-400 font-bold shrink-0">
-                      {completedCount} / {totalCount} Tareas ({pct}%)
-                    </span>
-                  </div>
 
-                  {/* Progress Bar */}
-                  <BarraProgreso
-                    porcentaje={pct}
-                    pista="h-2 sm:h-2.5 bg-slate-950 border border-slate-800"
-                    relleno="bg-gradient-to-r from-emerald-500 to-amber-500 transition-all duration-500"
-                    etiqueta="Progreso de tareas"
-                  />
+                    {/* Progress Bar */}
+                    <BarraProgreso
+                      porcentaje={pct}
+                      pista="h-2 sm:h-2.5 bg-slate-950 border border-slate-800"
+                      relleno="bg-gradient-to-r from-emerald-500 to-amber-500 transition-all duration-500"
+                      etiqueta="Progreso de tareas"
+                    />
 
-                  {/* Tasks List snippet */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
-                    {dayTasks.map(t => {
-                      const category = getTaskCategory(t.label);
-                      const CategoryIcon = category.icon;
-                      return (
-                        <div key={t.id} className={`text-xs bg-slate-950 p-2.5 rounded-xl border border-l-4 border-slate-800/80 ${category.border} text-slate-300 flex items-start space-x-2`}>
-                          <CategoryIcon className={`w-3.5 h-3.5 ${category.color} mt-0.5 shrink-0`} />
-                          <span className={t.completed ? 'line-through text-slate-500' : 'text-slate-200'}>
-                            {t.timeFrame && <span className="whitespace-nowrap text-blue-300 font-bold">{t.timeFrame} — </span>}
-                            {t.label}
-                          </span>
-                        </div>
-                      );
-                    })}
+                    {/* Tasks List snippet */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+                      {dayTasks.map(t => {
+                        const category = getTaskCategory(t.label);
+                        const CategoryIcon = category.icon;
+                        return (
+                          <div key={t.id} className={`text-xs bg-slate-950 p-2.5 rounded-xl border border-l-4 border-slate-800/80 ${category.border} text-slate-300 flex items-start space-x-2 min-w-0`}>
+                            <CategoryIcon className={`w-3.5 h-3.5 ${category.color} mt-0.5 shrink-0`} aria-hidden="true" />
+                            <span className={`min-w-0 break-words ${t.completed ? 'line-through text-slate-500' : 'text-slate-200'}`}>
+                              {t.timeFrame && <span className="whitespace-nowrap text-blue-300 font-bold">{t.timeFrame} — </span>}
+                              {t.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </Tarjeta>
       )}
     </div>

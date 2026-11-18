@@ -7,6 +7,7 @@ import TareaDiaItem from './TareaDiaItem';
 import { rejillaDeDias } from './rejillaDias';
 import { formatearHoras } from '../../data/formatoFinanciero';
 import { tarifaCorta } from '../../data/tarifas';
+import { mismoNombre } from '../../data/nombresTrabajadores';
 
 import { alMarcar } from '../ui/alMarcar';
 
@@ -36,14 +37,14 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
     const isCompleted = isTaskEffectivelyDone(activeWeekData, 'domingo', task, currentTime);
 
     const taskAssigned = typeof task === 'object' && Array.isArray(task.assigned) ? task.assigned : [];
-    const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
+    const matchesFilter = !selectedWorkerFilter || taskAssigned.some(name => mismoNombre(name, selectedWorkerFilter));
 
     return (
-      <div key={idx} {...alMarcar(onToggleTask && (() => onToggleTask('domingo', idx)), isCompleted)} className={`p-3 sm:p-4 rounded-2xl border leading-relaxed transition-all ${onToggleTask ? 'cursor-pointer' : ''} ${
+      <div key={idx} {...alMarcar(onToggleTask && (() => onToggleTask('domingo', idx)), isCompleted)} className={`p-3 sm:p-4 rounded-2xl border leading-relaxed transition-all min-w-0 break-words ${onToggleTask ? 'cursor-pointer' : ''} ${
         isCompleted
           ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 line-through opacity-60'
           : !matchesFilter 
-            ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-850 text-slate-500' 
+            ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-800/60 text-slate-500' 
             : 'bg-slate-950/80 border-slate-800 text-slate-300 hover:border-slate-700'
       }`}>
         <span>
@@ -102,6 +103,7 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
                 Filtrando: {selectedWorkerFilter}
               </span>
               <button
+                type="button"
                 onClick={() => setSelectedWorkerFilter(null)}
                 className="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-2.5 py-1 rounded-xl border border-slate-700 transition-colors"
               >
@@ -119,29 +121,31 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
           {workersList.map((w, idx) => {
             const isSelected = selectedWorkerFilter === w.name;
             return (
-              <div 
-                key={idx} 
+              <button
+                type="button"
+                key={w.name || idx}
+                aria-pressed={isSelected}
                 onClick={() => setSelectedWorkerFilter(isSelected ? null : w.name)}
-                className={`p-3.5 sm:p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-2.5 h-full ${
+                className={`text-left p-3.5 sm:p-4 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between space-y-2.5 h-full min-w-0 ${
                   isSelected 
                     ? 'bg-amber-500/15 border-amber-500 ring-2 ring-amber-500/40 text-white shadow-lg shadow-amber-500/10' 
                     : 'bg-slate-950/80 border-slate-800/80 hover:border-amber-500/40 text-slate-200'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div className="text-2xl sm:text-3xl">{w.avatar}</div>
+                <div className="flex items-center justify-between gap-1.5 w-full">
+                  <div className="text-2xl sm:text-3xl shrink-0">{w.avatar}</div>
                   {w.isPayroll ? (
-                    <span className="text-[10px] font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">Nómina</span>
+                    <span className="text-[10px] font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 whitespace-nowrap">Nómina</span>
                   ) : (
-                    <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">{tarifaCorta(w)}</span>
+                    <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 whitespace-nowrap">{tarifaCorta(w)}</span>
                   )}
                 </div>
 
-                <div className="min-w-0 pt-0.5">
+                <div className="min-w-0 w-full pt-0.5">
                   <span className="font-extrabold text-white truncate text-xs sm:text-sm block font-outfit">{w.name}</span>
                   <span className="text-[11px] text-slate-400 block mt-0.5 truncate">{w.role}</span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -221,18 +225,18 @@ export default function ScheduleTab({ activeWeekData, workersList, onToggleTask,
               
               const isCompleted = isTaskEffectivelyDone(activeWeekData, 'sabado', w, currentTime);
               const wAssigned = w.assigned || [];
-              const matchesFilter = !selectedWorkerFilter || wAssigned.some(name => name.toLowerCase() === selectedWorkerFilter.toLowerCase());
+              const matchesFilter = !selectedWorkerFilter || wAssigned.some(name => mismoNombre(name, selectedWorkerFilter));
 
               return (
-                <div key={idx} {...alMarcar(onToggleTask && (() => onToggleTask('sabado', idx)), isCompleted)} className={`p-4 sm:p-5 rounded-2xl border space-y-3 transition-all ${onToggleTask ? 'cursor-pointer' : ''} ${
+                <div key={idx} {...alMarcar(onToggleTask && (() => onToggleTask('sabado', idx)), isCompleted)} className={`p-4 sm:p-5 rounded-2xl border space-y-3 transition-all min-w-0 ${onToggleTask ? 'cursor-pointer' : ''} ${
                   isCompleted
                     ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 opacity-60'
                     : !matchesFilter 
-                      ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-850' 
+                      ? 'opacity-30 hover:opacity-80 bg-slate-950/60 border-slate-800/60' 
                       : 'bg-slate-950/90 border-slate-800 hover:border-amber-500/30'
                 }`}>
-                  <div className="flex items-start justify-between">
-                    <span className={`font-extrabold block text-sm sm:text-base font-outfit ${isCompleted ? 'line-through' : !matchesFilter ? 'text-amber-500/50' : 'text-amber-300'}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <span className={`font-extrabold block text-sm sm:text-base font-outfit min-w-0 break-words ${isCompleted ? 'line-through' : !matchesFilter ? 'text-amber-500/50' : 'text-amber-300'}`}>
                       {isCompleted && <Check className="w-4 h-4 inline mr-1 text-emerald-400" />}
                       {w.location}
                     </span>

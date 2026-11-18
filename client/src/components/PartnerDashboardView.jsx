@@ -106,7 +106,13 @@ export default function PartnerDashboardView({
 }) {
   const { alert, confirm } = useDialog();
   const [activeTab, setActiveTab] = useState(() => pestanaDesdeUrl(window.location.search));
-  const [adminUnlocked, setAdminUnlocked] = useState(isAdmin);
+  const [salidoLocal, setSalidoLocal] = useState(false);
+  const [adminPrevio, setAdminPrevio] = useState(isAdmin);
+  if (adminPrevio !== isAdmin) {
+    setAdminPrevio(isAdmin);
+    if (salidoLocal) setSalidoLocal(false);
+  }
+  const adminUnlocked = isAdmin && !salidoLocal;
   const [isAdminEditOpen, setIsAdminEditOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
   const [internalBalancesData, setInternalBalancesData] = useState(externalBalancesData || initialBalancesData);
@@ -135,16 +141,6 @@ export default function PartnerDashboardView({
     handleTabClick('financial');
     setEnfoqueResumen({ persona });
   };
-
-  useEffect(() => {
-    setAdminUnlocked(isAdmin);
-  }, [isAdmin]);
-
-  useEffect(() => {
-    if (externalBalancesData) {
-      setInternalBalancesData(externalBalancesData);
-    }
-  }, [externalBalancesData]);
 
   // Sync balances on load and tab change
   useEffect(() => {
@@ -185,7 +181,7 @@ export default function PartnerDashboardView({
 
   const handleSalir = () => {
     if (onLogoutAdmin) onLogoutAdmin();
-    setAdminUnlocked(false);
+    setSalidoLocal(true);
   };
 
   const handleDesbloquear = () => {
@@ -415,7 +411,7 @@ export default function PartnerDashboardView({
       )}
 
       {activeTab === 'graph' && (
-        <TaskFlowGraphView activeWeekData={activeWeekData} workersList={workersList} />
+        <TaskFlowGraphView activeWeekData={activeWeekData} workersList={workersList} onToggleTask={onToggleTask} />
       )}
       </Suspense>
       </div>

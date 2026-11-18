@@ -15,6 +15,8 @@ import LiveMonitorPanel from './LiveMonitorPanel';
 import { getTaskListForDay, isTaskEffectivelyDone, esTareaActiva } from '../data/taskPlanning';
 import { equipoPorRoles } from '../data/equipoRoles';
 import AvisoFichajesPrivados from './AvisoFichajesPrivados';
+import EstadoVacio from './ui/EstadoVacio';
+import { useCopiado } from '../hooks/useCopiado';
 
 export default function PublicView({ 
   data = {}, 
@@ -27,14 +29,14 @@ export default function PublicView({
   onOpenClockModal
 }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedLink, copiarEnlace] = useCopiado(3000);
   const [mobileTab, setMobileTab] = useState('all'); // 'all' | 'live' | 'trucks' | 'team'
+  const actividadPrivada = Boolean(lecturaFichajes && lecturaFichajes !== 'todos');
+  const pestanaMovil = actividadPrivada && mobileTab === 'live' ? 'all' : mobileTab;
 
   const handleShareLink = () => {
     const publicUrl = `${window.location.origin}${window.location.pathname}?view=public`;
-    navigator.clipboard.writeText(publicUrl);
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 3000);
+    copiarEnlace(publicUrl);
   };
 
   // La flota sale de la semana (Gestionar Flota, en Mongo): el código no lleva camiones
@@ -62,8 +64,10 @@ export default function PublicView({
     item.members.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const contarPersonas = (texto) => String(texto || '').split('·').map(s => s.trim()).filter(Boolean).length;
+
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-6 sm:space-y-8 animate-fadeIn">
       {/* Banner Header Status */}
       <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-r from-slate-900/90 via-slate-900/50 to-slate-950/80 p-4 sm:p-8 backdrop-blur-xl shadow-2xl">
         <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-amber-500/10 to-transparent pointer-events-none"></div>
@@ -72,12 +76,12 @@ export default function PublicView({
           <div className="lg:col-span-8 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold">
-                <Sparkles className="w-3.5 h-3.5" />
+                <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
                 <span>{data.meta?.week || "Semana Actual"}</span>
               </div>
 
               <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
-                <Activity className="w-3.5 h-3.5 animate-pulse" />
+                <Activity className="w-3.5 h-3.5 animate-pulse" aria-hidden="true" />
                 <span>{data.meta?.status || "Operativa Activa"}</span>
               </div>
             </div>
@@ -86,41 +90,44 @@ export default function PublicView({
               Planificación Operativa de Logística
             </h2>
 
-            <div className="flex items-center space-x-2 text-xs sm:text-sm text-slate-300">
-              <Calendar className="w-4 h-4 text-amber-400" />
-              <span>{data.meta?.dateRange || "Del 15 al 20 de Septiembre de 2026"}</span>
-            </div>
+            {data.meta?.dateRange && (
+              <div className="flex items-center space-x-2 text-xs sm:text-sm text-slate-300">
+                <Calendar className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />
+                <span>{data.meta.dateRange}</span>
+              </div>
+            )}
           </div>
 
           {/* Metrics & Share Button */}
           <div className="lg:col-span-4 flex flex-col space-y-3 pt-4 lg:pt-0 border-t lg:border-t-0 lg:border-l border-slate-800 lg:pl-6">
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800/80">
+              <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800/80 min-w-0">
                 <p className="text-[11px] font-medium text-slate-400">Camiones Activos</p>
-                <p className="text-xl sm:text-2xl font-bold text-amber-400 mt-0.5 font-outfit">
-                  {trucks.length} Vehículos
+                <p className="text-lg sm:text-2xl font-bold text-amber-400 mt-0.5 font-outfit tabular-nums whitespace-nowrap">
+                  {trucks.length} <span className="text-xs sm:text-base font-semibold text-amber-300/90">{trucks.length === 1 ? 'Vehículo' : 'Vehículos'}</span>
                 </p>
               </div>
-              <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800/80">
+              <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800/80 min-w-0">
                 <p className="text-[11px] font-medium text-slate-400">Progreso Tareas</p>
-                <p className="text-xl sm:text-2xl font-bold text-emerald-400 mt-0.5 font-outfit">
+                <p className="text-lg sm:text-2xl font-bold text-emerald-400 mt-0.5 font-outfit tabular-nums">
                   {taskProgressPercent}%
                 </p>
               </div>
             </div>
 
             <button
+              type="button"
               onClick={handleShareLink}
               className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-semibold transition-all shadow-md active:scale-95"
             >
               {copiedLink ? (
                 <>
-                  <Check className="w-4 h-4 text-emerald-400" />
+                  <Check className="w-4 h-4 text-emerald-400 shrink-0" aria-hidden="true" />
                   <span className="text-emerald-400">¡Enlace Público Copiado!</span>
                 </>
               ) : (
                 <>
-                  <Share2 className="w-4 h-4 text-amber-400" />
+                  <Share2 className="w-4 h-4 text-amber-400 shrink-0" aria-hidden="true" />
                   <span>Copiar Enlace Público para Compartir</span>
                 </>
               )}
@@ -128,10 +135,11 @@ export default function PublicView({
 
             {onOpenLogin && (
               <button
+                type="button"
                 onClick={onOpenLogin}
                 className="w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs font-semibold transition-all shadow-md active:scale-95"
               >
-                <ShieldCheck className="w-4 h-4" />
+                <ShieldCheck className="w-4 h-4 shrink-0" aria-hidden="true" />
                 <span>Acceso Admin / Socias</span>
               </button>
             )}
@@ -139,116 +147,141 @@ export default function PublicView({
         </div>
       </div>
 
-      {/* Live Monitor Panel (Tiempo Real) */}
-      {lecturaFichajes && lecturaFichajes !== 'todos' ? (
-        <AvisoFichajesPrivados vista="publica" />
-      ) : (
-        <LiveMonitorPanel
-          workersList={workersList}
-          clockEntries={clockEntries}
-          activeWeekData={data}
-          semanas={semanas}
-          onClockEntryCreated={onClockEntryCreated}
-          onOpenClockModal={onOpenClockModal}
-        />
-      )}
-
-      {/* Mobile Selector Tabs */}
-      <div className="flex md:hidden items-center space-x-1 bg-slate-900/80 p-1 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar">
+      {/* Selector de secciones en móvil (controla En Vivo, Flota y Equipo) */}
+      <div className="flex md:hidden items-center gap-1 bg-slate-900/80 p-1 rounded-2xl border border-slate-800 overflow-x-auto no-scrollbar">
         <button
+          type="button"
+          aria-pressed={pestanaMovil === 'all'}
           onClick={() => setMobileTab('all')}
           className={`flex-1 py-2 px-3 text-xs font-semibold rounded-xl whitespace-nowrap transition-colors ${
-            mobileTab === 'all' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'
+            pestanaMovil === 'all' ? 'bg-amber-500 text-slate-950 font-extrabold' : 'text-slate-400 hover:text-white'
           }`}
         >
           Todo
         </button>
+        {!actividadPrivada && (
+          <button
+            type="button"
+            aria-pressed={pestanaMovil === 'live'}
+            onClick={() => setMobileTab('live')}
+            className={`flex-1 py-2 px-3 text-xs font-semibold rounded-xl whitespace-nowrap transition-colors ${
+              pestanaMovil === 'live' ? 'bg-emerald-500 text-slate-950 font-extrabold' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            🔴 En Vivo
+          </button>
+        )}
         <button
-          onClick={() => setMobileTab('live')}
-          className={`flex-1 py-2 px-3 text-xs font-semibold rounded-xl whitespace-nowrap transition-colors ${
-            mobileTab === 'live' ? 'bg-emerald-500 text-slate-950' : 'text-slate-400'
-          }`}
-        >
-          🔴 En Vivo
-        </button>
-        <button
+          type="button"
+          aria-pressed={pestanaMovil === 'trucks'}
           onClick={() => setMobileTab('trucks')}
           className={`flex-1 py-2 px-3 text-xs font-semibold rounded-xl whitespace-nowrap transition-colors ${
-            mobileTab === 'trucks' ? 'bg-amber-500 text-slate-950' : 'text-slate-400'
+            pestanaMovil === 'trucks' ? 'bg-amber-500 text-slate-950 font-extrabold' : 'text-slate-400 hover:text-white'
           }`}
         >
           Camiones ({trucks.length})
         </button>
+        <button
+          type="button"
+          aria-pressed={pestanaMovil === 'team'}
+          onClick={() => setMobileTab('team')}
+          className={`flex-1 py-2 px-3 text-xs font-semibold rounded-xl whitespace-nowrap transition-colors ${
+            pestanaMovil === 'team' ? 'bg-amber-500 text-slate-950 font-extrabold' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          Equipo ({workersList.length})
+        </button>
       </div>
 
-      {/* Section 1: Flota de Camiones (3 Camiones) */}
-      {(mobileTab === 'all' || mobileTab === 'trucks') && (
+      {/* Live Monitor Panel (Tiempo Real) */}
+      {(pestanaMovil === 'all' || pestanaMovil === 'live') && (
+        actividadPrivada ? (
+          <AvisoFichajesPrivados vista="publica" />
+        ) : (
+          <LiveMonitorPanel
+            workersList={workersList}
+            clockEntries={clockEntries}
+            activeWeekData={data}
+            semanas={semanas}
+            onClockEntryCreated={onClockEntryCreated}
+            onOpenClockModal={onOpenClockModal}
+          />
+        )
+      )}
+
+      {/* Section 1: Flota de Camiones */}
+      {(pestanaMovil === 'all' || pestanaMovil === 'trucks') && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Truck className="w-5 h-5 text-amber-400" />
-              <h3 className="text-xl font-bold text-white tracking-tight font-outfit">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center space-x-2 min-w-0">
+              <Truck className="w-5 h-5 text-amber-400 shrink-0" aria-hidden="true" />
+              <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight font-outfit">
                 Camiones de la Flota Gula
               </h3>
             </div>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              {trucks.length} Unidades
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap shrink-0">
+              {trucks.length} {trucks.length === 1 ? 'Unidad' : 'Unidades'}
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-            {trucks.map((truck, i) => (
-              <div 
-                key={i} 
-                className="group relative bg-slate-900/70 border border-slate-800 hover:border-amber-500/40 rounded-2xl p-3.5 sm:p-5 backdrop-blur-md transition-all hover:-translate-y-1 shadow-lg shadow-slate-950/50 flex flex-col justify-between h-full"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
-                      <Truck className="w-5 h-5" />
+          {trucks.length === 0 ? (
+            <EstadoVacio icono={Truck} titulo="Sin vehículos asignados esta semana." detalle="Cuando se añadan camiones a la semana aparecerán aquí." />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] gap-4 sm:gap-6">
+              {trucks.map((truck, i) => (
+                <div 
+                  key={truck.name || i} 
+                  className="group relative bg-slate-900/70 border border-slate-800 hover:border-amber-500/40 rounded-2xl p-3.5 sm:p-5 backdrop-blur-md transition-all hover:-translate-y-1 shadow-lg shadow-slate-950/50 flex flex-col justify-between h-full"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform shrink-0">
+                        <Truck className="w-5 h-5" aria-hidden="true" />
+                      </div>
+                      <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 whitespace-nowrap shrink-0">
+                        {truck.tag || "Flota"}
+                      </span>
                     </div>
-                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-800 text-slate-300">
-                      {truck.tag || "Flota"}
+
+                    <div className="min-w-0">
+                      <h4 className="font-bold text-white text-lg font-outfit group-hover:text-amber-400 transition-colors break-words">
+                        {truck.name}
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-1">Ruta & Asignaciones Operativas</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2 text-xs">
+                    <span className="inline-flex items-center space-x-1.5 text-emerald-400 font-medium min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" aria-hidden="true"></span>
+                      <span className="min-w-0 break-words">{truck.status}</span>
                     </span>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-white text-lg font-outfit group-hover:text-amber-400 transition-colors">
-                      {truck.name}
-                    </h4>
-                    <p className="text-xs text-slate-400 mt-1">Ruta & Asignaciones Operativas</p>
+                    <span className="text-slate-500 whitespace-nowrap shrink-0">Gula Ops</span>
                   </div>
                 </div>
-
-                <div className="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                  <span className="inline-flex items-center space-x-1.5 text-emerald-400 font-medium">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                    <span>{truck.status}</span>
-                  </span>
-                  <span className="text-slate-500">Gula Ops</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {/* Section 2: Equipo de Logística */}
-      {(mobileTab === 'all' || mobileTab === 'team') && (
+      {(pestanaMovil === 'all' || pestanaMovil === 'team') && (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-            <div className="flex items-center space-x-2">
-              <Users className="w-5 h-5 text-amber-400" />
-              <h3 className="text-xl font-bold text-white tracking-tight font-outfit">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center space-x-2 min-w-0">
+              <Users className="w-5 h-5 text-amber-400 shrink-0" aria-hidden="true" />
+              <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight font-outfit">
                 Equipo & Roles Asignados
               </h3>
             </div>
 
             <div className="relative w-full sm:w-72">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
               <input 
                 type="text" 
                 placeholder="Buscar rol o persona..."
+                aria-label="Buscar rol o persona"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-900/90 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/60 transition-all"
@@ -256,34 +289,54 @@ export default function PublicView({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-4 sm:gap-6">
-            {filteredTeam.map((item, idx) => (
-              <div 
-                key={idx}
-                className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 sm:p-6 backdrop-blur-md space-y-3 flex flex-col justify-between h-full"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-amber-400">
-                      <Users className="w-5 h-5" />
-                    </div>
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300">
-                      {item.role}
-                    </span>
-                  </div>
+          {filteredTeam.length === 0 ? (
+            <EstadoVacio
+              icono={Users}
+              titulo={searchQuery ? 'No hay coincidencias con tu búsqueda.' : 'Sin personal asignado todavía.'}
+              detalle={searchQuery ? `No se encontró ningún rol ni persona para «${searchQuery}».` : null}
+              accion={searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition-colors"
+                >
+                  Limpiar búsqueda
+                </button>
+              ) : null}
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-4 sm:gap-6">
+              {filteredTeam.map((item, idx) => {
+                const total = contarPersonas(item.members);
+                return (
+                  <div 
+                    key={item.role || idx}
+                    className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 sm:p-6 backdrop-blur-md space-y-3 flex flex-col justify-between h-full"
+                  >
+                    <div className="space-y-3 flex-1 flex flex-col">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-amber-400 shrink-0">
+                          <Users className="w-5 h-5" aria-hidden="true" />
+                        </div>
+                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 whitespace-nowrap shrink-0">
+                          {total} {total === 1 ? 'persona' : 'personas'}
+                        </span>
+                      </div>
 
-                  <div>
-                    <h4 className="text-lg font-bold text-white font-outfit">
-                      {item.role}
-                    </h4>
-                    <p className="text-sm text-slate-300 mt-2 font-medium bg-slate-950/50 p-3 rounded-xl border border-slate-800/60">
-                      {item.members}
-                    </p>
+                      <div className="flex-1 flex flex-col">
+                        <h4 className="text-lg font-bold text-white font-outfit">
+                          {item.role}
+                        </h4>
+                        <p className="text-sm text-slate-300 mt-2 font-medium bg-slate-950/50 p-3 rounded-xl border border-slate-800/60 flex-1">
+                          {item.members}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>

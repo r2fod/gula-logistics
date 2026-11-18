@@ -5,7 +5,7 @@ import TaskFlowGraphView from './TaskFlowGraphView';
 import AdminClockEditModal from './AdminClockEditModal';
 import ResumenHorasSaldo from './dashboard/ResumenHorasSaldo';
 import { getActiveShiftForWorker, pairShiftsFromEntries, sortEntriesByTimestamp } from '../data/shiftCalculations';
-import { getTaskListForDay, resolveTaskIndex, isTaskEffectivelyDone, getNextTaskStart, isTaskTooEarlyToStart, refDeTareaFichada } from '../data/taskPlanning';
+import { getTaskListForDay, resolveTaskIndex, indiceDeTareaFichada, isTaskEffectivelyDone, getNextTaskStart, isTaskTooEarlyToStart, refDeTareaFichada } from '../data/taskPlanning';
 import { subscribeToPush } from '../data/pushService';
 import HistorialFichajes from './trabajador/HistorialFichajes';
 import TarjetaFichar from './trabajador/TarjetaFichar';
@@ -135,9 +135,13 @@ export default function WorkerView({
   // enseñar a alguien trabajando en otra cosa sin ninguna relación).
   const referenceTaskAssigned = (() => {
     if (activeShift?.taskRef) {
-      const { dayKey, taskIndex } = activeShift.taskRef;
-      const list = getTaskListForDay(activeWeekData, dayKey);
-      const t = list[taskIndex];
+      const ref = activeShift.taskRef;
+      const semanaIdActiva = activeWeekData?.weekId || activeWeekData?.id;
+      if (ref.weekId && semanaIdActiva && ref.weekId !== semanaIdActiva) return null;
+      const idx = indiceDeTareaFichada(activeWeekData, ref);
+      if (idx === null) return null;
+      const list = getTaskListForDay(activeWeekData, ref.dayKey);
+      const t = list[idx];
       return (t && typeof t === 'object' && Array.isArray(t.assigned)) ? t.assigned : null;
     }
     if (!activeShift && proximaTarea?.rawTask && Array.isArray(proximaTarea.rawTask.assigned)) {
@@ -235,12 +239,13 @@ export default function WorkerView({
           <div className="flex items-center space-x-2 shrink-0">
             {pushStatus !== 'granted' && pushStatus !== 'unsupported' && (
               <button
+                type="button"
                 onClick={handleSubscribePush}
                 disabled={pushStatus === 'loading'}
                 className="py-2 px-3 rounded-xl bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 border border-indigo-500/30 text-xs font-bold transition-colors flex items-center space-x-1.5"
                 title="Recibe alertas cuando se añadan o cambien tus turnos"
               >
-                <Bell className={`w-3.5 h-3.5 ${pushStatus === 'loading' ? 'animate-pulse' : 'animate-bounce'}`} />
+                <Bell className={`w-3.5 h-3.5 ${pushStatus === 'loading' ? 'animate-pulse' : 'animate-bounce'}`} aria-hidden="true" />
                 <span className="hidden sm:inline">{pushStatus === 'loading' ? 'Activando...' : 'Activar Alertas'}</span>
                 <span className="sm:hidden">{pushStatus === 'loading' ? '...' : 'Alertas'}</span>
               </button>
@@ -249,15 +254,17 @@ export default function WorkerView({
             {onOpenAdminDashboard && (
               isAdmin ? (
                 <button
+                  type="button"
                   onClick={onOpenAdminDashboard}
                   aria-label="Administración"
                   className="py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-xs font-bold transition-colors flex items-center space-x-1.5 shrink-0"
                 >
-                  <Settings className="w-4 h-4 hover:rotate-90 transition-transform duration-300" />
+                  <Settings className="w-4 h-4 hover:rotate-90 transition-transform duration-300" aria-hidden="true" />
                   <span className="hidden sm:inline">Administración</span>
                 </button>
               ) : (
                 <button
+                  type="button"
                   onClick={onOpenAdminDashboard}
                   className="text-[11px] text-slate-600 hover:text-slate-400 transition-colors shrink-0 px-2 py-1"
                   title="Acceso Admin (Oculto)"
@@ -333,6 +340,8 @@ export default function WorkerView({
       {/* 2. Clean Segmented Navigation Tabs (Mis Tareas vs Mis Fichajes) */}
       <div className="flex items-center space-x-2 bg-slate-900/90 p-1.5 rounded-2xl border border-slate-800 shrink-0">
         <button
+          type="button"
+          aria-pressed={workerTab === 'tasks'}
           onClick={() => setWorkerTab('tasks')}
           className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
             workerTab === 'tasks'
@@ -340,11 +349,13 @@ export default function WorkerView({
               : 'text-slate-400 hover:text-white hover:bg-slate-800'
           }`}
         >
-          <Calendar className="w-3.5 h-3.5" />
+          <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
           <span className="whitespace-nowrap">Tareas ({totalAssignedTasks})</span>
         </button>
 
         <button
+          type="button"
+          aria-pressed={workerTab === 'history'}
           onClick={() => setWorkerTab('history')}
           className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition-all ${
             workerTab === 'history'
@@ -352,7 +363,7 @@ export default function WorkerView({
               : 'text-slate-400 hover:text-white hover:bg-slate-800'
           }`}
         >
-          <Clock className="w-3.5 h-3.5" />
+          <Clock className="w-3.5 h-3.5" aria-hidden="true" />
           <span className="whitespace-nowrap">Fichajes ({myEntries.length})</span>
         </button>
       </div>
@@ -370,13 +381,15 @@ export default function WorkerView({
               <span className="whitespace-nowrap text-[11px] text-slate-400">{activeWeekData?.meta?.dateRange}</span>
             </div>
             <h2 className="text-base sm:text-xl font-extrabold text-white tracking-tight font-outfit mt-0.5 flex items-center space-x-2">
-              <Calendar className="w-5 h-5 text-amber-400" />
+              <Calendar className="w-5 h-5 text-amber-400" aria-hidden="true" />
               <span>Cuadrante semanal</span>
             </h2>
           </div>
 
           <div className="flex items-center space-x-2 w-full sm:w-auto">
             <button
+              type="button"
+              aria-pressed={viewModeType === 'calendar'}
               onClick={() => {
                 setViewModeType('calendar');
               }}
@@ -390,6 +403,8 @@ export default function WorkerView({
             </button>
 
             <button
+              type="button"
+              aria-pressed={viewModeType === 'graph'}
               onClick={() => setViewModeType('graph')}
               className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all border ${
                 viewModeType === 'graph'
@@ -397,7 +412,7 @@ export default function WorkerView({
                   : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'
               }`}
             >
-              <Zap className="w-3.5 h-3.5 text-amber-400 inline mr-1" />
+              <Zap className={`w-3.5 h-3.5 inline-block align-[-2px] mr-1 ${viewModeType === 'graph' ? 'text-slate-950' : 'text-amber-400'}`} aria-hidden="true" />
               <span>Grafo</span>
             </button>
           </div>

@@ -25,6 +25,8 @@ export default function CuadranteDias({
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 pt-1 -mx-1 px-1 shrink-0">
         {hoy && (
           <button
+            type="button"
+            aria-pressed={diaElegido === hoy}
             onClick={() => onElegirDia(hoy)}
             className={`${PILDORA} flex items-center gap-1.5 ${diaElegido === hoy ? ELEGIDA : 'bg-slate-950 text-slate-200 border-slate-800 hover:text-white'}`}
           >
@@ -33,6 +35,8 @@ export default function CuadranteDias({
         )}
 
         <button
+          type="button"
+          aria-pressed={diaElegido === 'all'}
           onClick={() => onElegirDia('all')}
           className={`${PILDORA} ${diaElegido === 'all' ? ELEGIDA : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-white'}`}
         >
@@ -45,6 +49,8 @@ export default function CuadranteDias({
           return (
             <button
               key={day.key}
+              type="button"
+              aria-pressed={isSelected}
               onClick={() => onElegirDia(day.key)}
               className={`${PILDORA} flex items-center gap-1.5 ${
                 isSelected
@@ -58,7 +64,9 @@ export default function CuadranteDias({
             >
               <span>{day.label} {day.date}</span>
               {day.key === hoy && (
-                <span className="text-[10px] px-1 py-px rounded bg-blue-500/20 text-blue-300 font-extrabold">
+                <span className={`text-[10px] px-1 py-px rounded font-extrabold ${
+                  isSelected ? 'bg-slate-950/20 text-slate-950' : 'bg-blue-500/20 text-blue-300'
+                }`}>
                   HOY
                 </span>
               )}
@@ -69,7 +77,7 @@ export default function CuadranteDias({
                   {day.totalCount}
                 </span>
               )}
-              {isSaturday && <span>👑</span>}
+              {isSaturday && <span aria-hidden="true">👑</span>}
             </button>
           );
         })}

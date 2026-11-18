@@ -11,7 +11,9 @@ export function useCerrarConEscape(activo, onCerrar) {
   // Guardar el último `onCerrar` evita volver a suscribirse en cada render (los
   // llamadores suelen pasar una flecha nueva cada vez).
   const alCerrar = useRef(onCerrar);
-  alCerrar.current = onCerrar;
+  useEffect(() => {
+    alCerrar.current = onCerrar;
+  }, [onCerrar]);
 
   useEffect(() => {
     if (!activo) return undefined;
@@ -27,7 +29,8 @@ export function useCerrarConEscape(activo, onCerrar) {
 
     return () => {
       document.removeEventListener('keydown', alPulsarTecla);
-      abiertas.splice(abiertas.indexOf(yo), 1);
+      const indice = abiertas.indexOf(yo);
+      if (indice !== -1) abiertas.splice(indice, 1);
     };
   }, [activo]);
 }
