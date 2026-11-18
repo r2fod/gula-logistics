@@ -48,6 +48,18 @@ describe('cola de tareas marcadas sin cobertura', () => {
     expect(tareasPendientes()).toEqual([]);
   });
 
+  it('BUG evitado: un 409 (el admin guardó la semana justo entonces) se reintenta, no se pierde la marca', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 409 });
+    await patchTaskCompletionInAPI('week_1', 'jueves', 0, true, false, '2026-10-08T12:00:00.000Z');
+    expect(tareasPendientes()).toHaveLength(1);
+    await retryPendingTaskPatches();
+    expect(tareasPendientes()).toHaveLength(1); // sigue 409: se queda esperando
+
+    global.fetch = vi.fn().mockResolvedValue(ok());
+    expect((await retryPendingTaskPatches()).map(c => c.taskIndex)).toEqual([0]);
+    expect(tareasPendientes()).toEqual([]);
+  });
+
   it('si se toca otra vez la misma tarea, vale la última; con red, no se encola nada', async () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 502 });
     await patchTaskCompletionInAPI('week_1', 'jueves', 0, true, false, 'a');

@@ -1,4 +1,5 @@
 import express from 'express';
+import { limitePorIp } from '../middleware/limitePorIp.js';
 import { logisticsData } from '../data/logisticsData.js';
 import { LogisticsWeek } from '../models/LogisticsWeek.model.js';
 import mongoose from 'mongoose';
@@ -95,8 +96,11 @@ router.post('/weeks', requireAdmin, async (req, res) => {
       const freshDocs = {};
       for (const [weekId, weekData] of Object.entries(weeksPayload)) {
         const existing = await LogisticsWeek.findOne({ weekId });
-        const versionDistinta = existing && weekData.updatedAt &&
-          new Date(existing.updatedAt).getTime() !== new Date(weekData.updatedAt).getTime();
+        // Una semana que ya existe se guarda solo si el cliente dice con qué versión
+        // la abrió: sin `updatedAt` no hay forma de saber si pisa lo de otro (antes
+        // se guardaba a ciegas).
+        const versionDistinta = existing && (!weekData.updatedAt ||
+          new Date(existing.updatedAt).getTime() !== new Date(weekData.updatedAt).getTime());
         const { archivada, archivadaEn, updatedAt, ...contenido } = weekData;
         const saved = existing?.archivada || versionDistinta ? null : await LogisticsWeek.findOneAndUpdate(
           { weekId, ...(existing ? { ...semanasVisibles, updatedAt: existing.updatedAt } : {}) },
@@ -200,13 +204,26 @@ function posicionDeTarea(lista, { taskIndex, taskId, taskText }) {
   return enSuSitio !== undefined ? taskIndex : null;
 }
 
-router.patch('/weeks/:weekId/tasks', async (req, res) => {
+// Endpoint público (lo usa el trabajador al fichar): con tope de peticiones por IP y de
+// tamaño de cuerpo, y solo con días que existen.
+const limiteMarcarTarea = limitePorIp({ max: 1200, ventanaMs: 10 * 60 * 1000 });
+const DIAS_VALIDOS = new Set(['martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo', 'lunes']);
+const CUERPO_MAXIMO_TAREA = 16 * 1024;
+const rechazarCuerpoGrande = (req, res, next) => (
+  Number(req.headers['content-length']) > CUERPO_MAXIMO_TAREA
+    ? res.status(413).json({ error: 'Los datos enviados son demasiado grandes' })
+    : next()
+);
+
+router.patch('/weeks/:weekId/tasks', limiteMarcarTarea, rechazarCuerpoGrande, (req, res) => marcarTarea(req, res));
+
+async function marcarTarea(req, res, reintento = false) {
   try {
     const { weekId } = req.params;
     const { dayKey, completed, reopened, completedAt, taskId, taskText } = req.body;
     let { taskIndex } = req.body;
 
-    if (typeof dayKey !== 'string' || !dayKey || !Number.isInteger(taskIndex) || taskIndex < 0 || typeof completed !== 'boolean') {
+    if (typeof dayKey !== 'string' || !DIAS_VALIDOS.has(dayKey) || !Number.isInteger(taskIndex) || taskIndex < 0 || typeof completed !== 'boolean') {
       return res.status(400).json({ error: 'dayKey (string), taskIndex (entero >= 0) y completed (booleano) son obligatorios' });
     }
     if (reopened !== undefined && typeof reopened !== 'boolean') {
@@ -269,18 +286,24 @@ router.patch('/weeks/:weekId/tasks', async (req, res) => {
       ? `saturdaySpecial.weddings.${taskIndex}`
       : isDomingoOLunes ? `sundayMonday.tasks.${taskIndex}` : `schedule.${dayKey}.tasks.${taskIndex}`;
 
+    // Solo se escribe si la semana sigue en la versión que se leyó: si el admin guardó
+    // entre medias, este `$set` (la tarea ENTERA) le pisaría su cambio (otro `assigned`,
+    // otro orden). Sin coincidencia se relee y se repite una vez; si aun así cambia, 409.
     const updated = await LogisticsWeek.findOneAndUpdate(
-      { weekId, ...semanasVisibles },
+      { weekId, ...semanasVisibles, ...(week.updatedAt ? { updatedAt: week.updatedAt } : {}) },
       { $set: { [fieldPath]: updatedTask } },
       { new: true }
     );
-    if (!updated) return res.status(404).json({ error: 'Semana no encontrada' });
+    if (!updated) {
+      if (!reintento) return marcarTarea(req, res, true);
+      return res.status(409).json({ success: false, conflict: true, error: 'La semana ha cambiado mientras se marcaba la tarea. Vuelve a intentarlo.' });
+    }
     return res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Error al actualizar tarea de la semana:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
-});
+}
 
 // POST /api/logistics/upload-rental — guarda el PDF en la base y devuelve su dirección
 // (`/api/logistics/documentos/<clave>`), que es lo que se apunta en el camión.

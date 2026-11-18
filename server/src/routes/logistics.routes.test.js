@@ -106,6 +106,18 @@ describe('POST /api/logistics/weeks (reemplazo de documento completo)', () => {
     expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
+  it('BUG evitado: guardar una semana que YA existe sin updatedAt da 409 y no sobrescribe (antes pisaba lo de otro sin avisar)', async () => {
+    LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_3', updatedAt: '2026-09-20T10:00:00.000Z' });
+    const res = await request(buildApp())
+      .post('/api/logistics/weeks')
+      .set('Authorization', adminAuthHeader())
+      .send({ week_3: { weekId: 'week_3', name: 'Semana 3 (copia vieja)', schedule: {} } });
+
+    expect(res.status).toBe(409);
+    expect(res.body.conflicts).toEqual(['week_3']);
+    expect(LogisticsWeek.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
   it('guardado normal: si el updatedAt coincide con el actual, sí guarda', async () => {
     const sameUpdatedAt = '2026-09-20T09:00:00.000Z';
     LogisticsWeek.findOne.mockResolvedValue({ weekId: 'week_3', updatedAt: sameUpdatedAt });
@@ -376,6 +388,54 @@ describe('PATCH /api/logistics/weeks/:weekId/tasks (marcar UNA tarea)', () => {
       .patch('/api/logistics/weeks/week_3/tasks')
       .send({ dayKey: 'martes', taskIndex: 0, completed: true });
     expect(res.status).toBe(404);
+  });
+});
+
+describe('PATCH tareas — sin pisar un guardado del admin (versión) y con límites', () => {
+  const semanaCon = (updatedAt) => ({
+    weekId: 'week_3', updatedAt,
+    schedule: { martes: { tasks: [{ text: 'Cargar furgoneta', completed: false, assigned: ['Ana'] }] } },
+  });
+  const marcar = () => request(buildApp()).patch('/api/logistics/weeks/week_3/tasks').send({ dayKey: 'martes', taskIndex: 0, completed: true });
+
+  it('BUG evitado: escribe solo si la semana sigue en la versión que leyó (filtra por updatedAt)', async () => {
+    LogisticsWeek.findOne.mockResolvedValue(semanaCon('2026-11-01T10:00:00.000Z'));
+    LogisticsWeek.findOneAndUpdate.mockResolvedValue({ weekId: 'week_3' });
+    await marcar();
+    const [filtro] = LogisticsWeek.findOneAndUpdate.mock.calls[0];
+    expect(filtro).toEqual(expect.objectContaining({ weekId: 'week_3', updatedAt: '2026-11-01T10:00:00.000Z' }));
+  });
+
+  it('BUG evitado: si el admin guardó entre la lectura y la escritura, relee y repite una vez con la versión nueva', async () => {
+    LogisticsWeek.findOne
+      .mockResolvedValueOnce(semanaCon('2026-11-01T10:00:00.000Z'))
+      .mockResolvedValueOnce(semanaCon('2026-11-01T10:00:05.000Z'));
+    LogisticsWeek.findOneAndUpdate.mockResolvedValueOnce(null).mockResolvedValueOnce({ weekId: 'week_3' });
+    const res = await marcar();
+    expect(res.status).toBe(200);
+    expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledTimes(2);
+    expect(LogisticsWeek.findOneAndUpdate.mock.calls[1][0]).toEqual(expect.objectContaining({ updatedAt: '2026-11-01T10:00:05.000Z' }));
+  });
+
+  it('si la semana sigue cambiando tras el reintento, responde 409 y no pisa nada más', async () => {
+    LogisticsWeek.findOne.mockResolvedValue(semanaCon('2026-11-01T10:00:00.000Z'));
+    LogisticsWeek.findOneAndUpdate.mockResolvedValue(null);
+    const res = await marcar();
+    expect(res.status).toBe(409);
+    expect(LogisticsWeek.findOneAndUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it('rechaza un día que no existe (400) sin leer la base', async () => {
+    const res = await request(buildApp()).patch('/api/logistics/weeks/week_3/tasks').send({ dayKey: '__proto__', taskIndex: 0, completed: true });
+    expect(res.status).toBe(400);
+    expect(LogisticsWeek.findOne).not.toHaveBeenCalled();
+  });
+
+  it('rechaza un cuerpo enorme (413) antes de tocar la base', async () => {
+    const res = await request(buildApp()).patch('/api/logistics/weeks/week_3/tasks')
+      .send({ dayKey: 'martes', taskIndex: 0, completed: true, taskText: 'x'.repeat(20000) });
+    expect(res.status).toBe(413);
+    expect(LogisticsWeek.findOne).not.toHaveBeenCalled();
   });
 });
 

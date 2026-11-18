@@ -45,9 +45,10 @@ async function enviar({ weekId, dayKey, taskIndex, completed, reopened, complete
   });
 }
 
-// ¿Merece la pena reintentar? Sin red, 5xx (o el servidor despertando) y 429, sí; un
-// 400/404 (la semana o la tarea ya no están), no.
-const reintentable = (res) => !res || res.status >= 500 || res.status === 429;
+// ¿Merece la pena reintentar? Sin red, 5xx (o el servidor despertando), 429 y 409 (la
+// semana cambió justo entonces: al repetir ya se lee la nueva), sí; un 400/404 (la
+// semana o la tarea ya no están), no.
+const reintentable = (res) => !res || res.status >= 500 || res.status === 429 || res.status === 409;
 
 /**
  * Marca/desmarca UNA tarea del planning como completada — sin necesitar
