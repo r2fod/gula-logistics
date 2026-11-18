@@ -82,6 +82,18 @@ export function fechaDeConcepto(item = '', referencia = new Date()) {
   return fecha;
 }
 
+// Los conceptos por orden de fecha, para enseñarlos: un pago apuntado hoy con fecha del
+// 13/10 se coloca entre los apuntes de esos días. Los que no tienen fecha (los de antes
+// del 28/09) van primero, y a igual fecha se respeta el orden en que se apuntaron.
+// Devuelve una lista nueva con los MISMOS objetos (no toca la de entrada).
+export function ordenarPorFecha(breakdown = [], referencia = new Date()) {
+  const marca = (item) => fechaDeConcepto(item, referencia)?.getTime() ?? -Infinity;
+  return (breakdown || [])
+    .map((item, orden) => ({ item, orden, fecha: marca(item) }))
+    .sort((a, b) => (a.fecha === b.fecha ? a.orden - b.orden : a.fecha < b.fecha ? -1 : 1))
+    .map(({ item }) => item);
+}
+
 // ¿La fecha de este concepto va APARTE de su texto? Sí en ajustes, transporte y pagos; no
 // en un turno a mano ("🕒 15/09 …" ya la dice) ni en la bolsa acumulada (no tiene).
 export const llevaFechaAparte = (item) => !esBolsaAcumulada(item) && !/^🕒\s*\d{1,2}\/\d{1,2}/.test(String(item?.concept || '').trim());

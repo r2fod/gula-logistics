@@ -6,7 +6,7 @@ import { useDialog } from '../../contexts/DialogContext';
 import { estadoBolsa, tieneBolsa } from '../../data/bolsaHoras';
 import GrupoConceptos from './saldos/GrupoConceptos';
 import FormularioConcepto from './saldos/FormularioConcepto';
-import { conFecha, diasSugeridos, fechaDeConcepto, llevaFechaAparte, saldoDeApuntes } from '../../data/conceptosSaldos';
+import { conFecha, diasSugeridos, fechaDeConcepto, llevaFechaAparte, ordenarPorFecha, saldoDeApuntes } from '../../data/conceptosSaldos';
 import EnVivo from '../ui/EnVivo';
 import { duracionEnCurso } from '../../data/costeEnVivo';
 import { saldoDeTrabajador } from '../../data/saldoTrabajador';
@@ -574,14 +574,14 @@ export default function TeamBalancesTab({
                       <GrupoConceptos
                         titulo="Apuntado a mano"
                         ayuda="Turnos a mano, transporte, bolsa y ajustes (roturas, adelantos…)."
-                        items={worker.breakdown || []}
+                        items={ordenarPorFecha(worker.breakdown)}
                         total={(worker.breakdown || []).reduce((suma, it) => suma + (Number(it.amount) || 0), 0)}
                         vacio="Nada apuntado a mano."
-                        onBorrar={adminUnlocked ? (item, idx) => handleDeleteConcept(worker, idx) : null}
+                        onBorrar={adminUnlocked ? (item) => handleDeleteConcept(worker, (worker.breakdown || []).indexOf(item)) : null}
                         borrando={savingBalanceId === worker.id}
                         tituloBorrar="Eliminar concepto manual"
                         fechaDe={(item) => (llevaFechaAparte(item) ? fechaDeConcepto(item) : undefined)}
-                        onFechar={adminUnlocked ? (item, idx, fecha) => handleFecharConcepto(worker, idx, fecha) : null}
+                        onFechar={adminUnlocked ? (item, _idx, fecha) => handleFecharConcepto(worker, (worker.breakdown || []).indexOf(item), fecha) : null}
                         sugerirDias={(item) => diasSugeridos(item, worker, hours?.shifts || [])}
                       />
 

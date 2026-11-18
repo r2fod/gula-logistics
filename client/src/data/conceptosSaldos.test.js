@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tipoDeConcepto, fechaDeConcepto, conceptosDelPeriodo, horasDeConcepto, llevaFechaAparte, conFecha, diasSugeridos, saldoDeApuntes } from './conceptosSaldos';
+import { tipoDeConcepto, fechaDeConcepto, conceptosDelPeriodo, horasDeConcepto, llevaFechaAparte, conFecha, diasSugeridos, saldoDeApuntes, ordenarPorFecha } from './conceptosSaldos';
 import { rangoDePeriodo } from './periodosFinancieros';
 
 const ahora = new Date(2026, 8, 28, 12, 0);
@@ -170,5 +170,29 @@ describe('saldoDeApuntes', () => {
   it('suma lo apuntado a mano, al céntimo, aunque algún importe venga como texto o falte', () => {
     expect(saldoDeApuntes([{ amount: 0.1 }, { amount: 0.2 }, { amount: '10' }, {}])).toBe(10.3);
     expect(saldoDeApuntes()).toBe(0);
+  });
+});
+
+describe('ordenarPorFecha', () => {
+  const pago = { concept: 'Efectivo', amount: -100, date: '2026-10-13', tipo: 'pago' };
+  const antiguo = { concept: 'Saldo anterior acumulado', amount: 50 };
+  const transporte = { concept: 'Transporte', amount: 10, date: '2026-10-18', tipo: 'ajuste' };
+  const otroTransporte = { concept: 'Transporte', amount: 10, date: '2026-10-12', tipo: 'ajuste' };
+
+  it('un pago apuntado hoy con fecha 13/10 se coloca entre los apuntes de esos días', () => {
+    const orden = ordenarPorFecha([transporte, otroTransporte, pago]);
+    expect(orden).toEqual([otroTransporte, pago, transporte]);
+  });
+
+  it('los apuntes sin fecha (los más antiguos) van primero y conservan su orden', () => {
+    const otroAntiguo = { concept: 'Ajuste viejo', amount: 5 };
+    expect(ordenarPorFecha([pago, antiguo, otroAntiguo])).toEqual([antiguo, otroAntiguo, pago]);
+  });
+
+  it('con la misma fecha respeta el orden en que se apuntaron y no cambia la lista de entrada', () => {
+    const a = { concept: 'Transporte A', amount: 10, date: '2026-10-13', tipo: 'ajuste' };
+    const entrada = [a, pago];
+    expect(ordenarPorFecha(entrada)).toEqual([a, pago]);
+    expect(entrada).toEqual([a, pago]);
   });
 });
