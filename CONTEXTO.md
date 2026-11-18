@@ -11,7 +11,7 @@ Logística de eventos y catering (bodas, banquetes, corporativos) en la zona de 
 - Flota: un camión propio y alquileres que cambian por semana (gestor de flota del panel; se puede adjuntar el PDF del contrato, que se guarda en la base y solo abre el admin).
 
 ## La semana
-- Va de **martes a domingo** y el **lunes siguiente es su cola** (devoluciones, limpieza, cargas). Domingo y lunes comparten una lista; cada tarea lleva "Día Específico" (sin él cuenta como lunes).
+- Va de **martes a domingo** y el **lunes siguiente es su cola** (devoluciones, limpieza, cargas). Domingo y lunes comparten una lista; cada tarea lleva "Día Específico" (sin él, para saber si ya pasó cuenta como lunes; para fichar vale domingo o lunes, la primera ocurrencia que no haya terminado).
 - La carga de un evento del martes se hace el lunes anterior y va en la cola de la semana anterior; el Cuadrante de la semana que empieza la enseña como "Lunes N · Víspera" (solo lectura; se edita en su semana).
 - `meta.dateRange` ("Del 22 al 27 de Septiembre de 2026") manda: de él salen los números de día y las fechas de cada tarea.
 - Junto al selector, «Editar semana» permite al admin cambiar el nombre o retirar del planning un borrador o una semana publicada. Al crear o nombrar «Semana N», esa semana conserva N y las que ocupan los números consecutivos se desplazan hasta el primer hueco. Al retirar una semana se conserva su historial para el resumen financiero.
